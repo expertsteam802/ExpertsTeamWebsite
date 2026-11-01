@@ -1,0 +1,2 @@
+- AI credentials are read only inside authenticated server-function handlers and passed explicitly to Gemini helpers; never use VITE-prefixed private keys or browser storage.
+- The managed Lovable Cloud connection and generated integration files remain platform-owned; do not overwrite them to redirect the project to another database.

@@ -23,7 +23,7 @@ export const runCodingAgent = createServerFn({ method: "POST" })
   .validator((input: unknown) => codingRequest.parse(input))
   .handler(async ({ data }) => {
     const { runAgent } = await import("./agent.server");
-    return runAgent(data);
+    return runAgent(data, process.env["GEMINI_API_KEY"]);
   });
 
 export const pushProjectToGithub = createServerFn({ method: "POST" })

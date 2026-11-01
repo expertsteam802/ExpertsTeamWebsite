@@ -24,9 +24,7 @@ const GEMINI_MODEL = "gemini-3.8-flash";
 
 export async function generateGeminiContent(
   request: GeminiRequest,
-  apiKey = process.env["GEMINI_API_KEY"] ??
-    process.env["VITE_GEMINI_API_KEY"] ??
-    import.meta.env?.["VITE_GEMINI_API_KEY"],
+  apiKey?: string,
 ): Promise<GeminiResponse> {
   if (!apiKey?.trim()) {
     throw new Error("Chris AI is not configured. Set GEMINI_API_KEY in the server environment.");

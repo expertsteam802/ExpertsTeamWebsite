@@ -17,5 +17,5 @@ export const askChrisAi = createServerFn({ method: "POST" })
   .validator((input: unknown) => aiRequest.parse(input))
   .handler(async ({ data }) => {
     const { askChrisAi: generate } = await import("./ai.server");
-    return generate({ ...data, history: data.history ?? [] });
+    return generate({ ...data, history: data.history ?? [] }, process.env["GEMINI_API_KEY"]);
   });

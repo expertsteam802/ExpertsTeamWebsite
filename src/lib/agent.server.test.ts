@@ -10,6 +10,23 @@ afterEach(() => {
 
 const input = { prompt: "Build a game", files: {}, history: [] };
 
+test("agent never uses a browser-prefixed key when server credential is missing", async () => {
+  const previous = process.env["VITE_GEMINI_API_KEY"];
+  process.env["VITE_GEMINI_API_KEY"] = "browser-test-key";
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls++;
+    return Response.json({});
+  }) as typeof fetch;
+  try {
+    await assert.rejects(runAgent(input), /not configured/i);
+    assert.equal(calls, 0);
+  } finally {
+    if (previous === undefined) delete process.env["VITE_GEMINI_API_KEY"];
+    else process.env["VITE_GEMINI_API_KEY"] = previous;
+  }
+});
+
 test("coding agent uses Gemini and returns complete files", async () => {
   const urls: string[] = [];
   globalThis.fetch = (async (url) => {
