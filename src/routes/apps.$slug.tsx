@@ -12,9 +12,15 @@ export const Route = createFileRoute("/apps/$slug")({
   head: () => ({
     meta: [
       { title: "Live app — Experts Team" },
-      { name: "description", content: "An app built and published with the Experts Team coding agent." },
+      {
+        name: "description",
+        content: "An app built and published with the Experts Team coding agent.",
+      },
       { property: "og:title", content: "Live app — Experts Team" },
-      { property: "og:description", content: "An app built and published with the Experts Team coding agent." },
+      {
+        property: "og:description",
+        content: "An app built and published with the Experts Team coding agent.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -44,7 +50,10 @@ function LiveApp() {
       <section className="mx-auto max-w-7xl px-4 py-6">
         <div className="mb-3 flex items-center justify-between gap-2">
           <h1 className="font-display text-2xl font-semibold">{data?.name ?? "Live app"}</h1>
-          <Link to="/ai" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
+          <Link
+            to="/ai"
+            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+          >
             <ExternalLink className="h-3.5 w-3.5" /> Build your own
           </Link>
         </div>

@@ -32,7 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
-import { askAgent, pushProjectToGithub } from "@/lib/agent.functions";
+import { pushProjectToGithub, runCodingAgent } from "@/lib/agent.functions";
 import { buildSrcDocWithConsole, slugify, STARTER_FILES, type ProjectFiles } from "@/lib/sandbox";
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -50,8 +50,8 @@ type ProjectRow = {
 export function CodeAgent() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const ask = useServerFn(askAgent);
   const push = useServerFn(pushProjectToGithub);
+  const run = useServerFn(runCodingAgent);
 
   const [projectId, setProjectId] = useState<string | null>(null);
   const [name, setName] = useState("Untitled app");
@@ -69,12 +69,16 @@ export function CodeAgent() {
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       const d = e.data as { __agentConsole?: boolean; type: string; message: string };
-      if (d && d.__agentConsole) setLogs((l) => [...l.slice(-199), { type: d.type, message: d.message }]);
+      if (d && d.__agentConsole)
+        setLogs((l) => [...l.slice(-199), { type: d.type, message: d.message }]);
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, []);
-  const [published, setPublished] = useState<{ on: boolean; slug: string | null }>({ on: false, slug: null });
+  const [published, setPublished] = useState<{ on: boolean; slug: string | null }>({
+    on: false,
+    slug: null,
+  });
   const [ghOpen, setGhOpen] = useState(false);
   const [ghToken, setGhToken] = useState("");
   const [ghRepo, setGhRepo] = useState("");
@@ -95,7 +99,9 @@ export function CodeAgent() {
     },
   });
 
-  async function persist(next: { files?: ProjectFiles; messages?: Msg[]; extra?: Record<string, unknown> } = {}) {
+  async function persist(
+    next: { files?: ProjectFiles; messages?: Msg[]; extra?: Record<string, unknown> } = {},
+  ) {
     const payload = {
       user_id: user!.id,
       name: name.trim().slice(0, 80) || "Untitled app",
@@ -109,7 +115,11 @@ export function CodeAgent() {
       void queryClient.invalidateQueries({ queryKey: ["agent-projects", user?.id] });
       return projectId;
     }
-    const { data, error } = await supabase.from("agent_projects").insert(payload).select("id").single();
+    const { data, error } = await supabase
+      .from("agent_projects")
+      .insert(payload)
+      .select("id")
+      .single();
     if (error) throw error;
     setProjectId(data.id);
     void queryClient.invalidateQueries({ queryKey: ["agent-projects", user?.id] });
@@ -124,7 +134,9 @@ export function CodeAgent() {
     setMessages(nextMessages);
     setBusy(true);
     try {
-      const result = await ask({ data: { prompt: text, files, history: messages } });
+      const result = await run({
+        data: { prompt: text, files, history: messages.slice(-8) },
+      });
       const merged: ProjectFiles = { ...files };
       const changed: string[] = [];
       for (const [path, content] of Object.entries(result.files)) {
@@ -187,7 +199,9 @@ export function CodeAgent() {
     onSuccess: (url) => {
       setGhOpen(false);
       setGhToken("");
-      toast.success("Pushed to GitHub", { action: { label: "Open", onClick: () => window.open(url, "_blank") } });
+      toast.success("Pushed to GitHub", {
+        action: { label: "Open", onClick: () => window.open(url, "_blank") },
+      });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -223,7 +237,9 @@ export function CodeAgent() {
     return (
       <Card className="p-8 text-center">
         <Bot className="mx-auto h-8 w-8 text-primary" />
-        <h2 className="mt-3 font-display text-xl font-semibold">Sign in to use the app builder agent</h2>
+        <h2 className="mt-3 font-display text-xl font-semibold">
+          Sign in to use the app builder agent
+        </h2>
       </Card>
     );
   }
@@ -233,11 +249,21 @@ export function CodeAgent() {
   return (
     <div className="space-y-4">
       <Card className="glow-panel flex-row flex-wrap items-center gap-2 p-3">
-        <Input value={name} onChange={(e) => setName(e.target.value)} className="h-9 max-w-xs" aria-label="App name" />
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="h-9 max-w-xs"
+          aria-label="App name"
+        />
         <Button size="sm" variant="secondary" onClick={newProject}>
           <Plus className="mr-1 h-3.5 w-3.5" /> New
         </Button>
-        <Button size="sm" variant="secondary" onClick={() => save.mutate()} disabled={save.isPending}>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => save.mutate()}
+          disabled={save.isPending}
+        >
           <Save className="mr-1 h-3.5 w-3.5" /> Save
         </Button>
         <Button
@@ -250,11 +276,20 @@ export function CodeAgent() {
         >
           <Github className="mr-1 h-3.5 w-3.5" /> Push to GitHub
         </Button>
-        <Button size="sm" onClick={() => publish.mutate(!published.on)} disabled={publish.isPending}>
+        <Button
+          size="sm"
+          onClick={() => publish.mutate(!published.on)}
+          disabled={publish.isPending}
+        >
           <Globe className="mr-1 h-3.5 w-3.5" /> {published.on ? "Unpublish" : "Publish"}
         </Button>
         {pagesUrl && (
-          <a href={pagesUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+          <a
+            href={pagesUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+          >
             <Github className="h-3 w-3" /> GitHub Pages
           </a>
         )}
@@ -298,7 +333,9 @@ export function CodeAgent() {
               <div
                 key={i}
                 className={`whitespace-pre-wrap rounded-xl px-3 py-2 text-xs ${
-                  m.role === "user" ? "ml-6 bg-primary text-primary-foreground" : "mr-6 border border-border bg-secondary"
+                  m.role === "user"
+                    ? "ml-6 bg-primary text-primary-foreground"
+                    : "mr-6 border border-border bg-secondary"
                 }`}
               >
                 {m.content}
@@ -324,7 +361,12 @@ export function CodeAgent() {
               }}
               className="min-h-10 resize-none text-xs"
             />
-            <Button size="icon" onClick={() => void send()} disabled={busy} aria-label="Send to agent">
+            <Button
+              size="icon"
+              onClick={() => void send()}
+              disabled={busy}
+              aria-label="Send to agent"
+            >
               <Send className="h-4 w-4" />
             </Button>
           </div>
@@ -332,24 +374,47 @@ export function CodeAgent() {
 
         <Card className="flex h-[72vh] flex-col overflow-hidden p-0">
           <div className="flex flex-wrap items-center gap-1 border-b border-border/70 px-2 py-1.5">
-            <Button size="sm" variant={view === "preview" ? "default" : "ghost"} onClick={() => setView("preview")}>
+            <Button
+              size="sm"
+              variant={view === "preview" ? "default" : "ghost"}
+              onClick={() => setView("preview")}
+            >
               <Play className="mr-1 h-3.5 w-3.5" /> Preview
             </Button>
-            <Button size="sm" variant={view === "code" ? "default" : "ghost"} onClick={() => setView("code")}>
+            <Button
+              size="sm"
+              variant={view === "code" ? "default" : "ghost"}
+              onClick={() => setView("code")}
+            >
               <FileCode2 className="mr-1 h-3.5 w-3.5" /> Code
             </Button>
-            <Button size="sm" variant={view === "console" ? "default" : "ghost"} onClick={() => setView("console")}>
+            <Button
+              size="sm"
+              variant={view === "console" ? "default" : "ghost"}
+              onClick={() => setView("console")}
+            >
               <Terminal className="mr-1 h-3.5 w-3.5" /> Console
-              {logs.some((l) => l.type === "error") && <span className="ml-1 h-2 w-2 rounded-full bg-destructive" />}
+              {logs.some((l) => l.type === "error") && (
+                <span className="ml-1 h-2 w-2 rounded-full bg-destructive" />
+              )}
             </Button>
             {view === "preview" && (
               <div className="ml-2 flex gap-0.5">
-                {([
-                  ["desktop", Monitor],
-                  ["tablet", Tablet],
-                  ["mobile", Smartphone],
-                ] as const).map(([d, Icon]) => (
-                  <Button key={d} size="icon" variant={device === d ? "secondary" : "ghost"} className="h-8 w-8" aria-label={`${d} view`} onClick={() => setDevice(d)}>
+                {(
+                  [
+                    ["desktop", Monitor],
+                    ["tablet", Tablet],
+                    ["mobile", Smartphone],
+                  ] as const
+                ).map(([d, Icon]) => (
+                  <Button
+                    key={d}
+                    size="icon"
+                    variant={device === d ? "secondary" : "ghost"}
+                    className="h-8 w-8"
+                    aria-label={`${d} view`}
+                    onClick={() => setDevice(d)}
+                  >
                     <Icon className="h-3.5 w-3.5" />
                   </Button>
                 ))}
@@ -361,7 +426,14 @@ export function CodeAgent() {
                   Clear
                 </Button>
               ) : view === "preview" ? (
-                <Button size="sm" variant="ghost" onClick={() => { setLogs([]); setPreviewKey((k) => k + 1); }}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setLogs([]);
+                    setPreviewKey((k) => k + 1);
+                  }}
+                >
                   Reload
                 </Button>
               ) : (
@@ -382,7 +454,10 @@ export function CodeAgent() {
             <div className="flex-1 overflow-y-auto bg-background p-2 font-mono text-xs">
               {!logs.length && <p className="text-muted-foreground">No console output yet.</p>}
               {logs.map((l, i) => (
-                <p key={i} className={`border-b border-border/40 py-1 ${l.type === "error" ? "text-destructive" : l.type === "warn" ? "text-primary" : ""}`}>
+                <p
+                  key={i}
+                  className={`border-b border-border/40 py-1 ${l.type === "error" ? "text-destructive" : l.type === "warn" ? "text-primary" : ""}`}
+                >
                   [{l.type}] {l.message}
                 </p>
               ))}
@@ -426,7 +501,10 @@ export function CodeAgent() {
                     </button>
                   </div>
                 ))}
-                <button onClick={addFile} className="flex w-full items-center gap-1 px-2 py-1 text-xs text-primary">
+                <button
+                  onClick={addFile}
+                  className="flex w-full items-center gap-1 px-2 py-1 text-xs text-primary"
+                >
                   <FilePlus2 className="h-3 w-3" /> Add file
                 </button>
               </div>
@@ -446,7 +524,10 @@ export function CodeAgent() {
         {!projects.length && <p className="text-sm text-muted-foreground">No saved apps yet.</p>}
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {projects.map((p) => (
-            <div key={p.id} className="flex items-center gap-2 rounded-lg border border-border bg-secondary/50 p-3">
+            <div
+              key={p.id}
+              className="flex items-center gap-2 rounded-lg border border-border bg-secondary/50 p-3"
+            >
               <button onClick={() => load(p)} className="min-w-0 flex-1 text-left">
                 <p className="truncate text-sm font-medium">{p.name}</p>
                 <p className="text-xs text-muted-foreground">
@@ -454,7 +535,12 @@ export function CodeAgent() {
                   {Object.keys(p.files ?? {}).length} files · {p.updated_at.slice(0, 10)}
                 </p>
               </button>
-              <Button variant="ghost" size="icon" aria-label={`Delete ${p.name}`} onClick={() => removeProject.mutate(p.id)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Delete ${p.name}`}
+                onClick={() => removeProject.mutate(p.id)}
+              >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
@@ -474,14 +560,23 @@ export function CodeAgent() {
             </div>
             <div className="space-y-1">
               <Label htmlFor="gh-token">GitHub access token</Label>
-              <Input id="gh-token" type="password" value={ghToken} onChange={(e) => setGhToken(e.target.value)} />
+              <Input
+                id="gh-token"
+                type="password"
+                value={ghToken}
+                onChange={(e) => setGhToken(e.target.value)}
+              />
               <p className="text-xs text-muted-foreground">
-                Create one at github.com → Settings → Developer settings → Tokens with "repo" access. It's used once
-                and never saved.
+                Create one at github.com → Settings → Developer settings → Tokens with "repo"
+                access. It's used once and never saved.
               </p>
             </div>
             <Button className="w-full" onClick={() => github.mutate()} disabled={github.isPending}>
-              {github.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Github className="mr-2 h-4 w-4" />}
+              {github.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Github className="mr-2 h-4 w-4" />
+              )}
               Push files
             </Button>
           </div>

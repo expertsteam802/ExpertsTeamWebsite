@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { Bot, Code2, Copy, Loader2, Save, Send, Sparkles, Trash2, User } from "lucide-react";
+import { Bot, Code2, Copy, Eye, Loader2, Save, Send, Sparkles, Trash2, User } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -44,13 +44,14 @@ export function ChrisAiChat() {
   const ask = useServerFn(askChrisAi);
   const [input, setInput] = useState("");
 
-  const { data: messages = [] } = useQuery({
+  const { data: messages = [], isError: messagesError } = useQuery({
     queryKey: ["ai-chats", user?.id],
     enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ai_chats")
         .select("id, role, content, created_at")
+        .eq("user_id", user!.id)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data as ChatRow[];
@@ -59,14 +60,28 @@ export function ChrisAiChat() {
 
   const send = useMutation({
     mutationFn: async (prompt: string) => {
-      await supabase.from("ai_chats").insert({ user_id: user!.id, role: "user", content: prompt });
-      await queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
-      const history = messages.map((m) => ({ role: m.role, content: m.content }));
+      const { error: userMessageError } = await supabase
+        .from("ai_chats")
+        .insert({ user_id: user!.id, role: "user", content: prompt });
+      if (userMessageError) throw userMessageError;
+
+      const history = messages.slice(-10).map((message) => ({
+        role: message.role,
+        content: message.content,
+      }));
       const result = await ask({ data: { prompt, mode: "chat", history } });
-      await supabase.from("ai_chats").insert({ user_id: user!.id, role: "ai", content: result.reply });
+      const { error: aiMessageError } = await supabase
+        .from("ai_chats")
+        .insert({ user_id: user!.id, role: "ai", content: result.reply });
+      if (aiMessageError) {
+        throw new Error("Chris AI replied, but the reply could not be saved. Please try again.");
+      }
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] }),
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => {
+      toast.error(error.message);
+      void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
+    },
   });
 
   const clear = useMutation({
@@ -78,6 +93,7 @@ export function ChrisAiChat() {
       toast.success("Chat cleared");
       void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
     },
+    onError: (error: Error) => toast.error(error.message),
   });
 
   if (!user) {
@@ -108,15 +124,26 @@ export function ChrisAiChat() {
           </span>
           <div>
             <p className="text-sm font-semibold">Chris AI</p>
-            <p className="text-xs text-muted-foreground">PC info · games · code</p>
+            <p className="text-xs text-muted-foreground">Gemini · PC info · games · code</p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" aria-label="Clear chat" onClick={() => clear.mutate()}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Clear chat"
+          onClick={() => clear.mutate()}
+          disabled={clear.isPending || send.isPending}
+        >
           <Trash2 className="h-4 w-4" />
         </Button>
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        {messagesError && (
+          <p role="alert" className="text-sm text-destructive">
+            Could not load your saved messages. Please refresh and try again.
+          </p>
+        )}
         {messages.length === 0 && (
           <div className="grid gap-2 sm:grid-cols-2">
             {[
@@ -199,6 +226,39 @@ type SnippetRow = {
   updated_at: string;
 };
 
+const SNIPPET_LANGUAGES = [
+  "html",
+  "css",
+  "javascript",
+  "typescript",
+  "python",
+  "json",
+  "sql",
+  "text",
+] as const;
+type SnippetLanguage = (typeof SNIPPET_LANGUAGES)[number];
+
+function isSnippetLanguage(language: string): language is SnippetLanguage {
+  return (SNIPPET_LANGUAGES as readonly string[]).includes(language);
+}
+
+function createSnippetPreviewDocument(code: string, language: SnippetLanguage) {
+  if (language === "html") return code;
+  if (language === "css") {
+    return `<!doctype html><html><head><meta charset="utf-8"><style>${code}</style></head><body><h1>CSS preview</h1><p>Edit the CSS to style this preview.</p><button>Example button</button></body></html>`;
+  }
+  const serializedCode = JSON.stringify(code).replace(/</g, "\\u003c");
+  return `<!doctype html><html><head><meta charset="utf-8"></head><body><pre id="output"></pre><script>
+const output = document.getElementById("output");
+const log = (...values) => { output.textContent += values.map(String).join(" ") + "\\n"; };
+console.log = log;
+console.warn = log;
+console.error = log;
+try { (0, eval)(${serializedCode}); }
+catch (error) { log(error && error.stack ? error.stack : error); }
+</script></body></html>`;
+}
+
 export function ChrisAiWorkspace() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -208,14 +268,17 @@ export function ChrisAiWorkspace() {
   const [title, setTitle] = useState("");
   const [snippetId, setSnippetId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [language, setLanguage] = useState<SnippetLanguage>("javascript");
+  const [showPreview, setShowPreview] = useState(false);
 
-  const { data: snippets = [] } = useQuery({
+  const { data: snippets = [], isError: snippetsError } = useQuery({
     queryKey: ["ai-snippets", user?.id],
     enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ai_snippets")
         .select("id, title, language, prompt, code, updated_at")
+        .eq("user_id", user!.id)
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return data as SnippetRow[];
@@ -228,6 +291,7 @@ export function ChrisAiWorkspace() {
       const payload = {
         user_id: user!.id,
         title: (title.trim() || brief.trim().slice(0, 60) || "Untitled snippet").slice(0, 120),
+        language,
         prompt: brief.trim() ? brief.trim().slice(0, 2000) : null,
         code: code.slice(0, 40000),
       };
@@ -235,7 +299,11 @@ export function ChrisAiWorkspace() {
         const { error } = await supabase.from("ai_snippets").update(payload).eq("id", snippetId);
         if (error) throw error;
       } else {
-        const { data, error } = await supabase.from("ai_snippets").insert(payload).select("id").single();
+        const { data, error } = await supabase
+          .from("ai_snippets")
+          .insert(payload)
+          .select("id")
+          .single();
         if (error) throw error;
         setSnippetId(data.id);
       }
@@ -264,21 +332,27 @@ export function ChrisAiWorkspace() {
     setTitle(snippet.title);
     setBrief(snippet.prompt ?? "");
     setCode(snippet.code);
+    setLanguage(isSnippetLanguage(snippet.language) ? snippet.language : "text");
+    setShowPreview(false);
   }
 
   async function generate() {
-    if (!brief.trim()) return;
+    if (!brief.trim() || busy) return;
     setBusy(true);
     try {
-      const result = await ask({ data: { prompt: brief.trim(), mode: "workspace" } });
-      setCode(result.reply);
+      const request = `${brief.trim()}\n\nWrite the complete solution in ${language}.`;
+      const result = await ask({ data: { prompt: request, mode: "workspace" } });
+      const codeBlock = result.reply.match(/```[^\r\n]*\r?\n([\s\S]*?)```/);
+      const generatedCode = (codeBlock?.[1] ?? result.reply).trim();
+      if (!generatedCode) throw new Error("Gemini returned no code. Please try again.");
+      setCode(generatedCode);
+      setShowPreview(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Generation failed");
     } finally {
       setBusy(false);
     }
   }
-
 
   if (!user) {
     return (
@@ -299,6 +373,29 @@ export function ChrisAiWorkspace() {
             placeholder="Snippet name (e.g. map editor loader)"
             onChange={(event) => setTitle(event.target.value)}
           />
+          <div className="space-y-1">
+            <label htmlFor="snippet-language" className="text-sm font-medium">
+              Language
+            </label>
+            <select
+              id="snippet-language"
+              value={language}
+              onChange={(event) => {
+                if (isSnippetLanguage(event.target.value)) setLanguage(event.target.value);
+              }}
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+            >
+              {SNIPPET_LANGUAGES.map((option) => (
+                <option key={option} value={option}>
+                  {option === "javascript"
+                    ? "JavaScript"
+                    : option === "typescript"
+                      ? "TypeScript"
+                      : option.toUpperCase()}
+                </option>
+              ))}
+            </select>
+          </div>
           <Textarea
             rows={7}
             value={brief}
@@ -306,7 +403,11 @@ export function ChrisAiWorkspace() {
             onChange={(event) => setBrief(event.target.value)}
           />
           <Button onClick={() => void generate()} disabled={busy} className="w-full">
-            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+            {busy ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="mr-2 h-4 w-4" />
+            )}
             Generate code
           </Button>
         </Card>
@@ -314,7 +415,22 @@ export function ChrisAiWorkspace() {
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-display text-lg font-semibold">Workspace</h2>
             <div className="flex gap-2">
-              <Button variant="secondary" size="sm" disabled={!code || save.isPending} onClick={() => save.mutate()}>
+              {["html", "css", "javascript"].includes(language) && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={!code}
+                  onClick={() => setShowPreview((visible) => !visible)}
+                >
+                  <Eye className="mr-2 h-3.5 w-3.5" /> {showPreview ? "Hide preview" : "Preview"}
+                </Button>
+              )}
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!code || save.isPending}
+                onClick={() => save.mutate()}
+              >
                 <Save className="mr-2 h-3.5 w-3.5" /> {snippetId ? "Update" : "Save"}
               </Button>
               <Button
@@ -322,8 +438,12 @@ export function ChrisAiWorkspace() {
                 size="sm"
                 disabled={!code}
                 onClick={() => {
-                  void navigator.clipboard.writeText(code);
-                  toast.success("Copied to clipboard");
+                  void navigator.clipboard
+                    .writeText(code)
+                    .then(() => toast.success("Copied to clipboard"))
+                    .catch((error: unknown) =>
+                      toast.error(error instanceof Error ? error.message : "Could not copy code."),
+                    );
                 }}
               >
                 <Copy className="mr-2 h-3.5 w-3.5" /> Copy
@@ -337,11 +457,30 @@ export function ChrisAiWorkspace() {
             placeholder="Generated code appears here and stays editable."
             className="font-mono text-xs"
           />
+          {showPreview && (
+            <iframe
+              title={`${language} snippet preview`}
+              sandbox="allow-scripts"
+              srcDoc={createSnippetPreviewDocument(code, language)}
+              className="h-64 w-full rounded-lg border border-border bg-white"
+            />
+          )}
+          {["html", "css", "javascript"].includes(language) && (
+            <p className="text-xs text-muted-foreground">
+              Preview runs HTML, CSS, or JavaScript in an isolated frame. Other languages can be
+              edited, copied, and saved here, but are not executed.
+            </p>
+          )}
         </Card>
       </div>
 
       <Card className="space-y-2 p-4">
         <h2 className="font-display text-lg font-semibold">Saved progress</h2>
+        {snippetsError && (
+          <p role="alert" className="text-sm text-destructive">
+            Could not load your saved snippets. Please refresh and try again.
+          </p>
+        )}
         {!snippets.length && (
           <p className="text-sm text-muted-foreground">
             Nothing saved yet — generate code and hit Save to keep your progress in your account.
@@ -355,7 +494,9 @@ export function ChrisAiWorkspace() {
             >
               <button onClick={() => load(snippet)} className="min-w-0 flex-1 text-left">
                 <p className="truncate text-sm font-medium">{snippet.title}</p>
-                <p className="text-xs text-muted-foreground">Updated {snippet.updated_at.slice(0, 10)}</p>
+                <p className="text-xs text-muted-foreground">
+                  Updated {snippet.updated_at.slice(0, 10)}
+                </p>
               </button>
               <Button
                 variant="ghost"

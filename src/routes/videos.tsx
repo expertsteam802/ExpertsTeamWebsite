@@ -51,8 +51,8 @@ function VideosPage() {
             The <span className="brand-text">archive</span>
           </h1>
           <p className="mt-3 max-w-2xl text-muted-foreground">
-            Every video from @expertchris and @chrisexpert, playable right here. Add one by pasting its
-            YouTube share link — we read the id for you so links never break.
+            Every video from @expertchris and @chrisexpert, playable right here. Add one by pasting
+            its YouTube share link — we read the id for you so links never break.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <AddVideoDialog category="archive" triggerLabel="Add archive video" />

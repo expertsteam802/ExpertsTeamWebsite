@@ -12,7 +12,11 @@ type UploadArgs = {
  * Uploads straight to storage over XHR so we can report real upload percentage
  * (the JS client does not expose progress events).
  */
-export async function uploadWithProgress({ file, userId, onProgress }: UploadArgs): Promise<string> {
+export async function uploadWithProgress({
+  file,
+  userId,
+  onProgress,
+}: UploadArgs): Promise<string> {
   if (file.size > MAX_UPLOAD_BYTES) {
     throw new Error("That file is larger than the 200MB upload limit.");
   }
@@ -21,7 +25,7 @@ export async function uploadWithProgress({ file, userId, onProgress }: UploadArg
   const token = data.session?.access_token;
   if (!token) throw new Error("You need to be signed in to upload.");
 
-  const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+  const safeName = file.name.replace(/[^\w.-]+/g, "_");
   const path = `${userId}/${Date.now()}-${safeName}`;
   const baseUrl = import.meta.env["VITE_SUPABASE_URL"];
   const apiKey = import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"];

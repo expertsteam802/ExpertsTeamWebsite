@@ -117,7 +117,10 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
                     {ext.toUpperCase() || "FILE"} · {formatBytes(file.size_bytes)}
                   </p>
                 </div>
-                <Badge variant={file.price > 0 ? "default" : "secondary"} className="ml-auto shrink-0">
+                <Badge
+                  variant={file.price > 0 ? "default" : "secondary"}
+                  className="ml-auto shrink-0"
+                >
                   {file.price > 0 ? `$${Number(file.price).toFixed(2)}` : "Free"}
                 </Badge>
               </div>
@@ -168,7 +171,11 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="edit-title">Title</Label>
-              <Input id="edit-title" value={title} onChange={(event) => setTitle(event.target.value)} />
+              <Input
+                id="edit-title"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-description">Description</Label>

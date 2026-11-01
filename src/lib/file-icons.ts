@@ -15,7 +15,11 @@ const MAP: Array<{ icon: LucideIcon; ext: string[]; tone: string }> = [
   { icon: Gamepad2, ext: ["apk", "exe", "app", "unity3d", "love", "swf"], tone: "text-accent" },
   { icon: FileVideo, ext: ["mp4", "mov", "avi", "mkv", "webm"], tone: "text-primary" },
   { icon: FileAudio, ext: ["mp3", "wav", "ogg", "m4a", "flac"], tone: "text-chart-3" },
-  { icon: FileImage, ext: ["png", "jpg", "jpeg", "gif", "webp", "svg", "ico"], tone: "text-chart-4" },
+  {
+    icon: FileImage,
+    ext: ["png", "jpg", "jpeg", "gif", "webp", "svg", "ico"],
+    tone: "text-chart-4",
+  },
   { icon: FileArchive, ext: ["zip", "rar", "7z", "tar", "gz"], tone: "text-chart-5" },
   { icon: FileSpreadsheet, ext: ["csv", "xls", "xlsx"], tone: "text-accent" },
   { icon: FileText, ext: ["pdf", "doc", "docx", "txt", "md", "epub"], tone: "text-primary" },

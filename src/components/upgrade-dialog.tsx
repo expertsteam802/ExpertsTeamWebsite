@@ -82,9 +82,8 @@ export function UpgradeDialog() {
   if (profile?.is_subscribed) {
     return (
       <Badge variant="secondary" className="w-fit gap-1">
-        <CheckCircle2 className="h-3.5 w-3.5" /> Subscriber · {formatBytes(
-          profile.storage_quota_bytes,
-        )} unlocked
+        <CheckCircle2 className="h-3.5 w-3.5" /> Subscriber ·{" "}
+        {formatBytes(profile.storage_quota_bytes)} unlocked
       </Badge>
     );
   }
@@ -104,7 +103,9 @@ export function UpgradeDialog() {
         </DialogTrigger>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Unlock {formatBytes(settings.subscription_quota_bytes)} of space</DialogTitle>
+            <DialogTitle>
+              Unlock {formatBytes(settings.subscription_quota_bytes)} of space
+            </DialogTitle>
             <DialogDescription>
               One payment of ${price.toFixed(2)} raises your upload limit from{" "}
               {formatBytes(profile?.storage_quota_bytes ?? 209715200)} to{" "}
@@ -132,7 +133,9 @@ export function UpgradeDialog() {
             </div>
 
             <div className="rounded-lg border border-border/60 bg-muted/40 p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Send ${price.toFixed(2)} to</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Send ${price.toFixed(2)} to
+              </p>
               {payoutAccount ? (
                 <div className="mt-1 flex items-center justify-between gap-2">
                   <code className="break-all text-sm font-medium">{payoutAccount}</code>
@@ -150,8 +153,8 @@ export function UpgradeDialog() {
                 </div>
               ) : (
                 <p className="mt-1 text-sm text-muted-foreground">
-                  The creator has not published a payout account yet. Contact{" "}
-                  {settings.owner_email} before paying.
+                  The creator has not published a payout account yet. Contact {settings.owner_email}{" "}
+                  before paying.
                 </p>
               )}
             </div>

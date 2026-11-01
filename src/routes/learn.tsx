@@ -75,8 +75,8 @@ function LearnPage() {
             Learn to code <span className="brand-text">with Chris</span>
           </h1>
           <p className="mt-3 max-w-2xl text-muted-foreground">
-            Start from zero with the basics track, then dig into the books, notes and app files shared
-            by Chris and the community.
+            Start from zero with the basics track, then dig into the books, notes and app files
+            shared by Chris and the community.
           </p>
           <div className="mt-6">
             <UploadDialog defaultCategory="lesson" />

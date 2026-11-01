@@ -47,7 +47,11 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
       if (!youtubeId) throw new Error("Paste a valid YouTube link.");
       const { error } = await supabase
         .from("videos")
-        .update({ title: title.trim().slice(0, 140) || editing.title, youtube_url: link.trim(), youtube_id: youtubeId })
+        .update({
+          title: title.trim().slice(0, 140) || editing.title,
+          youtube_url: link.trim(),
+          youtube_id: youtubeId,
+        })
         .eq("id", editing.id);
       if (error) throw error;
     },
@@ -166,7 +170,11 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="video-edit-link">YouTube link</Label>
-              <Input id="video-edit-link" value={link} onChange={(event) => setLink(event.target.value)} />
+              <Input
+                id="video-edit-link"
+                value={link}
+                onChange={(event) => setLink(event.target.value)}
+              />
             </div>
           </div>
           <DialogFooter>

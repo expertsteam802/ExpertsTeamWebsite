@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
-import { lovable } from "@/integrations/lovable/index";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth")({
@@ -35,16 +34,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
-  const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
-  const [code, setCode] = useState("");
-
-  const challenge = useMemo(() => {
-    const a = Math.floor(Math.random() * 8) + 2;
-    const b = Math.floor(Math.random() * 8) + 2;
-    return { a, b, sum: a + b };
-  }, []);
 
   useEffect(() => {
     if (user) void navigate({ to: "/dashboard", replace: true });
@@ -52,20 +42,18 @@ function AuthPage() {
 
   async function signIn(): Promise<void> {
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    setBusy(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (error) throw error;
+      toast.success("Welcome back!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not sign in. Please try again.");
+    } finally {
+      setBusy(false);
     }
-    toast.success("Welcome back!");
   }
 
   async function signUp(): Promise<void> {
-    if (Number(answer) !== challenge.sum) {
-      toast.error("Please answer the verification question.");
-      return;
-    }
     if (password.length < 6) {
       toast.error("Use at least 6 characters for your password.");
       return;
@@ -75,51 +63,45 @@ function AuthPage() {
       return;
     }
     setBusy(true);
-    const { data, error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: { username: username.trim(), display_name: username.trim() },
-      },
-    });
-    setBusy(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: { username: username.trim(), display_name: username.trim() },
+        },
+      });
+      if (error) throw error;
+      if (!data.session) {
+        toast.error(
+          "Email confirmation is still enabled in Supabase. Disable it under Authentication → Providers → Email to create accounts without verification.",
+        );
+        return;
+      }
+      toast.success("Account created!");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not create your account. Please try again.",
+      );
+    } finally {
+      setBusy(false);
     }
-    if (!data.session) {
-      setEmailSent(true);
-      toast.success("Check your email to confirm your account.");
-      return;
-    }
-    toast.success("Account created!");
   }
 
-  async function verifyCode(): Promise<void> {
-    if (code.trim().length < 6) {
-      toast.error("Enter the 6-digit code from your email.");
-      return;
-    }
+  async function google(): Promise<void> {
     setBusy(true);
-    const { error } = await supabase.auth.verifyOtp({
-      email: email.trim(),
-      token: code.trim(),
-      type: "signup",
-    });
-    setBusy(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin },
+      });
+      if (error) throw error;
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Google sign-in failed. Please try again.",
+      );
+      setBusy(false);
     }
-    toast.success("Email verified — welcome to Chris Programs!");
-  }
-
-  async function google() {
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (result.error) toast.error("Google sign-in failed. Please try again.");
   }
 
   return (
@@ -131,12 +113,18 @@ function AuthPage() {
             The very first account created becomes the creator/admin of this site.
           </p>
 
-          <Button variant="secondary" className="mt-4 w-full" onClick={() => void google()}>
+          <Button
+            variant="secondary"
+            className="mt-4 w-full"
+            onClick={() => void google()}
+            disabled={busy}
+          >
             Continue with Google
           </Button>
 
           <div className="my-2 flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="h-px flex-1 bg-border" /> or use email <span className="h-px flex-1 bg-border" />
+            <span className="h-px flex-1 bg-border" /> or use email{" "}
+            <span className="h-px flex-1 bg-border" />
           </div>
 
           <Tabs defaultValue="signin">
@@ -174,72 +162,36 @@ function AuthPage() {
             </TabsContent>
 
             <TabsContent value="signup" className="space-y-4 pt-4">
-              {emailSent ? (
-                <div className="space-y-3">
-                  <p className="rounded-lg border border-border bg-secondary p-4 text-sm">
-                    We emailed a 6-digit verification code to <strong>{email}</strong>. Enter it below to
-                    activate your account (the emailed link also works).
-                  </p>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-code">Verification code</Label>
-                    <Input
-                      id="signup-code"
-                      inputMode="numeric"
-                      maxLength={8}
-                      placeholder="123456"
-                      value={code}
-                      onChange={(event) => setCode(event.target.value)}
-                    />
-                  </div>
-                  <Button className="w-full" onClick={() => void verifyCode()} disabled={busy}>
-                    Verify email
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-username">Username</Label>
-                    <Input
-                      id="signup-username"
-                      maxLength={24}
-                      value={username}
-                      onChange={(event) => setUsername(event.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-captcha">
-                      Bot check: what is {challenge.a} + {challenge.b}?
-                    </Label>
-                    <Input
-                      id="signup-captcha"
-                      inputMode="numeric"
-                      value={answer}
-                      onChange={(event) => setAnswer(event.target.value)}
-                    />
-                  </div>
-                  <Button className="w-full" onClick={() => void signUp()} disabled={busy}>
-                    Create account
-                  </Button>
-                </>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="signup-username">Username</Label>
+                <Input
+                  id="signup-username"
+                  maxLength={24}
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signup-email">Email</Label>
+                <Input
+                  id="signup-email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signup-password">Password</Label>
+                <Input
+                  id="signup-password"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+              </div>
+              <Button className="w-full" onClick={() => void signUp()} disabled={busy}>
+                Create account
+              </Button>
             </TabsContent>
           </Tabs>
         </Card>

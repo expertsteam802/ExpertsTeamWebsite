@@ -1,6 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BookOpen, Gamepad2, MessagesSquare, Palette, Play, ShieldCheck, UploadCloud } from "lucide-react";
+import {
+  BookOpen,
+  Gamepad2,
+  MessagesSquare,
+  Palette,
+  Play,
+  ShieldCheck,
+  UploadCloud,
+} from "lucide-react";
 
 import heroImage from "@/assets/hero-chris-programs.jpg";
 import { PageShell } from "@/components/layout/page-shell";
@@ -22,7 +30,8 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Chris Programs — Watch, Learn & Share Code" },
       {
         property: "og:description",
-        content: "Chris Programs is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community.",
+        content:
+          "Chris Programs is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community.",
       },
     ],
   }),
@@ -30,12 +39,36 @@ export const Route = createFileRoute("/")({
 });
 
 const FEATURES = [
-  { icon: Play, title: "Watch in-site", body: "Paste a YouTube share link and the video plays here — no leaving the site." },
-  { icon: UploadCloud, title: "200MB uploads", body: "Share games, videos and resources with a live upload percentage." },
-  { icon: BookOpen, title: "Learn to code", body: "Lessons, books and app breakdowns curated by Chris." },
-  { icon: Gamepad2, title: "Entertainment", body: "Community games and clips, with original file icons preserved." },
-  { icon: Palette, title: "Your look", body: "Three themes plus tab alignment you control from the header." },
-  { icon: ShieldCheck, title: "Creator controls", body: "The first signup becomes the creator with a full admin panel." },
+  {
+    icon: Play,
+    title: "Watch in-site",
+    body: "Paste a YouTube share link and the video plays here — no leaving the site.",
+  },
+  {
+    icon: UploadCloud,
+    title: "200MB uploads",
+    body: "Share games, videos and resources with a live upload percentage.",
+  },
+  {
+    icon: BookOpen,
+    title: "Learn to code",
+    body: "Lessons, books and app breakdowns curated by Chris.",
+  },
+  {
+    icon: Gamepad2,
+    title: "Entertainment",
+    body: "Community games and clips, with original file icons preserved.",
+  },
+  {
+    icon: Palette,
+    title: "Your look",
+    body: "Three themes plus tab alignment you control from the header.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Creator controls",
+    body: "The first signup becomes the creator with a full admin panel.",
+  },
 ];
 
 function Index() {
@@ -68,8 +101,8 @@ function Index() {
               {settings.tagline}
             </h1>
             <p className="max-w-lg text-lg text-muted-foreground">
-              One place to watch the whole archive, grab games and resources, learn to code and build
-              with the community.
+              One place to watch the whole archive, grab games and resources, learn to code and
+              build with the community.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link to="/videos">

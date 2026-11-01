@@ -119,7 +119,8 @@ export function WorkspaceChat() {
         .insert({ group_id: activeGroup!.id, user_id: user!.id, body: body.slice(0, 4000) });
       if (error) throw error;
     },
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["workspace-messages", activeGroup?.id] }),
+    onSuccess: () =>
+      void queryClient.invalidateQueries({ queryKey: ["workspace-messages", activeGroup?.id] }),
     onError: (error: Error) => toast.error(error.message),
   });
 
@@ -128,7 +129,8 @@ export function WorkspaceChat() {
       const { error } = await supabase.from("workspace_messages").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["workspace-messages", activeGroup?.id] }),
+    onSuccess: () =>
+      void queryClient.invalidateQueries({ queryKey: ["workspace-messages", activeGroup?.id] }),
     onError: (error: Error) => toast.error(error.message),
   });
 
@@ -145,7 +147,12 @@ export function WorkspaceChat() {
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold">Groups</h2>
           {isAdmin && (
-            <Button size="icon" variant="ghost" aria-label="New group" onClick={() => setCreating((v) => !v)}>
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label="New group"
+              onClick={() => setCreating((v) => !v)}
+            >
               <Plus className="h-4 w-4" />
             </Button>
           )}
@@ -192,7 +199,12 @@ export function WorkspaceChat() {
                 onChange={(event) => setDescription(event.target.value)}
               />
             </div>
-            <Button size="sm" className="w-full" onClick={() => createGroup.mutate()} disabled={createGroup.isPending}>
+            <Button
+              size="sm"
+              className="w-full"
+              onClick={() => createGroup.mutate()}
+              disabled={createGroup.isPending}
+            >
               Create group
             </Button>
           </div>
@@ -257,16 +269,23 @@ export function WorkspaceChat() {
                 </p>
               )}
               {!messagesLoading && !messages.length && (
-                <p className="text-sm text-muted-foreground">No messages yet — start the discussion.</p>
+                <p className="text-sm text-muted-foreground">
+                  No messages yet — start the discussion.
+                </p>
               )}
               {messages.map((message) => {
                 const mine = message.user_id === user?.id;
                 return (
-                  <div key={message.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
+                  <div
+                    key={message.id}
+                    className={cn("flex", mine ? "justify-end" : "justify-start")}
+                  >
                     <div
                       className={cn(
                         "max-w-[78%] rounded-2xl px-4 py-2",
-                        mine ? "bg-primary text-primary-foreground" : "border border-border bg-secondary",
+                        mine
+                          ? "bg-primary text-primary-foreground"
+                          : "border border-border bg-secondary",
                       )}
                     >
                       {!mine && (
@@ -278,7 +297,10 @@ export function WorkspaceChat() {
                       <div className="mt-1 flex items-center gap-2 text-[10px] opacity-70">
                         <span>{formatDate(message.created_at)}</span>
                         {(mine || isAdmin) && (
-                          <button onClick={() => removeMessage.mutate(message.id)} className="underline">
+                          <button
+                            onClick={() => removeMessage.mutate(message.id)}
+                            className="underline"
+                          >
                             delete
                           </button>
                         )}
@@ -312,9 +334,7 @@ export function WorkspaceChat() {
           <div className="grid flex-1 place-items-center p-8 text-center">
             <div>
               <Lock className="mx-auto h-7 w-7 text-primary" />
-              <p className="mt-2 text-sm text-muted-foreground">
-                Pick a group to open its chat.
-              </p>
+              <p className="mt-2 text-sm text-muted-foreground">Pick a group to open its chat.</p>
             </div>
           </div>
         )}

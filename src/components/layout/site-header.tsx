@@ -48,7 +48,9 @@ export function SiteHeader() {
             alt={`${settings.site_name} logo`}
             className="h-10 w-10 rounded-full object-cover ring-1 ring-primary/50"
           />
-          <span className="font-display text-lg font-semibold tracking-tight">{settings.site_name}</span>
+          <span className="font-display text-lg font-semibold tracking-tight">
+            {settings.site_name}
+          </span>
         </Link>
 
         <nav className={cn("hidden flex-1 items-center gap-1 md:flex", ALIGN[navAlign])}>
@@ -96,12 +98,22 @@ export function SiteHeader() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <a href={settings.youtube_url} target="_blank" rel="noreferrer" className="hidden sm:block">
+          <a
+            href={settings.youtube_url}
+            target="_blank"
+            rel="noreferrer"
+            className="hidden sm:block"
+          >
             <Button variant="ghost" size="icon" aria-label="YouTube channel">
               <Youtube className="h-4 w-4" />
             </Button>
           </a>
-          <a href={settings.instagram_url} target="_blank" rel="noreferrer" className="hidden sm:block">
+          <a
+            href={settings.instagram_url}
+            target="_blank"
+            rel="noreferrer"
+            className="hidden sm:block"
+          >
             <Button variant="ghost" size="icon" aria-label="Instagram">
               <Instagram className="h-4 w-4" />
             </Button>

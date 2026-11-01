@@ -102,8 +102,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:title", content: "Chris Programs — Watch, Learn & Share Code" },
       { name: "twitter:title", content: "Chris Programs — Watch, Learn & Share Code" },
-      { property: "og:description", content: "Chris Programs is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community." },
-      { name: "twitter:description", content: "Chris Programs is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community." },
+      {
+        property: "og:description",
+        content:
+          "Chris Programs is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community.",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "Chris Programs is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community.",
+      },
       { property: "og:image", content: "https://chrisprograms.lovable.app/social-preview.png" },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },

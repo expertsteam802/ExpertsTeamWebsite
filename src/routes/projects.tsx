@@ -27,7 +27,8 @@ export const Route = createFileRoute("/projects")({
       { property: "og:title", content: "Workspace — Chris Programs development team" },
       {
         property: "og:description",
-        content: "Group chats for the Chris Programs development team: map editors, sound editors, game and web dev.",
+        content:
+          "Group chats for the Chris Programs development team: map editors, sound editors, game and web dev.",
       },
       { property: "og:url", content: "https://chrisprograms.lovable.app/projects" },
       { property: "og:image", content: "https://chrisprograms.lovable.app/social-preview.png" },
@@ -80,7 +81,8 @@ function ApplicationPanel() {
     mutationFn: async () => {
       if (!user) throw new Error("Sign in to apply.");
       if (title.trim().length < 3) throw new Error("Give your application a title.");
-      if (summary.trim().length < 20) throw new Error("Tell Chris a bit more about your project (20+ characters).");
+      if (summary.trim().length < 20)
+        throw new Error("Tell Chris a bit more about your project (20+ characters).");
       const { error } = await supabase.from("project_requests").insert({
         user_id: user.id,
         title: title.trim().slice(0, 120),
@@ -107,8 +109,8 @@ function ApplicationPanel() {
       <Card className="animate-rise gap-4 p-6 glow-panel">
         <h2 className="font-display text-xl font-semibold">Join the team</h2>
         <p className="text-sm text-muted-foreground">
-          The workspace chats and groups are for the Chris Programs team. Apply once and Chris unlocks your
-          access.
+          The workspace chats and groups are for the Chris Programs team. Apply once and Chris
+          unlocks your access.
         </p>
         {user ? (
           <>
@@ -142,7 +144,11 @@ function ApplicationPanel() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="pr-contact">Contact (email, WhatsApp, Instagram)</Label>
-              <Input id="pr-contact" value={contact} onChange={(event) => setContact(event.target.value)} />
+              <Input
+                id="pr-contact"
+                value={contact}
+                onChange={(event) => setContact(event.target.value)}
+              />
             </div>
             <Button onClick={() => apply.mutate()} disabled={apply.isPending}>
               Send application
@@ -179,7 +185,9 @@ function ApplicationPanel() {
           );
         })}
         {user && !requests.length && (
-          <p className="text-sm text-muted-foreground">No applications yet — send your first one.</p>
+          <p className="text-sm text-muted-foreground">
+            No applications yet — send your first one.
+          </p>
         )}
       </div>
     </section>
@@ -213,8 +221,8 @@ function ProjectsPage() {
             <span className="brand-text">Chris Programs</span> workspace
           </h1>
           <p className="mt-2 max-w-2xl text-muted-foreground">
-            The company hub: group channels for map editors, sound editors, game and web development — every
-            chat saved to the team database.
+            The company hub: group channels for map editors, sound editors, game and web development
+            — every chat saved to the team database.
           </p>
         </div>
       </section>
@@ -224,7 +232,9 @@ function ProjectsPage() {
           <WorkspaceChat />
         </section>
       ) : isLoading && user ? (
-        <p className="mx-auto max-w-6xl px-4 py-10 text-sm text-muted-foreground">Checking your access…</p>
+        <p className="mx-auto max-w-6xl px-4 py-10 text-sm text-muted-foreground">
+          Checking your access…
+        </p>
       ) : (
         <ApplicationPanel />
       )}

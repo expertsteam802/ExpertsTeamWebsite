@@ -17,14 +17,14 @@ import { deleteUserAccount } from "@/lib/accounts.functions";
 import { formatBytes, formatDate } from "@/lib/format";
 import { paymentMethodLabel, type UpgradeRequest } from "@/lib/subscription";
 
-
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [
       { title: "Admin panel — Chris Programs" },
       {
         name: "description",
-        content: "Creator controls for Chris Programs: site branding, members, sessions and pricing.",
+        content:
+          "Creator controls for Chris Programs: site branding, members, sessions and pricing.",
       },
       { property: "og:title", content: "Admin panel — Chris Programs" },
       { property: "og:description", content: "Creator controls for Chris Programs." },
@@ -229,7 +229,6 @@ function AdminPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-
   if (!isAdmin) {
     return (
       <PageShell>
@@ -237,8 +236,8 @@ function AdminPage() {
           <ShieldAlert className="h-10 w-10 text-destructive" />
           <h1 className="font-display text-2xl font-semibold">Creator access only</h1>
           <p className="text-sm text-muted-foreground">
-            This panel is reserved for the site creator. If this is your site, sign in with the creator
-            account.
+            This panel is reserved for the site creator. If this is your site, sign in with the
+            creator account.
           </p>
         </section>
       </PageShell>
@@ -267,7 +266,6 @@ function AdminPage() {
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="developers">Developer requests</TabsTrigger>
           </TabsList>
-
 
           <TabsContent value="branding" className="pt-6">
             <Card className="max-w-2xl gap-4 p-6">
@@ -360,8 +358,8 @@ function AdminPage() {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="font-medium">
-                        {request.profiles?.display_name || request.profiles?.username || "Member"} · $
-                        {Number(request.amount).toFixed(2)}
+                        {request.profiles?.display_name || request.profiles?.username || "Member"} ·
+                        ${Number(request.amount).toFixed(2)}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {paymentMethodLabel(request.method)} · ref {request.reference} ·{" "}
@@ -394,7 +392,9 @@ function AdminPage() {
                 </Card>
               ))}
               {!upgrades?.length && (
-                <p className="text-sm text-muted-foreground">No subscription payments submitted yet.</p>
+                <p className="text-sm text-muted-foreground">
+                  No subscription payments submitted yet.
+                </p>
               )}
             </div>
           </TabsContent>
@@ -444,7 +444,6 @@ function AdminPage() {
             </div>
           </TabsContent>
         </Tabs>
-
       </section>
     </PageShell>
   );

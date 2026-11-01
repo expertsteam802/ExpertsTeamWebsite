@@ -42,7 +42,8 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
       { title: "My dashboard — Chris Programs" },
       {
         name: "description",
-        content: "Manage your uploads, videos, storage space and account settings on Chris Programs.",
+        content:
+          "Manage your uploads, videos, storage space and account settings on Chris Programs.",
       },
       { property: "og:title", content: "My dashboard — Chris Programs" },
       { property: "og:description", content: "Your Chris Programs member dashboard." },
@@ -180,7 +181,8 @@ function DashboardPage() {
           <ul className="space-y-1 text-sm text-muted-foreground">
             {(events ?? []).slice(0, 5).map((event) => (
               <li key={event.id}>
-                {event.event === "signed_in" ? "Signed in" : "Signed out"} · {formatDate(event.created_at)}
+                {event.event === "signed_in" ? "Signed in" : "Signed out"} ·{" "}
+                {formatDate(event.created_at)}
               </li>
             ))}
             {!events?.length && <li>No activity recorded yet.</li>}
@@ -235,8 +237,8 @@ function DashboardPage() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete your account?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This permanently removes your profile, videos and every file you uploaded. It
-                        cannot be undone.
+                        This permanently removes your profile, videos and every file you uploaded.
+                        It cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

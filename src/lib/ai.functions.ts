@@ -1,21 +1,21 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { runChrisAi } from "@/lib/ai.server";
+
+const aiRequest = z.object({
+  prompt: z.string().trim().min(1).max(6000),
+  mode: z.enum(["chat", "workspace"]),
+  history: z
+    .array(z.object({ role: z.string().max(20), content: z.string().max(4000) }))
+    .max(10)
+    .optional(),
+});
 
 export const askChrisAi = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { prompt: string; mode?: "chat" | "workspace"; history?: { role: string; content: string }[] }) => {
-    const prompt = String(input?.prompt ?? "").trim();
-    if (!prompt) throw new Error("Please type a message first.");
-    if (prompt.length > 6000) throw new Error("That message is too long.");
-    return {
-      prompt,
-      mode: input.mode === "workspace" ? ("workspace" as const) : ("chat" as const),
-      history: (input.history ?? []).slice(-10).map((m) => ({
-        role: m.role === "ai" || m.role === "assistant" ? "assistant" : "user",
-        content: String(m.content).slice(0, 4000),
-      })),
-    };
-  })
-  .handler(async ({ data }) => runChrisAi(data));
+  .validator((input: unknown) => aiRequest.parse(input))
+  .handler(async ({ data }) => {
+    const { askChrisAi: generate } = await import("./ai.server");
+    return generate({ ...data, history: data.history ?? [] });
+  });

@@ -65,7 +65,9 @@ function CommunityPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("community_posts")
-        .select("id, user_id, kind, title, body, link_url, created_at, profiles(username, display_name)")
+        .select(
+          "id, user_id, kind, title, body, link_url, created_at, profiles(username, display_name)",
+        )
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as Post[];
@@ -136,11 +138,20 @@ function CommunityPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="post-title">Title</Label>
-              <Input id="post-title" value={title} onChange={(event) => setTitle(event.target.value)} />
+              <Input
+                id="post-title"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="post-body">Details</Label>
-              <Textarea id="post-body" rows={3} value={body} onChange={(event) => setBody(event.target.value)} />
+              <Textarea
+                id="post-body"
+                rows={3}
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="post-link">Link (optional)</Label>
@@ -157,7 +168,9 @@ function CommunityPage() {
           </Card>
         ) : (
           <Card className="mt-6 flex flex-wrap items-center justify-between gap-3 p-4">
-            <p className="text-sm text-muted-foreground">Sign in to post ideas, quests and links.</p>
+            <p className="text-sm text-muted-foreground">
+              Sign in to post ideas, quests and links.
+            </p>
             <Link to="/auth">
               <Button>Sign in</Button>
             </Link>
@@ -175,7 +188,9 @@ function CommunityPage() {
           </TabsList>
           <TabsContent value={filter} className="space-y-4 pt-4">
             {visible.length === 0 && (
-              <p className="text-sm text-muted-foreground">Nothing here yet — be the first to post.</p>
+              <p className="text-sm text-muted-foreground">
+                Nothing here yet — be the first to post.
+              </p>
             )}
             {visible.map((post) => (
               <PostCard
@@ -264,7 +279,9 @@ function PostCard({
           </Button>
         )}
       </div>
-      {post.body && <p className="whitespace-pre-wrap text-sm text-muted-foreground">{post.body}</p>}
+      {post.body && (
+        <p className="whitespace-pre-wrap text-sm text-muted-foreground">{post.body}</p>
+      )}
       {post.link_url && (
         <a
           href={post.link_url}
@@ -291,7 +308,9 @@ function PostCard({
               <p className="whitespace-pre-wrap">{item.body}</p>
             </div>
           ))}
-          {comments.length === 0 && <p className="text-xs text-muted-foreground">No replies yet.</p>}
+          {comments.length === 0 && (
+            <p className="text-xs text-muted-foreground">No replies yet.</p>
+          )}
           {user && (
             <div className="flex items-end gap-2">
               <Textarea

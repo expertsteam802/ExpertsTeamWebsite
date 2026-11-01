@@ -1,3 +1,5 @@
+import { generateGeminiContent } from "./gemini.server";
+
 type AgentInput = {
   prompt: string;
   files: Record<string, string>;
@@ -5,45 +7,73 @@ type AgentInput = {
 };
 
 const AGENT_PROMPT = `You are the Experts Team coding agent, built into the Experts Team website created by Chris Expert - M.Chris.T.
-You build browser-based websites, dashboards, tools, and 2D/3D games made of multiple files (HTML, CSS, JavaScript, plus any extra files like README.md or data.json).
-The app runs in a browser sandbox: index.html is the entry; reference local files with relative paths like "style.css" or "script.js". No build step, no npm. CDN scripts are allowed. Use browser libraries such as Three.js or Phaser when suitable. Make complete working apps, not placeholders. If asked for a framework requiring a build step or a native app, explain that this sandbox only executes browser-ready files; never claim a framework build has been tested.
+You build complete browser-based websites, dashboards, tools, and 2D/3D games made of multiple files (HTML, CSS, JavaScript, plus extra files like README.md or data.json). Make substantial, functional apps, not placeholders. Keep existing features working when editing a project.
+The app runs in a browser sandbox: index.html is the entry; reference local files with relative paths like "style.css" or "script.js". No build step, no npm. CDN scripts are allowed. Use browser libraries such as Three.js or Phaser when suitable. If asked for a framework requiring a build step or a native app, explain that this sandbox only executes browser-ready files; never claim a framework build has been tested.
 Always reply with a JSON object: {"message": "short summary of what you did", "files": {"path": "full file content", ...}}.
 Include ONLY files you created or changed, each with its FULL content. To delete a file set its value to null.
 Always write the creator's name as "Chris" (never "Chriss").`;
 
+function isSafeProjectPath(path: string): boolean {
+  const normalized = path.replace(/\\/g, "/");
+  return (
+    normalized.length > 0 &&
+    normalized.length <= 512 &&
+    !normalized.startsWith("/") &&
+    !/^[a-zA-Z]:/.test(normalized) &&
+    !normalized.split("/").some((part) => part === ".." || part === "")
+  );
+}
+
 export async function runAgent({ prompt, files, history }: AgentInput, apiKey?: string) {
-  if (!apiKey) throw new Error("The site owner needs to connect a Gemini API key before using the agent.");
+  const cleanPrompt = prompt.trim();
+  if (!cleanPrompt) throw new Error("Tell the agent what to build.");
+  if (cleanPrompt.length > 16000) throw new Error("That request is too long.");
 
-  const fileDump = Object.entries(files)
-    .map(([name, content]) => `--- ${name} ---\n${content}`)
-    .join("\n\n")
-    .slice(0, 60000);
-
-  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
-    method: "POST",
-    headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: AGENT_PROMPT }] },
-      generationConfig: { responseMimeType: "application/json" },
-      contents: [
-        ...history.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
-        { role: "user", parts: [{ text: `Current project files:\n${fileDump || "(empty)"}\n\nRequest: ${prompt}` }] },
-      ],
-    }),
-    signal: AbortSignal.timeout(120000),
-  });
-
-  if (response.status === 429) throw new Error("Gemini's free quota or rate limit has been reached. Try again later; no paid AI fallback was used.");
-  if (response.status === 400 || response.status === 401 || response.status === 403) {
-    throw new Error("Gemini rejected this request. The site owner should check the API key and its Google AI Studio access.");
+  const entries = Object.entries(files);
+  if (entries.length > 80)
+    throw new Error("This project has too many files to send to the agent at once.");
+  if (entries.some(([path, content]) => !isSafeProjectPath(path) || content.length > 100000)) {
+    throw new Error("One or more project files are too large or have an invalid path.");
   }
-  if (!response.ok) throw new Error("Gemini could not finish that request. Please try again.");
-  const json = (await response.json()) as {
-    candidates?: { finishReason?: string; content?: { parts?: { text?: string; thought?: boolean }[] } }[];
-  };
+
+  const fileDump = entries.map(([name, content]) => `--- ${name} ---\n${content}`).join("\n\n");
+  if (fileDump.length > 200000) {
+    throw new Error(
+      "This project is too large to send in one request. Reduce the project size and try again.",
+    );
+  }
+
+  const json = await generateGeminiContent(
+    {
+      systemInstruction: { parts: [{ text: AGENT_PROMPT }] },
+      generationConfig: { responseMimeType: "application/json", maxOutputTokens: 32768 },
+      contents: [
+        ...history.slice(-8).map((message) => ({
+          role: message.role === "assistant" ? ("model" as const) : ("user" as const),
+          parts: [{ text: message.content.slice(0, 3000) }],
+        })),
+        {
+          role: "user",
+          parts: [
+            { text: `Current project files:\n${fileDump || "(empty)"}\n\nRequest: ${cleanPrompt}` },
+          ],
+        },
+      ],
+    },
+    apiKey,
+  );
+
   const candidate = json.candidates?.[0];
-  if (candidate?.finishReason === "MAX_TOKENS") throw new Error("Gemini's answer was too large. Ask for a smaller change; your files were not replaced.");
-  const text = candidate?.content?.parts?.filter((part) => !part.thought).map((part) => part.text ?? "").join("") ?? "";
+  if (candidate?.finishReason === "MAX_TOKENS") {
+    throw new Error(
+      "Gemini's answer was too large. Ask for a smaller change; your files were not replaced.",
+    );
+  }
+  const text =
+    candidate?.content?.parts
+      ?.filter((part) => !part.thought)
+      .map((part) => part.text ?? "")
+      .join("") ?? "";
 
   try {
     const match = text.match(/\{[\s\S]*\}/);
@@ -51,15 +81,23 @@ export async function runAgent({ prompt, files, history }: AgentInput, apiKey?: 
       message?: string;
       files?: Record<string, string | null>;
     };
-    if (!parsed.files || typeof parsed.files !== "object" || Array.isArray(parsed.files)) throw new Error("Invalid files");
+    if (!parsed.files || typeof parsed.files !== "object" || Array.isArray(parsed.files)) {
+      throw new Error("Invalid files");
+    }
     const output: Record<string, string | null> = {};
     for (const [path, content] of Object.entries(parsed.files)) {
+      if (!isSafeProjectPath(path)) throw new Error("Invalid file path");
       if (typeof content !== "string" && content !== null) throw new Error("Invalid file content");
       output[path] = content;
     }
-    return { message: typeof parsed.message === "string" ? parsed.message : "Done.", files: output };
+    return {
+      message: typeof parsed.message === "string" ? parsed.message : "Done.",
+      files: output,
+    };
   } catch {
-    throw new Error("Gemini did not return complete app files. Try a smaller request; your existing files were not changed.");
+    throw new Error(
+      "Gemini did not return complete app files. Try a smaller request; your existing files were not changed.",
+    );
   }
 }
 
@@ -89,7 +127,11 @@ export async function pushToGithub({
     const created = await fetch("https://api.github.com/user/repos", {
       method: "POST",
       headers,
-      body: JSON.stringify({ name: repo, auto_init: true, description: "Built with the Experts Team agent" }),
+      body: JSON.stringify({
+        name: repo,
+        auto_init: true,
+        description: "Built with the Experts Team agent",
+      }),
     });
     if (!created.ok) throw new Error(`Could not create repository: ${await created.text()}`);
   } else if (!repoRes.ok) {
@@ -101,7 +143,8 @@ export async function pushToGithub({
     ".github/workflows/deploy.yml": PAGES_WORKFLOW,
   };
   if (!allFiles["README.md"]) {
-    allFiles["README.md"] = `# ${repo}\n\nBuilt with the Experts Team AI agent — creator Chris Expert (M.Chris.T).\n\nLive: https://${login}.github.io/${repo}/\n`;
+    allFiles["README.md"] =
+      `# ${repo}\n\nBuilt with the Experts Team AI agent — creator Chris Expert (M.Chris.T).\n\nLive: https://${login}.github.io/${repo}/\n`;
   }
   for (const [path, content] of Object.entries(allFiles)) {
     const url = `https://api.github.com/repos/${login}/${repo}/contents/${encodeURI(path)}`;
@@ -123,7 +166,10 @@ export async function pushToGithub({
     headers,
     body: JSON.stringify({ build_type: "workflow" }),
   }).catch(() => undefined);
-  return { url: `https://github.com/${login}/${repo}`, pagesUrl: `https://${login}.github.io/${repo}/` };
+  return {
+    url: `https://github.com/${login}/${repo}`,
+    pagesUrl: `https://${login}.github.io/${repo}/`,
+  };
 }
 
 const PAGES_WORKFLOW = `name: Deploy to GitHub Pages

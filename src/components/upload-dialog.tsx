@@ -102,7 +102,9 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Share something with the community</DialogTitle>
-          <DialogDescription>Games, videos, lessons or resources — up to 200MB per file.</DialogDescription>
+          <DialogDescription>
+            Games, videos, lessons or resources — up to 200MB per file.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

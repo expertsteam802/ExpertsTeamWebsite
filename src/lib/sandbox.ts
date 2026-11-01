@@ -24,7 +24,9 @@ export const STARTER_FILES: ProjectFiles = {
 /** Inline local CSS/JS files into index.html so the app runs inside a sandboxed iframe. */
 export function buildSrcDoc(files: ProjectFiles): string {
   const entry =
-    files["index.html"] ?? Object.entries(files).find(([name]) => name.endsWith(".html"))?.[1] ?? "";
+    files["index.html"] ??
+    Object.entries(files).find(([name]) => name.endsWith(".html"))?.[1] ??
+    "";
   if (!entry) return "<p style='font-family:sans-serif'>No index.html yet.</p>";
   let html = entry.replace(
     /<link[^>]+href=["']([^"']+\.css)["'][^>]*>/gi,
@@ -45,7 +47,7 @@ export function buildSrcDoc(files: ProjectFiles): string {
   return html;
 }
 
-const CONSOLE_BRIDGE = `<script>(function(){var send=function(t,a){try{parent.postMessage({__agentConsole:true,type:t,message:Array.prototype.map.call(a,function(x){try{return typeof x==="string"?x:JSON.stringify(x)}catch(e){return String(x)}}).join(" ")},"*")}catch(e){}};["log","info","warn","error"].forEach(function(k){var o=console[k];console[k]=function(){send(k,arguments);o.apply(console,arguments)}});window.addEventListener("error",function(e){send("error",[e.message+" (line "+e.lineno+")"])});})();<\/script>`;
+const CONSOLE_BRIDGE = `<script>(function(){var send=function(t,a){try{parent.postMessage({__agentConsole:true,type:t,message:Array.prototype.map.call(a,function(x){try{return typeof x==="string"?x:JSON.stringify(x)}catch(e){return String(x)}}).join(" ")},"*")}catch(e){}};["log","info","warn","error"].forEach(function(k){var o=console[k];console[k]=function(){send(k,arguments);o.apply(console,arguments)}});window.addEventListener("error",function(e){send("error",[e.message+" (line "+e.lineno+")"])});})();</script>`;
 
 /** Same as buildSrcDoc but forwards console output to the parent window. */
 export function buildSrcDocWithConsole(files: ProjectFiles): string {
