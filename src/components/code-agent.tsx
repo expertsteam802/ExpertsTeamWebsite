@@ -89,10 +89,11 @@ export function CodeAgent() {
     queryKey: ["agent-projects", user?.id],
     enabled: !!user,
     queryFn: async () => {
+      if (!user) return [];
       const { data, error } = await supabase
         .from("agent_projects")
         .select("id, name, files, messages, published, slug, github_repo, updated_at")
-        .eq("user_id", user!.id)
+        .eq("user_id", user.id)
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return data as unknown as ProjectRow[];
@@ -102,8 +103,9 @@ export function CodeAgent() {
   async function persist(
     next: { files?: ProjectFiles; messages?: Msg[]; extra?: Record<string, unknown> } = {},
   ) {
+    if (!user) throw new Error("Sign in before saving an app.");
     const payload = {
-      user_id: user!.id,
+      user_id: user.id,
       name: name.trim().slice(0, 80) || "Untitled app",
       files: (next.files ?? files) as unknown as Json,
       messages: (next.messages ?? messages).slice(-40) as unknown as Json,
@@ -149,6 +151,7 @@ export function CodeAgent() {
       setFiles(merged);
       setMessages(finalMessages);
       if (changed[0] && merged[changed[0]] !== undefined) setActive(changed[0]);
+      else if (merged[active] === undefined) setActive(Object.keys(merged)[0] ?? "");
       setPreviewKey((k) => k + 1);
       await persist({ files: merged, messages: finalMessages });
     } catch (error) {
@@ -213,6 +216,9 @@ export function CodeAgent() {
     setMessages([]);
     setActive("index.html");
     setPublished({ on: false, slug: null });
+    setPagesUrl(null);
+    setGhRepo("");
+    setLogs([]);
   }
 
   function load(p: ProjectRow) {
@@ -223,6 +229,8 @@ export function CodeAgent() {
     setActive(Object.keys(p.files ?? {})[0] ?? "index.html");
     setPublished({ on: p.published, slug: p.slug });
     setGhRepo(p.github_repo?.split("/").pop() ?? slugify(p.name));
+    setPagesUrl(null);
+    setLogs([]);
   }
 
   function addFile() {
@@ -293,10 +301,10 @@ export function CodeAgent() {
             <Github className="h-3 w-3" /> GitHub Pages
           </a>
         )}
-        {liveUrl && (
+        {liveUrl && published.slug && (
           <Link
             to="/apps/$slug"
-            params={{ slug: published.slug! }}
+            params={{ slug: published.slug }}
             target="_blank"
             className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
           >
@@ -489,13 +497,12 @@ export function CodeAgent() {
                     <button
                       aria-label={`Delete ${f}`}
                       className="hidden px-1 text-muted-foreground group-hover:block"
-                      onClick={() =>
-                        setFiles((cur) => {
-                          const next = { ...cur };
-                          delete next[f];
-                          return next;
-                        })
-                      }
+                      onClick={() => {
+                        const next = { ...files };
+                        delete next[f];
+                        setFiles(next);
+                        if (active === f) setActive(Object.keys(next)[0] ?? "");
+                      }}
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -509,6 +516,8 @@ export function CodeAgent() {
                 </button>
               </div>
               <textarea
+                aria-label="File contents"
+                disabled={!active}
                 value={files[active] ?? ""}
                 onChange={(e) => setFiles((cur) => ({ ...cur, [active]: e.target.value }))}
                 spellCheck={false}
