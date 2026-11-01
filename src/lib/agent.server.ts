@@ -7,12 +7,12 @@ type AgentInput = {
 };
 
 const AGENT_PROMPT = `You are the Experts Team coding agent for the Experts Team website, created by Chris Expert - M.Chris.T.
-You build real browser apps and front-end products for Experts Team, including landing pages, dashboards, SaaS tools, portfolio sites, games, and prototypes.
+You build complete, production-quality browser apps and front-end products for Experts Team, including landing pages, dashboards, SaaS tools, portfolios, apps, and prototypes.
 
 Priority: generate complete, working project code that can be published live and branded as Experts Team.
 
 Your output must be a valid JSON object with this exact shape:
-{"message": "short summary of what you did", "files": {"path": "full file content", ...}}
+{"message":"short summary of what you did","files":{"path":"full file content",...}}
 
 Rules:
 - Prefer modern, real-world app structure over single-file demos when the request needs it.
@@ -22,13 +22,14 @@ Rules:
 - Always include only files you created or changed; null values are allowed to delete files.
 - Use relative file paths like "src/App.tsx" or "src/index.css".
 - Keep the app visually polished and production-ready.
-- Brand the app as "Experts Team" and use creator name "Chris" only when needed in UI or metadata. Never use "Chris Programs".
-- For public product names and page metadata, prefer "Experts Team".
-- If asked for a live app or deployment, add deployment-ready files such as README.md and GitHub Pages config when relevant.
+- Brand the app as "Experts Team" everywhere.
+- Use "Chris" only for creator attribution, not as the public product name.
+- Never use "Chris Programs".
+- If the request implies publishability, include deployment-friendly files like README.md or GitHub Pages config when relevant.
 - Keep code modern, accessible, and easy to run.
-
-You are running inside the Experts Team website; you are not limited to static HTML only. If the request is for a real app, generate a proper project scaffold.
-Always reply with JSON only. Do not wrap it in markdown fences.`;
+- If the project is meant to be published live, make it production-ready and deployment-friendly.
+- You are not limited to static HTML only. If a real app is needed, generate a proper project scaffold.
+- Always reply with JSON only. Do not wrap it in markdown fences.`;
 
 function isSafeProjectPath(path: string): boolean {
   const normalized = path.replace(/\\/g, "/");
@@ -86,6 +87,7 @@ export async function runAgent({ prompt, files, history }: AgentInput, apiKey?: 
       "Gemini's answer was too large. Ask for a smaller change; your files were not replaced.",
     );
   }
+
   const text =
     candidate?.content?.parts
       ?.filter((part) => !part.thought)
@@ -98,15 +100,18 @@ export async function runAgent({ prompt, files, history }: AgentInput, apiKey?: 
       message?: string;
       files?: Record<string, string | null>;
     };
+
     if (!parsed.files || typeof parsed.files !== "object" || Array.isArray(parsed.files)) {
       throw new Error("Invalid files");
     }
+
     const output: Record<string, string | null> = {};
     for (const [path, content] of Object.entries(parsed.files)) {
       if (!isSafeProjectPath(path)) throw new Error("Invalid file path");
       if (typeof content !== "string" && content !== null) throw new Error("Invalid file content");
       output[path] = content;
     }
+
     return {
       message: typeof parsed.message === "string" ? parsed.message : "Done.",
       files: output,
@@ -135,6 +140,7 @@ export async function pushToGithub({
     "Content-Type": "application/json",
     "User-Agent": "experts-team-agent",
   };
+
   const userRes = await fetch("https://api.github.com/user", { headers });
   if (!userRes.ok) throw new Error(`GitHub rejected the token (${userRes.status}).`);
   const { login } = (await userRes.json()) as { login: string };
@@ -159,10 +165,11 @@ export async function pushToGithub({
     ...files,
     ".github/workflows/deploy.yml": PAGES_WORKFLOW,
   };
+
   if (!allFiles["README.md"]) {
-    allFiles["README.md"] =
-      `# ${repo}\n\nBuilt with the Experts Team AI agent — creator Chris Expert (M.Chris.T).\n\nLive: https://${login}.github.io/${repo}/\n`;
+    allFiles["README.md"] = `# ${repo}\n\nBuilt with the Experts Team AI agent — creator Chris Expert (M.Chris.T).\n\nLive: https://${login}.github.io/${repo}/\n`;
   }
+
   for (const [path, content] of Object.entries(allFiles)) {
     const url = `https://api.github.com/repos/${login}/${repo}/contents/${encodeURI(path)}`;
     const existing = await fetch(url, { headers });
@@ -177,12 +184,13 @@ export async function pushToGithub({
     });
     if (!put.ok) throw new Error(`Failed to push ${path}: ${put.status} ${await put.text()}`);
   }
-  // Turn on GitHub Pages (deployed by the workflow). Ignore "already enabled".
+
   await fetch(`https://api.github.com/repos/${login}/${repo}/pages`, {
     method: "POST",
     headers,
     body: JSON.stringify({ build_type: "workflow" }),
   }).catch(() => undefined);
+
   return {
     url: `https://github.com/${login}/${repo}`,
     pagesUrl: `https://${login}.github.io/${repo}/`,
@@ -194,13 +202,16 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+
 permissions:
   contents: read
   pages: write
   id-token: write
+
 concurrency:
   group: pages
   cancel-in-progress: true
+
 jobs:
   deploy:
     environment:
