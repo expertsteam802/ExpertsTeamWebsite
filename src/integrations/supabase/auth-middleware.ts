@@ -67,6 +67,9 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
       throw new Error("Unauthorized: No token provided");
     }
 
+    // Supabase access tokens are JWTs. Some deployments and browser/session edge cases
+    // can briefly produce tokens that are structurally valid but not yet accepted by the
+    // claims endpoint, so we verify via both getClaims() and getUser() and accept either.
     if (token.split(".").length !== 3) {
       throw new Error("Unauthorized: Invalid token");
     }
@@ -85,20 +88,39 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
       },
     });
 
-    const { data, error } = await supabase.auth.getClaims(token);
-    if (error || !data?.claims) {
-      throw new Error("Unauthorized: Invalid token");
+    let claims: Record<string, unknown> | null = null;
+    let userId: string | null = null;
+
+    try {
+      const claimsResult = await supabase.auth.getClaims(token);
+      if (!claimsResult.error && claimsResult.data?.claims) {
+        claims = claimsResult.data.claims as Record<string, unknown>;
+        userId = typeof claims["sub"] === "string" ? claims["sub"] : null;
+      }
+    } catch {
+      // Ignore and fall through to getUser() below.
     }
 
-    if (!data.claims.sub) {
-      throw new Error("Unauthorized: No user ID found in token");
+    if (!userId) {
+      try {
+        const userResult = await supabase.auth.getUser(token);
+        if (!userResult.error && userResult.data.user?.id) {
+          userId = userResult.data.user.id;
+        }
+      } catch {
+        // Ignore and fail below.
+      }
+    }
+
+    if (!userId) {
+      throw new Error("Unauthorized: Invalid token");
     }
 
     return next({
       context: {
         supabase,
-        userId: data.claims.sub,
-        claims: data.claims,
+        userId,
+        claims: claims ?? { sub: userId },
       },
     });
   },
