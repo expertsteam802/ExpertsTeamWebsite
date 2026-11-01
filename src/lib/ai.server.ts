@@ -9,7 +9,7 @@ export async function askChrisAi({
   prompt: string;
   mode: "chat" | "workspace";
   history?: { role: string; content: string }[];
-}): Promise<{ reply: string }> {
+}, apiKey?: string): Promise<{ reply: string }> {
   const cleanPrompt = prompt.trim();
   if (!cleanPrompt) throw new Error("Please type a message first.");
 
@@ -28,7 +28,7 @@ export async function askChrisAi({
       { role: "user", parts: [{ text: cleanPrompt }] },
     ],
     generationConfig: { maxOutputTokens: mode === "workspace" ? 16384 : 4096 },
-  });
+  }, apiKey);
 
   const candidate = json.candidates?.[0];
   if (candidate?.finishReason === "MAX_TOKENS") {
