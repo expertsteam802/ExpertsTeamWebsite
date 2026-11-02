@@ -20,14 +20,27 @@ export type GeminiResponse = {
   promptFeedback?: { blockReason?: string };
 };
 
-const GEMINI_MODEL = "gemini-3.8-flash";
+const GEMINI_MODEL = "gemini-2.5-flash-lite";
+
+export function resolveGeminiApiKey(apiKey?: string): string | undefined {
+  return (
+    apiKey?.trim() ||
+    process.env["GEMINI_API_KEY"]?.trim() ||
+    process.env["VITE_GEMINI_API_KEY"]?.trim() ||
+    undefined
+  );
+}
 
 export async function generateGeminiContent(
   request: GeminiRequest,
   apiKey?: string,
 ): Promise<GeminiResponse> {
-  if (!apiKey?.trim()) {
-    throw new Error("Chris AI is not configured. Set GEMINI_API_KEY in the server environment.");
+  const resolvedApiKey = resolveGeminiApiKey(apiKey);
+
+  if (!resolvedApiKey) {
+    throw new Error(
+      "Chris AI is not configured. Set GEMINI_API_KEY in the server environment. VITE_GEMINI_API_KEY is supported only for local development.",
+    );
   }
 
   let response: Response;
@@ -37,11 +50,11 @@ export async function generateGeminiContent(
       {
         method: "POST",
         headers: {
-          "x-goog-api-key": apiKey.trim(),
+          "x-goog-api-key": resolvedApiKey,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(request),
-        signal: AbortSignal.timeout(120000),
+        signal: AbortSignal.timeout(30000),
       },
     );
   } catch (error) {
