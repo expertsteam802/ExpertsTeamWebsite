@@ -17,16 +17,16 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/community")({
   head: () => ({
     meta: [
-      { title: "Community — ideas, quests & links | Chris Programs" },
+      { title: "Community — ideas, quests & links | Experts Team 802" },
       {
         name: "description",
         content:
-          "Share ideas, post public quests, drop useful links and discuss with the Chris Programs community.",
+          "Share ideas, post public quests, drop useful links and discuss with the Experts Team 802 community.",
       },
-      { property: "og:title", content: "Community — ideas, quests & links | Chris Programs" },
+      { property: "og:title", content: "Community — ideas, quests & links | Experts Team 802" },
       {
         property: "og:description",
-        content: "Post ideas, ask public quests and share links with the Chris Programs community.",
+        content: "Post ideas, ask public quests and share links with the Experts Team 802 community.",
       },
     ],
   }),
@@ -60,7 +60,7 @@ function CommunityPage() {
   const [linkUrl, setLinkUrl] = useState("");
   const [filter, setFilter] = useState<string>("all");
 
-  const { data: posts = [] } = useQuery({
+  const { data: posts = [], isLoading, error } = useQuery({
     queryKey: ["community-posts"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -70,7 +70,7 @@ function CommunityPage() {
         )
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as unknown as Post[];
+      return (data ?? []) as Post[];
     },
   });
 
@@ -78,6 +78,7 @@ function CommunityPage() {
     mutationFn: async () => {
       if (!user) throw new Error("Sign in to post.");
       if (title.trim().length < 3) throw new Error("Give your post a title.");
+      if (!body.trim() && !linkUrl.trim()) throw new Error("Add a post body or a link.");
       const { error } = await supabase.from("community_posts").insert({
         user_id: user.id,
         kind,
@@ -93,6 +94,7 @@ function CommunityPage() {
       setLinkUrl("");
       toast.success("Shared with the community");
       void queryClient.invalidateQueries({ queryKey: ["community-posts"] });
+      void queryClient.refetchQueries({ queryKey: ["community-posts"] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -105,6 +107,7 @@ function CommunityPage() {
     onSuccess: () => {
       toast.success("Post deleted");
       void queryClient.invalidateQueries({ queryKey: ["community-posts"] });
+      void queryClient.refetchQueries({ queryKey: ["community-posts"] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -117,7 +120,7 @@ function CommunityPage() {
         <div className="animate-rise">
           <h1 className="font-display text-3xl font-semibold tracking-tight">Community</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Ideas, public quests and shared links from the Chris Programs members.
+            Ideas, public quests and shared links from the Experts Team 802 community.
           </p>
         </div>
 
@@ -187,7 +190,13 @@ function CommunityPage() {
             ))}
           </TabsList>
           <TabsContent value={filter} className="space-y-4 pt-4">
-            {visible.length === 0 && (
+            {isLoading && <p className="text-sm text-muted-foreground">Loading posts…</p>}
+            {error && (
+              <p role="alert" className="text-sm text-destructive">
+                We couldn't load the community feed. Please refresh and try again.
+              </p>
+            )}
+            {!isLoading && visible.length === 0 && (
               <p className="text-sm text-muted-foreground">
                 Nothing here yet — be the first to post.
               </p>
@@ -239,7 +248,7 @@ function PostCard({
         .eq("post_id", post.id)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return data as unknown as Comment[];
+      return (data ?? []) as Comment[];
     },
   });
 
@@ -255,6 +264,7 @@ function PostCard({
     onSuccess: () => {
       setComment("");
       void queryClient.invalidateQueries({ queryKey: ["community-comments", post.id] });
+      void queryClient.refetchQueries({ queryKey: ["community-comments", post.id] });
     },
     onError: (error: Error) => toast.error(error.message),
   });

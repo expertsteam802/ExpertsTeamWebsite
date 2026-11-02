@@ -6,30 +6,32 @@ type AgentInput = {
   history: { role: "user" | "assistant"; content: string }[];
 };
 
-const AGENT_PROMPT = `You are the Experts Team coding agent for the Experts Team website, created by Chris Expert - M.Chris.T.
-You build complete, production-quality browser apps and front-end products for Experts Team, including landing pages, dashboards, SaaS tools, portfolios, apps, and prototypes.
+const AGENT_PROMPT = `You are the Experts Team 802 coding agent.
+You build complete, production-quality browser apps and front-end products for Experts Team 802, including landing pages, dashboards, SaaS tools, portfolios, apps, prototypes, and product MVPs.
 
-Priority: generate complete, working project code that can be published live and branded as Experts Team.
+Priority: generate complete, working project code that can be published live and branded as Experts Team 802.
 
 Your output must be a valid JSON object with this exact shape:
 {"message":"short summary of what you did","files":{"path":"full file content",...}}
 
 Rules:
-- Prefer modern, real-world app structure over single-file demos when the request needs it.
-- For full projects, generate a Vite + React + TypeScript app when appropriate, with package.json, vite.config.ts, tsconfig.json, index.html, src/main.tsx, src/App.tsx, src/index.css, and related files.
-- For fast prototypes or browser-only apps, you may use plain HTML/CSS/JS if that is simpler.
+- Prefer modern, real-world app structure over tiny single-file demos when the request needs it.
+- For full products, generate a Vite + React + TypeScript app when appropriate, with package.json, vite.config.ts, tsconfig.json, index.html, src/main.tsx, src/App.tsx, src/index.css, and supporting files.
+- For browser-only prototypes, you may use plain HTML/CSS/JS if simpler, but do not create toy or incomplete apps.
 - If a project needs multiple files, include all required files and keep them consistent.
 - Always include only files you created or changed; null values are allowed to delete files.
 - Use relative file paths like "src/App.tsx" or "src/index.css".
-- Keep the app visually polished and production-ready.
-- Brand the app as "Experts Team" everywhere.
-- Use "Chris" only for creator attribution, not as the public product name.
-- Never use "Chris Programs".
-- If the request implies publishability, include deployment-friendly files like README.md or GitHub Pages config when relevant.
+- Keep the app visually polished, production-ready, and easy to run.
+- Brand the app as "Experts Team 802" everywhere.
 - Keep code modern, accessible, and easy to run.
 - If the project is meant to be published live, make it production-ready and deployment-friendly.
 - You are not limited to static HTML only. If a real app is needed, generate a proper project scaffold.
-- Always reply with JSON only. Do not wrap it in markdown fences.`;
+- Never use browser localStorage/sessionStorage/indexedDB in sandboxed preview code unless the request explicitly requires it and it is safe.
+- If persistence is needed, propose Supabase or backend storage instead of fake browser storage.
+- Always reply with JSON only. Do not wrap it in markdown fences.
+- Do not return placeholder comments like TODO.
+- Do not use fake imports or unsupported libraries.
+- Keep the app realistic and serious, like Bolt, Lovable, or a proper Vite app, not a toy demo.`;
 
 function isSafeProjectPath(path: string): boolean {
   const normalized = path.replace(/\\/g, "/");
@@ -95,8 +97,12 @@ export async function runAgent({ prompt, files, history }: AgentInput, apiKey?: 
       .join("") ?? "";
 
   try {
-    const match = text.match(/\{[\s\S]*\}/);
-    const parsed = JSON.parse(match ? match[0] : text) as {
+    const cleaned = text.trim();
+    if (!cleaned.startsWith("{") || !cleaned.endsWith("}")) {
+      throw new Error("Not JSON");
+    }
+
+    const parsed = JSON.parse(cleaned) as {
       message?: string;
       files?: Record<string, string | null>;
     };
@@ -107,9 +113,13 @@ export async function runAgent({ prompt, files, history }: AgentInput, apiKey?: 
 
     const output: Record<string, string | null> = {};
     for (const [path, content] of Object.entries(parsed.files)) {
-      if (!isSafeProjectPath(path)) throw new Error("Invalid file path");
-      if (typeof content !== "string" && content !== null) throw new Error("Invalid file content");
+      if (!isSafeProjectPath(path)) throw new Error(`Invalid file path: ${path}`);
+      if (typeof content !== "string" && content !== null) throw new Error(`Invalid content for ${path}`);
       output[path] = content;
+    }
+
+    if (Object.keys(output).length === 0) {
+      throw new Error("No files returned");
     }
 
     return {
@@ -153,7 +163,7 @@ export async function pushToGithub({
       body: JSON.stringify({
         name: repo,
         auto_init: true,
-        description: "Built with the Experts Team agent",
+        description: "Built with the Experts Team 802 agent",
       }),
     });
     if (!created.ok) throw new Error(`Could not create repository: ${await created.text()}`);
@@ -167,7 +177,7 @@ export async function pushToGithub({
   };
 
   if (!allFiles["README.md"]) {
-    allFiles["README.md"] = `# ${repo}\n\nBuilt with the Experts Team AI agent — creator Chris Expert (M.Chris.T).\n\nLive: https://${login}.github.io/${repo}/\n`;
+    allFiles["README.md"] = `# ${repo}\n\nBuilt with the Experts Team 802 AI agent.\n\nLive: https://${login}.github.io/${repo}/\n`;
   }
 
   for (const [path, content] of Object.entries(allFiles)) {

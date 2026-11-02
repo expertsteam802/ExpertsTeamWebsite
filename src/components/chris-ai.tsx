@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bot, Code2, Copy, Eye, Loader2, Save, Send, Sparkles, Trash2, User } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 
@@ -12,7 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { askChrisAi } from "@/lib/ai.functions";
 
-type ChatRow = { id: string; role: string; content: string; created_at: string };
+type ChatRow = { id: string; role: string; content: string; created_at: string; thread_id?: string };
 
 function MessageBody({ content }: { content: string }) {
   const parts = content.split(/```/);
@@ -43,27 +43,37 @@ export function ChrisAiChat() {
   const queryClient = useQueryClient();
   const ask = useServerFn(askChrisAi);
   const [input, setInput] = useState("");
-  const [liveAiReply, setLiveAiReply] = useState("");
+  const [threadId, setThreadId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    if (!threadId) setThreadId(crypto.randomUUID());
+  }, [user, threadId]);
 
   const { data: messages = [], isError: messagesError } = useQuery({
-    queryKey: ["ai-chats", user?.id],
-    enabled: !!user,
+    queryKey: ["ai-chats", user?.id, threadId],
+    enabled: !!user && !!threadId,
     queryFn: async () => {
+      if (!threadId) return [] as ChatRow[];
       const { data, error } = await supabase
         .from("ai_chats")
-        .select("id, role, content, created_at")
+        .select("id, role, content, created_at, thread_id")
         .eq("user_id", user!.id)
+        .eq("thread_id", threadId)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return data as ChatRow[];
+      return (data ?? []) as ChatRow[];
     },
   });
 
   const send = useMutation({
     mutationFn: async (prompt: string) => {
+      const activeThreadId = threadId ?? crypto.randomUUID();
+      if (!threadId) setThreadId(activeThreadId);
+
       const { error: userMessageError } = await supabase
         .from("ai_chats")
-        .insert({ user_id: user!.id, role: "user", content: prompt });
+        .insert({ user_id: user!.id, thread_id: activeThreadId, role: "user", content: prompt });
       if (userMessageError) throw userMessageError;
 
       const history = messages.slice(-10).map((message) => ({
@@ -73,30 +83,19 @@ export function ChrisAiChat() {
 
       const result = await ask({ data: { prompt, mode: "chat", history } });
       const reply = result.reply.trim();
-
       if (!reply) {
         throw new Error("Gemini returned an empty answer. Please try again.");
       }
 
-      setLiveAiReply("");
-      for (let i = 1; i <= reply.length; i += 1) {
-        const partial = reply.slice(0, i);
-        setLiveAiReply(partial);
-        await new Promise((resolve) => setTimeout(resolve, 12));
-      }
-
       const { error: aiMessageError } = await supabase
         .from("ai_chats")
-        .insert({ user_id: user!.id, role: "ai", content: reply });
+        .insert({ user_id: user!.id, thread_id: activeThreadId, role: "ai", content: reply });
       if (aiMessageError) {
         throw new Error("Chris AI replied, but the reply could not be saved. Please try again.");
       }
-
-      setLiveAiReply("");
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] }),
     onError: (error: Error) => {
-      setLiveAiReply("");
       toast.error(error.message);
       void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
     },
@@ -104,11 +103,18 @@ export function ChrisAiChat() {
 
   const clear = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("ai_chats").delete().eq("user_id", user!.id);
+      const activeThreadId = threadId ?? crypto.randomUUID();
+      if (!threadId) setThreadId(activeThreadId);
+
+      const { error } = await supabase
+        .from("ai_chats")
+        .delete()
+        .eq("user_id", user!.id)
+        .eq("thread_id", activeThreadId);
+
       if (error) throw error;
     },
     onSuccess: () => {
-      setLiveAiReply("");
       toast.success("Chat cleared");
       void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
     },
@@ -119,7 +125,9 @@ export function ChrisAiChat() {
     return (
       <Card className="p-8 text-center">
         <Bot className="mx-auto h-8 w-8 text-primary" />
-        <h2 className="mt-3 font-display text-xl font-semibold">Sign in to chat with Chris AI</h2>
+        <h2 className="mt-3 font-display text-xl font-semibold">
+          Sign in to chat with Experts Team 802 AI
+        </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Your conversations are private and saved to your account.
         </p>
@@ -134,6 +142,11 @@ export function ChrisAiChat() {
     send.mutate(prompt);
   }
 
+  function newChat() {
+    setThreadId(crypto.randomUUID());
+    void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
+  }
+
   return (
     <Card className="glow-panel flex h-[70vh] flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
@@ -142,19 +155,24 @@ export function ChrisAiChat() {
             <Sparkles className="h-4 w-4 text-primary" />
           </span>
           <div>
-            <p className="text-sm font-semibold">Chris AI</p>
-            <p className="text-xs text-muted-foreground">Gemini · PC info · games · code</p>
+            <p className="text-sm font-semibold">Experts Team 802 AI</p>
+            <p className="text-xs text-muted-foreground">Gemini · product plans · apps · code</p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Clear chat"
-          onClick={() => clear.mutate()}
-          disabled={clear.isPending || send.isPending}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={newChat} disabled={send.isPending}>
+            New chat
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Clear chat"
+            onClick={() => clear.mutate()}
+            disabled={clear.isPending || send.isPending}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
@@ -166,10 +184,10 @@ export function ChrisAiChat() {
         {messages.length === 0 && (
           <div className="grid gap-2 sm:grid-cols-2">
             {[
-              "Best budget gaming PC build under $700?",
-              "Why is my laptop overheating while gaming?",
-              "Write a React component for a countdown timer",
-              "Explain Python lists vs tuples with examples",
+              "Build a SaaS dashboard for project planning",
+              "Plan my app architecture with Supabase and auth",
+              "Create a landing page for a product team",
+              "Design a database schema for a bookings app",
             ].map((idea) => (
               <button
                 key={idea}
@@ -207,19 +225,9 @@ export function ChrisAiChat() {
             )}
           </div>
         ))}
-        {liveAiReply && (
-          <div className="flex gap-2 justify-start">
-            <span className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/15">
-              <Bot className="h-3.5 w-3.5 text-primary" />
-            </span>
-            <div className="max-w-[80%] rounded-2xl border border-border bg-secondary px-4 py-2">
-              <MessageBody content={liveAiReply} />
-            </div>
-          </div>
-        )}
         {send.isPending && (
           <p className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Loader2 className="h-3 w-3 animate-spin" /> Chris AI is thinking…
+            <Loader2 className="h-3 w-3 animate-spin" /> Experts Team 802 AI is thinking…
           </p>
         )}
       </div>
@@ -228,7 +236,7 @@ export function ChrisAiChat() {
         <Textarea
           value={input}
           rows={1}
-          placeholder="Ask Chris AI anything…"
+          placeholder="Ask Experts Team 802 AI anything…"
           onChange={(event) => setInput(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
@@ -246,48 +254,6 @@ export function ChrisAiChat() {
   );
 }
 
-type SnippetRow = {
-  id: string;
-  title: string;
-  language: string;
-  prompt: string | null;
-  code: string;
-  updated_at: string;
-};
-
-const SNIPPET_LANGUAGES = [
-  "html",
-  "css",
-  "javascript",
-  "typescript",
-  "python",
-  "json",
-  "sql",
-  "text",
-] as const;
-type SnippetLanguage = (typeof SNIPPET_LANGUAGES)[number];
-
-function isSnippetLanguage(language: string): language is SnippetLanguage {
-  return (SNIPPET_LANGUAGES as readonly string[]).includes(language);
-}
-
-function createSnippetPreviewDocument(code: string, language: SnippetLanguage) {
-  if (language === "html") return code;
-  if (language === "css") {
-    return `<!doctype html><html><head><meta charset="utf-8"><style>${code}</style></head><body><h1>CSS preview</h1><p>Edit the CSS to style this preview.</p><button>Example button</button></body></html>`;
-  }
-  const serializedCode = JSON.stringify(code).replace(/</g, "\\u003c");
-  return `<!doctype html><html><head><meta charset="utf-8"></head><body><pre id="output"></pre><script>
-const output = document.getElementById("output");
-const log = (...values) => { output.textContent += values.map(String).join(" ") + "\\n"; };
-console.log = log;
-console.warn = log;
-console.error = log;
-try { (0, eval)(${serializedCode}); }
-catch (error) { log(error && error.stack ? error.stack : error); }
-</script></body></html>`;
-}
-
 export function ChrisAiWorkspace() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -297,7 +263,9 @@ export function ChrisAiWorkspace() {
   const [title, setTitle] = useState("");
   const [snippetId, setSnippetId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [language, setLanguage] = useState<SnippetLanguage>("javascript");
+  const [language, setLanguage] = useState<
+    "html" | "css" | "javascript" | "typescript" | "python" | "json" | "sql" | "text"
+  >("javascript");
   const [showPreview, setShowPreview] = useState(false);
 
   const { data: snippets = [], isError: snippetsError } = useQuery({
@@ -310,7 +278,14 @@ export function ChrisAiWorkspace() {
         .eq("user_id", user!.id)
         .order("updated_at", { ascending: false });
       if (error) throw error;
-      return data as SnippetRow[];
+      return (data ?? []) as Array<{
+        id: string;
+        title: string;
+        language: string;
+        prompt: string | null;
+        code: string;
+        updated_at: string;
+      }>;
     },
   });
 
@@ -356,12 +331,30 @@ export function ChrisAiWorkspace() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  function load(snippet: SnippetRow) {
+  function load(snippet: {
+    id: string;
+    title: string;
+    language: string;
+    prompt: string | null;
+    code: string;
+    updated_at: string;
+  }) {
     setSnippetId(snippet.id);
     setTitle(snippet.title);
     setBrief(snippet.prompt ?? "");
     setCode(snippet.code);
-    setLanguage(isSnippetLanguage(snippet.language) ? snippet.language : "text");
+    setLanguage(
+      snippet.language === "html" ||
+        snippet.language === "css" ||
+        snippet.language === "javascript" ||
+        snippet.language === "typescript" ||
+        snippet.language === "python" ||
+        snippet.language === "json" ||
+        snippet.language === "sql" ||
+        snippet.language === "text"
+        ? (snippet.language as typeof language)
+        : "text",
+    );
     setShowPreview(false);
   }
 
@@ -399,7 +392,7 @@ export function ChrisAiWorkspace() {
           <h2 className="font-display text-lg font-semibold">Build brief</h2>
           <Input
             value={title}
-            placeholder="Snippet name (e.g. map editor loader)"
+            placeholder="Snippet name (e.g. dashboard selector)"
             onChange={(event) => setTitle(event.target.value)}
           />
           <div className="space-y-1">
@@ -410,25 +403,31 @@ export function ChrisAiWorkspace() {
               id="snippet-language"
               value={language}
               onChange={(event) => {
-                if (isSnippetLanguage(event.target.value)) setLanguage(event.target.value);
+                const next = event.target.value as typeof language;
+                if (["html", "css", "javascript", "typescript", "python", "json", "sql", "text"].includes(next)) {
+                  setLanguage(next);
+                }
               }}
               className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
             >
-              {SNIPPET_LANGUAGES.map((option) => (
-                <option key={option} value={option}>
-                  {option === "javascript"
-                    ? "JavaScript"
-                    : option === "typescript"
-                      ? "TypeScript"
-                      : option.toUpperCase()}
-                </option>
+              {[
+                ["html", "HTML"],
+                ["css", "CSS"],
+                ["javascript", "JavaScript"],
+                ["typescript", "TypeScript"],
+                ["python", "Python"],
+                ["json", "JSON"],
+                ["sql", "SQL"],
+                ["text", "Text"],
+              ].map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
               ))}
             </select>
           </div>
           <Textarea
             rows={7}
             value={brief}
-            placeholder="Describe what to build: a Python game loop, an HTML landing page, a PC benchmark script…"
+            placeholder="Describe what to build: a dashboard, API layer, app shell, database schema, landing page…"
             onChange={(event) => setBrief(event.target.value)}
           />
           <Button onClick={() => void generate()} disabled={busy} className="w-full">
@@ -490,7 +489,7 @@ export function ChrisAiWorkspace() {
             <iframe
               title={`${language} snippet preview`}
               sandbox="allow-scripts"
-              srcDoc={createSnippetPreviewDocument(code, language)}
+              srcDoc={`<!doctype html><html><head><meta charset="utf-8" /><style>${code}</style></head><body><div id="app"></div></body></html>`}
               className="h-64 w-full rounded-lg border border-border bg-white"
             />
           )}
