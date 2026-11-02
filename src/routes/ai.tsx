@@ -1,51 +1,56 @@
-import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
+import { createFileRoute } from "@tanstack/react-router";
 
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { CodeAgent } from "@/components/code-agent";
+import { PageShell } from "@/components/layout/page-shell";
 
-const aiAttachment = z.object({
-  name: z.string().max(200).default("attachment"),
-  mimeType: z.string().max(100).optional(),
-  dataUrl: z.string().max(2000000).optional(),
-  text: z.string().max(40000).optional(),
-  size: z.number().max(20000000).optional(),
-});
-
-const aiRequest = z.object({
-  prompt: z.string().trim().min(1).max(6000),
-  mode: z.enum(["chat", "workspace", "plan"]),
-  history: z
-    .array(z.object({ role: z.string().max(20), content: z.string().max(4000) }))
-    .max(10)
-    .optional(),
-  attachments: z.array(aiAttachment).max(5).optional(),
-});
-
-export const askChrisAi = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => aiRequest.parse(input))
-  .handler(async ({ data }) => {
-    const { askChrisAi: generate } = await import("./ai.server");
-    return generate(
+export const Route = createFileRoute("/ai")({
+  head: () => ({
+    meta: [
+      { title: "Chris AI — full app builder workspace" },
       {
-        ...data,
-        history: data.history ?? [],
-        attachments: data.attachments ?? [],
+        name: "description",
+        content:
+          "Build complete apps inside a large full-width workspace with Chris AI. No tiny preview panels, just the real agent experience.",
       },
-      process.env["GEMINI_API_KEY"],
-    );
-  });
+      { property: "og:title", content: "Chris AI — full app builder workspace" },
+      {
+        property: "og:description",
+        content:
+          "Turn ideas into working app projects with a full-size AI workspace built for real app generation and editing.",
+      },
+    ],
+  }),
+  component: AiPage,
+});
 
-export const generateExpertImage = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((input: unknown) =>
-    z
-      .object({
-        prompt: z.string().trim().min(1).max(2000),
-      })
-      .parse(input),
-  )
-  .handler(async ({ data }) => {
-    const { generateExpertImage: generateImage } = await import("./ai.server");
-    return generateImage(data, process.env["GEMINI_API_KEY"]);
-  });
+function AiPage() {
+  return (
+    <PageShell>
+      <section className="mx-auto w-full max-w-[1600px] px-4 py-6 lg:px-8">
+        <div className="mb-6 animate-rise">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-primary/80">
+                Chris AI workspace
+              </p>
+              <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+                Build real apps in a full-size workspace
+              </h1>
+            </div>
+            <div className="rounded-full border border-border/80 bg-background/80 px-3 py-1.5 text-xs text-muted-foreground shadow-sm backdrop-blur-sm">
+              Full editor · project builder · live app generation
+            </div>
+          </div>
+          <p className="mt-3 max-w-3xl text-sm text-muted-foreground sm:text-base">
+            This is the real agent experience: no snippet previews, no tiny mockups. Just a large,
+            expandable workspace for building, editing, and shipping app ideas with Chris AI.
+          </p>
+        </div>
+
+        <div className="min-h-[72vh] w-full">
+          <CodeAgent />
+        </div>
+      </section>
+    </PageShell>
+  );
+}
