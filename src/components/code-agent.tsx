@@ -255,307 +255,387 @@ export function CodeAgent() {
   const liveUrl = published.on && published.slug ? `/apps/${published.slug}` : null;
 
   return (
-    <div className="space-y-4">
-      <Card className="glow-panel flex-row flex-wrap items-center gap-2 p-3">
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="h-9 max-w-xs"
-          aria-label="App name"
-        />
-        <Button size="sm" variant="secondary" onClick={newProject}>
-          <Plus className="mr-1 h-3.5 w-3.5" /> New
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => save.mutate()}
-          disabled={save.isPending}
-        >
-          <Save className="mr-1 h-3.5 w-3.5" /> Save
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => {
-            setGhRepo((r) => r || slugify(name));
-            setGhOpen(true);
-          }}
-        >
-          <Github className="mr-1 h-3.5 w-3.5" /> Push to GitHub
-        </Button>
-        <Button
-          size="sm"
-          onClick={() => publish.mutate(!published.on)}
-          disabled={publish.isPending}
-        >
-          <Globe className="mr-1 h-3.5 w-3.5" /> {published.on ? "Unpublish" : "Publish"}
-        </Button>
-        {pagesUrl && (
-          <a
-            href={pagesUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-          >
-            <Github className="h-3 w-3" /> GitHub Pages
-          </a>
-        )}
-        {liveUrl && published.slug && (
-          <Link
-            to="/apps/$slug"
-            params={{ slug: published.slug }}
-            target="_blank"
-            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-          >
-            <ExternalLink className="h-3 w-3" /> {liveUrl}
-          </Link>
-        )}
-      </Card>
+    <div className="min-h-[calc(100vh-4rem)] bg-[#050d1b] text-white">
+      <div className="mx-auto w-full max-w-[1800px] px-3 py-4 lg:px-5">
+        <div className="overflow-hidden rounded-[26px] border border-white/10 bg-[#081423] shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
+          <header className="flex items-center justify-between border-b border-white/10 bg-[#07111d] px-4 py-3 text-white">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 via-blue-500 to-violet-500 text-sm font-black text-slate-950 shadow-lg shadow-cyan-500/25">
+                E
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-cyan-300/80">
+                  ExpertsAgent
+                </p>
+                <h1 className="text-base font-semibold tracking-tight">Full builder workspace</h1>
+              </div>
+            </div>
 
-      <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-        <Card className="flex h-[72vh] flex-col overflow-hidden p-0">
-          <div className="flex items-center gap-2 border-b border-border/70 px-3 py-2">
-            <Bot className="h-4 w-4 text-primary" />
-            <span className="text-sm font-semibold">Agent</span>
-          </div>
-          <div className="flex-1 space-y-3 overflow-y-auto p-3">
-            {messages.length === 0 && (
+            <div className="hidden items-center gap-2 md:flex">
+              {[
+                "Builder",
+                "Files",
+                "Terminal",
+                "Preview",
+                "GitHub",
+                "Deploy",
+              ].map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                    item === "Builder"
+                      ? "border-cyan-400/50 bg-cyan-500/10 text-cyan-200"
+                      : "border-white/10 bg-white/5 text-slate-200 hover:border-white/20 hover:text-white"
+                  }`}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+                onClick={() => save.mutate()}
+                disabled={save.isPending}
+              >
+                Save
+              </Button>
+              <Button
+                className="bg-cyan-500 text-slate-950 hover:bg-cyan-400"
+                onClick={() => publish.mutate(!published.on)}
+                disabled={publish.isPending}
+              >
+                {published.on ? "Unpublish" : "Publish"}
+              </Button>
+            </div>
+          </header>
+
+          <div className="grid gap-0 border-b border-white/10 bg-[#0a1528] p-3 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <aside className="rounded-[18px] border border-white/10 bg-[#0e1a2d] p-3">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-slate-400">
+                  <span className="font-semibold text-slate-200">Project</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={addFile}
+                  className="flex h-7 w-7 items-center justify-center rounded-md border border-cyan-500/30 bg-cyan-500/10 text-cyan-300"
+                  aria-label="Add file"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+
               <div className="space-y-2">
-                {[
-                  "Build a snake game with a score board",
-                  "Make a portfolio page with dark theme and contact form",
-                  "Create a todo app saving to localStorage",
-                ].map((idea) => (
+                {Object.keys(files).map((file) => (
                   <button
-                    key={idea}
-                    onClick={() => setPrompt(idea)}
-                    className="w-full rounded-lg border border-border bg-secondary/60 p-2 text-left text-xs transition-colors hover:border-primary/60"
+                    key={file}
+                    type="button"
+                    onClick={() => {
+                      setActive(file);
+                      setView("code");
+                    }}
+                    className={`flex w-full items-center justify-between rounded-lg border px-2 py-2 text-left text-xs transition ${
+                      file === active
+                        ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-100"
+                        : "border-transparent bg-transparent text-slate-300 hover:bg-white/5"
+                    }`}
                   >
-                    {idea}
+                    <span className="truncate">{file}</span>
+                    {file === active && <span className="ml-2 h-2 w-2 rounded-full bg-cyan-400" />}
                   </button>
                 ))}
               </div>
-            )}
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`whitespace-pre-wrap rounded-xl px-3 py-2 text-xs ${
-                  m.role === "user"
-                    ? "ml-6 bg-primary text-primary-foreground"
-                    : "mr-6 border border-border bg-secondary"
-                }`}
-              >
-                {m.content}
-              </div>
-            ))}
-            {busy && (
-              <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" /> Agent is writing files…
-              </p>
-            )}
-          </div>
-          <div className="flex items-end gap-2 border-t border-border/70 p-2">
-            <Textarea
-              rows={2}
-              value={prompt}
-              placeholder="Describe the app or a change…"
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void send();
-                }
-              }}
-              className="min-h-10 resize-none text-xs"
-            />
-            <Button
-              size="icon"
-              onClick={() => void send()}
-              disabled={busy}
-              aria-label="Send to agent"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </Card>
 
-        <Card className="flex h-[72vh] flex-col overflow-hidden p-0">
-          <div className="flex flex-wrap items-center gap-1 border-b border-border/70 px-2 py-1.5">
-            <Button
-              size="sm"
-              variant={view === "preview" ? "default" : "ghost"}
-              onClick={() => setView("preview")}
-            >
-              <Play className="mr-1 h-3.5 w-3.5" /> Preview
-            </Button>
-            <Button
-              size="sm"
-              variant={view === "code" ? "default" : "ghost"}
-              onClick={() => setView("code")}
-            >
-              <FileCode2 className="mr-1 h-3.5 w-3.5" /> Code
-            </Button>
-            <Button
-              size="sm"
-              variant={view === "console" ? "default" : "ghost"}
-              onClick={() => setView("console")}
-            >
-              <Terminal className="mr-1 h-3.5 w-3.5" /> Console
-              {logs.some((l) => l.type === "error") && (
-                <span className="ml-1 h-2 w-2 rounded-full bg-destructive" />
-              )}
-            </Button>
-            {view === "preview" && (
-              <div className="ml-2 flex gap-0.5">
-                {(
-                  [
-                    ["desktop", Monitor],
-                    ["tablet", Tablet],
-                    ["mobile", Smartphone],
-                  ] as const
-                ).map(([d, Icon]) => (
-                  <Button
-                    key={d}
-                    size="icon"
-                    variant={device === d ? "secondary" : "ghost"}
-                    className="h-8 w-8"
-                    aria-label={`${d} view`}
-                    onClick={() => setDevice(d)}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                  </Button>
-                ))}
-              </div>
-            )}
-            <div className="ml-auto flex gap-1">
-              {view === "console" ? (
-                <Button size="sm" variant="ghost" onClick={() => setLogs([])}>
-                  Clear
-                </Button>
-              ) : view === "preview" ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setLogs([]);
-                    setPreviewKey((k) => k + 1);
-                  }}
-                >
-                  Reload
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(files[active] ?? "");
-                    toast.success(`Copied ${active}`);
-                  }}
-                >
-                  <Copy className="mr-1 h-3.5 w-3.5" /> Copy
-                </Button>
-              )}
-            </div>
-          </div>
-          {view === "console" ? (
-            <div className="flex-1 overflow-y-auto bg-background p-2 font-mono text-xs">
-              {!logs.length && <p className="text-muted-foreground">No console output yet.</p>}
-              {logs.map((l, i) => (
-                <p
-                  key={i}
-                  className={`border-b border-border/40 py-1 ${l.type === "error" ? "text-destructive" : l.type === "warn" ? "text-primary" : ""}`}
-                >
-                  [{l.type}] {l.message}
-                </p>
-              ))}
-            </div>
-          ) : view === "preview" ? (
-            <div className="flex flex-1 justify-center overflow-auto bg-secondary/40">
-              <iframe
-                key={previewKey}
-                title="App sandbox"
-                srcDoc={srcDoc}
-                sandbox="allow-scripts allow-forms allow-modals allow-popups"
-                style={{ width: device === "desktop" ? "100%" : device === "tablet" ? 768 : 375 }}
-                className="h-full max-w-full bg-background transition-all duration-300"
-              />
-            </div>
-          ) : (
-            <div className="flex min-h-0 flex-1">
-              <div className="w-40 shrink-0 space-y-0.5 overflow-y-auto border-r border-border/70 p-1">
-                {Object.keys(files).map((f) => (
-                  <div key={f} className="group flex items-center">
-                    <button
-                      onClick={() => setActive(f)}
-                      className={`flex-1 truncate rounded px-2 py-1 text-left text-xs ${
-                        f === active ? "bg-primary/15 text-primary" : "hover:bg-secondary"
-                      }`}
-                    >
-                      {f}
-                    </button>
-                    <button
-                      aria-label={`Delete ${f}`}
-                      className="hidden px-1 text-muted-foreground group-hover:block"
-                      onClick={() => {
-                        const next = { ...files };
-                        delete next[f];
-                        setFiles(next);
-                        if (active === f) setActive(Object.keys(next)[0] ?? "");
-                      }}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
+              <div className="mt-5 rounded-xl border border-white/10 bg-[#0b1626] p-3">
+                <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  Live status
+                </div>
+                <div className="space-y-2 text-xs text-slate-300">
+                  <div className="flex items-center justify-between">
+                    <span>Build</span>
+                    <span className="text-emerald-400">Ready</span>
                   </div>
-                ))}
-                <button
-                  onClick={addFile}
-                  className="flex w-full items-center gap-1 px-2 py-1 text-xs text-primary"
-                >
-                  <FilePlus2 className="h-3 w-3" /> Add file
-                </button>
+                  <div className="flex items-center justify-between">
+                    <span>Deploy</span>
+                    <span className="text-cyan-400">Online</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>GitHub</span>
+                    <span className="text-violet-400">Synced</span>
+                  </div>
+                </div>
               </div>
-              <textarea
-                aria-label="File contents"
-                disabled={!active}
-                value={files[active] ?? ""}
-                onChange={(e) => setFiles((cur) => ({ ...cur, [active]: e.target.value }))}
-                spellCheck={false}
-                className="h-full flex-1 resize-none bg-background p-3 font-mono text-xs outline-none"
-              />
-            </div>
-          )}
-        </Card>
-      </div>
+            </aside>
 
-      <Card className="space-y-2 p-4">
-        <h3 className="font-display text-lg font-semibold">Your apps</h3>
-        {!projects.length && <p className="text-sm text-muted-foreground">No saved apps yet.</p>}
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((p) => (
-            <div
-              key={p.id}
-              className="flex items-center gap-2 rounded-lg border border-border bg-secondary/50 p-3"
-            >
-              <button onClick={() => load(p)} className="min-w-0 flex-1 text-left">
-                <p className="truncate text-sm font-medium">{p.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {p.published ? "Live · " : ""}
-                  {Object.keys(p.files ?? {}).length} files · {p.updated_at.slice(0, 10)}
-                </p>
-              </button>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={`Delete ${p.name}`}
-                onClick={() => removeProject.mutate(p.id)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+            <div className="rounded-[18px] border border-white/10 bg-[#081827] p-3">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="h-10 max-w-xs border-white/10 bg-white/5 text-white placeholder:text-slate-400"
+                  aria-label="App name"
+                />
+                <Button size="sm" variant="secondary" onClick={newProject} className="bg-white/5 hover:bg-white/10">
+                  <Plus className="mr-1 h-3.5 w-3.5" /> New
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => save.mutate()} className="bg-white/5 hover:bg-white/10">
+                  <Save className="mr-1 h-3.5 w-3.5" /> Save
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setGhRepo((r) => r || slugify(name));
+                    setGhOpen(true);
+                  }}
+                  className="bg-white/5 hover:bg-white/10"
+                >
+                  <Github className="mr-1 h-3.5 w-3.5" /> Push to GitHub
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => publish.mutate(!published.on)}
+                  disabled={publish.isPending}
+                  className="bg-cyan-500 text-slate-950 hover:bg-cyan-400"
+                >
+                  <Globe className="mr-1 h-3.5 w-3.5" /> {published.on ? "Unpublish" : "Publish"}
+                </Button>
+                {pagesUrl && (
+                  <a
+                    href={pagesUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-cyan-300 hover:underline"
+                  >
+                    <Github className="h-3 w-3" /> GitHub Pages
+                  </a>
+                )}
+                {liveUrl && published.slug && (
+                  <Link
+                    to="/apps/$slug"
+                    params={{ slug: published.slug }}
+                    target="_blank"
+                    className="inline-flex items-center gap-1 text-xs text-cyan-300 hover:underline"
+                  >
+                    <ExternalLink className="h-3 w-3" /> {liveUrl}
+                  </Link>
+                )}
+              </div>
+
+              <div className="overflow-hidden rounded-[18px] border border-white/10 bg-[#0a1320]">
+                <div className="flex items-center gap-2 border-b border-white/10 bg-[#0a1320] px-3 py-2.5">
+                  <Bot className="h-4 w-4 text-cyan-300" />
+                  <span className="text-sm font-semibold text-white">Agent</span>
+                </div>
+
+                <div className="grid gap-0 lg:grid-cols-[minmax(0, 320px)_1fr]">
+                  <div className="border-r border-white/10 bg-[#0c1828]">
+                    <div className="space-y-2 p-3">
+                      {messages.length === 0 && (
+                        <div className="space-y-2">
+                          {[
+                            "Build a snake game with a score board",
+                            "Make a portfolio page with dark theme and contact form",
+                            "Create a todo app saving to localStorage",
+                          ].map((idea) => (
+                            <button
+                              key={idea}
+                              type="button"
+                              onClick={() => setPrompt(idea)}
+                              className="w-full rounded-xl border border-white/10 bg-white/5 p-2 text-left text-xs text-slate-200 transition hover:border-cyan-400/40 hover:bg-cyan-500/10"
+                            >
+                              {idea}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {messages.map((m, i) => (
+                        <div
+                          key={i}
+                          className={`whitespace-pre-wrap rounded-xl px-3 py-2 text-xs ${
+                            m.role === "user"
+                              ? "ml-5 bg-cyan-500/15 text-cyan-50"
+                              : "mr-3 border border-white/10 bg-white/5 text-slate-200"
+                          }`}
+                        >
+                          {m.content}
+                        </div>
+                      ))}
+
+                      {busy && (
+                        <p className="flex items-center gap-2 text-xs text-slate-300">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Agent is writing files…
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex items-end gap-2 border-t border-white/10 p-3">
+                      <Textarea
+                        rows={2}
+                        value={prompt}
+                        placeholder="Describe the app or a change…"
+                        onChange={(e) => setPrompt(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            void send();
+                          }
+                        }}
+                        className="min-h-10 resize-none border-white/10 bg-white/5 text-sm text-white placeholder:text-slate-400"
+                      />
+                      <Button size="icon" onClick={() => void send()} disabled={busy} aria-label="Send to agent">
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#081827]">
+                    <div className="flex flex-wrap items-center gap-1 border-b border-white/10 px-2 py-2">
+                      <Button size="sm" variant={view === "preview" ? "default" : "ghost"} onClick={() => setView("preview")}>
+                        <Play className="mr-1 h-3.5 w-3.5" /> Preview
+                      </Button>
+                      <Button size="sm" variant={view === "code" ? "default" : "ghost"} onClick={() => setView("code")}>
+                        <FileCode2 className="mr-1 h-3.5 w-3.5" /> Code
+                      </Button>
+                      <Button size="sm" variant={view === "console" ? "default" : "ghost"} onClick={() => setView("console")}>
+                        <Terminal className="mr-1 h-3.5 w-3.5" /> Console
+                        {logs.some((l) => l.type === "error") && (
+                          <span className="ml-1 h-2 w-2 rounded-full bg-destructive" />
+                        )}
+                      </Button>
+
+                      {view === "preview" && (
+                        <div className="ml-2 flex gap-0.5">
+                          {(
+                            [
+                              ["desktop", Monitor],
+                              ["tablet", Tablet],
+                              ["mobile", Smartphone],
+                            ] as const
+                          ).map(([d, Icon]) => (
+                            <Button
+                              key={d}
+                              size="icon"
+                              variant={device === d ? "secondary" : "ghost"}
+                              className="h-8 w-8"
+                              aria-label={`${d} view`}
+                              onClick={() => setDevice(d)}
+                            >
+                              <Icon className="h-3.5 w-3.5" />
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="ml-auto flex gap-1">
+                        {view === "console" ? (
+                          <Button size="sm" variant="ghost" onClick={() => setLogs([])}>
+                            Clear
+                          </Button>
+                        ) : view === "preview" ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setLogs([]);
+                              setPreviewKey((k) => k + 1);
+                            }}
+                          >
+                            Reload
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              void navigator.clipboard.writeText(files[active] ?? "");
+                              toast.success(`Copied ${active}`);
+                            }}
+                          >
+                            <Copy className="mr-1 h-3.5 w-3.5" /> Copy
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {view === "console" ? (
+                      <div className="flex-1 overflow-y-auto bg-[#050d1b] p-2 font-mono text-xs text-slate-200">
+                        {!logs.length && <p className="text-slate-400">No console output yet.</p>}
+                        {logs.map((l, i) => (
+                          <p
+                            key={i}
+                            className={`border-b border-white/10 py-1 ${
+                              l.type === "error" ? "text-red-400" : l.type === "warn" ? "text-cyan-300" : ""
+                            }`}
+                          >
+                            [{l.type}] {l.message}
+                          </p>
+                        ))}
+                      </div>
+                    ) : view === "preview" ? (
+                      <div className="flex h-[560px] items-center justify-center overflow-auto bg-[#050d1b] p-4">
+                        <iframe
+                          key={previewKey}
+                          title="App sandbox"
+                          srcDoc={srcDoc}
+                          sandbox="allow-scripts allow-forms allow-modals allow-popups"
+                          style={{ width: device === "desktop" ? "100%" : device === "tablet" ? 768 : 375 }}
+                          className="h-full max-w-full rounded-xl border border-white/10 bg-white transition-all duration-300"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex min-h-[560px]">
+                        <div className="w-44 shrink-0 space-y-1 overflow-y-auto border-r border-white/10 bg-[#0b1626] p-2">
+                          {Object.keys(files).map((f) => (
+                            <div key={f} className="group flex items-center">
+                              <button
+                                onClick={() => setActive(f)}
+                                className={`flex-1 truncate rounded px-2 py-1 text-left text-xs ${
+                                  f === active ? "bg-cyan-500/10 text-cyan-100" : "text-slate-300 hover:bg-white/5"
+                                }`}
+                              >
+                                {f}
+                              </button>
+                              <button
+                                aria-label={`Delete ${f}`}
+                                className="hidden px-1 text-slate-400 group-hover:block"
+                                onClick={() => {
+                                  const next = { ...files };
+                                  delete next[f];
+                                  setFiles(next);
+                                  if (active === f) setActive(Object.keys(next)[0] ?? "");
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                          <button onClick={addFile} className="flex w-full items-center gap-1 px-2 py-1 text-xs text-cyan-300">
+                            <FilePlus2 className="h-3 w-3" /> Add file
+                          </button>
+                        </div>
+                        <textarea
+                          aria-label="File contents"
+                          disabled={!active}
+                          value={files[active] ?? ""}
+                          onChange={(e) => setFiles((cur) => ({ ...cur, [active]: e.target.value }))}
+                          spellCheck={false}
+                          className="h-full flex-1 resize-none bg-[#050d1b] p-3 font-mono text-xs text-slate-200 outline-none"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-          ))}
+          </div>
         </div>
-      </Card>
+      </div>
 
       <Dialog open={ghOpen} onOpenChange={setGhOpen}>
         <DialogContent>
@@ -576,8 +656,8 @@ export function CodeAgent() {
                 onChange={(e) => setGhToken(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Create one at github.com → Settings → Developer settings → Tokens with "repo"
-                access. It's used once and never saved.
+                Create one at github.com → Settings → Developer settings → Tokens with "repo" access.
+                It's used once and never saved.
               </p>
             </div>
             <Button className="w-full" onClick={() => github.mutate()} disabled={github.isPending}>
