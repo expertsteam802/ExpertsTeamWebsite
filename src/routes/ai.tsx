@@ -1,58 +1,51 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 
-import { ChrisAiChat, ChrisAiWorkspace } from "@/components/chris-ai";
-import { CodeAgent } from "@/components/code-agent";
-import { PageShell } from "@/components/layout/page-shell";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export const Route = createFileRoute("/ai")({
-  head: () => ({
-    meta: [
-      { title: "Experts Team 802 AI — app builder, plans & code assistant" },
-      {
-        name: "description",
-        content:
-          "Experts Team 802 AI helps you plan products, build apps, and generate working code inside a serious workspace.",
-      },
-      { property: "og:title", content: "Experts Team 802 AI — app builder, plans & code assistant" },
-      {
-        property: "og:description",
-        content:
-          "Ask Experts Team 802 AI to plan your product, design a database, or generate real app code.",
-      },
-    ],
-  }),
-  component: AiPage,
+const aiAttachment = z.object({
+  name: z.string().max(200).default("attachment"),
+  mimeType: z.string().max(100).optional(),
+  dataUrl: z.string().max(2000000).optional(),
+  text: z.string().max(40000).optional(),
+  size: z.number().max(20000000).optional(),
 });
 
-function AiPage() {
-  return (
-    <PageShell>
-      <section className="mx-auto max-w-5xl px-4 py-10">
-        <div className="animate-rise">
-          <h1 className="font-display text-3xl font-semibold tracking-tight">Experts Team 802 AI</h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Plan products, discuss architecture, build apps, and generate working code in a serious workspace.
-          </p>
-        </div>
+const aiRequest = z.object({
+  prompt: z.string().trim().min(1).max(6000),
+  mode: z.enum(["chat", "workspace", "plan"]),
+  history: z
+    .array(z.object({ role: z.string().max(20), content: z.string().max(4000) }))
+    .max(10)
+    .optional(),
+  attachments: z.array(aiAttachment).max(5).optional(),
+});
 
-        <Tabs defaultValue="agent" className="mt-6">
-          <TabsList>
-            <TabsTrigger value="agent">App builder agent</TabsTrigger>
-            <TabsTrigger value="chat">Chat</TabsTrigger>
-            <TabsTrigger value="workspace">Snippets</TabsTrigger>
-          </TabsList>
-          <TabsContent value="agent" className="pt-4">
-            <CodeAgent />
-          </TabsContent>
-          <TabsContent value="chat" className="pt-4">
-            <ChrisAiChat />
-          </TabsContent>
-          <TabsContent value="workspace" className="pt-4">
-            <ChrisAiWorkspace />
-          </TabsContent>
-        </Tabs>
-      </section>
-    </PageShell>
-  );
-}
+export const askChrisAi = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => aiRequest.parse(input))
+  .handler(async ({ data }) => {
+    const { askChrisAi: generate } = await import("./ai.server");
+    return generate(
+      {
+        ...data,
+        history: data.history ?? [],
+        attachments: data.attachments ?? [],
+      },
+      process.env["GEMINI_API_KEY"],
+    );
+  });
+
+export const generateExpertImage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z
+      .object({
+        prompt: z.string().trim().min(1).max(2000),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { generateExpertImage: generateImage } = await import("./ai.server");
+    return generateImage(data, process.env["GEMINI_API_KEY"]);
+  });
