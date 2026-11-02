@@ -43,6 +43,7 @@ export function ChrisAiChat() {
   const queryClient = useQueryClient();
   const ask = useServerFn(askChrisAi);
   const [input, setInput] = useState("");
+  const [liveAiReply, setLiveAiReply] = useState("");
 
   const { data: messages = [], isError: messagesError } = useQuery({
     queryKey: ["ai-chats", user?.id],
@@ -69,16 +70,33 @@ export function ChrisAiChat() {
         role: message.role,
         content: message.content,
       }));
+
       const result = await ask({ data: { prompt, mode: "chat", history } });
+      const reply = result.reply.trim();
+
+      if (!reply) {
+        throw new Error("Gemini returned an empty answer. Please try again.");
+      }
+
+      setLiveAiReply("");
+      for (let i = 1; i <= reply.length; i += 1) {
+        const partial = reply.slice(0, i);
+        setLiveAiReply(partial);
+        await new Promise((resolve) => setTimeout(resolve, 12));
+      }
+
       const { error: aiMessageError } = await supabase
         .from("ai_chats")
-        .insert({ user_id: user!.id, role: "ai", content: result.reply });
+        .insert({ user_id: user!.id, role: "ai", content: reply });
       if (aiMessageError) {
         throw new Error("Chris AI replied, but the reply could not be saved. Please try again.");
       }
+
+      setLiveAiReply("");
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] }),
     onError: (error: Error) => {
+      setLiveAiReply("");
       toast.error(error.message);
       void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
     },
@@ -90,6 +108,7 @@ export function ChrisAiChat() {
       if (error) throw error;
     },
     onSuccess: () => {
+      setLiveAiReply("");
       toast.success("Chat cleared");
       void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
     },
@@ -188,6 +207,16 @@ export function ChrisAiChat() {
             )}
           </div>
         ))}
+        {liveAiReply && (
+          <div className="flex gap-2 justify-start">
+            <span className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/15">
+              <Bot className="h-3.5 w-3.5 text-primary" />
+            </span>
+            <div className="max-w-[80%] rounded-2xl border border-border bg-secondary px-4 py-2">
+              <MessageBody content={liveAiReply} />
+            </div>
+          </div>
+        )}
         {send.isPending && (
           <p className="flex items-center gap-2 text-xs text-muted-foreground">
             <Loader2 className="h-3 w-3 animate-spin" /> Chris AI is thinking…
