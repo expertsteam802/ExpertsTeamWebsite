@@ -20,7 +20,7 @@ export type GeminiResponse = {
   promptFeedback?: { blockReason?: string };
 };
 
-const GEMINI_MODEL = "gemini-3.8-flash-lite";
+const GEMINI_MODEL = "gemini-3.5-flash-lite";
 
 export function resolveGeminiApiKey(apiKey?: string): string | undefined {
   return (
