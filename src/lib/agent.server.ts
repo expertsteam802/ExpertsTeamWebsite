@@ -195,7 +195,7 @@ export async function runAgent({ prompt, files, history }: AgentInput, apiKey?: 
   const priorityFiles = /(^|\\/)(package\\.json|vite\\.config\\.[^/]+|tsconfig\\.json|index\\.html|src\\/main\\.[^/]+|src\\/app\\.[^/]+|src\\/index\\.css|src\\/routes\\/[^/]+)$/i;
   const rankedEntries = entries.map(([name, content]) => {
     const lowerName = name.toLowerCase();
-    let score = priorityFiles.test(lowerName) ? 8 : 0;
+    let score = priorityFiles.some((path) => lowerName.endsWith(path) || lowerName.includes(path)) ? 8 : 0;
     for (const term of promptTerms) if (lowerName.includes(term)) score += 3;
     if (/lock|\\.map$|node_modules|dist\\//i.test(lowerName)) score -= 20;
     return { name, content, score };
