@@ -184,11 +184,11 @@ export function ChrisAiChat({
           const payload = dataLine.slice(5).trim();
           if (!payload || payload === "[DONE]") continue;
           const chunk = JSON.parse(payload) as {
-            candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+            candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>;
             error?: string;
           };
           if (chunk.error) throw new Error(chunk.error);
-          const text = chunk.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
+          const text = chunk.candidates?.[0]?.content?.parts?.filter((part) => !part.thought).map((part) => part.text ?? "").join("") ?? "";
           if (text) {
             streamedText += text;
             setStreamingReply(streamedText);
