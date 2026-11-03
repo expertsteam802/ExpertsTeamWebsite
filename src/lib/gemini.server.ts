@@ -179,7 +179,7 @@ export async function generateGeminiContent(
   apiKey?: string,
   providerOrder?: string[],
 ): Promise<GeminiResponse> {
-  request = compactSmartRequest(request);
+  let activeRequest = compactSmartRequest(request);
   const requestedOrder =
     providerOrder ??
     (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
@@ -211,7 +211,7 @@ export async function generateGeminiContent(
           {
             method: "POST",
             headers: { "x-goog-api-key": resolvedApiKey, "Content-Type": "application/json" },
-            body: JSON.stringify(request),
+            body: JSON.stringify(activeRequest),
             signal: AbortSignal.timeout(45000),
           },
         );
@@ -222,15 +222,27 @@ export async function generateGeminiContent(
         return (await response.json()) as GeminiResponse;
       }
       if (provider === "groq" || provider === "openrouter") {
-        return await callOpenAiCompatible(provider, request);
+        return await callOpenAiCompatible(provider, activeRequest);
       }
       if (provider === "mistral") return await callMistral(request);
       if (provider === "cloudflare") return await callCloudflare(request);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (message === "not_configured") continue;
-      if (/HTTP 413|HTTP 429|rate.?limit|quota|RESOURCE_EXHAUSTED|tokens per minute/i.test(message))
+      if (/HTTP 413|HTTP 429|rate.?limit|quota|RESOURCE_EXHAUSTED|tokens per minute/i.test(message)) {
         markProviderCoolingDown(provider, 60);
+        // Give the next provider a smaller prompt and output reserve automatically.
+        activeRequest = compactSmartRequest(
+          {
+            ...activeRequest,
+            generationConfig: {
+              ...activeRequest.generationConfig,
+              maxOutputTokens: Math.min(activeRequest.generationConfig?.maxOutputTokens ?? 1400, 1400),
+            },
+          },
+          4500,
+        );
+      }
       else if (/HTTP 401|HTTP 403|HTTP 404/i.test(message)) markProviderCoolingDown(provider, 300);
       else if (/HTTP 5\d\d|timed out|timeout/i.test(message)) markProviderCoolingDown(provider, 20);
       failures.push(`${provider}: ${message}`);
