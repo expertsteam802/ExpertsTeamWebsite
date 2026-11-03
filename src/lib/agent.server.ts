@@ -44,6 +44,33 @@ function isSafeProjectPath(path: string): boolean {
   );
 }
 
+export type AgentPlan = { summary: string; steps: string[] };
+
+export async function createAgentPlan(prompt: string, files: Record<string, string>, apiKey?: string): Promise<AgentPlan> {
+  const cleanPrompt = prompt.trim();
+  if (!cleanPrompt) throw new Error("Describe what you want to build.");
+  const fileList = Object.keys(files).slice(0, 80).join("\\n");
+  const response = await generateGeminiContent({
+    systemInstruction: {
+      parts: [{ text: "You are the planning lead for ExpertsTeam Studio. Do not write or modify code. Return valid JSON only with shape {\\\"summary\\\": string, \\\"steps\\\": string[]}. Make a safe, incremental plan of 2 to 6 small implementation steps. Each step must be independently reviewable and avoid changing unrelated files. Mention testing/verification as a final step when useful." }],
+    },
+    generationConfig: { responseMimeType: "application/json", maxOutputTokens: 2500 },
+    contents: [{
+      role: "user",
+      parts: [{ text: `User request: ${cleanPrompt}\\nCurrent project files: ${fileList || "(empty starter project)"}\\nReturn only the plan JSON.` }],
+    }],
+  }, apiKey);
+  const raw = response.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
+  try {
+    const parsed = JSON.parse(raw.trim()) as { summary?: string; steps?: unknown };
+    const steps = Array.isArray(parsed.steps) ? parsed.steps.filter((step): step is string => typeof step === "string").slice(0, 6) : [];
+    if (!steps.length) throw new Error("No steps");
+    return { summary: typeof parsed.summary === "string" ? parsed.summary : "Here is the implementation plan.", steps };
+  } catch {
+    throw new Error("The AI could not create a valid step-by-step plan. Please rephrase the request and try again.");
+  }
+}
+
 export async function runAgent({ prompt, files, history }: AgentInput, apiKey?: string) {
   const cleanPrompt = prompt.trim();
   if (!cleanPrompt) throw new Error("Tell the agent what to build.");
