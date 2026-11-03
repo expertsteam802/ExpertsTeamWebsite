@@ -21,6 +21,11 @@ export type GeminiResponse = {
 };
 
 const GEMINI_MODEL = process.env["GEMINI_CODE_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.6-flash";
+const providerCooldowns = new Map<string, number>();
+
+export function markProviderCoolingDown(provider: string, seconds = 60) {
+  providerCooldowns.set(provider, Date.now() + Math.max(5, Math.min(seconds, 300)) * 1000);
+}
 
 export function resolveGeminiApiKey(apiKey?: string): string | undefined {
   return (
@@ -78,6 +83,28 @@ async function callOpenAiCompatible(
   return asGeminiResponse(output);
 }
 
+async function callMistral(request: GeminiRequest): Promise<GeminiResponse> {
+  const apiKey = process.env["MISTRAL_API_KEY"]?.trim();
+  if (!apiKey) throw new Error("not_configured");
+  const model = process.env["MISTRAL_MODEL"] || "mistral-small-latest";
+  const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      messages: openAiMessages(request),
+      max_tokens: request.generationConfig?.maxOutputTokens ?? 8192,
+      ...(request.generationConfig?.responseMimeType === "application/json" ? { response_format: { type: "json_object" } } : {}),
+    }),
+    signal: AbortSignal.timeout(45000),
+  });
+  if (!response.ok) throw new Error(`Mistral HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`);
+  const data = await response.json() as { choices?: { message?: { content?: string | null } }[] };
+  const output = data.choices?.[0]?.message?.content;
+  if (!output) throw new Error("Mistral returned an empty response.");
+  return asGeminiResponse(output);
+}
+
 async function callCloudflare(request: GeminiRequest): Promise<GeminiResponse> {
   const accountId = process.env["CLOUDFLARE_ACCOUNT_ID"]?.trim();
   const apiToken = process.env["CLOUDFLARE_API_TOKEN"]?.trim();
@@ -103,11 +130,12 @@ export async function generateGeminiContent(
   apiKey?: string,
   providerOrder?: string[],
 ): Promise<GeminiResponse> {
-  const configuredOrder = providerOrder ?? (process.env["AI_PROVIDER_ORDER"] || "gemini,groq,openrouter,cloudflare")
+  const configuredOrder = providerOrder ?? (process.env["AI_PROVIDER_ORDER"] || "gemini,groq,mistral,openrouter,cloudflare")
     .split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
   const failures: string[] = [];
 
   for (const provider of configuredOrder) {
+    if ((providerCooldowns.get(provider) ?? 0) > Date.now()) continue;
     try {
       if (provider === "gemini") {
         const resolvedApiKey = resolveGeminiApiKey(apiKey);
@@ -127,10 +155,13 @@ export async function generateGeminiContent(
       if (provider === "groq" || provider === "openrouter") {
         return await callOpenAiCompatible(provider, request);
       }
+      if (provider === "mistral") return await callMistral(request);
       if (provider === "cloudflare") return await callCloudflare(request);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (message === "not_configured") continue;
+      if (/HTTP 429|rate.?limit|quota|RESOURCE_EXHAUSTED/i.test(message)) markProviderCoolingDown(provider, 60);
+      else if (/HTTP 5\\d\\d|timed out|timeout/i.test(message)) markProviderCoolingDown(provider, 20);
       failures.push(`${provider}: ${message}`);
     }
   }
