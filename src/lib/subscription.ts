@@ -37,6 +37,7 @@ export type UpgradeRequest = {
   id: string;
   user_id: string;
   amount: number;
+  kind?: string;
   method: string;
   reference: string;
   note: string | null;
