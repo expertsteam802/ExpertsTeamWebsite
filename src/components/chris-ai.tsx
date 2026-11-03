@@ -105,6 +105,7 @@ export function ChrisAiChat({
   const [threadId, setThreadId] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<UploadedFile[]>([]);
   const [generatedImage, setGeneratedImage] = useState<{ mimeType: string; data: string } | null>(null);
+  const [streamingReply, setStreamingReply] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -148,15 +149,54 @@ export function ChrisAiChat({
         content: message.content,
       }));
 
-      const result = await ask({
-        data: {
-          prompt,
-          mode: "chat",
-          history,
-          attachments,
+      setStreamingReply("");
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData.session?.access_token) {
+        throw new Error("Your session expired. Please sign in again.");
+      }
+
+      const response = await fetch("/api/ai/stream", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionData.session.access_token}`,
         },
+        body: JSON.stringify({ prompt, history, attachments }),
       });
-      const reply = result.reply.trim();
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(errorBody.error || `Expert AI request failed (${response.status}).`);
+      }
+      if (!response.body) throw new Error("The AI response stream was unavailable.");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let streamedText = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+        for (const event of events) {
+          const dataLine = event.split("\n").find((line) => line.startsWith("data:"));
+          if (!dataLine) continue;
+          const payload = dataLine.slice(5).trim();
+          if (!payload || payload === "[DONE]") continue;
+          const chunk = JSON.parse(payload) as {
+            candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+            error?: string;
+          };
+          if (chunk.error) throw new Error(chunk.error);
+          const text = chunk.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
+          if (text) {
+            streamedText += text;
+            setStreamingReply(streamedText);
+          }
+        }
+      }
+      const reply = streamedText.trim();
       if (!reply) {
         throw new Error("Expert AI returned an empty answer. Please try again.");
       }
@@ -169,9 +209,11 @@ export function ChrisAiChat({
       }
 
       setAttachments([]);
+      setStreamingReply("");
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] }),
     onError: (error: Error) => {
+      setStreamingReply("");
       toast.error(error.message);
       void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
     },
@@ -214,7 +256,13 @@ export function ChrisAiChat({
 
   if (!user) {
     return (
-      <Card className="p-8 text-center">
+      <Card className="relative p-8 text-center">
+        {onMinimize && (
+          <Button variant="ghost" size="icon" aria-label="Minimize Expert AI" title="Minimize Expert AI"
+            className="absolute right-3 top-3" onClick={onMinimize}>
+            <Minimize2 className="h-4 w-4" />
+          </Button>
+        )}
         <Bot className="mx-auto h-8 w-8 text-primary" />
         <h2 className="mt-3 font-display text-xl font-semibold">Sign in to chat with Expert AI</h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -330,9 +378,18 @@ export function ChrisAiChat({
           </div>
         ))}
         {send.isPending && (
-          <p className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Loader2 className="h-3 w-3 animate-spin" /> Expert AI is thinking…
-          </p>
+          <div className="flex justify-start gap-2">
+            <span className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/15">
+              <Bot className="h-3.5 w-3.5 text-primary" />
+            </span>
+            <div className="max-w-[80%] rounded-2xl border border-border bg-secondary px-4 py-2">
+              {streamingReply ? <MessageBody content={streamingReply} /> : (
+                <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Expert AI is thinking…
+                </p>
+              )}
+            </div>
+          </div>
         )}
       </div>
 
