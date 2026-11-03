@@ -157,6 +157,19 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const [aiChatOpen, setAiChatOpen] = useState(false);
 
+  // Adsterra Social Bar: load once for the site. VAST pre-roll will be integrated separately.
+  useEffect(() => {
+    const scriptId = "expertsteam-adsterra-social-bar";
+    if (document.getElementById(scriptId)) return;
+
+    const script = document.createElement("script");
+    script.id = scriptId;
+    script.setAttribute("data-cfasync", "false");
+    script.src = "https://bauval.org/14/c579e84ee0e4f92ac9a4cb6e02708c8a";
+    script.async = true;
+    document.body.appendChild(script);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
