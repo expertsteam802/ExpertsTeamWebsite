@@ -6,15 +6,18 @@ import { supabase } from "@/integrations/supabase/client";
 
 type YouTubePlayer = { destroy: () => void; getIframe: () => HTMLIFrameElement };
 type YouTubeApi = {
-  Player: new (element: HTMLElement, options: {
-    videoId: string;
-    playerVars?: Record<string, string | number>;
-    events?: {
-      onReady?: (event: { target: YouTubePlayer }) => void;
-      onStateChange?: (event: { data: number }) => void;
-      onError?: (event: { data: number }) => void;
-    };
-  }) => YouTubePlayer;
+  Player: new (
+    element: HTMLElement,
+    options: {
+      videoId: string;
+      playerVars?: Record<string, string | number>;
+      events?: {
+        onReady?: (event: { target: YouTubePlayer }) => void;
+        onStateChange?: (event: { data: number }) => void;
+        onError?: (event: { data: number }) => void;
+      };
+    },
+  ) => YouTubePlayer;
   PlayerState: { PLAYING: number };
 };
 declare global {
@@ -34,7 +37,9 @@ function loadYouTubeApi(): Promise<YouTubeApi> {
         if (window.YT?.Player) resolve(window.YT);
         else reject(new Error("YouTube player API did not initialize."));
       };
-      let script = document.querySelector<HTMLScriptElement>('script[src="https://www.youtube.com/iframe_api"]');
+      let script = document.querySelector<HTMLScriptElement>(
+        'script[src="https://www.youtube.com/iframe_api"]',
+      );
       if (!script) {
         script = document.createElement("script");
         script.src = "https://www.youtube.com/iframe_api";
@@ -53,8 +58,10 @@ function playerErrorMessage(code: number) {
   if (code === 2) return "This video has an invalid ID or URL.";
   if (code === 5) return "YouTube could not play this video in the embedded player.";
   if (code === 100) return "This video was removed, deleted or made private.";
-  if (code === 101 || code === 150) return "The video owner does not allow playback on other websites.";
-  if (code === 153) return "YouTube did not receive the required referrer information. Check the site's domain and referrer policy.";
+  if (code === 101 || code === 150)
+    return "The video owner does not allow playback on other websites.";
+  if (code === 153)
+    return "YouTube did not receive the required referrer information. Check the site's domain and referrer policy.";
   return `YouTube player error (${code}). Try opening the video on YouTube.`;
 }
 type Props = { videoId: string | null; title: string; onClose: () => void };
@@ -71,49 +78,62 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
     countedRef.current = false;
     setPlaybackError(null);
     setLoading(true);
-    void loadYouTubeApi().then((YT) => {
-      if (cancelled || !playerContainerRef.current) return;
-      const iframe = document.createElement("iframe");
-      iframe.title = title;
-      iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}&autoplay=1&playsinline=1&rel=0`;
-      iframe.referrerPolicy = "strict-origin-when-cross-origin";
-      iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
-      iframe.allowFullscreen = true;
-      iframe.className = "h-full w-full";
-      playerContainerRef.current.replaceChildren(iframe);
-      playerRef.current = new YT.Player(iframe, {
-        videoId,
-        playerVars: { autoplay: 1, playsinline: 1, rel: 0, enablejsapi: 1, origin: window.location.origin },
-        events: {
-          onReady: (event) => {
-            const iframe = event.target.getIframe();
-            iframe.referrerPolicy = "strict-origin-when-cross-origin";
-            iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
-            iframe.allowFullscreen = true;
+    void loadYouTubeApi()
+      .then((YT) => {
+        if (cancelled || !playerContainerRef.current) return;
+        const iframe = document.createElement("iframe");
+        iframe.title = title;
+        iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}&autoplay=1&playsinline=1&rel=0`;
+        iframe.referrerPolicy = "strict-origin-when-cross-origin";
+        iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+        iframe.allowFullscreen = true;
+        iframe.className = "h-full w-full";
+        playerContainerRef.current.replaceChildren(iframe);
+        playerRef.current = new YT.Player(iframe, {
+          videoId,
+          playerVars: {
+            autoplay: 1,
+            playsinline: 1,
+            rel: 0,
+            enablejsapi: 1,
+            origin: window.location.origin,
           },
-          onStateChange: (event) => {
-            if (event.data === YT.PlayerState.PLAYING) {
-              setLoading(false);
-              if (!countedRef.current) {
-                countedRef.current = true;
-                void supabase.rpc("record_video_view", { p_video_id: videoId }).then(({ error }) => {
-                  if (error) console.error("[Video analytics] Could not record view:", error.message);
-                });
+          events: {
+            onReady: (event) => {
+              const iframe = event.target.getIframe();
+              iframe.referrerPolicy = "strict-origin-when-cross-origin";
+              iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+              iframe.allowFullscreen = true;
+            },
+            onStateChange: (event) => {
+              if (event.data === YT.PlayerState.PLAYING) {
+                setLoading(false);
+                if (!countedRef.current) {
+                  countedRef.current = true;
+                  void supabase
+                    .rpc("record_video_view", { p_video_id: videoId })
+                    .then(({ error }) => {
+                      if (error)
+                        console.error("[Video analytics] Could not record view:", error.message);
+                    });
+                }
               }
-            }
+            },
+            onError: (event) => {
+              setLoading(false);
+              setPlaybackError(playerErrorMessage(event.data));
+            },
           },
-          onError: (event) => {
-            setLoading(false);
-            setPlaybackError(playerErrorMessage(event.data));
-          },
-        },
+        });
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setLoading(false);
+          setPlaybackError(
+            error instanceof Error ? error.message : "Could not load the video player.",
+          );
+        }
       });
-    }).catch((error: unknown) => {
-      if (!cancelled) {
-        setLoading(false);
-        setPlaybackError(error instanceof Error ? error.message : "Could not load the video player.");
-      }
-    });
     return () => {
       cancelled = true;
       playerRef.current?.destroy();
@@ -125,20 +145,36 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
   return (
     <Dialog open={!!videoId} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-5xl">
-        <DialogHeader><DialogTitle className="pr-8 text-left">{title}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle className="pr-8 text-left">{title}</DialogTitle>
+        </DialogHeader>
         <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-secondary">
           {videoId && <div ref={playerContainerRef} className="h-full w-full" />}
           {loading && !playbackError && (
-            <div className="absolute inset-0 grid place-items-center bg-background/70 text-sm text-muted-foreground">Loading video…</div>
+            <div className="absolute inset-0 grid place-items-center bg-background/70 text-sm text-muted-foreground">
+              Loading video…
+            </div>
           )}
           {playbackError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center">
               <p className="max-w-xl text-sm text-destructive">{playbackError}</p>
-              {videoId && <Button asChild><a href={`https://www.youtube.com/watch?v=${videoId}`} target="_blank" rel="noreferrer">Open on YouTube</a></Button>}
+              {videoId && (
+                <Button asChild>
+                  <a
+                    href={`https://www.youtube.com/watch?v=${videoId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open on YouTube
+                  </a>
+                </Button>
+              )}
             </div>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">A view is counted only after YouTube confirms that playback has started.</p>
+        <p className="text-xs text-muted-foreground">
+          A view is counted only after YouTube confirms that playback has started.
+        </p>
       </DialogContent>
     </Dialog>
   );

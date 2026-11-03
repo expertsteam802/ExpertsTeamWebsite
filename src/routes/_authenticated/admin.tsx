@@ -86,9 +86,11 @@ function AdminPage() {
     enabled: isAdmin,
     refetchInterval: 30000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("videos")
+      const { data, error } = await supabase
+        .from("videos")
         .select("id, title, views, category, created_at")
-        .order("views", { ascending: false }).limit(100);
+        .order("views", { ascending: false })
+        .limit(100);
       if (error) throw error;
       return data;
     },
@@ -509,7 +511,10 @@ function AdminPage() {
                     </span>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="video-analytics" className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                <TabsTrigger
+                  value="video-analytics"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
                   <Video className="h-4 w-4" /> Video analytics
                 </TabsTrigger>
                 <TabsTrigger
@@ -660,34 +665,83 @@ function AdminPage() {
               <TabsContent value="video-analytics" className="mt-0 space-y-6">
                 <div>
                   <h2 className="font-display text-2xl font-semibold">Video performance</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">Real playback starts recorded by the video player. Ad impressions are not included.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Real playback starts recorded by the video player. Ad impressions are not
+                    included.
+                  </p>
                 </div>
                 <Card className="min-h-[300px] gap-4 p-8 sm:p-10">
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Total video views</p>
-                      <p className="mt-3 font-display text-6xl font-bold tracking-tight tabular-nums sm:text-7xl">{videoStatsLoading ? "…" : totalVideoViews.toLocaleString()}</p>
+                      <p className="mt-3 font-display text-6xl font-bold tracking-tight tabular-nums sm:text-7xl">
+                        {videoStatsLoading ? "…" : totalVideoViews.toLocaleString()}
+                      </p>
                     </div>
-                    <div className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary sm:h-24 sm:w-24"><Eye className="h-10 w-10 sm:h-12 sm:w-12" /></div>
+                    <div className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary sm:h-24 sm:w-24">
+                      <Eye className="h-10 w-10 sm:h-12 sm:w-12" />
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-6 border-t border-border/70 pt-5 text-sm">
-                    <div><p className="text-2xl font-semibold tabular-nums">{videoStats.length}</p><p className="text-muted-foreground">Videos tracked</p></div>
-                    <div><p className="text-2xl font-semibold tabular-nums">{videoStats.reduce((best, video) => Math.max(best, Number(video.views ?? 0)), 0).toLocaleString()}</p><p className="text-muted-foreground">Most views on one video</p></div>
+                    <div>
+                      <p className="text-2xl font-semibold tabular-nums">{videoStats.length}</p>
+                      <p className="text-muted-foreground">Videos tracked</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-semibold tabular-nums">
+                        {videoStats
+                          .reduce((best, video) => Math.max(best, Number(video.views ?? 0)), 0)
+                          .toLocaleString()}
+                      </p>
+                      <p className="text-muted-foreground">Most views on one video</p>
+                    </div>
                   </div>
                 </Card>
                 <Card className="gap-4 p-5 sm:p-6">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div><h3 className="font-display text-lg font-semibold">Most-watched videos</h3><p className="text-sm text-muted-foreground">Automatically refreshes every 30 seconds.</p></div>
-                    <Button variant="outline" size="sm" onClick={() => void queryClient.invalidateQueries({ queryKey: ["admin", "video-analytics"] })}><RefreshCw className="mr-2 h-4 w-4" /> Refresh views</Button>
+                    <div>
+                      <h3 className="font-display text-lg font-semibold">Most-watched videos</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Automatically refreshes every 30 seconds.
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        void queryClient.invalidateQueries({
+                          queryKey: ["admin", "video-analytics"],
+                        })
+                      }
+                    >
+                      <RefreshCw className="mr-2 h-4 w-4" /> Refresh views
+                    </Button>
                   </div>
                   <div className="space-y-3">
                     {videoStats.map((video, index) => (
-                      <div key={video.id} className="flex items-center justify-between gap-4 rounded-xl border border-border/70 p-4">
-                        <div className="min-w-0"><p className="truncate font-medium">{index + 1}. {video.title}</p><p className="mt-1 text-xs capitalize text-muted-foreground">{video.category}</p></div>
-                        <div className="flex shrink-0 items-center gap-2 text-lg font-semibold tabular-nums"><Eye className="h-4 w-4 text-primary" />{Number(video.views ?? 0).toLocaleString()}</div>
+                      <div
+                        key={video.id}
+                        className="flex items-center justify-between gap-4 rounded-xl border border-border/70 p-4"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">
+                            {index + 1}. {video.title}
+                          </p>
+                          <p className="mt-1 text-xs capitalize text-muted-foreground">
+                            {video.category}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2 text-lg font-semibold tabular-nums">
+                          <Eye className="h-4 w-4 text-primary" />
+                          {Number(video.views ?? 0).toLocaleString()}
+                        </div>
                       </div>
                     ))}
-                    {!videoStatsLoading && videoStats.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No videos have been added yet.</p>}
+                    {!videoStatsLoading && videoStats.length === 0 && (
+                      <p className="py-8 text-center text-sm text-muted-foreground">
+                        No videos have been added yet.
+                      </p>
+                    )}
                   </div>
                 </Card>
               </TabsContent>
