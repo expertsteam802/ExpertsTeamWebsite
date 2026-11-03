@@ -11,13 +11,24 @@ permissions:
 jobs:
   deploy:
     name: Production deployment
-    if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
     runs-on: ubuntu-latest
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
+      - name: Check required Vercel credentials
+        shell: bash
+        run: |
+          missing=()
+          [[ -n "$VERCEL_TOKEN" ]] || missing+=("VERCEL_TOKEN")
+          [[ -n "$VERCEL_ORG_ID" ]] || missing+=("VERCEL_ORG_ID")
+          [[ -n "$VERCEL_PROJECT_ID" ]] || missing+=("VERCEL_PROJECT_ID")
+          if (( ${#missing[@]} )); then
+            echo "::error title=Vercel credentials missing::Add these GitHub Actions repository secrets: ${missing[*]}"
+            exit 1
+          fi
+
       - name: Check out repository
         uses: actions/checkout@v4
 
@@ -38,13 +49,3 @@ jobs:
 
       - name: Deploy prebuilt output to production
         run: npx vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
-
-  configuration-required:
-    name: Vercel credentials required
-    if: ${{ secrets.VERCEL_TOKEN == '' || secrets.VERCEL_ORG_ID == '' || secrets.VERCEL_PROJECT_ID == '' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Explain required repository secrets
-        run: |
-          echo "::notice title=Vercel deployment not started::Add VERCEL_TOKEN, VERCEL_ORG_ID, and VERCEL_PROJECT_ID under GitHub Settings > Secrets and variables > Actions. Then rerun this workflow."
-          echo "Deployment skipped: VERCEL_TOKEN, VERCEL_ORG_ID, and VERCEL_PROJECT_ID must be configured as GitHub Actions secrets."
