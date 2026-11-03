@@ -126,9 +126,9 @@ export async function runAgent({ prompt, files, history }: AgentInput, apiKey?: 
     })
     .sort((a, b) => b.score - a.score);
   const selected: Array<{ name: string; content: string }> = [];
-  let remainingCharacters = 26000;
+  let remainingCharacters = 6500;
   for (const entry of rankedEntries) {
-    if (remainingCharacters <= 0 || selected.length >= 28) break;
+    if (remainingCharacters <= 0 || selected.length >= 16) break;
     const content = entry.content.slice(0, Math.min(entry.content.length, remainingCharacters));
     if (!content) continue;
     selected.push({ name: entry.name, content });
