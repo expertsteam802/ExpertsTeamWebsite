@@ -43,6 +43,7 @@ export function compactSmartContents(
   const latestUserIndex = contents.findLastIndex((item) => item.role === "user");
   const latestIndex = latestUserIndex >= 0 ? latestUserIndex : contents.length - 1;
   const latest = contents[latestIndex];
+  if (!latest) return [];
   const older = contents.slice(0, latestIndex).slice(-4);
 
   const latestTextParts = latest.parts.filter((part) => typeof part.text === "string");
@@ -57,6 +58,7 @@ export function compactSmartContents(
   const compactedHistory: SmartContent[] = [];
   for (let index = older.length - 1; index >= 0; index--) {
     const item = older[index];
+    if (!item) continue;
     const text = item.parts
       .filter((part) => typeof part.text === "string")
       .map((part) => part.text ?? "")
