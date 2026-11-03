@@ -47,12 +47,15 @@ export function UpgradeDialog() {
   });
 
   const pending = (requests ?? []).find((request) => request.status === "pending");
-  const price = Number(settings.subscription_price);
+  const configuredPrice = Number(settings.subscription_price);
+  const price = Number.isFinite(configuredPrice) && configuredPrice > 0 ? configuredPrice : 1;
   const payoutAccount = settings.payout_account?.trim();
   const activeMethod = PAYMENT_METHODS.find((item) => item.value === method)!;
 
   const submit = useMutation({
     mutationFn: async () => {
+      if (pending) throw new Error("You already have a payment awaiting review.");
+      if (!payoutAccount) throw new Error("The creator has not configured a payment destination yet.");
       if (!user) throw new Error("Sign in first.");
       if (reference.trim().length < 4) {
         throw new Error("Paste the payment reference or transaction ID (at least 4 characters).");
