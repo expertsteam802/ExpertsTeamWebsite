@@ -392,7 +392,7 @@ function AdminPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1500px] px-4 py-6 sm:py-8">
+      <section className="mx-auto w-full max-w-none px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
         <Tabs defaultValue="overview">
           <div className="grid gap-6 lg:grid-cols-[248px_minmax(0,1fr)]">
             <aside className="h-fit rounded-2xl border border-border/70 bg-card/70 p-3 shadow-sm lg:sticky lg:top-24">
