@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 
-type YouTubePlayer = { destroy: () => void };
+type YouTubePlayer = { destroy: () => void; getIframe: () => HTMLIFrameElement };
 type YouTubeApi = {
   Player: new (element: HTMLElement, options: {
     videoId: string;
     playerVars?: Record<string, string | number>;
     events?: {
+      onReady?: (event: { target: YouTubePlayer }) => void;
       onStateChange?: (event: { data: number }) => void;
       onError?: (event: { data: number }) => void;
     };
@@ -76,6 +77,12 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
         videoId,
         playerVars: { autoplay: 1, playsinline: 1, rel: 0, enablejsapi: 1, origin: window.location.origin },
         events: {
+          onReady: (event) => {
+            const iframe = event.target.getIframe();
+            iframe.referrerPolicy = "strict-origin-when-cross-origin";
+            iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+            iframe.allowFullscreen = true;
+          },
           onStateChange: (event) => {
             if (event.data === YT.PlayerState.PLAYING) {
               setLoading(false);
