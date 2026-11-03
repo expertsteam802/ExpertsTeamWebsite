@@ -41,16 +41,31 @@ export function resolveGeminiApiKey(apiKey?: string): string | undefined {
 }
 
 function openAiMessages(request: GeminiRequest) {
-  return [
-    {
-      role: "system",
-      content: request.systemInstruction.parts.map((part) => part.text).join("\n"),
-    },
-    ...request.contents.map((item) => ({
-      role: item.role === "model" ? "assistant" : "user",
-      content: item.parts.map((part) => part.text).join("\n"),
-    })),
-  ];
+  // Keep requests below small free-tier TPM windows. Four characters per token
+  // is a conservative approximation for mixed prose and code.
+  const maxInputCharacters = 16000;
+  const system = request.systemInstruction.parts.map((part) => part.text).join("\n").slice(0, 2200);
+  const recent = request.contents.slice(-6).map((item) => ({
+    role: item.role === "model" ? "assistant" : "user",
+    content: item.parts
+      .map((part) => part.text)
+      .join("\n")
+      .slice(-3200),
+  }));
+  const messages = [{ role: "system", content: system }, ...recent];
+  let remaining = maxInputCharacters - system.length;
+  for (let index = messages.length - 1; index >= 1; index--) {
+    const message = messages[index];
+    if (message.content.length > remaining) {
+      message.content = message.content.slice(-Math.max(0, remaining));
+    }
+    remaining -= message.content.length;
+    if (remaining <= 0) {
+      messages.splice(1, index - 1);
+      break;
+    }
+  }
+  return messages.filter((message) => message.content.length > 0);
 }
 
 function asGeminiResponse(text: string): GeminiResponse {
@@ -86,12 +101,12 @@ async function callOpenAiCompatible(
       body: JSON.stringify({
         model,
         messages: openAiMessages(request),
-        max_tokens: request.generationConfig?.maxOutputTokens ?? 8192,
+        max_tokens: Math.min(request.generationConfig?.maxOutputTokens ?? 1800, 1800),
         ...(request.generationConfig?.responseMimeType === "application/json"
           ? { response_format: { type: "json_object" } }
           : {}),
       }),
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.timeout(isGroq ? 30000 : 60000),
     },
   );
   if (!response.ok)
@@ -162,7 +177,7 @@ export async function generateGeminiContent(
 ): Promise<GeminiResponse> {
   const configuredOrder =
     providerOrder ??
-    (process.env["AI_PROVIDER_ORDER"] || "gemini,groq,mistral,openrouter,cloudflare")
+    (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
       .split(",")
       .map((item) => item.trim().toLowerCase())
       .filter(Boolean);
@@ -201,7 +216,7 @@ export async function generateGeminiContent(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (message === "not_configured") continue;
-      if (/HTTP 429|rate.?limit|quota|RESOURCE_EXHAUSTED/i.test(message))
+      if (/HTTP 413|HTTP 429|rate.?limit|quota|RESOURCE_EXHAUSTED|tokens per minute/i.test(message))
         markProviderCoolingDown(provider, 60);
       else if (/HTTP 401|HTTP 403|HTTP 404/i.test(message)) markProviderCoolingDown(provider, 300);
       else if (/HTTP 5\d\d|timed out|timeout/i.test(message)) markProviderCoolingDown(provider, 20);
