@@ -22,6 +22,7 @@ Apply these in filename order if they are not already recorded as applied:
 5. `20261104040000_profile_entitlement_security.sql` — blocks users from editing their own credits/subscription entitlements and removes first-signup admin escalation.
 6. `20261104050000_project_ownership_constraints.sql` — user deletion cascades for Studio projects and run records.
 7. `20261104060000_atomic_subscription_review.sql` — reviews payments and grants access in one database transaction.
+8. `20261104070000_subscription_request_integrity.sql` — enforces admin-configured plan prices and protects pending payment request fields.
 
 The Studio payment workflow currently uses manual payment-reference submission and admin confirmation. Approval grants 30 days of access and the configured credit allowance. It is not automatic recurring billing; automatic renewal needs a payment processor secret and webhook configuration.
 
