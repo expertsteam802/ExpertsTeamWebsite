@@ -94,24 +94,36 @@ function fileToText(file: File): Promise<string> {
 }
 
 function loadFileForAi(file: File): Promise<UploadedFile> {
+  const textLike =
+    file.type.startsWith("text/") ||
+    /\.(txt|md|json|csv|js|ts|tsx|jsx|html|css|sql|yaml|yml|xml)$/i.test(file.name);
+  if (file.size > (textLike ? 200_000 : 1_200_000)) {
+    return Promise.reject(
+      new Error(`${file.name} is too large. Text files must be under 200 KB and images under 1.2 MB.`),
+    );
+  }
+  if (!textLike && !file.type.startsWith("image/")) {
+    return Promise.reject(
+      new Error(`${file.name} is not supported. Upload text files or images.`),
+    );
+  }
+  if (textLike) {
+    return fileToText(file).then((text) => ({
+      name: file.name,
+      mimeType: file.type || "text/plain",
+      text: text.slice(0, 80_000),
+      size: file.size,
+    }));
+  }
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUrl = String(reader.result ?? "");
-      const text =
-        file.type.startsWith("text/") ||
-        /\.(txt|md|json|csv|js|ts|tsx|jsx|html|css|sql|yaml|yml|xml)$/i.test(file.name)
-          ? await fileToText(file).catch(() => "")
-          : "";
-
+    reader.onload = () =>
       resolve({
         name: file.name,
-        mimeType: file.type || "application/octet-stream",
-        dataUrl,
-        text: text || undefined,
+        mimeType: file.type || "image/png",
+        dataUrl: String(reader.result ?? ""),
         size: file.size,
       });
-    };
     reader.onerror = () => reject(new Error(`Could not read ${file.name}.`));
     reader.readAsDataURL(file);
   });
@@ -328,8 +340,19 @@ export function ChrisAiChat({
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || !files.length) return;
-    const next = await Promise.all(Array.from(files).slice(0, 5).map(loadFileForAi));
-    setAttachments((current) => [...current, ...next].slice(0, 5));
+    try {
+      const next = await Promise.all(Array.from(files).slice(0, 3).map(loadFileForAi));
+      setAttachments((current) => {
+        const combined = [...current, ...next].slice(0, 3);
+        if (combined.reduce((total, item) => total + (item.size ?? 0), 0) > 2_000_000) {
+          toast.error("Keep all attachments together under 2 MB.");
+          return current;
+        }
+        return combined;
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not load that attachment.");
+    }
   };
 
   const generateImageMutation = useMutation({
