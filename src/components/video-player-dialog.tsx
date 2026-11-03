@@ -85,14 +85,14 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
     const container = document.getElementById("container-e6d8442231a964256120f8359c3b588e");
     if (!container) return;
     container.replaceChildren();
+
+    // Keep the ad script in the document after loading. Removing it during the
+    // unlock transition can interrupt asynchronous ad rendering.
     const script = document.createElement("script");
     script.async = true;
     script.setAttribute("data-cfasync", "false");
     script.src = "https://bauval.org/21/e6d8442231a964256120f8359c3b588e";
     container.parentElement?.insertBefore(script, container);
-    return () => {
-      script.remove();
-    };
   }, [videoId, unlockedVideoId]);
 
   useEffect(() => {
@@ -104,15 +104,11 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
     void loadYouTubeApi()
       .then((YT) => {
         if (cancelled || !playerContainerRef.current) return;
-        const iframe = document.createElement("iframe");
-        iframe.title = title;
-        iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}&autoplay=0&playsinline=1&rel=0`;
-        iframe.referrerPolicy = "strict-origin-when-cross-origin";
-        iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
-        iframe.allowFullscreen = true;
-        iframe.className = "h-full w-full";
-        playerContainerRef.current.replaceChildren(iframe);
-        playerRef.current = new YT.Player(iframe, {
+        // The IFrame API expects a placeholder element and creates its own iframe.
+        const placeholder = document.createElement("div");
+        placeholder.className = "h-full w-full";
+        playerContainerRef.current.replaceChildren(placeholder);
+        playerRef.current = new YT.Player(placeholder, {
           videoId,
           playerVars: {
             autoplay: 0,
@@ -125,9 +121,11 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
             onReady: (event) => {
               setLoading(false);
               const iframe = event.target.getIframe();
+              iframe.title = title;
               iframe.referrerPolicy = "strict-origin-when-cross-origin";
               iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
               iframe.allowFullscreen = true;
+              iframe.className = "h-full w-full";
             },
             onStateChange: (event) => {
               if (event.data === YT.PlayerState.PLAYING) {
