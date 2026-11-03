@@ -17,6 +17,7 @@ let containerPromise: Promise<WebContainerInstance> | null = null;
 let containerInstance: WebContainerInstance | null = null;
 let devProcess: WebContainerProcess | null = null;
 let terminalProcess: WebContainerProcess | null = null;
+let terminalInputWriter: WritableStreamDefaultWriter<string> | null = null;
 
 function log(callbacks: RuntimeCallbacks, value: string) {
   callbacks.onOutput?.(value);
@@ -394,6 +395,7 @@ export async function startTerminalSession(onOutput: (text: string) => void) {
   terminalProcess = await instance.spawn("jsh", {
     terminal: { cols: 100, rows: 28 },
   });
+  terminalInputWriter = terminalProcess.input.getWriter();
 
   const activeProcess = terminalProcess;
   void activeProcess.output.pipeTo(
@@ -412,13 +414,19 @@ export async function startTerminalSession(onOutput: (text: string) => void) {
 }
 
 export async function writeTerminalInput(input: string) {
-  if (!terminalProcess) throw new Error("The terminal is not running. Start it again.");
-  await terminalProcess.input.write(input);
+  if (!terminalProcess || !terminalInputWriter) throw new Error("The terminal is not running. Start it again.");
+  await terminalInputWriter.write(input);
 }
 
 export function stopTerminalSession() {
   terminalProcess?.kill();
   terminalProcess = null;
+  try {
+    terminalInputWriter?.releaseLock();
+  } catch {
+    // The writer may already have been released when the shell exited.
+  }
+  terminalInputWriter = null;
 }
 
 /**
