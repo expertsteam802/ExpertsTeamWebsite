@@ -178,7 +178,9 @@ export async function mountProjectFiles(
 
   // Remove files from the previously opened project while retaining installed
   // dependencies so switching projects does not require a full cold install.
-  const existingEntries = await instance.fs.readdir(instance.workdir);
+  const existingEntries = await instance.fs.readdir(instance.workdir, {
+    encoding: "utf-8",
+  });
   await Promise.all(
     existingEntries
       .filter((entry) => entry !== "node_modules")
