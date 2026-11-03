@@ -388,7 +388,10 @@ export function stopDevServer() {
  * Starts a persistent browser shell for project commands.
  * This is a WebContainer shell, not a privileged host Linux machine.
  */
-export async function startTerminalSession(onOutput: (text: string) => void) {
+export async function startTerminalSession(
+  onOutput: (text: string) => void,
+  onExit?: (exitCode: number) => void,
+) {
   const instance = await bootWebContainer();
   if (terminalProcess) return;
 
@@ -408,8 +411,17 @@ export async function startTerminalSession(onOutput: (text: string) => void) {
     onOutput(`\r\n[terminal output error] ${error instanceof Error ? error.message : String(error)}\r\n`);
   });
 
-  void activeProcess.exit.finally(() => {
-    if (terminalProcess === activeProcess) terminalProcess = null;
+  void activeProcess.exit.then((exitCode) => {
+    if (terminalProcess === activeProcess) {
+      terminalProcess = null;
+      try {
+        terminalInputWriter?.releaseLock();
+      } catch {
+        // The process may already have closed its input stream.
+      }
+      terminalInputWriter = null;
+    }
+    onExit?.(exitCode);
   });
 }
 
