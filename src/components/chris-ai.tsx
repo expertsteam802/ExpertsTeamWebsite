@@ -239,7 +239,7 @@ export function ChrisAiChat({
   }
 
   return (
-    <Card className="glow-panel flex h-[70vh] flex-col overflow-hidden">
+    <Card className="glow-panel flex h-full min-h-0 w-full flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/15">
@@ -279,7 +279,7 @@ export function ChrisAiChat({
         </div>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto p-4">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
         {messagesError && (
           <p role="alert" className="text-sm text-destructive">
             Could not load your saved messages. Please refresh and try again.
