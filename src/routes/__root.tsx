@@ -85,11 +85,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Chris Programs — Watch, Learn & Share Code" },
+      { title: "ExpertsTeam — Watch, Learn & Share Code" },
       {
         name: "description",
         content:
-          "Chris Programs is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community.",
+          "ExpertsTeam is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community.",
       },
       { name: "author", content: "Chris Expert" },
       {
@@ -101,25 +101,25 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "chrisprograms, chris programs, chris expert, expertchris, learn coding, coding lessons, game downloads",
       },
-      { property: "og:site_name", content: "Chris Programs" },
+      { property: "og:site_name", content: "ExpertsTeam" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:title", content: "Chris Programs — Watch, Learn & Share Code" },
-      { name: "twitter:title", content: "Chris Programs — Watch, Learn & Share Code" },
+      { property: "og:title", content: "ExpertsTeam — Watch, Learn & Share Code" },
+      { name: "twitter:title", content: "ExpertsTeam — Watch, Learn & Share Code" },
       {
         property: "og:description",
         content:
-          "Chris Programs is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community.",
+          "ExpertsTeam is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community.",
       },
       {
         name: "twitter:description",
         content:
-          "Chris Programs is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community.",
+          "ExpertsTeam is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community.",
       },
       { property: "og:image", content: "https://chrisprograms.lovable.app/social-preview.png" },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
-      { property: "og:image:alt", content: "Chris Programs logo" },
+      { property: "og:image:alt", content: "ExpertsTeam logo" },
       { name: "twitter:image", content: "https://chrisprograms.lovable.app/social-preview.png" },
     ],
     links: [
