@@ -50,7 +50,7 @@ export function WorkspaceChat() {
   const [category, setCategory] = useState<string>("general");
   const [description, setDescription] = useState("");
 
-  const { data: groups = [], isLoading: groupsLoading } = useQuery({
+  const { data: groups = [], isLoading: groupsLoading, isError: groupsError, refetch: refetchGroups } = useQuery({
     queryKey: ["workspace-groups"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -64,7 +64,7 @@ export function WorkspaceChat() {
 
   const activeGroup = groups.find((group) => group.id === activeId) ?? groups[0] ?? null;
 
-  const { data: messages = [], isLoading: messagesLoading } = useQuery({
+  const { data: messages = [], isLoading: messagesLoading, isError: messagesError, refetch: refetchMessages } = useQuery({
     queryKey: ["workspace-messages", activeGroup?.id],
     enabled: Boolean(activeGroup),
     refetchInterval: 8000,
@@ -121,7 +121,10 @@ export function WorkspaceChat() {
     },
     onSuccess: () =>
       void queryClient.invalidateQueries({ queryKey: ["workspace-messages", activeGroup?.id] }),
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error, body: string) => {
+      setDraft(body);
+      toast.error(error.message);
+    },
   });
 
   const removeMessage = useMutation({
@@ -212,7 +215,8 @@ export function WorkspaceChat() {
 
         <div className="space-y-1">
           {groupsLoading && <p className="text-sm text-muted-foreground">Loading groups…</p>}
-          {!groupsLoading && !groups.length && (
+          {groupsError && <div role="alert" className="space-y-2 rounded-lg border border-destructive/30 p-3"><p className="text-xs text-destructive">Could not load workspace groups.</p><Button size="sm" variant="outline" onClick={() => void refetchGroups()}>Retry</Button></div>}
+          {!groupsLoading && !groupsError && !groups.length && (
             <p className="text-sm text-muted-foreground">
               {isAdmin ? "Create your first group — e.g. Map editors." : "No groups yet."}
             </p>
@@ -268,7 +272,8 @@ export function WorkspaceChat() {
                   <Loader2 className="h-3 w-3 animate-spin" /> Loading messages…
                 </p>
               )}
-              {!messagesLoading && !messages.length && (
+              {messagesError && <div role="alert" className="flex items-center justify-between gap-2 rounded-lg border border-destructive/30 p-3"><p className="text-xs text-destructive">Could not load messages.</p><Button size="sm" variant="outline" onClick={() => void refetchMessages()}>Retry</Button></div>}
+              {!messagesLoading && !messagesError && !messages.length && (
                 <p className="text-sm text-muted-foreground">
                   No messages yet — start the discussion.
                 </p>
