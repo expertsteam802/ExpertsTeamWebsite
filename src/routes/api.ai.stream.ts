@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { generateGeminiContent } from "@/lib/gemini.server";
+import { generateGeminiContent, isProviderCoolingDown, markProviderCoolingDown } from "@/lib/gemini.server";
 
 const requestSchema = z.object({
   prompt: z.string().trim().min(1).max(6000),
@@ -97,12 +97,12 @@ export const Route = createFileRoute("/api/ai/stream")({
           ];
 
           const systemText = "You are Expert AI for ExpertsTeam. Be accurate, direct, practical, and helpful. Stream your answer naturally. Use markdown and code fences when useful. Never claim access to private user data unless it was supplied in the conversation.";
-          const providerOrder = (process.env["AI_PROVIDER_ORDER"] || "gemini,groq,openrouter,cloudflare")
+          const providerOrder = (process.env["AI_PROVIDER_ORDER"] || "gemini,groq,mistral,openrouter,cloudflare")
             .split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
           const geminiKey = process.env["GEMINI_API_KEY"]?.trim();
 
           // Keep true token streaming for Gemini when it is the first configured provider.
-          if (geminiKey && providerOrder[0] === "gemini") {
+          if (geminiKey && providerOrder[0] === "gemini" && !isProviderCoolingDown("gemini")) {
             const model = process.env["GEMINI_CHAT_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.6-flash";
             const upstream = await fetch(
               `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`,
@@ -125,6 +125,10 @@ export const Route = createFileRoute("/api/ai/stream")({
                   "X-Accel-Buffering": "no",
                 },
               });
+            }
+            if (!upstream.ok) {
+              await upstream.text();
+              if (upstream.status === 429 || upstream.status >= 500) markProviderCoolingDown("gemini", upstream.status === 429 ? 60 : 20);
             }
           }
 
