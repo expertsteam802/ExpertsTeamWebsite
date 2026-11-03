@@ -71,7 +71,7 @@ export const Route = createFileRoute("/api/ai/stream")({
             if (file.text) {
               parts.push({ text: file.text.slice(0, 12000) });
             } else if (file.dataUrl) {
-              const match = file.dataUrl.match(/^data:([^;,]+);base64,([\\s\\S]+)$/);
+              const match = file.dataUrl.match(/^data:([^;,]+);base64,([\s\S]+)$/);
               if (match) {
                 parts.push({
                   inlineData: {
