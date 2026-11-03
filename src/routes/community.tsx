@@ -60,7 +60,7 @@ function CommunityPage() {
   const [linkUrl, setLinkUrl] = useState("");
   const [filter, setFilter] = useState<string>("all");
 
-  const { data: posts = [], isLoading, error } = useQuery({
+  const { data: posts = [], isLoading, error, refetch: refetchPosts } = useQuery({
     queryKey: ["community-posts"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -192,11 +192,12 @@ function CommunityPage() {
           <TabsContent value={filter} className="space-y-4 pt-4">
             {isLoading && <p className="text-sm text-muted-foreground">Loading posts…</p>}
             {error && (
-              <p role="alert" className="text-sm text-destructive">
-                We couldn't load the community feed. Please refresh and try again.
-              </p>
+              <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+                <p className="text-sm text-destructive">We couldn't load the community feed. Please check the database migration and retry.</p>
+                <Button size="sm" variant="outline" onClick={() => void refetchPosts()}>Retry</Button>
+              </div>
             )}
-            {!isLoading && visible.length === 0 && (
+            {!isLoading && !error && visible.length === 0 && (
               <p className="text-sm text-muted-foreground">
                 Nothing here yet — be the first to post.
               </p>
