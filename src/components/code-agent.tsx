@@ -26,7 +26,10 @@ import {
   mountProjectFiles,
   removeProjectFile,
   startDevServer,
+  startTerminalSession,
+  stopTerminalSession,
   stopDevServer,
+  writeTerminalInput,
   writeProjectFile,
 } from "@/lib/webcontainer-runtime";
 
@@ -43,7 +46,7 @@ type ProjectRow = {
   updated_at: string;
 };
 
-type Panel = "preview" | "code" | "console";
+type Panel = "preview" | "code" | "console" | "terminal";
 
 const suggestions = [
   "Build a modern landing page for my business",
@@ -89,6 +92,9 @@ export function CodeAgent() {
   const [runtimeBusy, setRuntimeBusy] = useState(false);
   const [runtimeUrl, setRuntimeUrl] = useState<string | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState("Not started");
+  const [terminalOutput, setTerminalOutput] = useState("");
+  const [terminalInput, setTerminalInput] = useState("");
+  const [terminalReady, setTerminalReady] = useState(false);
   const runtimeFilesRef = useRef<ProjectFiles>({});
   const runtimeInstallKeyRef = useRef<string | null>(null);
   const runtimeSyncQueueRef = useRef<Promise<void>>(Promise.resolve());
@@ -113,7 +119,10 @@ export function CodeAgent() {
   });
 
   useEffect(() => {
-    return () => stopDevServer();
+    return () => {
+      stopDevServer();
+      stopTerminalSession();
+    };
   }, []);
 
   useEffect(() => {
@@ -161,6 +170,37 @@ export function CodeAgent() {
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, []);
+
+  async function openTerminal() {
+    if (terminalReady) return;
+    setTerminalOutput((current) => current || "Starting browser shell…\r\n");
+    try {
+      await startTerminalSession((chunk) => {
+        setTerminalOutput((current) => (current + chunk).slice(-40000));
+      });
+      setTerminalReady(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not start the terminal.";
+      setTerminalOutput((current) => `${current}\r\n[terminal error] ${message}\r\n`);
+      toast.error(message);
+    }
+  }
+
+  async function submitTerminalCommand(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const command = terminalInput;
+    if (!command.trim()) return;
+    if (!terminalReady) {
+      toast.error("Start the terminal before entering a command.");
+      return;
+    }
+    try {
+      await writeTerminalInput(`${command}\n`);
+      setTerminalInput("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not send the command.");
+    }
+  }
 
   async function runProject() {
     if (runtimeBusy) return;
@@ -743,6 +783,7 @@ export function CodeAgent() {
                 ["preview", Eye, "Preview"],
                 ["code", Code2, "Code"],
                 ["console", Terminal, "Console"],
+                ["terminal", Terminal, "Terminal"],
               ] as const).map(([value, Icon, label]) => (
                 <button
                   key={value}
@@ -921,6 +962,47 @@ export function CodeAgent() {
                     />
                   </div>
                 </>
+              )}
+
+              {panel === "terminal" && (
+                <div className="flex min-h-0 flex-1 flex-col bg-[#050a12]">
+                  <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] px-4">
+                    <span className="flex items-center gap-2 text-xs text-slate-300">
+                      <Terminal className="h-3.5 w-3.5 text-cyan-300" />
+                      Linux-style project terminal
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] text-slate-500">{terminalReady ? "Shell running" : "Shell not started"}</span>
+                      <button type="button" onClick={() => setTerminalOutput("")} className="text-xs text-slate-500 hover:text-white">Clear</button>
+                      {!terminalReady && (
+                        <button type="button" onClick={() => void openTerminal()} className="rounded-md bg-cyan-400/15 px-2 py-1 text-xs text-cyan-200 hover:bg-cyan-400/25">Start shell</button>
+                      )}
+                    </div>
+                  </div>
+                  <pre aria-live="polite" className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-words p-4 font-mono text-xs leading-5 text-emerald-200">
+                    {terminalOutput || "Start the shell to run commands in your project workspace."}
+                  </pre>
+                  <form onSubmit={(event) => void submitTerminalCommand(event)} className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] p-3">
+                    <span className="font-mono text-sm text-emerald-400">$</span>
+                    <input
+                      aria-label="Terminal command"
+                      value={terminalInput}
+                      onChange={(event) => setTerminalInput(event.target.value)}
+                      disabled={!terminalReady}
+                      autoComplete="off"
+                      spellCheck={false}
+                      placeholder={terminalReady ? "Type a command, e.g. ls" : "Start the shell first"}
+                      className="min-w-0 flex-1 bg-transparent font-mono text-xs text-slate-100 outline-none placeholder:text-slate-600"
+                    />
+                    <Button type="submit" size="sm" disabled={!terminalReady || !terminalInput.trim()} className="h-8 bg-cyan-400 text-slate-950 hover:bg-cyan-300">
+                      <Send className="mr-1.5 h-3.5 w-3.5" />
+                      Run
+                    </Button>
+                  </form>
+                  <p className="border-t border-white/[0.06] px-4 py-2 text-[10px] text-slate-600">
+                    Browser-based shell for project commands. Privileged Linux tools, sudo, apt, and unrestricted system access are not available.
+                  </p>
+                </div>
               )}
 
               {panel === "console" && (
