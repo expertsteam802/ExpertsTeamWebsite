@@ -611,7 +611,8 @@ export function CodeAgent() {
       const before = editor.value.slice(0, editor.selectionStart);
       const line = before.split("\n").pop() ?? "";
       const indent = line.match(/^\s*/)?.[0] ?? "";
-      const extraIndent = /[({\[]\s*$/.test(before) ? "  " : "";
+      const trimmedBefore = before.trimEnd();
+      const extraIndent = ["{", "(", "["].some((character) => trimmedBefore.endsWith(character)) ? "  " : "";
       editor.setRangeText("\n" + indent + extraIndent, editor.selectionStart, editor.selectionEnd, "end");
       updateFile(editor.value);
       return;
