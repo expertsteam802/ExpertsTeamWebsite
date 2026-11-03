@@ -24,6 +24,8 @@ Apply these in filename order if they are not already recorded as applied:
 7. `20261104060000_atomic_subscription_review.sql` — reviews payments and grants access in one database transaction.
 8. `20261104070000_subscription_request_integrity.sql` — enforces admin-configured plan prices and protects pending payment request fields.
 
+The connected ExpertsTeam Supabase project has now received all eight Studio migrations above. The Supabase migration ledger records them under generated versions `20261103163237` through `20261103163330` (names match the migrations above). Two follow-up hardening migrations are also applied: `20261103163446_harden_role_lookup.sql` and `20261103163541_lock_legacy_duplicate_community_relation.sql`. The role lookup now only returns a role for the signed-in caller's own user ID. A malformed legacy relation named `public.\"public.community_posts\"` was left in place to avoid data loss, but client privileges were revoked; the real `public.community_posts` table remains intact.
+
 The Studio payment workflow currently uses manual payment-reference submission and admin confirmation. Approval grants 30 days of access and the configured credit allowance. It is not automatic recurring billing; automatic renewal needs a payment processor secret and webhook configuration.
 
 ## Read-only verification SQL
@@ -81,8 +83,8 @@ where tgrelid = 'public.profiles'::regclass
 
 ## Important deployment notes
 
-- Apply the new Supabase migrations before testing Studio credit balances or the new subscription plan.
-- If you applied migration SQL manually, compare the ledger query before using `supabase db push`; do not blindly mark versions applied or re-run non-idempotent legacy migrations.
+- The Studio subscription, credit metering, expiry, branding, entitlement protection, ownership constraints, atomic payment review, and request-integrity migrations are applied to the connected ExpertsTeam project and verified.
+- The project predates this connected migration workflow: its pre-existing August/November schema and a manually applied repair are not all represented in the migration ledger. Do not run `supabase db push` until the baseline migration history is reconciled against the live schema; otherwise older migrations could be replayed.
 - The new project ownership constraints are added `NOT VALID` to avoid blocking a deployment if historical orphan rows exist. If both orphan counts are zero, validate them with:
 
 ```sql
