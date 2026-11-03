@@ -1126,14 +1126,17 @@ export function CodeAgent() {
                 <div className="flex min-h-0 flex-1 flex-col bg-[#050a12]">
                   <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] px-4">
                     <span className="flex items-center gap-2 text-xs text-slate-300">
-                      <Terminal className="h-3.5 w-3.5 text-cyan-300" />
-                      Linux-style project terminal
+                      <Terminal className="h-3.5 w-3.5 text-emerald-300" />
+                      Expert Terminal · Kali-inspired workspace
                     </span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] text-slate-500">{terminalReady ? "Shell running" : "Shell not started"}</span>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <span className="text-[10px] text-slate-500">{terminalReady ? "WORKSPACE ONLINE" : "SHELL OFFLINE"}</span>
+                      {["ls", "pwd", "npm run dev", "npm run build"].map((command) => (
+                        <button key={command} type="button" disabled={!terminalReady} onClick={() => void writeTerminalInput(command + "\\n").catch((error) => toast.error(error instanceof Error ? error.message : "Command failed"))} className="rounded border border-white/10 px-2 py-1 font-mono text-[10px] text-slate-400 hover:border-emerald-400/40 hover:text-emerald-200 disabled:opacity-30">{command}</button>
+                      ))}
                       <button type="button" onClick={() => setTerminalOutput("")} className="text-xs text-slate-500 hover:text-white">Clear</button>
                       {!terminalReady && (
-                        <button type="button" onClick={() => void openTerminal()} className="rounded-md bg-cyan-400/15 px-2 py-1 text-xs text-cyan-200 hover:bg-cyan-400/25">Start shell</button>
+                        <button type="button" onClick={() => void openTerminal()} className="rounded-md bg-emerald-400/15 px-2 py-1 text-xs text-emerald-200 hover:bg-emerald-400/25">Start shell</button>
                       )}
                     </div>
                   </div>
@@ -1158,7 +1161,7 @@ export function CodeAgent() {
                     </Button>
                   </form>
                   <p className="border-t border-white/[0.06] px-4 py-2 text-[10px] text-slate-600">
-                    Browser-based shell for project commands. Privileged Linux tools, sudo, apt, and unrestricted system access are not available.
+                    Browser-based project shell with a Kali-inspired look. It is not a full Kali Linux machine: privileged tools, sudo, apt, and unrestricted host access are unavailable.
                   </p>
                 </div>
               )}
