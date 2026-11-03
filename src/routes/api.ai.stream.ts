@@ -103,7 +103,7 @@ export const Route = createFileRoute("/api/ai/stream")({
 
           // Keep true token streaming for Gemini when it is the first configured provider.
           if (geminiKey && providerOrder[0] === "gemini") {
-            const model = process.env["GEMINI_CHAT_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.8-flash";
+            const model = process.env["GEMINI_CHAT_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.6-flash";
             const upstream = await fetch(
               `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`,
               {
