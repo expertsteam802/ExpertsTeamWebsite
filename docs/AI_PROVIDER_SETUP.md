@@ -10,8 +10,9 @@ Set these variables in Vercel (Production, Preview, and Development as needed):
 | ----------------------- | -------------------------------------------- | ----------------- |
 | `AI_PROVIDER_ORDER`     | `gemini,groq,mistral,openrouter,cloudflare`  | Yes               |
 | `GEMINI_API_KEY`        | Your Google AI Studio key                    | Optional fallback |
-| `GEMINI_CODE_MODEL`     | `gemini-3.6-flash`                           | Optional          |
-| `GEMINI_CHAT_MODEL`     | `gemini-3.6-flash`                           | Optional          |
+| `GEMINI_CODE_MODEL`     | `gemini-3.8-flash`                           | Optional          |
+| `GEMINI_MODEL`           | `gemini-3.8-flash`                         | Optional          |
+| `GEMINI_CHAT_MODEL`     | `gemini-3.8-flash`                           | Optional          |
 | `GROQ_API_KEY`          | Your Groq key                                | Optional fallback |
 | `GROQ_MODEL`            | `openai/gpt-oss-120b`                        | Optional          |
 | `MISTRAL_API_KEY`       | Your Mistral Studio key                      | Optional fallback |
