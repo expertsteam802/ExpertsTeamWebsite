@@ -193,8 +193,11 @@ export function CodeAgent() {
 
     try {
       await runtimeSyncQueueRef.current;
-      await mountProjectFiles(files, callbacks);
-      runtimeFilesRef.current = { ...files };
+      const runtimeAlreadyHasFiles = JSON.stringify(runtimeFilesRef.current) === JSON.stringify(files);
+      if (!runtimeAlreadyHasFiles) {
+        await mountProjectFiles(files, callbacks);
+        runtimeFilesRef.current = { ...files };
+      }
 
       const installKey = JSON.stringify({
         packageJson: files["package.json"] ?? "default-vite",
@@ -252,7 +255,7 @@ export function CodeAgent() {
         if (error) throw error;
         await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
       } else {
-        await persist();
+        await persist({ extra: { name: nextName } });
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not rename project.");
@@ -519,7 +522,7 @@ export function CodeAgent() {
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       event.preventDefault();
-                      void saveProjectName();
+                      event.currentTarget.blur();
                     }
                     if (event.key === "Escape") setProjectNameEditing(false);
                   }}
