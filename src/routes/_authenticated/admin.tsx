@@ -93,6 +93,22 @@ function AdminPage() {
     },
   });
 
+  const { data: systemStatus, isError: systemStatusError, isLoading: systemStatusLoading } = useQuery({
+    queryKey: ["admin", "system-status"],
+    enabled: isAdmin,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const profileResult = await supabase.from("profiles").select("id", { count: "exact", head: true });
+      if (profileResult.error) throw profileResult.error;
+      const filesResult = await supabase.from("files").select("size_bytes");
+      if (filesResult.error) throw filesResult.error;
+      return {
+        memberCount: profileResult.count ?? 0,
+        trackedUploadBytes: (filesResult.data ?? []).reduce((total, file) => total + Number(file.size_bytes), 0),
+        checkedAt: new Date().toISOString(),
+      };
+    },
+  });
   const { data: sessions } = useQuery({
     queryKey: ["admin", "auth-events"],
     enabled: isAdmin,
@@ -302,6 +318,7 @@ function AdminPage() {
             <TabsTrigger value="sessions">Sign-in log</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="developers">Developer requests</TabsTrigger>
+            <TabsTrigger value="system">System status</TabsTrigger>
           </TabsList>
 
           <TabsContent value="branding" className="pt-6">
@@ -495,6 +512,26 @@ function AdminPage() {
                 <p className="text-sm text-muted-foreground">No developer applications yet.</p>
               )}
             </div>
+          </TabsContent>
+          <TabsContent value="system" className="pt-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card className="gap-2 p-5">
+                <p className="text-sm text-muted-foreground">Supabase connection</p>
+                <p className="text-xl font-semibold">{systemStatusLoading ? "Checking…" : systemStatusError ? "Connection issue" : "Connected"}</p>
+                <p className="text-xs text-muted-foreground">Live database query, refreshed every 30 seconds</p>
+              </Card>
+              <Card className="gap-2 p-5">
+                <p className="text-sm text-muted-foreground">Registered members</p>
+                <p className="text-2xl font-semibold tabular-nums">{systemStatus?.memberCount ?? "—"}</p>
+                <p className="text-xs text-muted-foreground">Profiles visible to this admin account</p>
+              </Card>
+              <Card className="gap-2 p-5">
+                <p className="text-sm text-muted-foreground">Tracked uploaded files</p>
+                <p className="text-2xl font-semibold tabular-nums">{systemStatus ? formatBytes(systemStatus.trackedUploadBytes) : "—"}</p>
+                <p className="text-xs text-muted-foreground">Recorded file sizes, not the Supabase project storage quota</p>
+              </Card>
+            </div>
+            {systemStatus?.checkedAt && <p className="mt-3 text-xs text-muted-foreground">Last checked {formatDate(systemStatus.checkedAt)}</p>}
           </TabsContent>
         </Tabs>
       </section>
