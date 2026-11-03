@@ -35,7 +35,7 @@ export function useSiteSettings() {
   return (
     data ?? {
       id: 1,
-      site_name: "Chris Programs",
+      site_name: "ExpertsTeam",
       tagline: "Code. Create. Community.",
       logo_url: null,
       owner_email: "mucyochristhecla@gmail.com",
