@@ -251,7 +251,7 @@ export function CodeAgent() {
           onOutput: (output) => setTerminalOutput((current) => (current + output).slice(-40000)),
           onError: (message) =>
             setTerminalOutput((current) =>
-              (current + `\\r\\n[setup error] ${message}\\r\\n`).slice(-40000),
+              (current + `\\r\n[setup error] ${message}\\r\n`).slice(-40000),
             ),
         });
         runtimeFilesRef.current = { ...files };
@@ -267,7 +267,7 @@ export function CodeAgent() {
             onOutput: (output) => setTerminalOutput((current) => (current + output).slice(-40000)),
             onError: (message) =>
               setTerminalOutput((current) =>
-                (current + `\\r\\n[setup error] ${message}\\r\\n`).slice(-40000),
+                (current + `\\r\n[setup error] ${message}\\r\n`).slice(-40000),
               ),
           },
           installKey,
@@ -496,7 +496,7 @@ export function CodeAgent() {
     setBusy(true);
     try {
       const plan = await createPlan({ data: { prompt: text, files } });
-      const planText = `Plan: ${plan.summary}\\n\\n${plan.steps.map((step, index) => `${index + 1}. ${step}`).join("\\n")}\\n\\nReview this plan. No project files have changed yet.`;
+      const planText = `Plan: ${plan.summary}\n\n${plan.steps.map((step, index) => `${index + 1}. ${step}`).join("\n")}\n\nReview this plan. No project files have changed yet.`;
       const approvedPlan: PendingPlan = {
         request: text,
         summary: plan.summary,
@@ -523,7 +523,7 @@ export function CodeAgent() {
     const step = pendingPlan.steps[pendingPlan.nextStep];
     if (!step) return;
     setBusy(true);
-    const stepPrompt = `Original request: ${pendingPlan.request}\\nPlan: ${pendingPlan.steps.map((item, index) => `${index + 1}. ${item}`).join("\\n")}\\nImplement ONLY step ${pendingPlan.nextStep + 1}: ${step}. Keep changes small and preserve unrelated files.`;
+    const stepPrompt = `Original request: ${pendingPlan.request}\nPlan: ${pendingPlan.steps.map((item, index) => `${index + 1}. ${item}`).join("\n")}\nImplement ONLY step ${pendingPlan.nextStep + 1}: ${step}. Keep changes small and preserve unrelated files.`;
     try {
       const result = await run({
         data: { prompt: stepPrompt, files, history: messages.slice(-8) },
@@ -537,7 +537,7 @@ export function CodeAgent() {
       }
       const completed = pendingPlan.nextStep + 1;
       const remaining = completed < pendingPlan.steps.length;
-      const answer = `Step ${completed}/${pendingPlan.steps.length}: ${step}\\n${result.message}${changed.length ? `\\n\\nUpdated files:\\n${changed.map((path) => `• ${path}`).join("\\n")}` : ""}${remaining ? "\\n\\nReview the result, then approve the next step." : "\\n\\nAll planned steps are complete."}`;
+      const answer = `Step ${completed}/${pendingPlan.steps.length}: ${step}\n${result.message}${changed.length ? `\n\nUpdated files:\n${changed.map((path) => `• ${path}`).join("\n")}` : ""}${remaining ? "\n\nReview the result, then approve the next step." : "\n\nAll planned steps are complete."}`;
       const nextPlan = remaining ? { ...pendingPlan, nextStep: completed } : undefined;
       const finalMessages: Message[] = [
         ...messages,
@@ -567,7 +567,7 @@ export function CodeAgent() {
     if (!pendingPlan) return;
     const updatedMessages = messages.map((message, index) =>
       index === messages.length - 1 && message.plan
-        ? { role: message.role, content: `${message.content}\\n\\nPlan cancelled by the user.` }
+        ? { role: message.role, content: `${message.content}\n\nPlan cancelled by the user.` }
         : message,
     );
     setMessages(updatedMessages);

@@ -792,6 +792,7 @@ export type Database = {
     };
     Functions: {
       consume_ai_credit: { Args: Record<PropertyKey, never>; Returns: number };
+      admin_review_subscription_request: { Args: { p_request_id: string; p_approve: boolean }; Returns: undefined };
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"];
