@@ -18,17 +18,17 @@ import { formatDate } from "@/lib/format";
 export const Route = createFileRoute("/projects")({
   head: () => ({
     meta: [
-      { title: "Workspace — Chris Programs development team" },
+      { title: "Workspace — ExpertsTeam development team" },
       {
         name: "description",
         content:
-          "The Chris Programs company workspace: group chats for map editors, sound editors, game and web development, plus developer applications.",
+          "The ExpertsTeam company workspace: group chats for map editors, sound editors, game and web development, plus developer applications.",
       },
-      { property: "og:title", content: "Workspace — Chris Programs development team" },
+      { property: "og:title", content: "Workspace — ExpertsTeam development team" },
       {
         property: "og:description",
         content:
-          "Group chats for the Chris Programs development team: map editors, sound editors, game and web dev.",
+          "Group chats for the ExpertsTeam development team: map editors, sound editors, game and web dev.",
       },
       { property: "og:url", content: "https://chrisprograms.lovable.app/projects" },
       { property: "og:image", content: "https://chrisprograms.lovable.app/social-preview.png" },
@@ -109,7 +109,7 @@ function ApplicationPanel() {
       <Card className="animate-rise gap-4 p-6 glow-panel">
         <h2 className="font-display text-xl font-semibold">Join the team</h2>
         <p className="text-sm text-muted-foreground">
-          The workspace chats and groups are for the Chris Programs team. Apply once and Chris
+          The workspace chats and groups are for the ExpertsTeam team. Apply once and Chris
           unlocks your access.
         </p>
         {user ? (
@@ -218,7 +218,7 @@ function ProjectsPage() {
       <section className="hero-surface border-b border-border/60 px-4 py-14">
         <div className="mx-auto max-w-6xl">
           <h1 className="animate-rise font-display text-3xl font-bold sm:text-4xl">
-            <span className="brand-text">Chris Programs</span> workspace
+            <span className="brand-text">ExpertsTeam</span> workspace
           </h1>
           <p className="mt-2 max-w-2xl text-muted-foreground">
             The company hub: group channels for map editors, sound editors, game and web development
