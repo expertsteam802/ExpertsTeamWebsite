@@ -20,9 +20,14 @@ let terminalInputWriter: WritableStreamDefaultWriter<string> | null = null;
 
 function cleanTerminalText(value: string) {
   return value
+    // Terminal streams contain ANSI control bytes; strip them before rendering in the plain-text shell.
+    // eslint-disable-next-line no-control-regex
     .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "")
+    // eslint-disable-next-line no-control-regex
     .replace(/\x1B\][^\x07]*(?:\x07|\x1B\\)/g, "")
+    // eslint-disable-next-line no-control-regex
     .replace(/\x1B./g, "")
+    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
     .replace(/\r(?!\n)/g, "\n");
 }
