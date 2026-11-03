@@ -143,7 +143,13 @@ export async function bootWebContainer(
           message.type === "UncaughtException" ||
           message.type === "UnhandledRejection"
         ) {
-          callbacks.onError?.(message.message || "Preview application error");
+          const detail =
+            "message" in message
+              ? message.message
+              : "args" in message
+                ? message.args.map((value) => String(value)).join(" ")
+                : "Preview application error";
+          callbacks.onError?.(detail || "Preview application error");
         }
       });
 
