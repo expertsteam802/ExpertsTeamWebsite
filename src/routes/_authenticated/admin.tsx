@@ -675,8 +675,8 @@ function AdminPage() {
                     ))}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Recommended order: Gemini → Groq → Mistral → OpenRouter → Cloudflare. The AI
-                    setup guide lists the exact environment variable names and free-model defaults.
+                    Recommended order: Groq → Gemini → OpenRouter. Keep provider keys in Vercel
+                    server-side environment variables. Paid providers are intentionally excluded.
                   </p>
                   <a
                     href="https://github.com/expertsteam802/ExpertsTeamWebsite/blob/main/docs/AI_PROVIDER_SETUP.md"
