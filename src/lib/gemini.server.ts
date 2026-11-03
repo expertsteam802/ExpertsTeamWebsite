@@ -31,6 +31,10 @@ export function isProviderCoolingDown(provider: string) {
   return (providerCooldowns.get(provider) ?? 0) > Date.now();
 }
 
+export function resetProviderCooldowns() {
+  providerCooldowns.clear();
+}
+
 export function resolveGeminiApiKey(apiKey?: string): string | undefined {
   return (
     apiKey?.trim() ||
