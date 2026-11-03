@@ -18,8 +18,17 @@ let devProcess: WebContainerProcess | null = null;
 let terminalProcess: WebContainerProcess | null = null;
 let terminalInputWriter: WritableStreamDefaultWriter<string> | null = null;
 
+function cleanTerminalText(value: string) {
+  return value
+    .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "")
+    .replace(/\x1B\][^\x07]*(?:\x07|\x1B\\)/g, "")
+    .replace(/\x1B./g, "")
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+    .replace(/\r(?!\n)/g, "\n");
+}
+
 function log(callbacks: RuntimeCallbacks, value: string) {
-  callbacks.onOutput?.(value);
+  callbacks.onOutput?.(cleanTerminalText(value));
 }
 
 function normalizePath(path: string) {
@@ -399,7 +408,7 @@ export async function startTerminalSession(
     .pipeTo(
       new WritableStream({
         write(data) {
-          onOutput(data);
+          onOutput(cleanTerminalText(data));
         },
       }),
     )
