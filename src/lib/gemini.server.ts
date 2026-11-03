@@ -175,12 +175,17 @@ export async function generateGeminiContent(
   apiKey?: string,
   providerOrder?: string[],
 ): Promise<GeminiResponse> {
-  const configuredOrder =
+  const requestedOrder =
     providerOrder ??
     (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
       .split(",")
       .map((item) => item.trim().toLowerCase())
       .filter(Boolean);
+  const freeProviders = ["groq", "gemini", "openrouter"];
+  // Ignore old paid-provider entries and always retain the free fallbacks.
+  const configuredOrder = [
+    ...new Set([...requestedOrder.filter((item) => freeProviders.includes(item)), ...freeProviders]),
+  ];
   const failures: string[] = [];
   const coolingDown: string[] = [];
 
