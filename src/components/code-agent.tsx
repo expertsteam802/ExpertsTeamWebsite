@@ -1257,7 +1257,7 @@ export function CodeAgent() {
               <span className="text-cyan-300">{profile?.ai_credits ?? 0} AI credits</span>
               <span>{activeFile || "No file selected"}</span>
             </div>
-            <span className="text-[10px] text-slate-600">Experts Team · AI Studio</span>
+            <span className="text-[10px] text-slate-600">ExpertsTeam · AI Studio</span>
           </footer>
         </main>
       </div>
