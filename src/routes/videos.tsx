@@ -12,16 +12,16 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/videos")({
   head: () => ({
     meta: [
-      { title: "Video archive — Chris Programs" },
+      { title: "Video archive — ExpertsTeam" },
       {
         name: "description",
         content:
           "Watch every Chris Expert video without leaving the site. The full @expertchris and @chrisexpert archive in one player.",
       },
-      { property: "og:title", content: "Video archive — Chris Programs" },
+      { property: "og:title", content: "Video archive — ExpertsTeam" },
       {
         property: "og:description",
-        content: "The full Chris Expert YouTube archive, playable inside Chris Programs.",
+        content: "The full Chris Expert YouTube archive, playable inside ExpertsTeam.",
       },
     ],
   }),
