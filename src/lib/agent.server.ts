@@ -273,6 +273,9 @@ export async function runAgent({ prompt, files, history }: AgentInput, apiKey?: 
         lastFailure = "A model returned incomplete file data; switching providers and retrying.";
       }
     } catch (error) {
+      if (error instanceof Error && /Invalid file path|Invalid content/.test(error.message)) {
+        throw new Error("AI did not return complete app files: " + error.message);
+      }
       lastFailure = error instanceof Error ? error.message : String(error);
     }
   }
