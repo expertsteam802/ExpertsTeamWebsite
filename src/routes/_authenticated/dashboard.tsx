@@ -42,8 +42,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
       { title: "My dashboard — ExpertsTeam" },
       {
         name: "description",
-        content:
-          "Manage your uploads, videos, storage space and account settings on ExpertsTeam.",
+        content: "Manage your uploads, videos, storage space and account settings on ExpertsTeam.",
       },
       { property: "og:title", content: "My dashboard — ExpertsTeam" },
       { property: "og:description", content: "Your ExpertsTeam member dashboard." },

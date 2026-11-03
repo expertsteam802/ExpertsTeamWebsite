@@ -46,28 +46,58 @@ function isSafeProjectPath(path: string): boolean {
 
 export type AgentPlan = { summary: string; steps: string[] };
 
-export async function createAgentPlan(prompt: string, files: Record<string, string>, apiKey?: string): Promise<AgentPlan> {
+export async function createAgentPlan(
+  prompt: string,
+  files: Record<string, string>,
+  apiKey?: string,
+): Promise<AgentPlan> {
   const cleanPrompt = prompt.trim();
   if (!cleanPrompt) throw new Error("Describe what you want to build.");
-  const fileList = Object.entries(files).slice(0, 60).map(([path, content]) => `--- ${path} ---\n${content.slice(0, 500)}`).join("\n").slice(0, 40000);
-  const response = await generateGeminiContent({
-    systemInstruction: {
-      parts: [{ text: "You are the planning lead for ExpertsTeam Studio. Do not write or modify code. Return valid JSON only with shape {\"summary\": string, \"steps\": string[]}. Make a safe, incremental plan of 2 to 6 small implementation steps. Each step must be independently reviewable and avoid changing unrelated files. Mention testing/verification as a final step when useful." }],
+  const fileList = Object.entries(files)
+    .slice(0, 60)
+    .map(([path, content]) => `--- ${path} ---\n${content.slice(0, 500)}`)
+    .join("\n")
+    .slice(0, 40000);
+  const response = await generateGeminiContent(
+    {
+      systemInstruction: {
+        parts: [
+          {
+            text: 'You are the planning lead for ExpertsTeam Studio. Do not write or modify code. Return valid JSON only with shape {"summary": string, "steps": string[]}. Make a safe, incremental plan of 2 to 6 small implementation steps. Each step must be independently reviewable and avoid changing unrelated files. Mention testing/verification as a final step when useful.',
+          },
+        ],
+      },
+      generationConfig: { responseMimeType: "application/json", maxOutputTokens: 2500 },
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `User request: ${cleanPrompt}\nCurrent project files: ${fileList || "(empty starter project)"}\nReturn only the plan JSON.`,
+            },
+          ],
+        },
+      ],
     },
-    generationConfig: { responseMimeType: "application/json", maxOutputTokens: 2500 },
-    contents: [{
-      role: "user",
-      parts: [{ text: `User request: ${cleanPrompt}\nCurrent project files: ${fileList || "(empty starter project)"}\nReturn only the plan JSON.` }],
-    }],
-  }, apiKey);
-  const raw = response.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
+    apiKey,
+  );
+  const raw =
+    response.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
   try {
     const parsed = JSON.parse(raw.trim()) as { summary?: string; steps?: unknown };
-    const steps = Array.isArray(parsed.steps) ? parsed.steps.filter((step): step is string => typeof step === "string").slice(0, 6) : [];
+    const steps = Array.isArray(parsed.steps)
+      ? parsed.steps.filter((step): step is string => typeof step === "string").slice(0, 6)
+      : [];
     if (!steps.length) throw new Error("No steps");
-    return { summary: typeof parsed.summary === "string" ? parsed.summary : "Here is the implementation plan.", steps };
+    return {
+      summary:
+        typeof parsed.summary === "string" ? parsed.summary : "Here is the implementation plan.",
+      steps,
+    };
   } catch {
-    throw new Error("The AI could not create a valid step-by-step plan. Please rephrase the request and try again.");
+    throw new Error(
+      "The AI could not create a valid step-by-step plan. Please rephrase the request and try again.",
+    );
   }
 }
 
@@ -141,7 +171,8 @@ export async function runAgent({ prompt, files, history }: AgentInput, apiKey?: 
     const output: Record<string, string | null> = {};
     for (const [path, content] of Object.entries(parsed.files)) {
       if (!isSafeProjectPath(path)) throw new Error(`Invalid file path: ${path}`);
-      if (typeof content !== "string" && content !== null) throw new Error(`Invalid content for ${path}`);
+      if (typeof content !== "string" && content !== null)
+        throw new Error(`Invalid content for ${path}`);
       output[path] = content;
     }
 
@@ -204,7 +235,8 @@ export async function pushToGithub({
   };
 
   if (!allFiles["README.md"]) {
-    allFiles["README.md"] = `# ${repo}\n\nBuilt with the ExpertsTeam AI agent.\n\nLive: https://${login}.github.io/${repo}/\n`;
+    allFiles["README.md"] =
+      `# ${repo}\n\nBuilt with the ExpertsTeam AI agent.\n\nLive: https://${login}.github.io/${repo}/\n`;
   }
 
   for (const [path, content] of Object.entries(allFiles)) {

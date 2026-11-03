@@ -6,21 +6,21 @@ ExpertsTeam sends AI requests through server-side routes. Provider keys must be 
 
 Set these variables in Vercel (Production, Preview, and Development as needed):
 
-| Variable | Suggested value | Required |
-|---|---|---|
-| `AI_PROVIDER_ORDER` | `gemini,groq,mistral,openrouter,cloudflare` | Yes |
-| `GEMINI_API_KEY` | Your Google AI Studio key | Optional fallback |
-| `GEMINI_CODE_MODEL` | `gemini-3.6-flash` | Optional |
-| `GEMINI_CHAT_MODEL` | `gemini-3.6-flash` | Optional |
-| `GROQ_API_KEY` | Your Groq key | Optional fallback |
-| `GROQ_MODEL` | `openai/gpt-oss-120b` | Optional |
-| `MISTRAL_API_KEY` | Your Mistral Studio key | Optional fallback |
-| `MISTRAL_MODEL` | `mistral-small-latest` | Optional |
-| `OPENROUTER_API_KEY` | Your OpenRouter key | Optional fallback |
-| `OPENROUTER_MODEL` | `openrouter/free` | Optional |
-| `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID | Optional fallback |
-| `CLOUDFLARE_API_TOKEN` | A token with Workers AI inference permission | Optional fallback |
-| `CLOUDFLARE_AI_MODEL` | `@cf/zai-org/glm-4.7-flash` | Optional |
+| Variable                | Suggested value                              | Required          |
+| ----------------------- | -------------------------------------------- | ----------------- |
+| `AI_PROVIDER_ORDER`     | `gemini,groq,mistral,openrouter,cloudflare`  | Yes               |
+| `GEMINI_API_KEY`        | Your Google AI Studio key                    | Optional fallback |
+| `GEMINI_CODE_MODEL`     | `gemini-3.6-flash`                           | Optional          |
+| `GEMINI_CHAT_MODEL`     | `gemini-3.6-flash`                           | Optional          |
+| `GROQ_API_KEY`          | Your Groq key                                | Optional fallback |
+| `GROQ_MODEL`            | `openai/gpt-oss-120b`                        | Optional          |
+| `MISTRAL_API_KEY`       | Your Mistral Studio key                      | Optional fallback |
+| `MISTRAL_MODEL`         | `mistral-small-latest`                       | Optional          |
+| `OPENROUTER_API_KEY`    | Your OpenRouter key                          | Optional fallback |
+| `OPENROUTER_MODEL`      | `openrouter/free`                            | Optional          |
+| `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID                   | Optional fallback |
+| `CLOUDFLARE_API_TOKEN`  | A token with Workers AI inference permission | Optional fallback |
+| `CLOUDFLARE_AI_MODEL`   | `@cf/zai-org/glm-4.7-flash`                  | Optional          |
 
 At least one provider must be configured. Configure two or more providers for meaningful failover. The router tries the providers in `AI_PROVIDER_ORDER`; missing provider keys are skipped. It moves to the next provider after a failed request and temporarily cools down providers after rate limits, authentication failures, unavailable models, or outages. Provider quotas are account-specific and can change, so free access is never guaranteed to be unlimited.
 

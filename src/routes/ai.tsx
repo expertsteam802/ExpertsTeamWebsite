@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Bot, Code2, MessageSquare, Sparkles } from "lucide-react";
@@ -13,8 +12,7 @@ export const Route = createFileRoute("/ai")({
       { title: "ExpertsTeam — AI Studio" },
       {
         name: "description",
-        content:
-          "Build, edit, preview, and publish applications in the ExpertsTeam workspace.",
+        content: "Build, edit, preview, and publish applications in the ExpertsTeam workspace.",
       },
     ],
   }),
@@ -33,16 +31,12 @@ function AiPage() {
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold tracking-wide">
-                EXPERTSTEAM
-              </span>
+              <span className="text-sm font-semibold tracking-wide">EXPERTSTEAM</span>
               <span className="hidden rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[9px] font-semibold text-cyan-300 sm:inline">
                 WORKSPACE
               </span>
             </div>
-            <p className="text-[10px] text-slate-400">
-              Build something extraordinary
-            </p>
+            <p className="text-[10px] text-slate-400">Build something extraordinary</p>
           </div>
         </div>
 
@@ -100,9 +94,7 @@ function AiPage() {
         </div>
 
         <div
-          className={`h-full min-h-0 overflow-hidden ${
-            activeView === "chat" ? "block" : "hidden"
-          }`}
+          className={`h-full min-h-0 overflow-hidden ${activeView === "chat" ? "block" : "hidden"}`}
         >
           <ChrisAiChat />
         </div>

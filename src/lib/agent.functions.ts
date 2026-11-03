@@ -21,23 +21,39 @@ const codingRequest = z
 export const createCodingPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => {
-    const parsed = z.object({
-      prompt: z.string().trim().min(1).max(16000),
-      files: z.record(z.string(), z.string().max(100000)),
-    }).refine(
-      ({ files }) => Object.keys(files).length <= 80 &&
-        Object.values(files).reduce((total, content) => total + content.length, 0) <= 200000,
-      "The project is too large to plan in one request.",
-    ).parse(input);
+    const parsed = z
+      .object({
+        prompt: z.string().trim().min(1).max(16000),
+        files: z.record(z.string(), z.string().max(100000)),
+      })
+      .refine(
+        ({ files }) =>
+          Object.keys(files).length <= 80 &&
+          Object.values(files).reduce((total, content) => total + content.length, 0) <= 200000,
+        "The project is too large to plan in one request.",
+      )
+      .parse(input);
     return parsed;
   })
   .handler(async ({ data, context }) => {
     const { data: profile, error: profileError } = await context.supabase
-      .from("profiles").select("ai_credits,ai_subscribed,ai_subscription_expires_at").eq("id", context.userId).single();
+      .from("profiles")
+      .select("ai_credits,ai_subscribed,ai_subscription_expires_at")
+      .eq("id", context.userId)
+      .single();
     if (profileError) throw new Error(profileError.message);
-    const studioActive = profile.ai_subscribed && (!profile.ai_subscription_expires_at || new Date(profile.ai_subscription_expires_at).getTime() > Date.now());
-    if (!studioActive) throw new Error("Studio app creation requires an active $1 / 30-day plan. Use the Upgrade button in AI Studio to subscribe.");
-    if (profile.ai_credits < 1) throw new Error("You have no AI credits remaining. Renew your Studio plan to continue building.");
+    const studioActive =
+      profile.ai_subscribed &&
+      (!profile.ai_subscription_expires_at ||
+        new Date(profile.ai_subscription_expires_at).getTime() > Date.now());
+    if (!studioActive)
+      throw new Error(
+        "Studio app creation requires an active $1 / 30-day plan. Use the Upgrade button in AI Studio to subscribe.",
+      );
+    if (profile.ai_credits < 1)
+      throw new Error(
+        "You have no AI credits remaining. Renew your Studio plan to continue building.",
+      );
     const { createAgentPlan } = await import("./agent.server");
     const plan = await createAgentPlan(data.prompt, data.files);
     const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
@@ -50,11 +66,23 @@ export const runCodingAgent = createServerFn({ method: "POST" })
   .validator((input: unknown) => codingRequest.parse(input))
   .handler(async ({ data, context }) => {
     const { data: profile, error: profileError } = await context.supabase
-      .from("profiles").select("ai_credits,ai_subscribed,ai_subscription_expires_at").eq("id", context.userId).single();
+      .from("profiles")
+      .select("ai_credits,ai_subscribed,ai_subscription_expires_at")
+      .eq("id", context.userId)
+      .single();
     if (profileError) throw new Error(profileError.message);
-    const studioActive = profile.ai_subscribed && (!profile.ai_subscription_expires_at || new Date(profile.ai_subscription_expires_at).getTime() > Date.now());
-    if (!studioActive) throw new Error("Studio app creation requires an active $1 / 30-day plan. Use the Upgrade button in AI Studio to subscribe.");
-    if (profile.ai_credits < 1) throw new Error("You have no AI credits remaining. Renew your Studio plan to continue building.");
+    const studioActive =
+      profile.ai_subscribed &&
+      (!profile.ai_subscription_expires_at ||
+        new Date(profile.ai_subscription_expires_at).getTime() > Date.now());
+    if (!studioActive)
+      throw new Error(
+        "Studio app creation requires an active $1 / 30-day plan. Use the Upgrade button in AI Studio to subscribe.",
+      );
+    if (profile.ai_credits < 1)
+      throw new Error(
+        "You have no AI credits remaining. Renew your Studio plan to continue building.",
+      );
     const { runAgent } = await import("./agent.server");
     const result = await runAgent(data, process.env["GEMINI_API_KEY"]);
     const { error: creditError } = await context.supabase.rpc("consume_ai_credit");

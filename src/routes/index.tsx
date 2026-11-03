@@ -1,13 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  BookOpen,
-  Gamepad2,
-  Palette,
-  Play,
-  ShieldCheck,
-  UploadCloud,
-} from "lucide-react";
+import { BookOpen, Gamepad2, Palette, Play, ShieldCheck, UploadCloud } from "lucide-react";
 
 import heroImage from "@/assets/hero-chris-programs.jpg";
 import { PageShell } from "@/components/layout/page-shell";
@@ -156,7 +149,6 @@ function Index() {
           <VideoGrid videos={videos ?? []} />
         </div>
       </section>
-
     </PageShell>
   );
 }

@@ -20,7 +20,8 @@ export type GeminiResponse = {
   promptFeedback?: { blockReason?: string };
 };
 
-const GEMINI_MODEL = process.env["GEMINI_CODE_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.6-flash";
+const GEMINI_MODEL =
+  process.env["GEMINI_CODE_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.6-flash";
 const providerCooldowns = new Map<string, number>();
 
 export function markProviderCoolingDown(provider: string, seconds = 60) {
@@ -36,16 +37,15 @@ export function resetProviderCooldowns() {
 }
 
 export function resolveGeminiApiKey(apiKey?: string): string | undefined {
-  return (
-    apiKey?.trim() ||
-    process.env["GEMINI_API_KEY"]?.trim() ||
-    undefined
-  );
+  return apiKey?.trim() || process.env["GEMINI_API_KEY"]?.trim() || undefined;
 }
 
 function openAiMessages(request: GeminiRequest) {
   return [
-    { role: "system", content: request.systemInstruction.parts.map((part) => part.text).join("\n") },
+    {
+      role: "system",
+      content: request.systemInstruction.parts.map((part) => part.text).join("\n"),
+    },
     ...request.contents.map((item) => ({
       role: item.role === "model" ? "assistant" : "user",
       content: item.parts.map((part) => part.text).join("\n"),
@@ -64,28 +64,41 @@ async function callOpenAiCompatible(
   const isGroq = provider === "groq";
   const apiKey = process.env[isGroq ? "GROQ_API_KEY" : "OPENROUTER_API_KEY"]?.trim();
   if (!apiKey) throw new Error("not_configured");
-  const model = process.env[isGroq ? "GROQ_MODEL" : "OPENROUTER_MODEL"] ||
+  const model =
+    process.env[isGroq ? "GROQ_MODEL" : "OPENROUTER_MODEL"] ||
     (isGroq ? "openai/gpt-oss-120b" : "openrouter/free");
   const response = await fetch(
-    isGroq ? "https://api.groq.com/openai/v1/chat/completions" : "https://openrouter.ai/api/v1/chat/completions",
+    isGroq
+      ? "https://api.groq.com/openai/v1/chat/completions"
+      : "https://openrouter.ai/api/v1/chat/completions",
     {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        ...(isGroq ? {} : { "HTTP-Referer": process.env["APP_URL"] || "https://expertsteam.giize.com", "X-Title": "ExpertsTeam" }),
+        ...(isGroq
+          ? {}
+          : {
+              "HTTP-Referer": process.env["APP_URL"] || "https://expertsteam.giize.com",
+              "X-Title": "ExpertsTeam",
+            }),
       },
       body: JSON.stringify({
         model,
         messages: openAiMessages(request),
         max_tokens: request.generationConfig?.maxOutputTokens ?? 8192,
-        ...(request.generationConfig?.responseMimeType === "application/json" ? { response_format: { type: "json_object" } } : {}),
+        ...(request.generationConfig?.responseMimeType === "application/json"
+          ? { response_format: { type: "json_object" } }
+          : {}),
       }),
       signal: AbortSignal.timeout(45000),
     },
   );
-  if (!response.ok) throw new Error(`${provider} HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`);
-  const data = await response.json() as { choices?: { message?: { content?: string | null } }[] };
+  if (!response.ok)
+    throw new Error(
+      `${provider} HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`,
+    );
+  const data = (await response.json()) as { choices?: { message?: { content?: string | null } }[] };
   const output = data.choices?.[0]?.message?.content;
   if (!output) throw new Error(`${provider} returned an empty response.`);
   return asGeminiResponse(output);
@@ -102,12 +115,15 @@ async function callMistral(request: GeminiRequest): Promise<GeminiResponse> {
       model,
       messages: openAiMessages(request),
       max_tokens: request.generationConfig?.maxOutputTokens ?? 8192,
-      ...(request.generationConfig?.responseMimeType === "application/json" ? { response_format: { type: "json_object" } } : {}),
+      ...(request.generationConfig?.responseMimeType === "application/json"
+        ? { response_format: { type: "json_object" } }
+        : {}),
     }),
     signal: AbortSignal.timeout(45000),
   });
-  if (!response.ok) throw new Error(`Mistral HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`);
-  const data = await response.json() as { choices?: { message?: { content?: string | null } }[] };
+  if (!response.ok)
+    throw new Error(`Mistral HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`);
+  const data = (await response.json()) as { choices?: { message?: { content?: string | null } }[] };
   const output = data.choices?.[0]?.message?.content;
   if (!output) throw new Error("Mistral returned an empty response.");
   return asGeminiResponse(output);
@@ -123,12 +139,18 @@ async function callCloudflare(request: GeminiRequest): Promise<GeminiResponse> {
     {
       method: "POST",
       headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: openAiMessages(request), max_tokens: request.generationConfig?.maxOutputTokens ?? 8192 }),
+      body: JSON.stringify({
+        messages: openAiMessages(request),
+        max_tokens: request.generationConfig?.maxOutputTokens ?? 8192,
+      }),
       signal: AbortSignal.timeout(45000),
     },
   );
-  if (!response.ok) throw new Error(`Cloudflare Workers AI HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`);
-  const data = await response.json() as { result?: { response?: string } };
+  if (!response.ok)
+    throw new Error(
+      `Cloudflare Workers AI HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`,
+    );
+  const data = (await response.json()) as { result?: { response?: string } };
   if (!data.result?.response) throw new Error("Cloudflare Workers AI returned an empty response.");
   return asGeminiResponse(data.result.response);
 }
@@ -138,8 +160,12 @@ export async function generateGeminiContent(
   apiKey?: string,
   providerOrder?: string[],
 ): Promise<GeminiResponse> {
-  const configuredOrder = providerOrder ?? (process.env["AI_PROVIDER_ORDER"] || "gemini,groq,mistral,openrouter,cloudflare")
-    .split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
+  const configuredOrder =
+    providerOrder ??
+    (process.env["AI_PROVIDER_ORDER"] || "gemini,groq,mistral,openrouter,cloudflare")
+      .split(",")
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean);
   const failures: string[] = [];
   const coolingDown: string[] = [];
 
@@ -161,8 +187,11 @@ export async function generateGeminiContent(
             signal: AbortSignal.timeout(45000),
           },
         );
-        if (!response.ok) throw new Error(`Gemini HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`);
-        return await response.json() as GeminiResponse;
+        if (!response.ok)
+          throw new Error(
+            `Gemini HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`,
+          );
+        return (await response.json()) as GeminiResponse;
       }
       if (provider === "groq" || provider === "openrouter") {
         return await callOpenAiCompatible(provider, request);
@@ -172,15 +201,24 @@ export async function generateGeminiContent(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (message === "not_configured") continue;
-      if (/HTTP 429|rate.?limit|quota|RESOURCE_EXHAUSTED/i.test(message)) markProviderCoolingDown(provider, 60);
-      else if (/HTTP 5\\d\\d|timed out|timeout/i.test(message)) markProviderCoolingDown(provider, 20);
+      if (/HTTP 429|rate.?limit|quota|RESOURCE_EXHAUSTED/i.test(message))
+        markProviderCoolingDown(provider, 60);
+      else if (/HTTP 5\\d\\d|timed out|timeout/i.test(message))
+        markProviderCoolingDown(provider, 20);
       failures.push(`${provider}: ${message}`);
     }
   }
 
   if (failures.length || coolingDown.length) {
-    const details = [...failures, ...coolingDown.map((provider) => `${provider}: temporarily cooling down after a provider limit or outage`)];
+    const details = [
+      ...failures,
+      ...coolingDown.map(
+        (provider) => `${provider}: temporarily cooling down after a provider limit or outage`,
+      ),
+    ];
     throw new Error(`All configured free AI providers are unavailable. ${details.join(" | ")}`);
   }
-  throw new Error("No AI provider is configured. Add at least one server-side API key in Vercel Environment Variables.");
+  throw new Error(
+    "No AI provider is configured. Add at least one server-side API key in Vercel Environment Variables.",
+  );
 }

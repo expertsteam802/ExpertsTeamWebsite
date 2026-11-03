@@ -1,5 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, Copy, ImagePlus, Loader2, Minimize2, Paperclip, Send, Sparkles, Trash2, User } from "lucide-react";
+import {
+  Bot,
+  Copy,
+  ImagePlus,
+  Loader2,
+  Minimize2,
+  Paperclip,
+  Send,
+  Sparkles,
+  Trash2,
+  User,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
@@ -12,8 +23,20 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { generateExpertImage } from "@/lib/ai.functions";
 
-type ChatRow = { id: string; role: string; content: string; created_at: string; thread_id?: string };
-type UploadedFile = { name: string; mimeType: string; dataUrl?: string; text?: string; size?: number };
+type ChatRow = {
+  id: string;
+  role: string;
+  content: string;
+  created_at: string;
+  thread_id?: string;
+};
+type UploadedFile = {
+  name: string;
+  mimeType: string;
+  dataUrl?: string;
+  text?: string;
+  size?: number;
+};
 
 function MessageBody({ content }: { content: string }) {
   const parts = content.split(/```/);
@@ -75,9 +98,11 @@ function loadFileForAi(file: File): Promise<UploadedFile> {
     const reader = new FileReader();
     reader.onload = async () => {
       const dataUrl = String(reader.result ?? "");
-      const text = file.type.startsWith("text/") || /\.(txt|md|json|csv|js|ts|tsx|jsx|html|css|sql|yaml|yml|xml)$/i.test(file.name)
-        ? await fileToText(file).catch(() => "")
-        : "";
+      const text =
+        file.type.startsWith("text/") ||
+        /\.(txt|md|json|csv|js|ts|tsx|jsx|html|css|sql|yaml|yml|xml)$/i.test(file.name)
+          ? await fileToText(file).catch(() => "")
+          : "";
 
       resolve({
         name: file.name,
@@ -103,7 +128,9 @@ export function ChrisAiChat({
   const [input, setInput] = useState("");
   const [threadId, setThreadId] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<UploadedFile[]>([]);
-  const [generatedImage, setGeneratedImage] = useState<{ mimeType: string; data: string } | null>(null);
+  const [generatedImage, setGeneratedImage] = useState<{ mimeType: string; data: string } | null>(
+    null,
+  );
   const [streamingReply, setStreamingReply] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -158,7 +185,11 @@ export function ChrisAiChat({
     }
   }, [user?.id, threadId]);
 
-  const { data: messages = [], isError: messagesError, refetch: refetchMessages } = useQuery({
+  const {
+    data: messages = [],
+    isError: messagesError,
+    refetch: refetchMessages,
+  } = useQuery({
     queryKey: ["ai-chats", user?.id, threadId],
     enabled: !!user && !!threadId,
     queryFn: async () => {
@@ -179,14 +210,12 @@ export function ChrisAiChat({
       const activeThreadId = threadId ?? crypto.randomUUID();
       if (!threadId) setThreadId(activeThreadId);
 
-      const { error: userMessageError } = await supabase
-        .from("ai_chats")
-        .insert({
-          user_id: user!.id,
-          thread_id: activeThreadId,
-          role: "user",
-          content: prompt,
-        });
+      const { error: userMessageError } = await supabase.from("ai_chats").insert({
+        user_id: user!.id,
+        thread_id: activeThreadId,
+        role: "user",
+        content: prompt,
+      });
       if (userMessageError) throw userMessageError;
 
       const history = messages.slice(-10).map((message) => ({
@@ -209,7 +238,7 @@ export function ChrisAiChat({
         body: JSON.stringify({ prompt, history, attachments }),
       });
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({})) as { error?: string };
+        const errorBody = (await response.json().catch(() => ({}))) as { error?: string };
         throw new Error(errorBody.error || `Expert AI request failed (${response.status}).`);
       }
       if (!response.body) throw new Error("The AI response stream was unavailable.");
@@ -231,7 +260,11 @@ export function ChrisAiChat({
           error?: string;
         };
         if (chunk.error) throw new Error(chunk.error);
-        const text = chunk.candidates?.[0]?.content?.parts?.filter((part) => !part.thought).map((part) => part.text ?? "").join("") ?? "";
+        const text =
+          chunk.candidates?.[0]?.content?.parts
+            ?.filter((part) => !part.thought)
+            .map((part) => part.text ?? "")
+            .join("") ?? "";
         if (text) {
           streamedText += text;
           setStreamingReply(streamedText);
@@ -312,8 +345,14 @@ export function ChrisAiChat({
     return (
       <Card className="relative p-8 text-center">
         {onMinimize && (
-          <Button variant="ghost" size="icon" aria-label="Minimize Expert AI" title="Minimize Expert AI"
-            className="absolute right-3 top-3" onClick={onMinimize}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Minimize Expert AI"
+            title="Minimize Expert AI"
+            className="absolute right-3 top-3"
+            onClick={onMinimize}
+          >
             <Minimize2 className="h-4 w-4" />
           </Button>
         )}
@@ -349,10 +388,12 @@ export function ChrisAiChat({
           </span>
           <div>
             <p className="text-sm font-semibold">Expert AI</p>
-            <p className="text-xs text-muted-foreground">File analysis · image ideas · app building · {profile?.ai_credits ?? 0} AI credits</p>
+            <p className="text-xs text-muted-foreground">
+              File analysis · image ideas · app building · {profile?.ai_credits ?? 0} AI credits
+            </p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
           {onMinimize && (
             <Button
@@ -383,9 +424,16 @@ export function ChrisAiChat({
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
         {messagesError && (
-          <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-            <p className="text-sm text-destructive">Could not load your saved messages. Check the database migration, then try again.</p>
-            <Button size="sm" variant="outline" onClick={() => void refetchMessages()}>Retry</Button>
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3"
+          >
+            <p className="text-sm text-destructive">
+              Could not load your saved messages. Check the database migration, then try again.
+            </p>
+            <Button size="sm" variant="outline" onClick={() => void refetchMessages()}>
+              Retry
+            </Button>
           </div>
         )}
         {messages.length === 0 && (
@@ -438,7 +486,9 @@ export function ChrisAiChat({
               <Bot className="h-3.5 w-3.5 text-primary" />
             </span>
             <div className="max-w-[80%] rounded-2xl border border-border bg-secondary px-4 py-2">
-              {streamingReply ? <MessageBody content={streamingReply} /> : (
+              {streamingReply ? (
+                <MessageBody content={streamingReply} />
+              ) : (
                 <p className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Loader2 className="h-3 w-3 animate-spin" /> Expert AI is thinking…
                 </p>
@@ -483,7 +533,11 @@ export function ChrisAiChat({
                 <button
                   type="button"
                   aria-label={`Remove ${attachment.name}`}
-                  onClick={() => setAttachments((current) => current.filter((item) => item.name !== attachment.name))}
+                  onClick={() =>
+                    setAttachments((current) =>
+                      current.filter((item) => item.name !== attachment.name),
+                    )
+                  }
                   className="ml-1 text-muted-foreground hover:text-foreground"
                 >
                   ×
@@ -533,7 +587,11 @@ export function ChrisAiChat({
             onClick={() => void generateImageMutation.mutateAsync()}
             disabled={generateImageMutation.isPending}
           >
-            {generateImageMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+            {generateImageMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ImagePlus className="h-4 w-4" />
+            )}
           </Button>
           <Button onClick={submit} disabled={send.isPending} aria-label="Send message">
             <Send className="h-4 w-4" />

@@ -60,7 +60,12 @@ function CommunityPage() {
   const [linkUrl, setLinkUrl] = useState("");
   const [filter, setFilter] = useState<string>("all");
 
-  const { data: posts = [], isLoading, error, refetch: refetchPosts } = useQuery({
+  const {
+    data: posts = [],
+    isLoading,
+    error,
+    refetch: refetchPosts,
+  } = useQuery({
     queryKey: ["community-posts"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -192,9 +197,17 @@ function CommunityPage() {
           <TabsContent value={filter} className="space-y-4 pt-4">
             {isLoading && <p className="text-sm text-muted-foreground">Loading posts…</p>}
             {error && (
-              <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-                <p className="text-sm text-destructive">We couldn't load the community feed. Please check the database migration and retry.</p>
-                <Button size="sm" variant="outline" onClick={() => void refetchPosts()}>Retry</Button>
+              <div
+                role="alert"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3"
+              >
+                <p className="text-sm text-destructive">
+                  We couldn't load the community feed. Please check the database migration and
+                  retry.
+                </p>
+                <Button size="sm" variant="outline" onClick={() => void refetchPosts()}>
+                  Retry
+                </Button>
               </div>
             )}
             {!isLoading && !error && visible.length === 0 && (
@@ -239,13 +252,20 @@ function PostCard({
   const [open, setOpen] = useState(false);
   const [comment, setComment] = useState("");
 
-  const { data: comments = [], isLoading: commentsLoading, isError: commentsError, refetch: refetchComments } = useQuery({
+  const {
+    data: comments = [],
+    isLoading: commentsLoading,
+    isError: commentsError,
+    refetch: refetchComments,
+  } = useQuery({
     queryKey: ["community-comments", post.id],
     enabled: open,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("community_comments")
-        .select("id, user_id, body, created_at, profiles:profiles!community_comments_profile_fk(username, display_name)")
+        .select(
+          "id, user_id, body, created_at, profiles:profiles!community_comments_profile_fk(username, display_name)",
+        )
         .eq("post_id", post.id)
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -313,19 +333,26 @@ function PostCard({
         <div className="space-y-3 border-t border-border/70 pt-3">
           {commentsLoading && <p className="text-xs text-muted-foreground">Loading replies…</p>}
           {commentsError && (
-            <div role="alert" className="flex items-center justify-between gap-2 rounded-lg border border-destructive/30 p-3">
+            <div
+              role="alert"
+              className="flex items-center justify-between gap-2 rounded-lg border border-destructive/30 p-3"
+            >
               <p className="text-xs text-destructive">Could not load replies.</p>
-              <Button size="sm" variant="outline" onClick={() => void refetchComments()}>Retry</Button>
+              <Button size="sm" variant="outline" onClick={() => void refetchComments()}>
+                Retry
+              </Button>
             </div>
           )}
-          {!commentsLoading && !commentsError && comments.map((item) => (
-            <div key={item.id} className="rounded-lg bg-secondary/60 p-3 text-sm">
-              <p className="text-xs text-muted-foreground">
-                {item.profiles?.display_name || item.profiles?.username || "Member"}
-              </p>
-              <p className="whitespace-pre-wrap">{item.body}</p>
-            </div>
-          ))}
+          {!commentsLoading &&
+            !commentsError &&
+            comments.map((item) => (
+              <div key={item.id} className="rounded-lg bg-secondary/60 p-3 text-sm">
+                <p className="text-xs text-muted-foreground">
+                  {item.profiles?.display_name || item.profiles?.username || "Member"}
+                </p>
+                <p className="whitespace-pre-wrap">{item.body}</p>
+              </div>
+            ))}
           {!commentsLoading && !commentsError && comments.length === 0 && (
             <p className="text-xs text-muted-foreground">No replies yet.</p>
           )}
@@ -338,7 +365,12 @@ function PostCard({
                 className="min-h-10 resize-none"
                 onChange={(event) => setComment(event.target.value)}
               />
-              <Button size="icon" aria-label="Send reply" onClick={() => addComment.mutate()} disabled={addComment.isPending || !comment.trim()}>
+              <Button
+                size="icon"
+                aria-label="Send reply"
+                onClick={() => addComment.mutate()}
+                disabled={addComment.isPending || !comment.trim()}
+              >
                 <Send className="h-4 w-4" />
               </Button>
             </div>

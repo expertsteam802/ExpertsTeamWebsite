@@ -39,7 +39,9 @@ export function UpgradeDialog() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("subscription_requests")
-        .select("id, user_id, amount, kind, method, reference, note, status, reviewed_at, created_at")
+        .select(
+          "id, user_id, amount, kind, method, reference, note, status, reviewed_at, created_at",
+        )
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -47,17 +49,26 @@ export function UpgradeDialog() {
     },
   });
 
-  const pending = (requests ?? []).find((request) => request.status === "pending" && (request.kind ?? "storage") === planKind);
-  const configuredPrice = Number(planKind === "ai" ? settings.ai_subscription_price : settings.subscription_price);
+  const pending = (requests ?? []).find(
+    (request) => request.status === "pending" && (request.kind ?? "storage") === planKind,
+  );
+  const configuredPrice = Number(
+    planKind === "ai" ? settings.ai_subscription_price : settings.subscription_price,
+  );
   const price = Number.isFinite(configuredPrice) && configuredPrice > 0 ? configuredPrice : 1;
   const payoutAccount = settings.payout_account?.trim();
-  const studioActive = Boolean(profile?.ai_subscribed && (!profile.ai_subscription_expires_at || new Date(profile.ai_subscription_expires_at).getTime() > Date.now()));
+  const studioActive = Boolean(
+    profile?.ai_subscribed &&
+    (!profile.ai_subscription_expires_at ||
+      new Date(profile.ai_subscription_expires_at).getTime() > Date.now()),
+  );
   const activeMethod = PAYMENT_METHODS.find((item) => item.value === method)!;
 
   const submit = useMutation({
     mutationFn: async () => {
       if (pending) throw new Error("You already have a payment awaiting review.");
-      if (!payoutAccount) throw new Error("The creator has not configured a payment destination yet.");
+      if (!payoutAccount)
+        throw new Error("The creator has not configured a payment destination yet.");
       if (!user) throw new Error("Sign in first.");
       if (reference.trim().length < 4) {
         throw new Error("Paste the payment reference or transaction ID (at least 4 characters).");
@@ -88,8 +99,8 @@ export function UpgradeDialog() {
   if (studioActive) {
     return (
       <Badge variant="secondary" className="w-fit gap-1">
-        <CheckCircle2 className="h-3.5 w-3.5" /> Subscriber ·{" "}
-        Studio access · {Number(profile.ai_credits ?? 0)} AI credits available
+        <CheckCircle2 className="h-3.5 w-3.5" /> Subscriber · Studio access ·{" "}
+        {Number(profile.ai_credits ?? 0)} AI credits available
       </Badge>
     );
   }
@@ -110,7 +121,9 @@ export function UpgradeDialog() {
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {planKind === "ai" ? "Unlock ExpertsTeam Studio" : `Unlock ${formatBytes(settings.subscription_quota_bytes)} of space`}
+              {planKind === "ai"
+                ? "Unlock ExpertsTeam Studio"
+                : `Unlock ${formatBytes(settings.subscription_quota_bytes)} of space`}
             </DialogTitle>
             <DialogDescription>
               {planKind === "ai"
@@ -123,10 +136,31 @@ export function UpgradeDialog() {
             <div className="space-y-2">
               <Label>Choose plan</Label>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" size="sm" variant={planKind === "ai" ? "default" : "outline"} onClick={() => setPlanKind("ai")}>Studio · ${Number(settings.ai_subscription_price) > 0 ? Number(settings.ai_subscription_price).toFixed(2) : "1.00"}</Button>
-                <Button type="button" size="sm" variant={planKind === "storage" ? "default" : "outline"} onClick={() => setPlanKind("storage")}>Extra storage · ${Number(settings.subscription_price).toFixed(2)}</Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={planKind === "ai" ? "default" : "outline"}
+                  onClick={() => setPlanKind("ai")}
+                >
+                  Studio · $
+                  {Number(settings.ai_subscription_price) > 0
+                    ? Number(settings.ai_subscription_price).toFixed(2)
+                    : "1.00"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={planKind === "storage" ? "default" : "outline"}
+                  onClick={() => setPlanKind("storage")}
+                >
+                  Extra storage · ${Number(settings.subscription_price).toFixed(2)}
+                </Button>
               </div>
-              <p className="text-xs text-muted-foreground">{planKind === "ai" ? "Unlocks app creation for 30 days with a limited AI credit allowance. Free-model provider quotas still apply." : "One-time storage upgrade, confirmed manually by the creator."}</p>
+              <p className="text-xs text-muted-foreground">
+                {planKind === "ai"
+                  ? "Unlocks app creation for 30 days with a limited AI credit allowance. Free-model provider quotas still apply."
+                  : "One-time storage upgrade, confirmed manually by the creator."}
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Pay with</Label>
@@ -195,7 +229,8 @@ export function UpgradeDialog() {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Your selected plan unlocks after the creator confirms payment in the Admin panel. Studio access lasts 30 days.
+              Your selected plan unlocks after the creator confirms payment in the Admin panel.
+              Studio access lasts 30 days.
             </p>
           </div>
 

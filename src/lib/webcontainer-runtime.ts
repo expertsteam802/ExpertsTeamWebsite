@@ -1,4 +1,3 @@
-
 import type {
   FileSystemTree,
   WebContainer as WebContainerInstance,
@@ -26,10 +25,7 @@ function log(callbacks: RuntimeCallbacks, value: string) {
 function normalizePath(path: string) {
   const normalized = path.replace(/\\/g, "/").replace(/^\/+/, "");
 
-  if (
-    !normalized ||
-    normalized.split("/").some((part) => part === ".." || part === ".")
-  ) {
+  if (!normalized || normalized.split("/").some((part) => part === ".." || part === ".")) {
     throw new Error(`Invalid project file path: ${path}`);
   }
 
@@ -169,10 +165,7 @@ export async function bootWebContainer(
 /**
  * Copies the project's files into the runtime.
  */
-export async function mountProjectFiles(
-  files: RuntimeFileMap,
-  callbacks: RuntimeCallbacks = {},
-) {
+export async function mountProjectFiles(files: RuntimeFileMap, callbacks: RuntimeCallbacks = {}) {
   const instance = await bootWebContainer(callbacks);
   const projectFiles = ensurePackageJson(files);
 
@@ -212,10 +205,12 @@ export async function installDependencies(
   signature = "",
 ): Promise<number> {
   const instance = await bootWebContainer(callbacks);
-  const hasNodeModules = await instance.fs.readdir("node_modules", { encoding: "utf-8" })
+  const hasNodeModules = await instance.fs
+    .readdir("node_modules", { encoding: "utf-8" })
     .then((entries) => entries.length > 0)
     .catch(() => false);
-  const installedSignature = await instance.fs.readFile(".experts-install-signature", "utf-8")
+  const installedSignature = await instance.fs
+    .readFile(".experts-install-signature", "utf-8")
     .catch(() => "");
 
   if (hasNodeModules && signature && installedSignature === signature) {
@@ -225,7 +220,12 @@ export async function installDependencies(
 
   log(callbacks, "\nInstalling project dependencies...\n");
 
-  const process = await instance.spawn("npm", ["install", "--prefer-offline", "--no-audit", "--no-fund"]);
+  const process = await instance.spawn("npm", [
+    "install",
+    "--prefer-offline",
+    "--no-audit",
+    "--no-fund",
+  ]);
 
   void process.output.pipeTo(
     new WritableStream({
@@ -238,9 +238,7 @@ export async function installDependencies(
   const exitCode = await process.exit;
 
   if (exitCode !== 0) {
-    callbacks.onError?.(
-      `Dependency installation failed with exit code ${exitCode}.`,
-    );
+    callbacks.onError?.(`Dependency installation failed with exit code ${exitCode}.`);
   } else {
     if (signature) await instance.fs.writeFile(".experts-install-signature", signature);
     log(callbacks, "\nDependencies installed successfully.\n");
@@ -268,16 +266,10 @@ export async function startDevServer(
   };
 
   const scripts = packageJson.scripts ?? {};
-  const scriptName = scripts.dev
-    ? "dev"
-    : scripts.start
-      ? "start"
-      : null;
+  const scriptName = scripts.dev ? "dev" : scripts.start ? "start" : null;
 
   if (!scriptName) {
-    throw new Error(
-      'This project has no "dev" or "start" script in package.json.',
-    );
+    throw new Error('This project has no "dev" or "start" script in package.json.');
   }
 
   log(callbacks, `\nStarting project with npm run ${scriptName}...\n`);
@@ -285,61 +277,63 @@ export async function startDevServer(
   let serverReadyHandler: (() => void) | undefined;
   let timeoutId: ReturnType<typeof setTimeout>;
 
-  const serverReady = new Promise<{ port: number; url: string }>(
-    (resolve, reject) => {
-      timeoutId = setTimeout(() => {
-        serverReadyHandler?.();
-        serverReadyHandler = undefined;
-        reject(new Error("The development server did not become ready within 90 seconds. Check the Console for errors."));
-      }, 90000);
+  const serverReady = new Promise<{ port: number; url: string }>((resolve, reject) => {
+    timeoutId = setTimeout(() => {
+      serverReadyHandler?.();
+      serverReadyHandler = undefined;
+      reject(
+        new Error(
+          "The development server did not become ready within 90 seconds. Check the Console for errors.",
+        ),
+      );
+    }, 90000);
 
-      serverReadyHandler = instance.on("server-ready", (port, url) => {
+    serverReadyHandler = instance.on("server-ready", (port, url) => {
+      serverReadyHandler?.();
+      serverReadyHandler = undefined;
+      clearTimeout(timeoutId);
+      callbacks.onServerReady?.(port, url);
+      log(callbacks, `\nPreview ready at ${url}\n`);
+      resolve({ port, url });
+    });
+
+    void (async () => {
+      try {
+        // Respect the project's own dev/start script so Vite, Next,
+        // React tooling, and other Node-based frameworks can choose their
+        // supported host flags.
+        devProcess = await instance.spawn("npm", ["run", scriptName]);
+
+        void devProcess.output.pipeTo(
+          new WritableStream({
+            write(data) {
+              log(callbacks, data);
+            },
+          }),
+        );
+
+        const runningProcess = devProcess;
+
+        void runningProcess.exit.then((exitCode) => {
+          if (serverReadyHandler) {
+            serverReadyHandler();
+            serverReadyHandler = undefined;
+            clearTimeout(timeoutId);
+            reject(
+              new Error(
+                `Development server exited with code ${exitCode} before opening a preview. Check the terminal output.`,
+              ),
+            );
+          }
+        });
+      } catch (error) {
         serverReadyHandler?.();
         serverReadyHandler = undefined;
         clearTimeout(timeoutId);
-        callbacks.onServerReady?.(port, url);
-        log(callbacks, `\nPreview ready at ${url}\n`);
-        resolve({ port, url });
-      });
-
-      void (async () => {
-        try {
-          // Respect the project's own dev/start script so Vite, Next,
-          // React tooling, and other Node-based frameworks can choose their
-          // supported host flags.
-          devProcess = await instance.spawn("npm", ["run", scriptName]);
-
-          void devProcess.output.pipeTo(
-            new WritableStream({
-              write(data) {
-                log(callbacks, data);
-              },
-            }),
-          );
-
-          const runningProcess = devProcess;
-
-          void runningProcess.exit.then((exitCode) => {
-            if (serverReadyHandler) {
-              serverReadyHandler();
-              serverReadyHandler = undefined;
-              clearTimeout(timeoutId);
-              reject(
-                new Error(
-                  `Development server exited with code ${exitCode} before opening a preview. Check the terminal output.`,
-                ),
-              );
-            }
-          });
-        } catch (error) {
-          serverReadyHandler?.();
-          serverReadyHandler = undefined;
-          clearTimeout(timeoutId);
-          reject(error);
-        }
-      })();
-    },
-  );
+        reject(error);
+      }
+    })();
+  });
 
   return serverReady;
 }
@@ -401,15 +395,19 @@ export async function startTerminalSession(
   terminalInputWriter = terminalProcess.input.getWriter();
 
   const activeProcess = terminalProcess;
-  void activeProcess.output.pipeTo(
-    new WritableStream({
-      write(data) {
-        onOutput(data);
-      },
-    }),
-  ).catch((error) => {
-    onOutput(`\r\n[terminal output error] ${error instanceof Error ? error.message : String(error)}\r\n`);
-  });
+  void activeProcess.output
+    .pipeTo(
+      new WritableStream({
+        write(data) {
+          onOutput(data);
+        },
+      }),
+    )
+    .catch((error) => {
+      onOutput(
+        `\r\n[terminal output error] ${error instanceof Error ? error.message : String(error)}\r\n`,
+      );
+    });
 
   void activeProcess.exit.then((exitCode) => {
     if (terminalProcess === activeProcess) {
@@ -426,7 +424,8 @@ export async function startTerminalSession(
 }
 
 export async function writeTerminalInput(input: string) {
-  if (!terminalProcess || !terminalInputWriter) throw new Error("The terminal is not running. Start it again.");
+  if (!terminalProcess || !terminalInputWriter)
+    throw new Error("The terminal is not running. Start it again.");
   await terminalInputWriter.write(input);
 }
 

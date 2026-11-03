@@ -1,12 +1,38 @@
-
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  Bot, Check, ChevronDown, ChevronRight, Code2, Command, Copy,
-  ExternalLink, Eye, File, FileCode2, FilePlus2, Folder,
-  Github, Loader2, Maximize2, Monitor, MoreHorizontal, Play,
-  Plus, RefreshCw, Save, Send, Settings2, Smartphone, Square,
-  Sparkles, Tablet, Terminal, Trash2, X, Zap
+  Bot,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Code2,
+  Command,
+  Copy,
+  ExternalLink,
+  Eye,
+  File,
+  FileCode2,
+  FilePlus2,
+  Folder,
+  Github,
+  Loader2,
+  Maximize2,
+  Monitor,
+  MoreHorizontal,
+  Play,
+  Plus,
+  RefreshCw,
+  Save,
+  Send,
+  Settings2,
+  Smartphone,
+  Square,
+  Sparkles,
+  Tablet,
+  Terminal,
+  Trash2,
+  X,
+  Zap,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { toast } from "sonner";
@@ -50,13 +76,40 @@ type ProjectRow = {
 type Panel = "preview" | "code" | "console" | "terminal";
 
 const EDITOR_SNIPPETS = [
-  { pack: "react", label: "React component", value: "export default function App() {\n  return (\n    <main>\n      <h1>Hello, ExpertsTeam</h1>\n    </main>\n  );\n}" },
-  { pack: "react", label: "useState hook", value: "const [value, setValue] = useState(\"\");" },
-  { pack: "react", label: "useEffect hook", value: "useEffect(() => {\n  // Run side effects here\n}, []);" },
-  { pack: "html", label: "HTML page", value: "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>New page</title>\n  </head>\n  <body>\n    <main></main>\n  </body>\n</html>" },
-  { pack: "html", label: "Accessible button", value: "<button type=\"button\" aria-label=\"Action\">Click me</button>" },
-  { pack: "css", label: "Responsive layout", value: ".container {\n  display: grid;\n  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));\n  gap: 1rem;\n}" },
-  { pack: "css", label: "Mobile breakpoint", value: "@media (max-width: 640px) {\n  .container {\n    grid-template-columns: 1fr;\n  }\n}" },
+  {
+    pack: "react",
+    label: "React component",
+    value:
+      "export default function App() {\n  return (\n    <main>\n      <h1>Hello, ExpertsTeam</h1>\n    </main>\n  );\n}",
+  },
+  { pack: "react", label: "useState hook", value: 'const [value, setValue] = useState("");' },
+  {
+    pack: "react",
+    label: "useEffect hook",
+    value: "useEffect(() => {\n  // Run side effects here\n}, []);",
+  },
+  {
+    pack: "html",
+    label: "HTML page",
+    value:
+      '<!doctype html>\n<html lang="en">\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>New page</title>\n  </head>\n  <body>\n    <main></main>\n  </body>\n</html>',
+  },
+  {
+    pack: "html",
+    label: "Accessible button",
+    value: '<button type="button" aria-label="Action">Click me</button>',
+  },
+  {
+    pack: "css",
+    label: "Responsive layout",
+    value:
+      ".container {\n  display: grid;\n  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));\n  gap: 1rem;\n}",
+  },
+  {
+    pack: "css",
+    label: "Mobile breakpoint",
+    value: "@media (max-width: 640px) {\n  .container {\n    grid-template-columns: 1fr;\n  }\n}",
+  },
 ];
 
 const suggestions = [
@@ -147,10 +200,7 @@ export function CodeAgent() {
 
     const previousFiles = runtimeFilesRef.current;
     const nextFiles = files;
-    const changedPaths = new Set([
-      ...Object.keys(previousFiles),
-      ...Object.keys(nextFiles),
-    ]);
+    const changedPaths = new Set([...Object.keys(previousFiles), ...Object.keys(nextFiles)]);
 
     runtimeSyncQueueRef.current = runtimeSyncQueueRef.current
       .then(async () => {
@@ -199,7 +249,10 @@ export function CodeAgent() {
       if (!runtimeAlreadyHasFiles) {
         await mountProjectFiles(files, {
           onOutput: (output) => setTerminalOutput((current) => (current + output).slice(-40000)),
-          onError: (message) => setTerminalOutput((current) => (current + `\\r\\n[setup error] ${message}\\r\\n`).slice(-40000)),
+          onError: (message) =>
+            setTerminalOutput((current) =>
+              (current + `\\r\\n[setup error] ${message}\\r\\n`).slice(-40000),
+            ),
         });
         runtimeFilesRef.current = { ...files };
       }
@@ -209,18 +262,29 @@ export function CodeAgent() {
         npmShrinkwrap: files["npm-shrinkwrap.json"] ?? "",
       });
       if (runtimeInstallKeyRef.current !== installKey) {
-        const exitCode = await installDependencies({
-          onOutput: (output) => setTerminalOutput((current) => (current + output).slice(-40000)),
-          onError: (message) => setTerminalOutput((current) => (current + `\\r\\n[setup error] ${message}\\r\\n`).slice(-40000)),
-        }, installKey);
-        if (exitCode !== 0) throw new Error("Project dependencies could not be installed. Review the terminal output.");
+        const exitCode = await installDependencies(
+          {
+            onOutput: (output) => setTerminalOutput((current) => (current + output).slice(-40000)),
+            onError: (message) =>
+              setTerminalOutput((current) =>
+                (current + `\\r\\n[setup error] ${message}\\r\\n`).slice(-40000),
+              ),
+          },
+          installKey,
+        );
+        if (exitCode !== 0)
+          throw new Error(
+            "Project dependencies could not be installed. Review the terminal output.",
+          );
         runtimeInstallKeyRef.current = installKey;
       }
       await startTerminalSession(
         (chunk) => setTerminalOutput((current) => (current + chunk).slice(-40000)),
         (exitCode) => {
           setTerminalReady(false);
-          setTerminalOutput((current) => `${current}\r\n[process exited with code ${exitCode}]\r\n`);
+          setTerminalOutput(
+            (current) => `${current}\r\n[process exited with code ${exitCode}]\r\n`,
+          );
         },
       );
       setTerminalReady(true);
@@ -259,16 +323,10 @@ export function CodeAgent() {
 
     const callbacks = {
       onOutput: (output: string) => {
-        setLogs((current) => [
-          ...current.slice(-199),
-          { type: "runtime", message: output },
-        ]);
+        setLogs((current) => [...current.slice(-199), { type: "runtime", message: output }]);
       },
       onError: (message: string) => {
-        setLogs((current) => [
-          ...current.slice(-199),
-          { type: "error", message },
-        ]);
+        setLogs((current) => [...current.slice(-199), { type: "error", message }]);
       },
       onServerReady: (_port: number, url: string) => {
         setRuntimeUrl(url);
@@ -278,7 +336,8 @@ export function CodeAgent() {
 
     try {
       await runtimeSyncQueueRef.current;
-      const runtimeAlreadyHasFiles = JSON.stringify(runtimeFilesRef.current) === JSON.stringify(files);
+      const runtimeAlreadyHasFiles =
+        JSON.stringify(runtimeFilesRef.current) === JSON.stringify(files);
       if (!runtimeAlreadyHasFiles) {
         await mountProjectFiles(files, callbacks);
         runtimeFilesRef.current = { ...files };
@@ -308,10 +367,7 @@ export function CodeAgent() {
         error instanceof Error ? error.message : "The project runtime could not start.";
       setRuntimeStatus("Could not start");
       setRuntimeUrl(null);
-      setLogs((current) => [
-        ...current.slice(-199),
-        { type: "error", message },
-      ]);
+      setLogs((current) => [...current.slice(-199), { type: "error", message }]);
       toast.error(message);
     } finally {
       setRuntimeBusy(false);
@@ -343,7 +399,10 @@ export function CodeAgent() {
           .select("id,name")
           .maybeSingle();
         if (error) throw error;
-        if (!data) throw new Error("The project was not renamed. It may no longer belong to this account; refresh your projects and try again.");
+        if (!data)
+          throw new Error(
+            "The project was not renamed. It may no longer belong to this account; refresh your projects and try again.",
+          );
         setName(data.name);
         await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
       } else {
@@ -438,8 +497,16 @@ export function CodeAgent() {
     try {
       const plan = await createPlan({ data: { prompt: text, files } });
       const planText = `Plan: ${plan.summary}\\n\\n${plan.steps.map((step, index) => `${index + 1}. ${step}`).join("\\n")}\\n\\nReview this plan. No project files have changed yet.`;
-      const approvedPlan: PendingPlan = { request: text, summary: plan.summary, steps: plan.steps, nextStep: 0 };
-      const plannedMessages: Message[] = [...nextMessages, { role: "assistant", content: planText, plan: approvedPlan }];
+      const approvedPlan: PendingPlan = {
+        request: text,
+        summary: plan.summary,
+        steps: plan.steps,
+        nextStep: 0,
+      };
+      const plannedMessages: Message[] = [
+        ...nextMessages,
+        { role: "assistant", content: planText, plan: approvedPlan },
+      ];
       setMessages(plannedMessages);
       void queryClient.invalidateQueries({ queryKey: ["profile"] });
       setPendingPlan(approvedPlan);
@@ -458,7 +525,9 @@ export function CodeAgent() {
     setBusy(true);
     const stepPrompt = `Original request: ${pendingPlan.request}\\nPlan: ${pendingPlan.steps.map((item, index) => `${index + 1}. ${item}`).join("\\n")}\\nImplement ONLY step ${pendingPlan.nextStep + 1}: ${step}. Keep changes small and preserve unrelated files.`;
     try {
-      const result = await run({ data: { prompt: stepPrompt, files, history: messages.slice(-8) } });
+      const result = await run({
+        data: { prompt: stepPrompt, files, history: messages.slice(-8) },
+      });
       const updatedFiles: ProjectFiles = { ...files };
       const changed: string[] = [];
       for (const [path, content] of Object.entries(result.files)) {
@@ -470,7 +539,10 @@ export function CodeAgent() {
       const remaining = completed < pendingPlan.steps.length;
       const answer = `Step ${completed}/${pendingPlan.steps.length}: ${step}\\n${result.message}${changed.length ? `\\n\\nUpdated files:\\n${changed.map((path) => `• ${path}`).join("\\n")}` : ""}${remaining ? "\\n\\nReview the result, then approve the next step." : "\\n\\nAll planned steps are complete."}`;
       const nextPlan = remaining ? { ...pendingPlan, nextStep: completed } : undefined;
-      const finalMessages: Message[] = [...messages, { role: "assistant", content: answer, ...(nextPlan ? { plan: nextPlan } : {}) }];
+      const finalMessages: Message[] = [
+        ...messages,
+        { role: "assistant", content: answer, ...(nextPlan ? { plan: nextPlan } : {}) },
+      ];
       setFiles(updatedFiles);
       void queryClient.invalidateQueries({ queryKey: ["profile"] });
       setMessages(finalMessages);
@@ -483,7 +555,9 @@ export function CodeAgent() {
       setPreviewKey((value) => value + 1);
       await persist({ files: updatedFiles, messages: finalMessages });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The approved step could not be completed.");
+      toast.error(
+        error instanceof Error ? error.message : "The approved step could not be completed.",
+      );
     } finally {
       setBusy(false);
     }
@@ -519,12 +593,8 @@ export function CodeAgent() {
     resetRuntimeForProjectChange();
     setProjectId(project.id);
     setName(project.name);
-    setFiles(
-      project.files && Object.keys(project.files).length
-        ? project.files
-        : STARTER_FILES,
-    );
-    const savedMessages = Array.isArray(project.messages) ? project.messages as Message[] : [];
+    setFiles(project.files && Object.keys(project.files).length ? project.files : STARTER_FILES);
+    const savedMessages = Array.isArray(project.messages) ? (project.messages as Message[]) : [];
     setMessages(savedMessages);
     const savedPlan = savedMessages[savedMessages.length - 1]?.plan;
     setPendingPlan(savedPlan && savedPlan.nextStep < savedPlan.steps.length ? savedPlan : null);
@@ -567,11 +637,14 @@ export function CodeAgent() {
     toast.success("Project deleted");
   }
 
-  const availableEditorSnippets = EDITOR_SNIPPETS.filter((snippet) =>
-    enabledEditorPacks.includes(snippet.pack) &&
-    (snippet.pack === "react" ? /\.tsx?$|\.jsx?$/.test(activeFile) :
-      snippet.pack === "html" ? activeFile.endsWith(".html") :
-      activeFile.endsWith(".css")),
+  const availableEditorSnippets = EDITOR_SNIPPETS.filter(
+    (snippet) =>
+      enabledEditorPacks.includes(snippet.pack) &&
+      (snippet.pack === "react"
+        ? /\.tsx?$|\.jsx?$/.test(activeFile)
+        : snippet.pack === "html"
+          ? activeFile.endsWith(".html")
+          : activeFile.endsWith(".css")),
   );
 
   function insertEditorSnippet(value: string) {
@@ -612,8 +685,15 @@ export function CodeAgent() {
       const line = before.split("\n").pop() ?? "";
       const indent = line.match(/^\s*/)?.[0] ?? "";
       const trimmedBefore = before.trimEnd();
-      const extraIndent = ["{", "(", "["].some((character) => trimmedBefore.endsWith(character)) ? "  " : "";
-      editor.setRangeText("\n" + indent + extraIndent, editor.selectionStart, editor.selectionEnd, "end");
+      const extraIndent = ["{", "(", "["].some((character) => trimmedBefore.endsWith(character))
+        ? "  "
+        : "";
+      editor.setRangeText(
+        "\n" + indent + extraIndent,
+        editor.selectionStart,
+        editor.selectionEnd,
+        "end",
+      );
       updateFile(editor.value);
       return;
     }
@@ -819,7 +899,9 @@ export function CodeAgent() {
                     <button
                       onClick={() => openProject(project)}
                       className={`flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs ${
-                        project.id === projectId ? "text-cyan-200" : "text-slate-400 hover:text-white"
+                        project.id === projectId
+                          ? "text-cyan-200"
+                          : "text-slate-400 hover:text-white"
                       }`}
                     >
                       <Code2 className="h-3.5 w-3.5 shrink-0" />
@@ -857,34 +939,36 @@ export function CodeAgent() {
               </div>
 
               <div className="space-y-0.5">
-                {Object.keys(files).sort().map((path) => (
-                  <div
-                    key={path}
-                    className={`group flex items-center rounded-lg ${
-                      path === activeFile ? "bg-white/[0.07]" : "hover:bg-white/[0.04]"
-                    }`}
-                  >
-                    <button
-                      onClick={() => {
-                        setActiveFile(path);
-                        setPanel("code");
-                      }}
-                      className={`flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-xs ${
-                        path === activeFile ? "text-white" : "text-slate-400"
+                {Object.keys(files)
+                  .sort()
+                  .map((path) => (
+                    <div
+                      key={path}
+                      className={`group flex items-center rounded-lg ${
+                        path === activeFile ? "bg-white/[0.07]" : "hover:bg-white/[0.04]"
                       }`}
                     >
-                      <FileCode2 className={`h-3.5 w-3.5 shrink-0 ${fileIcon(path)}`} />
-                      <span className="truncate">{path}</span>
-                    </button>
-                    <button
-                      onClick={() => deleteFile(path)}
-                      className="mr-1 hidden rounded p-1 text-slate-600 hover:bg-red-500/10 hover:text-red-300 group-hover:block"
-                      aria-label={`Delete ${path}`}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
+                      <button
+                        onClick={() => {
+                          setActiveFile(path);
+                          setPanel("code");
+                        }}
+                        className={`flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-xs ${
+                          path === activeFile ? "text-white" : "text-slate-400"
+                        }`}
+                      >
+                        <FileCode2 className={`h-3.5 w-3.5 shrink-0 ${fileIcon(path)}`} />
+                        <span className="truncate">{path}</span>
+                      </button>
+                      <button
+                        onClick={() => deleteFile(path)}
+                        className="mr-1 hidden rounded p-1 text-slate-600 hover:bg-red-500/10 hover:text-red-300 group-hover:block"
+                        aria-label={`Delete ${path}`}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
               </div>
             </div>
 
@@ -924,12 +1008,14 @@ export function CodeAgent() {
             </div>
 
             <div className="flex items-center gap-1">
-              {([
-                ["preview", Eye, "Preview"],
-                ["code", Code2, "Code"],
-                ["console", Terminal, "Console"],
-                ["terminal", Terminal, "Terminal"],
-              ] as const).map(([value, Icon, label]) => (
+              {(
+                [
+                  ["preview", Eye, "Preview"],
+                  ["code", Code2, "Code"],
+                  ["console", Terminal, "Console"],
+                  ["terminal", Terminal, "Terminal"],
+                ] as const
+              ).map(([value, Icon, label]) => (
                 <button
                   key={value}
                   onClick={() => setPanel(value)}
@@ -979,11 +1065,13 @@ export function CodeAgent() {
               )}
               {panel === "preview" && (
                 <>
-                  {([
-                    ["desktop", Monitor],
-                    ["tablet", Tablet],
-                    ["mobile", Smartphone],
-                  ] as const).map(([value, Icon]) => (
+                  {(
+                    [
+                      ["desktop", Monitor],
+                      ["tablet", Tablet],
+                      ["mobile", Smartphone],
+                    ] as const
+                  ).map(([value, Icon]) => (
                     <button
                       key={value}
                       onClick={() => setDevice(value)}
@@ -1039,13 +1127,17 @@ export function CodeAgent() {
           </div>
 
           {/* Work area */}
-          <div className={`grid min-h-0 flex-1 overflow-hidden ${assistantOpen ? "xl:grid-cols-[minmax(0,1fr)_320px]" : "grid-cols-1"}`}>
+          <div
+            className={`grid min-h-0 flex-1 overflow-hidden ${assistantOpen ? "xl:grid-cols-[minmax(0,1fr)_320px]" : "grid-cols-1"}`}
+          >
             <section className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#080e19]">
               {panel === "preview" && (
                 <>
                   <div className="flex h-10 items-center justify-between border-b border-white/[0.07] px-3">
                     <div className="flex items-center gap-2 text-xs text-slate-400">
-                      <span className={`h-2 w-2 rounded-full ${runtimeUrl ? "bg-emerald-400" : "bg-amber-400"}`} />
+                      <span
+                        className={`h-2 w-2 rounded-full ${runtimeUrl ? "bg-emerald-400" : "bg-amber-400"}`}
+                      />
                       {runtimeUrl ? "Running project" : "Project preview"}
                     </div>
                     <span className="max-w-[55%] truncate text-[10px] text-slate-500">
@@ -1063,17 +1155,15 @@ export function CodeAgent() {
                       title="ExpertsTeam project preview"
                       src={runtimeUrl ?? undefined}
                       srcDoc={runtimeUrl ? undefined : srcDoc}
-                      sandbox={runtimeUrl
-                        ? "allow-scripts allow-forms allow-modals allow-popups allow-same-origin allow-downloads"
-                        : "allow-scripts allow-forms allow-modals allow-popups"}
+                      sandbox={
+                        runtimeUrl
+                          ? "allow-scripts allow-forms allow-modals allow-popups allow-same-origin allow-downloads"
+                          : "allow-scripts allow-forms allow-modals allow-popups"
+                      }
                       className="h-full min-h-0 max-w-full rounded-lg border border-slate-300/20 bg-white shadow-2xl"
                       style={{
                         width:
-                          device === "desktop"
-                            ? "100%"
-                            : device === "tablet"
-                              ? "768px"
-                              : "375px",
+                          device === "desktop" ? "100%" : device === "tablet" ? "768px" : "375px",
                       }}
                     />
                   </div>
@@ -1088,24 +1178,54 @@ export function CodeAgent() {
                       {activeFile || "Select a file"}
                     </span>
                     <div className="flex shrink-0 items-center gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => setCompletionsOpen((value) => !value)} className="h-7 px-2 text-[10px] text-slate-400">Autocomplete</Button>
-                      <Button size="sm" variant="ghost" onClick={() => setExtensionsOpen(true)} className="h-7 px-2 text-[10px] text-slate-400"><Settings2 className="mr-1 h-3 w-3" /> Extensions</Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setCompletionsOpen((value) => !value)}
+                        className="h-7 px-2 text-[10px] text-slate-400"
+                      >
+                        Autocomplete
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setExtensionsOpen(true)}
+                        className="h-7 px-2 text-[10px] text-slate-400"
+                      >
+                        <Settings2 className="mr-1 h-3 w-3" /> Extensions
+                      </Button>
                     </div>
                   </div>
                   <div className="relative flex min-h-0 flex-1 overflow-hidden bg-[#080e19]">
                     <div className="select-none border-r border-white/[0.06] px-3 py-3 text-right font-mono text-xs leading-6 text-slate-600">
                       {Array.from(
                         { length: Math.max(1, (files[activeFile] ?? "").split("\n").length) },
-                        (_, index) => <div key={index}>{index + 1}</div>,
+                        (_, index) => (
+                          <div key={index}>{index + 1}</div>
+                        ),
                       )}
                     </div>
                     {completionsOpen && (
                       <div className="absolute right-3 top-3 z-20 w-64 overflow-hidden rounded-lg border border-slate-700 bg-[#111c2c] shadow-2xl">
-                        <div className="border-b border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Built-in completions · Ctrl+Space</div>
+                        <div className="border-b border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          Built-in completions · Ctrl+Space
+                        </div>
                         {availableEditorSnippets.map((snippet) => (
-                          <button key={snippet.label} type="button" onClick={() => insertEditorSnippet(snippet.value)} className="block w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-cyan-400/10">{snippet.label}<span className="ml-2 text-[10px] text-slate-500">{snippet.pack}</span></button>
+                          <button
+                            key={snippet.label}
+                            type="button"
+                            onClick={() => insertEditorSnippet(snippet.value)}
+                            className="block w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-cyan-400/10"
+                          >
+                            {snippet.label}
+                            <span className="ml-2 text-[10px] text-slate-500">{snippet.pack}</span>
+                          </button>
                         ))}
-                        {!availableEditorSnippets.length && <p className="px-3 py-3 text-xs text-slate-500">Enable a matching snippet pack in Extensions.</p>}
+                        {!availableEditorSnippets.length && (
+                          <p className="px-3 py-3 text-xs text-slate-500">
+                            Enable a matching snippet pack in Extensions.
+                          </p>
+                        )}
                       </div>
                     )}
                     <textarea
@@ -1131,20 +1251,54 @@ export function CodeAgent() {
                       Expert Terminal · Kali-inspired workspace
                     </span>
                     <div className="flex flex-wrap items-center justify-end gap-2">
-                      <span className="text-[10px] text-slate-500">{terminalReady ? "WORKSPACE ONLINE" : "SHELL OFFLINE"}</span>
+                      <span className="text-[10px] text-slate-500">
+                        {terminalReady ? "WORKSPACE ONLINE" : "SHELL OFFLINE"}
+                      </span>
                       {["ls", "pwd", "npm run dev", "npm run build"].map((command) => (
-                        <button key={command} type="button" disabled={!terminalReady} onClick={() => void writeTerminalInput(command + "\n").catch((error) => toast.error(error instanceof Error ? error.message : "Command failed"))} className="rounded border border-white/10 px-2 py-1 font-mono text-[10px] text-slate-400 hover:border-emerald-400/40 hover:text-emerald-200 disabled:opacity-30">{command}</button>
+                        <button
+                          key={command}
+                          type="button"
+                          disabled={!terminalReady}
+                          onClick={() =>
+                            void writeTerminalInput(command + "\n").catch((error) =>
+                              toast.error(
+                                error instanceof Error ? error.message : "Command failed",
+                              ),
+                            )
+                          }
+                          className="rounded border border-white/10 px-2 py-1 font-mono text-[10px] text-slate-400 hover:border-emerald-400/40 hover:text-emerald-200 disabled:opacity-30"
+                        >
+                          {command}
+                        </button>
                       ))}
-                      <button type="button" onClick={() => setTerminalOutput("")} className="text-xs text-slate-500 hover:text-white">Clear</button>
+                      <button
+                        type="button"
+                        onClick={() => setTerminalOutput("")}
+                        className="text-xs text-slate-500 hover:text-white"
+                      >
+                        Clear
+                      </button>
                       {!terminalReady && (
-                        <button type="button" onClick={() => void openTerminal()} className="rounded-md bg-emerald-400/15 px-2 py-1 text-xs text-emerald-200 hover:bg-emerald-400/25">Start shell</button>
+                        <button
+                          type="button"
+                          onClick={() => void openTerminal()}
+                          className="rounded-md bg-emerald-400/15 px-2 py-1 text-xs text-emerald-200 hover:bg-emerald-400/25"
+                        >
+                          Start shell
+                        </button>
                       )}
                     </div>
                   </div>
-                  <pre aria-live="polite" className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-words p-4 font-mono text-xs leading-5 text-emerald-200">
+                  <pre
+                    aria-live="polite"
+                    className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-words p-4 font-mono text-xs leading-5 text-emerald-200"
+                  >
                     {terminalOutput || "Start the shell to run commands in your project workspace."}
                   </pre>
-                  <form onSubmit={(event) => void submitTerminalCommand(event)} className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] p-3">
+                  <form
+                    onSubmit={(event) => void submitTerminalCommand(event)}
+                    className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] p-3"
+                  >
                     <span className="font-mono text-sm text-emerald-400">$</span>
                     <input
                       aria-label="Terminal command"
@@ -1153,16 +1307,25 @@ export function CodeAgent() {
                       disabled={!terminalReady}
                       autoComplete="off"
                       spellCheck={false}
-                      placeholder={terminalReady ? "Type a command, e.g. ls" : "Start the shell first"}
+                      placeholder={
+                        terminalReady ? "Type a command, e.g. ls" : "Start the shell first"
+                      }
                       className="min-w-0 flex-1 bg-transparent font-mono text-xs text-slate-100 outline-none placeholder:text-slate-600"
                     />
-                    <Button type="submit" size="sm" disabled={!terminalReady || !terminalInput.trim()} className="h-8 bg-cyan-400 text-slate-950 hover:bg-cyan-300">
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={!terminalReady || !terminalInput.trim()}
+                      className="h-8 bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+                    >
                       <Send className="mr-1.5 h-3.5 w-3.5" />
                       Run
                     </Button>
                   </form>
                   <p className="border-t border-white/[0.06] px-4 py-2 text-[10px] text-slate-600">
-                    Browser-based project shell with a Kali-inspired look. It is not a full Kali Linux machine: privileged tools, sudo, apt, and unrestricted host access are unavailable.
+                    Browser-based project shell with a Kali-inspired look. It is not a full Kali
+                    Linux machine: privileged tools, sudo, apt, and unrestricted host access are
+                    unavailable.
                   </p>
                 </div>
               )}
@@ -1234,9 +1397,7 @@ export function CodeAgent() {
                       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
                         <Bot className="h-6 w-6" />
                       </div>
-                      <h3 className="text-lg font-semibold text-white">
-                        What are we building?
-                      </h3>
+                      <h3 className="text-lg font-semibold text-white">What are we building?</h3>
                       <p className="mt-2 text-xs leading-5 text-slate-400">
                         Describe your idea. I'll work with your project files and help you build it.
                       </p>
@@ -1294,22 +1455,52 @@ export function CodeAgent() {
                   )}
                   {pendingPlan && (
                     <div className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.06] p-3">
-                      <p className="text-xs font-semibold text-cyan-200">Implementation plan · approval required</p>
-                      <p className="mt-1 text-[11px] leading-5 text-slate-300">{pendingPlan.summary}</p>
+                      <p className="text-xs font-semibold text-cyan-200">
+                        Implementation plan · approval required
+                      </p>
+                      <p className="mt-1 text-[11px] leading-5 text-slate-300">
+                        {pendingPlan.summary}
+                      </p>
                       <ol className="mt-2 list-decimal space-y-1 pl-4 text-[11px] leading-5 text-slate-300">
-                        {pendingPlan.steps.map((step, index) => <li key={index} className={index < pendingPlan.nextStep ? "text-emerald-300" : ""}>{step}</li>)}
+                        {pendingPlan.steps.map((step, index) => (
+                          <li
+                            key={index}
+                            className={index < pendingPlan.nextStep ? "text-emerald-300" : ""}
+                          >
+                            {step}
+                          </li>
+                        ))}
                       </ol>
-                      <p className="mt-2 text-[10px] text-slate-500">Next: step {pendingPlan.nextStep + 1} of {pendingPlan.steps.length}. Each step waits for your approval.</p>
+                      <p className="mt-2 text-[10px] text-slate-500">
+                        Next: step {pendingPlan.nextStep + 1} of {pendingPlan.steps.length}. Each
+                        step waits for your approval.
+                      </p>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <Button size="sm" onClick={() => void implementNextPlanStep()} disabled={busy} className="h-8 bg-cyan-400 text-slate-950 hover:bg-cyan-300">
-                          {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
+                        <Button
+                          size="sm"
+                          onClick={() => void implementNextPlanStep()}
+                          disabled={busy}
+                          className="h-8 bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+                        >
+                          {busy ? (
+                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Check className="mr-1.5 h-3.5 w-3.5" />
+                          )}
                           Approve & implement next step
                         </Button>
-                        <Button size="sm" variant="outline" onClick={cancelPendingPlan} disabled={busy} className="h-8 border-white/10 text-slate-300">Cancel plan</Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={cancelPendingPlan}
+                          disabled={busy}
+                          className="h-8 border-white/10 text-slate-300"
+                        >
+                          Cancel plan
+                        </Button>
                       </div>
                     </div>
                   )}
-
                 </div>
 
                 <div className="border-t border-white/[0.08] p-3">
@@ -1392,7 +1583,10 @@ export function CodeAgent() {
                 className="border-white/10 bg-white/5"
               />
             </div>
-            <Button onClick={createFile} className="w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300">
+            <Button
+              onClick={createFile}
+              className="w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+            >
               <Plus className="mr-2 h-4 w-4" />
               Create file
             </Button>
@@ -1406,18 +1600,52 @@ export function CodeAgent() {
           <DialogHeader>
             <DialogTitle>Editor extensions</DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-slate-400">Enable lightweight built-in completion and snippet packs for the languages you use.</p>
+          <p className="text-xs text-slate-400">
+            Enable lightweight built-in completion and snippet packs for the languages you use.
+          </p>
           <div className="space-y-2">
             {[
-              { id: "react", title: "React & TypeScript", detail: "Components and common React hooks" },
-              { id: "html", title: "HTML & accessibility", detail: "Page structure and accessible elements" },
-              { id: "css", title: "CSS & responsive layouts", detail: "Grid, media queries and layout snippets" },
+              {
+                id: "react",
+                title: "React & TypeScript",
+                detail: "Components and common React hooks",
+              },
+              {
+                id: "html",
+                title: "HTML & accessibility",
+                detail: "Page structure and accessible elements",
+              },
+              {
+                id: "css",
+                title: "CSS & responsive layouts",
+                detail: "Grid, media queries and layout snippets",
+              },
             ].map((pack) => {
               const enabled = enabledEditorPacks.includes(pack.id);
               return (
-                <button key={pack.id} type="button" onClick={() => setEnabledEditorPacks((current) => enabled ? current.filter((item) => item !== pack.id) : [...current, pack.id])} className="flex w-full items-center justify-between rounded-lg border border-white/10 p-3 text-left hover:bg-white/5">
-                  <span><span className="block text-sm font-medium">{pack.title}</span><span className="mt-1 block text-xs text-slate-500">{pack.detail}</span></span>
-                  <span className={enabled ? "rounded-full bg-emerald-400/15 px-2 py-1 text-[10px] text-emerald-300" : "rounded-full bg-white/5 px-2 py-1 text-[10px] text-slate-500"}>{enabled ? "Enabled" : "Disabled"}</span>
+                <button
+                  key={pack.id}
+                  type="button"
+                  onClick={() =>
+                    setEnabledEditorPacks((current) =>
+                      enabled ? current.filter((item) => item !== pack.id) : [...current, pack.id],
+                    )
+                  }
+                  className="flex w-full items-center justify-between rounded-lg border border-white/10 p-3 text-left hover:bg-white/5"
+                >
+                  <span>
+                    <span className="block text-sm font-medium">{pack.title}</span>
+                    <span className="mt-1 block text-xs text-slate-500">{pack.detail}</span>
+                  </span>
+                  <span
+                    className={
+                      enabled
+                        ? "rounded-full bg-emerald-400/15 px-2 py-1 text-[10px] text-emerald-300"
+                        : "rounded-full bg-white/5 px-2 py-1 text-[10px] text-slate-500"
+                    }
+                  >
+                    {enabled ? "Enabled" : "Disabled"}
+                  </span>
                 </button>
               );
             })}

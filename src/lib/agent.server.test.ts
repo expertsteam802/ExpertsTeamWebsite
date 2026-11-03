@@ -71,14 +71,16 @@ test("coding agent falls back to Groq when Gemini is rate limited", async () => 
       return new Response("quota exceeded", { status: 429 });
     }
     return Response.json({
-      choices: [{
-        message: {
-          content: JSON.stringify({
-            message: "Recovered through the fallback provider",
-            files: { "index.html": "<h1>Fallback worked</h1>" },
-          }),
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              message: "Recovered through the fallback provider",
+              files: { "index.html": "<h1>Fallback worked</h1>" },
+            }),
+          },
         },
-      }],
+      ],
     });
   }) as typeof fetch;
 

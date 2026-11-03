@@ -22,6 +22,7 @@ import { Route as VideosRouteImport } from './routes/videos'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AppsSlugRouteImport } from './routes/apps.$slug'
+import { Route as ApiAiStreamRouteImport } from './routes/api.ai.stream'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -87,6 +88,11 @@ const AppsSlugRoute = AppsSlugRouteImport.update({
   path: '/apps/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAiStreamRoute = ApiAiStreamRouteImport.update({
+  id: '/api/ai/stream',
+  path: '/api/ai/stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/apps/$slug': typeof AppsSlugRoute
+  '/api/ai/stream': typeof ApiAiStreamRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/apps/$slug': typeof AppsSlugRoute
+  '/api/ai/stream': typeof ApiAiStreamRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/apps/$slug': typeof AppsSlugRoute
+  '/api/ai/stream': typeof ApiAiStreamRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -147,6 +156,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/apps/$slug'
+    | '/api/ai/stream'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/apps/$slug'
+    | '/api/ai/stream'
   id:
     | '__root__'
     | '/'
@@ -176,6 +187,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
     | '/apps/$slug'
+    | '/api/ai/stream'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -190,6 +202,7 @@ export interface RootRouteChildren {
   ProjectsRoute: typeof ProjectsRoute
   VideosRoute: typeof VideosRoute
   AppsSlugRoute: typeof AppsSlugRoute
+  ApiAiStreamRoute: typeof ApiAiStreamRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -285,6 +298,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ai/stream': {
+      id: '/api/ai/stream'
+      path: '/api/ai/stream'
+      fullPath: '/api/ai/stream'
+      preLoaderRoute: typeof ApiAiStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -313,6 +333,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectsRoute: ProjectsRoute,
   VideosRoute: VideosRoute,
   AppsSlugRoute: AppsSlugRoute,
+  ApiAiStreamRoute: ApiAiStreamRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

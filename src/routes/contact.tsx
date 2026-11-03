@@ -83,29 +83,58 @@ function ContactPage() {
         <Card className="animate-rise gap-4 p-6">
           <div className="space-y-2">
             <Label htmlFor="contact-name">Your name</Label>
-            <Input id="contact-name" maxLength={80} required value={name}
-              onChange={(event) => setName(event.target.value)} />
+            <Input
+              id="contact-name"
+              maxLength={80}
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="contact-email">Your email</Label>
-            <Input id="contact-email" type="email" maxLength={254} required value={email}
-              onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" />
+            <Input
+              id="contact-email"
+              type="email"
+              maxLength={254}
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@example.com"
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="contact-subject">Subject</Label>
-            <Input id="contact-subject" maxLength={120} value={subject}
-              onChange={(event) => setSubject(event.target.value)} placeholder="What is this about?" />
+            <Input
+              id="contact-subject"
+              maxLength={120}
+              value={subject}
+              onChange={(event) => setSubject(event.target.value)}
+              placeholder="What is this about?"
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="contact-message">Message</Label>
-            <Textarea id="contact-message" rows={6} maxLength={4000} required value={message}
-              onChange={(event) => setMessage(event.target.value)} placeholder="Write your message…" />
+            <Textarea
+              id="contact-message"
+              rows={6}
+              maxLength={4000}
+              required
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder="Write your message…"
+            />
           </div>
-          <Button type="button" disabled={sendMessage.isPending || !name.trim() || !email.trim() || !message.trim()}
-            onClick={() => sendMessage.mutate()}>
+          <Button
+            type="button"
+            disabled={sendMessage.isPending || !name.trim() || !email.trim() || !message.trim()}
+            onClick={() => sendMessage.mutate()}
+          >
             {sendMessage.isPending ? "Sending…" : "Send message"}
           </Button>
-          <p className="text-xs text-muted-foreground">Your message will be delivered to the site admin inbox.</p>
+          <p className="text-xs text-muted-foreground">
+            Your message will be delivered to the site admin inbox.
+          </p>
         </Card>
 
         <Card className="animate-rise gap-4 p-6">

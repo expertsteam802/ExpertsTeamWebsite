@@ -56,20 +56,28 @@ export function SiteHeader() {
         <nav className={cn("hidden flex-1 items-center gap-2 md:flex", ALIGN[navAlign])}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="gap-2 text-sm">Explore <span className="text-xs text-muted-foreground">⌄</span></Button>
+              <Button variant="ghost" className="gap-2 text-sm">
+                Explore <span className="text-xs text-muted-foreground">⌄</span>
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-52">
               <DropdownMenuLabel>Discover</DropdownMenuLabel>
-              {TABS.filter((tab) => ["/", "/videos", "/entertainment", "/community"].includes(tab.to)).map((tab) => (
+              {TABS.filter((tab) =>
+                ["/", "/videos", "/entertainment", "/community"].includes(tab.to),
+              ).map((tab) => (
                 <DropdownMenuItem key={tab.to} asChild>
-                  <Link to={tab.to} activeOptions={{ exact: tab.to === "/" }}>{tab.label}</Link>
+                  <Link to={tab.to} activeOptions={{ exact: tab.to === "/" }}>
+                    {tab.label}
+                  </Link>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="gap-2 text-sm">Create & learn <span className="text-xs text-muted-foreground">⌄</span></Button>
+              <Button variant="ghost" className="gap-2 text-sm">
+                Create & learn <span className="text-xs text-muted-foreground">⌄</span>
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-52">
               <DropdownMenuLabel>Creator tools</DropdownMenuLabel>

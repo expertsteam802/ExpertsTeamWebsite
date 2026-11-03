@@ -22,17 +22,20 @@ function buildAttachmentSummary(attachments: AiAttachment[] = []) {
     .join("\n\n");
 }
 
-export async function askChrisAi({
-  prompt,
-  mode,
-  history = [],
-  attachments = [],
-}: {
-  prompt: string;
-  mode: "chat" | "workspace" | "plan";
-  history?: { role: string; content: string }[];
-  attachments?: AiAttachment[];
-}, apiKey?: string): Promise<{ reply: string }> {
+export async function askChrisAi(
+  {
+    prompt,
+    mode,
+    history = [],
+    attachments = [],
+  }: {
+    prompt: string;
+    mode: "chat" | "workspace" | "plan";
+    history?: { role: string; content: string }[];
+    attachments?: AiAttachment[];
+  },
+  apiKey?: string,
+): Promise<{ reply: string }> {
   const cleanPrompt = prompt.trim();
   if (!cleanPrompt) throw new Error("Please type a message first.");
 
@@ -43,10 +46,7 @@ export async function askChrisAi({
         ? AI_PLAN_PROMPT
         : AI_SYSTEM_PROMPT;
 
-  const promptWithAttachments = [
-    cleanPrompt,
-    buildAttachmentSummary(attachments),
-  ]
+  const promptWithAttachments = [cleanPrompt, buildAttachmentSummary(attachments)]
     .filter(Boolean)
     .join("\n\n");
 
@@ -104,7 +104,9 @@ export async function generateExpertImage(
 
   const resolvedKey = apiKey || process.env["GEMINI_API_KEY"] || process.env["VITE_GEMINI_API_KEY"];
   if (!resolvedKey) {
-    throw new Error("Expert AI image generation is not configured. Add GEMINI_API_KEY to the server environment.");
+    throw new Error(
+      "Expert AI image generation is not configured. Add GEMINI_API_KEY to the server environment.",
+    );
   }
 
   const response = await fetch(

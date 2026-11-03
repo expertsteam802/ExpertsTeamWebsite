@@ -1,7 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Activity, Check, Code2, CreditCard, Database, HardDrive, Inbox, LayoutDashboard, Mail, RefreshCw, Settings, ShieldAlert, Trash2, Users } from "lucide-react";
+import {
+  Activity,
+  Check,
+  Code2,
+  CreditCard,
+  Database,
+  HardDrive,
+  Inbox,
+  LayoutDashboard,
+  Mail,
+  RefreshCw,
+  Settings,
+  ShieldAlert,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -23,8 +38,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
       { title: "Admin panel — ExpertsTeam" },
       {
         name: "description",
-        content:
-          "Creator controls for ExpertsTeam: site branding, members, sessions and pricing.",
+        content: "Creator controls for ExpertsTeam: site branding, members, sessions and pricing.",
       },
       { property: "og:title", content: "Admin panel — ExpertsTeam" },
       { property: "og:description", content: "Creator controls for ExpertsTeam." },
@@ -70,7 +84,9 @@ function AdminPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, username, display_name, is_subscribed, storage_quota_bytes, ai_subscribed, ai_credits, ai_subscription_expires_at, created_at")
+        .select(
+          "id, username, display_name, is_subscribed, storage_quota_bytes, ai_subscribed, ai_credits, ai_subscription_expires_at, created_at",
+        )
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -97,23 +113,36 @@ function AdminPage() {
     },
   });
 
-  const { data: systemStatus, isError: systemStatusError, isLoading: systemStatusLoading } = useQuery({
+  const {
+    data: systemStatus,
+    isError: systemStatusError,
+    isLoading: systemStatusLoading,
+  } = useQuery({
     queryKey: ["admin", "system-status"],
     enabled: isAdmin,
     refetchInterval: 30000,
     queryFn: async () => {
-      const profileResult = await supabase.from("profiles").select("id", { count: "exact", head: true });
+      const profileResult = await supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true });
       if (profileResult.error) throw profileResult.error;
       const filesResult = await supabase.from("files").select("size_bytes");
       if (filesResult.error) throw filesResult.error;
       return {
         memberCount: profileResult.count ?? 0,
-        trackedUploadBytes: (filesResult.data ?? []).reduce((total, file) => total + Number(file.size_bytes), 0),
+        trackedUploadBytes: (filesResult.data ?? []).reduce(
+          (total, file) => total + Number(file.size_bytes),
+          0,
+        ),
         checkedAt: new Date().toISOString(),
       };
     },
   });
-  const { data: contactMessages = [], isLoading: contactMessagesLoading, isError: contactMessagesError } = useQuery({
+  const {
+    data: contactMessages = [],
+    isLoading: contactMessagesLoading,
+    isError: contactMessagesError,
+  } = useQuery({
     queryKey: ["admin", "contact-messages"],
     enabled: isAdmin,
     refetchInterval: 30000,
@@ -135,7 +164,8 @@ function AdminPage() {
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["admin", "contact-messages"] }),
+    onSuccess: () =>
+      void queryClient.invalidateQueries({ queryKey: ["admin", "contact-messages"] }),
     onError: (error: Error) => toast.error(error.message),
   });
 
@@ -208,8 +238,10 @@ function AdminPage() {
       if (!form || !settings) return;
       const studioPrice = Number(form.ai_subscription_price);
       const studioCredits = Number(form.ai_subscription_credits);
-      if (!Number.isFinite(studioPrice) || studioPrice < 0.01 || studioPrice > 1000) throw new Error("Studio subscription price must be between $0.01 and $1,000.");
-      if (!Number.isInteger(studioCredits) || studioCredits < 1 || studioCredits > 100000) throw new Error("Studio AI credits must be between 1 and 100,000.");
+      if (!Number.isFinite(studioPrice) || studioPrice < 0.01 || studioPrice > 1000)
+        throw new Error("Studio subscription price must be between $0.01 and $1,000.");
+      if (!Number.isInteger(studioCredits) || studioCredits < 1 || studioCredits > 100000)
+        throw new Error("Studio AI credits must be between 1 and 100,000.");
       const { error } = await supabase
         .from("site_settings")
         .update({
@@ -266,7 +298,13 @@ function AdminPage() {
           const credits = Number(settings?.ai_subscription_credits ?? 500);
           const { error: profileError } = await supabase
             .from("profiles")
-            .update({ ai_subscribed: true, ai_credits: credits, ai_subscription_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() })
+            .update({
+              ai_subscribed: true,
+              ai_credits: credits,
+              ai_subscription_expires_at: new Date(
+                Date.now() + 30 * 24 * 60 * 60 * 1000,
+              ).toISOString(),
+            })
             .eq("id", request.user_id);
           if (profileError) throw profileError;
         } else {
@@ -280,7 +318,13 @@ function AdminPage() {
       }
     },
     onSuccess: (_data, variables) => {
-      toast.success(variables.approve ? (variables.request.kind === "ai" ? "Payment confirmed — Studio access unlocked" : "Payment confirmed — space unlocked") : "Payment declined");
+      toast.success(
+        variables.approve
+          ? variables.request.kind === "ai"
+            ? "Payment confirmed — Studio access unlocked"
+            : "Payment confirmed — space unlocked"
+          : "Payment declined",
+      );
       void queryClient.invalidateQueries({ queryKey: ["admin"] });
       void queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
@@ -340,9 +384,18 @@ function AdminPage() {
   });
 
   const changeMemberRole = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: "admin" | "developer" | "member" }) => {
+    mutationFn: async ({
+      userId,
+      role,
+    }: {
+      userId: string;
+      role: "admin" | "developer" | "member";
+    }) => {
       if (userId === user?.id) throw new Error("You cannot change your own role.");
-      const { error: deleteError } = await supabase.from("user_roles").delete().eq("user_id", userId);
+      const { error: deleteError } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", userId);
       if (deleteError) throw deleteError;
       if (role !== "member") {
         const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
@@ -386,7 +439,10 @@ function AdminPage() {
               One place to manage your community, members, requests, payments and platform settings.
             </p>
           </div>
-          <Button variant="outline" onClick={() => void queryClient.invalidateQueries({ queryKey: ["admin"] })}>
+          <Button
+            variant="outline"
+            onClick={() => void queryClient.invalidateQueries({ queryKey: ["admin"] })}
+          >
             <RefreshCw className="mr-2 h-4 w-4" /> Refresh overview
           </Button>
         </div>
@@ -400,19 +456,34 @@ function AdminPage() {
                 Workspace menu
               </p>
               <TabsList className="flex h-auto w-full flex-col items-stretch justify-start gap-1 rounded-xl bg-transparent p-0">
-                <TabsTrigger value="overview" className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                <TabsTrigger
+                  value="overview"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
                   <LayoutDashboard className="h-4 w-4" /> Overview
                 </TabsTrigger>
-                <TabsTrigger value="members" className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                <TabsTrigger
+                  value="members"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
                   <Users className="h-4 w-4" /> Members & roles
                 </TabsTrigger>
-                <TabsTrigger value="payments" className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                <TabsTrigger
+                  value="payments"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
                   <CreditCard className="h-4 w-4" /> Payments
                 </TabsTrigger>
-                <TabsTrigger value="developers" className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                <TabsTrigger
+                  value="developers"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
                   <Code2 className="h-4 w-4" /> Developer requests
                 </TabsTrigger>
-                <TabsTrigger value="contact" className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                <TabsTrigger
+                  value="contact"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
                   <Inbox className="h-4 w-4" /> Contact inbox
                   {contactMessages.filter((item) => !item.read_at).length > 0 && (
                     <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
@@ -420,13 +491,22 @@ function AdminPage() {
                     </span>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="sessions" className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                <TabsTrigger
+                  value="sessions"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
                   <Activity className="h-4 w-4" /> Activity log
                 </TabsTrigger>
-                <TabsTrigger value="branding" className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                <TabsTrigger
+                  value="branding"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
                   <Settings className="h-4 w-4" /> Site settings
                 </TabsTrigger>
-                <TabsTrigger value="system" className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                <TabsTrigger
+                  value="system"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
                   <Database className="h-4 w-4" /> System health
                 </TabsTrigger>
               </TabsList>
@@ -443,341 +523,582 @@ function AdminPage() {
               <TabsContent value="overview" className="mt-0 space-y-6">
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <Card className="gap-3 p-5">
-                    <div className="flex items-center justify-between text-muted-foreground"><span className="text-sm">Total members</span><Users className="h-4 w-4" /></div>
-                    <p className="font-display text-3xl font-bold tabular-nums">{members?.length ?? "—"}</p>
+                    <div className="flex items-center justify-between text-muted-foreground">
+                      <span className="text-sm">Total members</span>
+                      <Users className="h-4 w-4" />
+                    </div>
+                    <p className="font-display text-3xl font-bold tabular-nums">
+                      {members?.length ?? "—"}
+                    </p>
                     <p className="text-xs text-muted-foreground">Registered community accounts</p>
                   </Card>
                   <Card className="gap-3 p-5">
-                    <div className="flex items-center justify-between text-muted-foreground"><span className="text-sm">Unread messages</span><Inbox className="h-4 w-4" /></div>
-                    <p className="font-display text-3xl font-bold tabular-nums">{contactMessages.filter((item) => !item.read_at).length}</p>
+                    <div className="flex items-center justify-between text-muted-foreground">
+                      <span className="text-sm">Unread messages</span>
+                      <Inbox className="h-4 w-4" />
+                    </div>
+                    <p className="font-display text-3xl font-bold tabular-nums">
+                      {contactMessages.filter((item) => !item.read_at).length}
+                    </p>
                     <p className="text-xs text-muted-foreground">People waiting for a response</p>
                   </Card>
                   <Card className="gap-3 p-5">
-                    <div className="flex items-center justify-between text-muted-foreground"><span className="text-sm">Pending payments</span><CreditCard className="h-4 w-4" /></div>
-                    <p className="font-display text-3xl font-bold tabular-nums">{(upgrades ?? []).filter((item) => item.status === "pending").length}</p>
+                    <div className="flex items-center justify-between text-muted-foreground">
+                      <span className="text-sm">Pending payments</span>
+                      <CreditCard className="h-4 w-4" />
+                    </div>
+                    <p className="font-display text-3xl font-bold tabular-nums">
+                      {(upgrades ?? []).filter((item) => item.status === "pending").length}
+                    </p>
                     <p className="text-xs text-muted-foreground">Subscription requests to review</p>
                   </Card>
                   <Card className="gap-3 p-5">
-                    <div className="flex items-center justify-between text-muted-foreground"><span className="text-sm">Developer applications</span><Code2 className="h-4 w-4" /></div>
-                    <p className="font-display text-3xl font-bold tabular-nums">{(projectRequests ?? []).filter((item) => item.status === "pending").length}</p>
-                    <p className="text-xs text-muted-foreground">Applications awaiting a decision</p>
+                    <div className="flex items-center justify-between text-muted-foreground">
+                      <span className="text-sm">Developer applications</span>
+                      <Code2 className="h-4 w-4" />
+                    </div>
+                    <p className="font-display text-3xl font-bold tabular-nums">
+                      {(projectRequests ?? []).filter((item) => item.status === "pending").length}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Applications awaiting a decision
+                    </p>
                   </Card>
                 </div>
                 <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
                   <Card className="gap-4 p-5">
                     <div>
-                      <h2 className="font-display text-lg font-semibold">Administration at a glance</h2>
-                      <p className="mt-1 text-sm text-muted-foreground">Your key platform queues and account totals.</p>
+                      <h2 className="font-display text-lg font-semibold">
+                        Administration at a glance
+                      </h2>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Your key platform queues and account totals.
+                      </p>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-xl border border-border/70 p-4"><p className="text-xs text-muted-foreground">Members with accounts</p><p className="mt-1 text-xl font-semibold">{members?.length ?? "Loading…"}</p></div>
-                      <div className="rounded-xl border border-border/70 p-4"><p className="text-xs text-muted-foreground">Files tracked</p><p className="mt-1 text-xl font-semibold">{memberFileUsage.length}</p></div>
-                      <div className="rounded-xl border border-border/70 p-4"><p className="text-xs text-muted-foreground">Unread enquiries</p><p className="mt-1 text-xl font-semibold">{contactMessages.filter((item) => !item.read_at).length}</p></div>
-                      <div className="rounded-xl border border-border/70 p-4"><p className="text-xs text-muted-foreground">Pending reviews</p><p className="mt-1 text-xl font-semibold">{(upgrades ?? []).filter((item) => item.status === "pending").length + (projectRequests ?? []).filter((item) => item.status === "pending").length}</p></div>
+                      <div className="rounded-xl border border-border/70 p-4">
+                        <p className="text-xs text-muted-foreground">Members with accounts</p>
+                        <p className="mt-1 text-xl font-semibold">
+                          {members?.length ?? "Loading…"}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-border/70 p-4">
+                        <p className="text-xs text-muted-foreground">Files tracked</p>
+                        <p className="mt-1 text-xl font-semibold">{memberFileUsage.length}</p>
+                      </div>
+                      <div className="rounded-xl border border-border/70 p-4">
+                        <p className="text-xs text-muted-foreground">Unread enquiries</p>
+                        <p className="mt-1 text-xl font-semibold">
+                          {contactMessages.filter((item) => !item.read_at).length}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-border/70 p-4">
+                        <p className="text-xs text-muted-foreground">Pending reviews</p>
+                        <p className="mt-1 text-xl font-semibold">
+                          {(upgrades ?? []).filter((item) => item.status === "pending").length +
+                            (projectRequests ?? []).filter((item) => item.status === "pending")
+                              .length}
+                        </p>
+                      </div>
                     </div>
                   </Card>
                   <Card className="gap-3 p-5">
                     <h2 className="font-display text-lg font-semibold">Quick actions</h2>
-                    <Button variant="outline" className="justify-start" onClick={() => void queryClient.invalidateQueries({ queryKey: ["admin", "members"] })}><Users className="mr-2 h-4 w-4" /> Refresh member list</Button>
-                    <Button variant="outline" className="justify-start" onClick={() => void queryClient.invalidateQueries({ queryKey: ["admin", "contact-messages"] })}><Mail className="mr-2 h-4 w-4" /> Check contact inbox</Button>
-                    <Button variant="outline" className="justify-start" onClick={() => void queryClient.invalidateQueries({ queryKey: ["admin", "system-status"] })}><HardDrive className="mr-2 h-4 w-4" /> Check system health</Button>
+                    <Button
+                      variant="outline"
+                      className="justify-start"
+                      onClick={() =>
+                        void queryClient.invalidateQueries({ queryKey: ["admin", "members"] })
+                      }
+                    >
+                      <Users className="mr-2 h-4 w-4" /> Refresh member list
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="justify-start"
+                      onClick={() =>
+                        void queryClient.invalidateQueries({
+                          queryKey: ["admin", "contact-messages"],
+                        })
+                      }
+                    >
+                      <Mail className="mr-2 h-4 w-4" /> Check contact inbox
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="justify-start"
+                      onClick={() =>
+                        void queryClient.invalidateQueries({ queryKey: ["admin", "system-status"] })
+                      }
+                    >
+                      <HardDrive className="mr-2 h-4 w-4" /> Check system health
+                    </Button>
                   </Card>
                 </div>
               </TabsContent>
-          <TabsContent value="branding" className="mt-0">
-            <Card className="max-w-3xl gap-4 p-6">
-              {form ? (
-                <>
-                  {(
-                    [
-                      ["site_name", "Website name"],
-                      ["logo_url", "Logo image URL"],
-                      ["youtube_url", "YouTube channel URL"],
-                      ["instagram_url", "Instagram URL"],
-                      ["owner_email", "Owner email"],
-                      ["subscription_price", "Subscription price (USD)"],
-                      ["subscription_quota_bytes", "Subscriber storage (bytes)"],
-                      ["ai_subscription_price", "Studio subscription price (USD per 30 days)"],
-                      ["ai_subscription_credits", "Studio AI credits per 30-day plan"],
-                      ["payout_account", "Payout account (PayPal email / card account)"],
-                    ] as Array<[keyof SettingsForm, string]>
-                  ).map(([key, label]) => (
-                    <div key={key} className="space-y-2">
-                      <Label htmlFor={key}>{label}</Label>
-                      <Input
-                        id={key}
-                        value={form[key]}
-                        onChange={(event) => setForm({ ...form, [key]: event.target.value })}
-                      />
-                    </div>
-                  ))}
-                  <Button onClick={() => saveSettings.mutate()} disabled={saveSettings.isPending}>
-                    Save settings
-                  </Button>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">Loading settings…</p>
-              )}
-            </Card>
-            <Card className="mt-4 max-w-3xl gap-4 p-6">
-              <div>
-                <h2 className="font-display text-lg font-semibold">Free AI providers</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Create API keys with the providers below, then add them in Vercel → Project → Settings → Environment Variables. Keep every key server-side; never use a VITE_ prefix.</p>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {[
-                  ["Google AI Studio", "https://aistudio.google.com/api-keys"],
-                  ["Groq", "https://console.groq.com/keys"],
-                  ["Mistral Studio", "https://console.mistral.ai/api-keys/"],
-                  ["OpenRouter", "https://openrouter.ai/settings/keys"],
-                  ["Cloudflare Workers AI", "https://dash.cloudflare.com/"],
-                ].map(([label, url]) => (
-                  <a key={label} href={url} target="_blank" rel="noreferrer" className="rounded-lg border border-border p-3 text-sm font-medium transition-colors hover:border-primary/50 hover:bg-secondary/50">
-                    {label} <span className="ml-1 text-primary">↗</span>
-                  </a>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground">Recommended order: Gemini → Groq → Mistral → OpenRouter → Cloudflare. The AI setup guide lists the exact environment variable names and free-model defaults.</p>
-              <a href="https://github.com/expertsteam802/ExpertsTeamWebsite/blob/main/docs/AI_PROVIDER_SETUP.md" target="_blank" rel="noreferrer" className="text-sm font-medium text-primary underline underline-offset-4">Read AI provider setup guide</a>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="members" className="mt-0 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div><h2 className="font-display text-xl font-semibold">Member directory</h2><p className="text-sm text-muted-foreground">Find accounts, review storage and update access roles.</p></div>
-              <div className="w-full sm:max-w-xs"><Input value={memberSearch} onChange={(event) => setMemberSearch(event.target.value)} placeholder="Search members or usernames…" aria-label="Search members" /></div>
-            </div>
-            <div className="grid gap-3">
-              {(members ?? []).filter((member) => `${member.display_name ?? ""} ${member.username}`.toLowerCase().includes(memberSearch.toLowerCase())).map((member) => (
-                <Card
-                  key={member.id}
-                  className="flex-row flex-wrap items-center justify-between gap-3 p-4"
-                >
+              <TabsContent value="branding" className="mt-0">
+                <Card className="max-w-3xl gap-4 p-6">
+                  {form ? (
+                    <>
+                      {(
+                        [
+                          ["site_name", "Website name"],
+                          ["logo_url", "Logo image URL"],
+                          ["youtube_url", "YouTube channel URL"],
+                          ["instagram_url", "Instagram URL"],
+                          ["owner_email", "Owner email"],
+                          ["subscription_price", "Subscription price (USD)"],
+                          ["subscription_quota_bytes", "Subscriber storage (bytes)"],
+                          ["ai_subscription_price", "Studio subscription price (USD per 30 days)"],
+                          ["ai_subscription_credits", "Studio AI credits per 30-day plan"],
+                          ["payout_account", "Payout account (PayPal email / card account)"],
+                        ] as Array<[keyof SettingsForm, string]>
+                      ).map(([key, label]) => (
+                        <div key={key} className="space-y-2">
+                          <Label htmlFor={key}>{label}</Label>
+                          <Input
+                            id={key}
+                            value={form[key]}
+                            onChange={(event) => setForm({ ...form, [key]: event.target.value })}
+                          />
+                        </div>
+                      ))}
+                      <Button
+                        onClick={() => saveSettings.mutate()}
+                        disabled={saveSettings.isPending}
+                      >
+                        Save settings
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Loading settings…</p>
+                  )}
+                </Card>
+                <Card className="mt-4 max-w-3xl gap-4 p-6">
                   <div>
-                    <p className="font-medium">{member.display_name || member.username}</p>
-                    <p className="text-xs text-muted-foreground">
-                      @{member.username} · joined {formatDate(member.created_at)} ·{" "}
-                      {formatBytes(memberFileUsage.filter((file) => file.user_id === member.id).reduce((total, file) => total + Number(file.size_bytes), 0))} used / {formatBytes(member.storage_quota_bytes)} quota
-                      {member.is_subscribed ? " · storage subscriber" : ""}{member.ai_subscribed && (!member.ai_subscription_expires_at || new Date(member.ai_subscription_expires_at) > new Date()) ? ` · Studio subscriber (${member.ai_credits} credits)` : ""}
+                    <h2 className="font-display text-lg font-semibold">Free AI providers</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Create API keys with the providers below, then add them in Vercel → Project →
+                      Settings → Environment Variables. Keep every key server-side; never use a
+                      VITE_ prefix.
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <select
-                      aria-label={`Role for ${member.username}`}
-                      value={memberRoles.find((item) => item.user_id === member.id)?.role ?? "member"}
-                      disabled={member.id === user?.id || changeMemberRole.isPending}
-                      onChange={(event) => changeMemberRole.mutate({
-                        userId: member.id,
-                        role: event.target.value as "admin" | "developer" | "member",
-                      })}
-                      className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-                    >
-                      <option value="member">Member</option>
-                      <option value="developer">Developer</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  {member.id !== user?.id && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => deleteMember.mutate(member.id)}
-                      disabled={deleteMember.isPending}
-                    >
-                      Delete user
-                    </Button>
-                  )}
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {[
+                      ["Google AI Studio", "https://aistudio.google.com/api-keys"],
+                      ["Groq", "https://console.groq.com/keys"],
+                      ["Mistral Studio", "https://console.mistral.ai/api-keys/"],
+                      ["OpenRouter", "https://openrouter.ai/settings/keys"],
+                      ["Cloudflare Workers AI", "https://dash.cloudflare.com/"],
+                    ].map(([label, url]) => (
+                      <a
+                        key={label}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-lg border border-border p-3 text-sm font-medium transition-colors hover:border-primary/50 hover:bg-secondary/50"
+                      >
+                        {label} <span className="ml-1 text-primary">↗</span>
+                      </a>
+                    ))}
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Recommended order: Gemini → Groq → Mistral → OpenRouter → Cloudflare. The AI
+                    setup guide lists the exact environment variable names and free-model defaults.
+                  </p>
+                  <a
+                    href="https://github.com/expertsteam802/ExpertsTeamWebsite/blob/main/docs/AI_PROVIDER_SETUP.md"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm font-medium text-primary underline underline-offset-4"
+                  >
+                    Read AI provider setup guide
+                  </a>
                 </Card>
-              ))}
-            </div>
-          </TabsContent>
+              </TabsContent>
 
-          <TabsContent value="sessions" className="mt-0">
-            <Card className="divide-y divide-border p-0">
-              {(sessions ?? []).map((event) => (
-                <div key={event.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                  <span className="text-sm">
-                    {event.profiles?.display_name || event.profiles?.username || "Unknown member"}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {event.event === "signed_in" ? "logged in" : "logged out"} ·{" "}
-                    {formatDate(event.created_at)}
-                  </span>
+              <TabsContent value="members" className="mt-0 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-display text-xl font-semibold">Member directory</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Find accounts, review storage and update access roles.
+                    </p>
+                  </div>
+                  <div className="w-full sm:max-w-xs">
+                    <Input
+                      value={memberSearch}
+                      onChange={(event) => setMemberSearch(event.target.value)}
+                      placeholder="Search members or usernames…"
+                      aria-label="Search members"
+                    />
+                  </div>
                 </div>
-              ))}
-              {!sessions?.length && (
-                <p className="px-4 py-6 text-sm text-muted-foreground">No sign-in activity yet.</p>
-              )}
-            </Card>
-          </TabsContent>
+                <div className="grid gap-3">
+                  {(members ?? [])
+                    .filter((member) =>
+                      `${member.display_name ?? ""} ${member.username}`
+                        .toLowerCase()
+                        .includes(memberSearch.toLowerCase()),
+                    )
+                    .map((member) => (
+                      <Card
+                        key={member.id}
+                        className="flex-row flex-wrap items-center justify-between gap-3 p-4"
+                      >
+                        <div>
+                          <p className="font-medium">{member.display_name || member.username}</p>
+                          <p className="text-xs text-muted-foreground">
+                            @{member.username} · joined {formatDate(member.created_at)} ·{" "}
+                            {formatBytes(
+                              memberFileUsage
+                                .filter((file) => file.user_id === member.id)
+                                .reduce((total, file) => total + Number(file.size_bytes), 0),
+                            )}{" "}
+                            used / {formatBytes(member.storage_quota_bytes)} quota
+                            {member.is_subscribed ? " · storage subscriber" : ""}
+                            {member.ai_subscribed &&
+                            (!member.ai_subscription_expires_at ||
+                              new Date(member.ai_subscription_expires_at) > new Date())
+                              ? ` · Studio subscriber (${member.ai_credits} credits)`
+                              : ""}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <select
+                            aria-label={`Role for ${member.username}`}
+                            value={
+                              memberRoles.find((item) => item.user_id === member.id)?.role ??
+                              "member"
+                            }
+                            disabled={member.id === user?.id || changeMemberRole.isPending}
+                            onChange={(event) =>
+                              changeMemberRole.mutate({
+                                userId: member.id,
+                                role: event.target.value as "admin" | "developer" | "member",
+                              })
+                            }
+                            className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                          >
+                            <option value="member">Member</option>
+                            <option value="developer">Developer</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                          {member.id !== user?.id && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => deleteMember.mutate(member.id)}
+                              disabled={deleteMember.isPending}
+                            >
+                              Delete user
+                            </Button>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
+                </div>
+              </TabsContent>
 
-          <TabsContent value="payments" className="mt-0 space-y-4">
-            <div><h2 className="font-display text-xl font-semibold">Payment review</h2><p className="text-sm text-muted-foreground">Verify subscription requests before unlocking member benefits.</p></div>
-            <div className="space-y-3">
-              {(upgrades ?? []).map((request) => (
-                <Card key={request.id} className="gap-3 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium">
-                        {request.profiles?.display_name || request.profiles?.username || "Member"} ·
-                        ${Number(request.amount).toFixed(2)} · {request.kind === "ai" ? "Studio plan" : "Storage"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {paymentMethodLabel(request.method)} · ref {request.reference} ·{" "}
-                        {formatDate(request.created_at)} · {request.status}
-                      </p>
-                      {request.note && (
-                        <p className="mt-1 text-xs text-muted-foreground">“{request.note}”</p>
-                      )}
+              <TabsContent value="sessions" className="mt-0">
+                <Card className="divide-y divide-border p-0">
+                  {(sessions ?? []).map((event) => (
+                    <div
+                      key={event.id}
+                      className="flex items-center justify-between gap-3 px-4 py-3"
+                    >
+                      <span className="text-sm">
+                        {event.profiles?.display_name ||
+                          event.profiles?.username ||
+                          "Unknown member"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {event.event === "signed_in" ? "logged in" : "logged out"} ·{" "}
+                        {formatDate(event.created_at)}
+                      </span>
                     </div>
-                    {request.status === "pending" && (
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          disabled={reviewUpgrade.isPending}
-                          onClick={() => reviewUpgrade.mutate({ request, approve: true })}
-                        >
-                          Confirm payment
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={reviewUpgrade.isPending}
-                          onClick={() => reviewUpgrade.mutate({ request, approve: false })}
-                        >
-                          Decline
-                        </Button>
+                  ))}
+                  {!sessions?.length && (
+                    <p className="px-4 py-6 text-sm text-muted-foreground">
+                      No sign-in activity yet.
+                    </p>
+                  )}
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="payments" className="mt-0 space-y-4">
+                <div>
+                  <h2 className="font-display text-xl font-semibold">Payment review</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Verify subscription requests before unlocking member benefits.
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  {(upgrades ?? []).map((request) => (
+                    <Card key={request.id} className="gap-3 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium">
+                            {request.profiles?.display_name ||
+                              request.profiles?.username ||
+                              "Member"}{" "}
+                            · ${Number(request.amount).toFixed(2)} ·{" "}
+                            {request.kind === "ai" ? "Studio plan" : "Storage"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {paymentMethodLabel(request.method)} · ref {request.reference} ·{" "}
+                            {formatDate(request.created_at)} · {request.status}
+                          </p>
+                          {request.note && (
+                            <p className="mt-1 text-xs text-muted-foreground">“{request.note}”</p>
+                          )}
+                        </div>
+                        {request.status === "pending" && (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              disabled={reviewUpgrade.isPending}
+                              onClick={() => reviewUpgrade.mutate({ request, approve: true })}
+                            >
+                              Confirm payment
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={reviewUpgrade.isPending}
+                              onClick={() => reviewUpgrade.mutate({ request, approve: false })}
+                            >
+                              Decline
+                            </Button>
+                          </div>
+                        )}
                       </div>
+                    </Card>
+                  ))}
+                  {!upgrades?.length && (
+                    <p className="text-sm text-muted-foreground">
+                      No subscription payments submitted yet.
+                    </p>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="developers" className="mt-0 space-y-4">
+                <div>
+                  <h2 className="font-display text-xl font-semibold">Developer applications</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Review project proposals and decide who can join the developer team.
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  {(projectRequests ?? []).map((request) => (
+                    <Card key={request.id} className="gap-2 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium">
+                            {request.title} ·{" "}
+                            {request.profiles?.display_name ||
+                              request.profiles?.username ||
+                              "Member"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDate(request.created_at)} · {request.status}
+                            {request.skills ? ` · ${request.skills}` : ""}
+                            {request.contact ? ` · ${request.contact}` : ""}
+                          </p>
+                          <p className="mt-1 text-sm text-muted-foreground">{request.summary}</p>
+                        </div>
+                        {request.status === "pending" && (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              disabled={reviewProject.isPending}
+                              onClick={() =>
+                                reviewProject.mutate({ id: request.id, approve: true })
+                              }
+                            >
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={reviewProject.isPending}
+                              onClick={() =>
+                                reviewProject.mutate({ id: request.id, approve: false })
+                              }
+                            >
+                              Decline
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                  {!projectRequests?.length && (
+                    <p className="text-sm text-muted-foreground">No developer applications yet.</p>
+                  )}
+                </div>
+              </TabsContent>
+              <TabsContent value="contact" className="mt-0 space-y-4">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <h2 className="font-display text-xl font-semibold">Contact inbox</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Read enquiries from visitors and follow up directly by email.
+                    </p>
+                  </div>
+                  <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+                    <Input
+                      className="w-full sm:w-64"
+                      value={contactSearch}
+                      onChange={(event) => setContactSearch(event.target.value)}
+                      placeholder="Search sender, email or subject…"
+                      aria-label="Search contact messages"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={
+                        markAllContactsRead.isPending ||
+                        !contactMessages.some((item) => !item.read_at)
+                      }
+                      onClick={() => markAllContactsRead.mutate()}
+                    >
+                      <Check className="mr-2 h-4 w-4" /> Mark all read
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {contactMessagesLoading && (
+                    <p className="text-sm text-muted-foreground">Loading contact messages…</p>
+                  )}
+                  {contactMessagesError && (
+                    <Card className="p-4">
+                      <p className="text-sm text-destructive">
+                        Could not load contact messages. Check that the latest database migration
+                        has been applied.
+                      </p>
+                    </Card>
+                  )}
+                  {!contactMessagesLoading &&
+                    !contactMessagesError &&
+                    contactMessages.length === 0 && (
+                      <Card className="p-6 text-center">
+                        <Mail className="mx-auto h-7 w-7 text-muted-foreground" />
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          No contact messages yet.
+                        </p>
+                      </Card>
                     )}
-                  </div>
-                </Card>
-              ))}
-              {!upgrades?.length && (
-                <p className="text-sm text-muted-foreground">
-                  No subscription payments submitted yet.
-                </p>
-              )}
-            </div>
-          </TabsContent>
+                  {contactMessages
+                    .filter((item) =>
+                      `${item.sender_name} ${item.sender_email} ${item.subject} ${item.message}`
+                        .toLowerCase()
+                        .includes(contactSearch.toLowerCase()),
+                    )
+                    .map((item) => (
+                      <Card
+                        key={item.id}
+                        className={`gap-3 p-4 ${item.read_at ? "opacity-80" : "border-primary/40"}`}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-semibold">{item.subject}</p>
+                              {!item.read_at && (
+                                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+                                  New
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {item.sender_name} ·{" "}
+                              <a
+                                className="text-primary hover:underline"
+                                href={`mailto:${item.sender_email}`}
+                              >
+                                {item.sender_email}
+                              </a>{" "}
+                              · {formatDate(item.created_at)}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={updateContactMessage.isPending}
+                              onClick={() =>
+                                updateContactMessage.mutate({ id: item.id, read: !item.read_at })
+                              }
+                            >
+                              <Check className="mr-1.5 h-3.5 w-3.5" />{" "}
+                              {item.read_at ? "Mark unread" : "Mark read"}
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              aria-label="Delete contact message"
+                              disabled={deleteContactMessage.isPending}
+                              onClick={() => deleteContactMessage.mutate(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                          {item.message}
+                        </p>
+                      </Card>
+                    ))}
+                </div>
+              </TabsContent>
 
-          <TabsContent value="developers" className="mt-0 space-y-4">
-            <div><h2 className="font-display text-xl font-semibold">Developer applications</h2><p className="text-sm text-muted-foreground">Review project proposals and decide who can join the developer team.</p></div>
-            <div className="space-y-3">
-              {(projectRequests ?? []).map((request) => (
-                <Card key={request.id} className="gap-2 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium">
-                        {request.title} ·{" "}
-                        {request.profiles?.display_name || request.profiles?.username || "Member"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(request.created_at)} · {request.status}
-                        {request.skills ? ` · ${request.skills}` : ""}
-                        {request.contact ? ` · ${request.contact}` : ""}
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">{request.summary}</p>
-                    </div>
-                    {request.status === "pending" && (
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          disabled={reviewProject.isPending}
-                          onClick={() => reviewProject.mutate({ id: request.id, approve: true })}
-                        >
-                          Accept
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={reviewProject.isPending}
-                          onClick={() => reviewProject.mutate({ id: request.id, approve: false })}
-                        >
-                          Decline
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </Card>
-              ))}
-              {!projectRequests?.length && (
-                <p className="text-sm text-muted-foreground">No developer applications yet.</p>
-              )}
-            </div>
-          </TabsContent>
-          <TabsContent value="contact" className="mt-0 space-y-4">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div><h2 className="font-display text-xl font-semibold">Contact inbox</h2><p className="text-sm text-muted-foreground">Read enquiries from visitors and follow up directly by email.</p></div>
-              <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-                <Input className="w-full sm:w-64" value={contactSearch} onChange={(event) => setContactSearch(event.target.value)} placeholder="Search sender, email or subject…" aria-label="Search contact messages" />
-                <Button size="sm" variant="outline" disabled={markAllContactsRead.isPending || !contactMessages.some((item) => !item.read_at)} onClick={() => markAllContactsRead.mutate()}>
-                  <Check className="mr-2 h-4 w-4" /> Mark all read
-                </Button>
-              </div>
-            </div>
-            <div className="space-y-3">
-              {contactMessagesLoading && <p className="text-sm text-muted-foreground">Loading contact messages…</p>}
-              {contactMessagesError && (
-                <Card className="p-4">
-                  <p className="text-sm text-destructive">Could not load contact messages. Check that the latest database migration has been applied.</p>
-                </Card>
-              )}
-              {!contactMessagesLoading && !contactMessagesError && contactMessages.length === 0 && (
-                <Card className="p-6 text-center">
-                  <Mail className="mx-auto h-7 w-7 text-muted-foreground" />
-                  <p className="mt-2 text-sm text-muted-foreground">No contact messages yet.</p>
-                </Card>
-              )}
-              {contactMessages.filter((item) => `${item.sender_name} ${item.sender_email} ${item.subject} ${item.message}`.toLowerCase().includes(contactSearch.toLowerCase())).map((item) => (
-                <Card key={item.id} className={`gap-3 p-4 ${item.read_at ? "opacity-80" : "border-primary/40"}`}>
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-semibold">{item.subject}</p>
-                        {!item.read_at && <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">New</span>}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {item.sender_name} · <a className="text-primary hover:underline" href={`mailto:${item.sender_email}`}>{item.sender_email}</a> · {formatDate(item.created_at)}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" disabled={updateContactMessage.isPending}
-                        onClick={() => updateContactMessage.mutate({ id: item.id, read: !item.read_at })}>
-                        <Check className="mr-1.5 h-3.5 w-3.5" /> {item.read_at ? "Mark unread" : "Mark read"}
-                      </Button>
-                      <Button size="icon" variant="ghost" aria-label="Delete contact message"
-                        disabled={deleteContactMessage.isPending} onClick={() => deleteContactMessage.mutate(item.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <p className="whitespace-pre-wrap text-sm text-muted-foreground">{item.message}</p>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="system" className="mt-0 space-y-4">
-            <div><h2 className="font-display text-xl font-semibold">System health</h2><p className="text-sm text-muted-foreground">Live checks for database access and tracked platform usage.</p></div>
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card className="gap-2 p-5">
-                <p className="text-sm text-muted-foreground">Supabase connection</p>
-                <p className="text-xl font-semibold">{systemStatusLoading ? "Checking…" : systemStatusError ? "Connection issue" : "Connected"}</p>
-                <p className="text-xs text-muted-foreground">Live database query, refreshed every 30 seconds</p>
-              </Card>
-              <Card className="gap-2 p-5">
-                <p className="text-sm text-muted-foreground">Registered members</p>
-                <p className="text-2xl font-semibold tabular-nums">{systemStatus?.memberCount ?? "—"}</p>
-                <p className="text-xs text-muted-foreground">Profiles visible to this admin account</p>
-              </Card>
-              <Card className="gap-2 p-5">
-                <p className="text-sm text-muted-foreground">Tracked uploaded files</p>
-                <p className="text-2xl font-semibold tabular-nums">{systemStatus ? formatBytes(systemStatus.trackedUploadBytes) : "—"}</p>
-                <p className="text-xs text-muted-foreground">Recorded file sizes, not the Supabase project storage quota</p>
-              </Card>
-            </div>
-            {systemStatus?.checkedAt && <p className="mt-3 text-xs text-muted-foreground">Last checked {formatDate(systemStatus.checkedAt)}</p>}
-          </TabsContent>
+              <TabsContent value="system" className="mt-0 space-y-4">
+                <div>
+                  <h2 className="font-display text-xl font-semibold">System health</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Live checks for database access and tracked platform usage.
+                  </p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <Card className="gap-2 p-5">
+                    <p className="text-sm text-muted-foreground">Supabase connection</p>
+                    <p className="text-xl font-semibold">
+                      {systemStatusLoading
+                        ? "Checking…"
+                        : systemStatusError
+                          ? "Connection issue"
+                          : "Connected"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Live database query, refreshed every 30 seconds
+                    </p>
+                  </Card>
+                  <Card className="gap-2 p-5">
+                    <p className="text-sm text-muted-foreground">Registered members</p>
+                    <p className="text-2xl font-semibold tabular-nums">
+                      {systemStatus?.memberCount ?? "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Profiles visible to this admin account
+                    </p>
+                  </Card>
+                  <Card className="gap-2 p-5">
+                    <p className="text-sm text-muted-foreground">Tracked uploaded files</p>
+                    <p className="text-2xl font-semibold tabular-nums">
+                      {systemStatus ? formatBytes(systemStatus.trackedUploadBytes) : "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Recorded file sizes, not the Supabase project storage quota
+                    </p>
+                  </Card>
+                </div>
+                {systemStatus?.checkedAt && (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Last checked {formatDate(systemStatus.checkedAt)}
+                  </p>
+                )}
+              </TabsContent>
             </div>
           </div>
         </Tabs>

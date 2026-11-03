@@ -109,8 +109,8 @@ function ApplicationPanel() {
       <Card className="animate-rise gap-4 p-6 glow-panel">
         <h2 className="font-display text-xl font-semibold">Join the team</h2>
         <p className="text-sm text-muted-foreground">
-          The workspace chats and groups are for the ExpertsTeam team. Apply once and Chris
-          unlocks your access.
+          The workspace chats and groups are for the ExpertsTeam team. Apply once and Chris unlocks
+          your access.
         </p>
         {user ? (
           <>
