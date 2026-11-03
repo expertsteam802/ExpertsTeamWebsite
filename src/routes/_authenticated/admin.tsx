@@ -49,7 +49,8 @@ function AdminPage() {
   const queryClient = useQueryClient();
   const removeAccount = useServerFn(deleteUserAccount);
   const [form, setForm] = useState<SettingsForm | null>(null);
-  const [memberSearch, setMemberSearch] = useState("");\n  const [contactSearch, setContactSearch] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
+  const [contactSearch, setContactSearch] = useState("");
 
   const { data: settings } = useQuery({
     queryKey: ["site-settings"],
