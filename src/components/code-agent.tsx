@@ -264,6 +264,37 @@ export function CodeAgent() {
     setDirty(false);
   }
 
+  async function deleteProject(project: ProjectRow) {
+    const confirmed = window.confirm(
+      `Delete "${project.name}" permanently? This removes its saved project and files.`,
+    );
+    if (!confirmed || !user) return;
+
+    const { error } = await supabase
+      .from("agent_projects")
+      .delete()
+      .eq("id", project.id)
+      .eq("user_id", user.id);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    if (projectId === project.id) {
+      setProjectId(null);
+      setName("Untitled project");
+      setFiles(STARTER_FILES);
+      setMessages([]);
+      setActiveFile("index.html");
+      setLogs([]);
+      setDirty(false);
+    }
+
+    await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
+    toast.success("Project deleted");
+  }
+
   function createFile() {
     const path = newFileName.trim().replace(/^\/+/, "");
     if (!path || path.includes("..") || path.startsWith(".")) {
@@ -316,7 +347,7 @@ export function CodeAgent() {
   }
 
   return (
-    <div className="not-prose w-full overflow-hidden rounded-2xl border border-[#273449] bg-[#080e19] text-slate-100 shadow-2xl">
+    <div className="not-prose flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#080e19] text-slate-100">
       {/* Workspace top bar */}
       <header className="flex min-h-[62px] flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#0d1523] px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -399,10 +430,10 @@ export function CodeAgent() {
       </header>
 
       {/* Main workspace */}
-      <div className="grid min-h-[760px] grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[220px_minmax(0,1fr)]">
         {/* Left sidebar */}
         {sidebarOpen && (
-          <aside className="flex min-h-[300px] flex-col border-b border-white/[0.08] bg-[#0b1320] lg:border-b-0 lg:border-r">
+          <aside className="flex min-h-0 flex-col overflow-y-auto border-b border-white/[0.08] bg-[#0b1320] lg:border-b-0 lg:border-r">
             <div className="flex items-center justify-between px-4 pb-3 pt-4">
               <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
                 Workspace
@@ -441,18 +472,31 @@ export function CodeAgent() {
                   </p>
                 )}
                 {projects.map((project) => (
-                  <button
+                  <div
                     key={project.id}
-                    onClick={() => openProject(project)}
-                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition ${
-                      project.id === projectId
-                        ? "bg-cyan-400/10 text-cyan-200"
-                        : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
+                    className={`group flex items-center gap-1 rounded-lg pr-1 transition ${
+                      project.id === projectId ? "bg-cyan-400/10" : "hover:bg-white/[0.05]"
                     }`}
                   >
-                    <Code2 className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{project.name}</span>
-                  </button>
+                    <button
+                      onClick={() => openProject(project)}
+                      className={`flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs ${
+                        project.id === projectId ? "text-cyan-200" : "text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      <Code2 className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{project.name}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void deleteProject(project)}
+                      className="rounded p-1.5 text-slate-600 opacity-100 transition hover:bg-red-500/10 hover:text-red-300 sm:opacity-0 sm:group-hover:opacity-100"
+                      aria-label={`Delete project ${project.name}`}
+                      title="Delete project"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -521,7 +565,7 @@ export function CodeAgent() {
         )}
 
         {/* Centre and assistant area */}
-        <main className="flex min-w-0 flex-col">
+        <main className="flex min-h-0 min-w-0 flex-col overflow-hidden">
           {/* Toolbar */}
           <div className="flex min-h-[48px] flex-wrap items-center justify-between gap-2 border-b border-white/[0.08] bg-[#0d1726] px-3 py-2">
             <div className="flex items-center gap-1">
@@ -625,8 +669,8 @@ export function CodeAgent() {
           </div>
 
           {/* Work area */}
-          <div className={`grid min-h-[650px] flex-1 ${assistantOpen ? "xl:grid-cols-[minmax(0,1fr)_320px]" : "grid-cols-1"}`}>
-            <section className="flex min-w-0 flex-col bg-[#080e19]">
+          <div className={`grid min-h-0 flex-1 overflow-hidden ${assistantOpen ? "xl:grid-cols-[minmax(0,1fr)_320px]" : "grid-cols-1"}`}>
+            <section className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#080e19]">
               {panel === "preview" && (
                 <>
                   <div className="flex h-10 items-center justify-between border-b border-white/[0.07] px-3">
@@ -636,14 +680,14 @@ export function CodeAgent() {
                     </div>
                     <span className="text-[10px] text-slate-600">Local HTML preview</span>
                   </div>
-                  <div className="flex min-h-[600px] flex-1 items-start justify-center overflow-auto bg-[#111a29] p-3 sm:p-5">
+                  <div className="flex min-h-0 flex-1 items-stretch justify-center overflow-hidden bg-[#111a29] p-2 sm:p-3">
                     <iframe
                       ref={iframeRef}
                       key={previewKey}
                       title="Experts Team project preview"
                       srcDoc={srcDoc}
                       sandbox="allow-scripts allow-forms allow-modals allow-popups"
-                      className="h-[590px] max-w-full rounded-xl border border-slate-300/20 bg-white shadow-2xl"
+                      className="h-full min-h-0 max-w-full rounded-lg border border-slate-300/20 bg-white shadow-2xl"
                       style={{
                         width:
                           device === "desktop"
@@ -666,7 +710,7 @@ export function CodeAgent() {
                     </span>
                     <span className="text-[10px] text-slate-600">Editor</span>
                   </div>
-                  <div className="flex min-h-[600px] flex-1 bg-[#080e19]">
+                  <div className="flex min-h-0 flex-1 overflow-hidden bg-[#080e19]">
                     <div className="select-none border-r border-white/[0.06] px-3 py-3 text-right font-mono text-xs leading-6 text-slate-600">
                       {Array.from(
                         { length: Math.max(1, (files[activeFile] ?? "").split("\n").length) },
@@ -679,7 +723,7 @@ export function CodeAgent() {
                       onChange={(event) => updateFile(event.target.value)}
                       spellCheck={false}
                       disabled={!activeFile}
-                      className="min-h-[600px] min-w-0 flex-1 resize-none bg-transparent p-3 font-mono text-xs leading-6 text-slate-200 outline-none selection:bg-cyan-500/30"
+                      className="min-h-0 min-w-0 flex-1 resize-none overflow-auto bg-transparent p-3 font-mono text-xs leading-6 text-slate-200 outline-none selection:bg-cyan-500/30"
                       placeholder="Select a file to start editing…"
                     />
                   </div>
@@ -727,7 +771,7 @@ export function CodeAgent() {
 
             {/* AI panel */}
             {assistantOpen && (
-              <aside className="flex min-h-[650px] min-w-0 flex-col border-t border-white/[0.08] bg-[#0c1523] xl:border-l xl:border-t-0">
+              <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-white/[0.08] bg-[#0c1523] xl:border-l xl:border-t-0">
                 <div className="flex h-12 items-center justify-between border-b border-white/[0.08] px-4">
                   <div className="flex items-center gap-2">
                     <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400/20 to-blue-500/20 text-cyan-200">
