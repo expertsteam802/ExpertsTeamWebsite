@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, Mail, ShieldAlert, Trash2 } from "lucide-react";
+import { Activity, Check, Code2, CreditCard, Database, HardDrive, Inbox, LayoutDashboard, Mail, RefreshCw, Settings, ShieldAlert, Trash2, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -48,7 +48,7 @@ function AdminPage() {
   const { isAdmin, user } = useAuth();
   const queryClient = useQueryClient();
   const removeAccount = useServerFn(deleteUserAccount);
-  const [form, setForm] = useState<SettingsForm | null>(null);
+  const [form, setForm] = useState<SettingsForm | null>(null);\n  const [memberSearch, setMemberSearch] = useState("");
 
   const { data: settings } = useQuery({
     queryKey: ["site-settings"],
@@ -337,20 +337,117 @@ function AdminPage() {
 
   return (
     <PageShell>
-      <section className="hero-surface border-b border-border/60 px-4 py-12">
-        <div className="mx-auto max-w-7xl">
-          <h1 className="font-display text-3xl font-bold sm:text-4xl">
-            <span className="brand-text">Creator</span> control room
-          </h1>
-          <p className="mt-2 text-muted-foreground">
-            Rename the site, swap the logo, watch sign-in activity and manage every member.
-          </p>
+      <section className="hero-surface border-b border-border/60 px-4 py-8 sm:py-10">
+        <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+              <ShieldAlert className="h-4 w-4" /> Owner workspace
+            </div>
+            <h1 className="font-display text-3xl font-bold sm:text-4xl">
+              <span className="brand-text">Admin</span> control center
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              One place to manage your community, members, requests, payments and platform settings.
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => void queryClient.invalidateQueries({ queryKey: ["admin"] })}>
+            <RefreshCw className="mr-2 h-4 w-4" /> Refresh overview
+          </Button>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-10">
-        <Tabs defaultValue="branding">
-          <TabsList>
+      <section className="mx-auto max-w-[1500px] px-4 py-6 sm:py-8">
+        <Tabs defaultValue="overview">
+          <div className="grid gap-6 lg:grid-cols-[248px_minmax(0,1fr)]">
+            <aside className="h-fit rounded-2xl border border-border/70 bg-card/70 p-3 shadow-sm lg:sticky lg:top-24">
+              <p className="px-3 pb-3 pt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Workspace menu
+              </p>
+              <TabsList className="flex h-auto w-full flex-col items-stretch justify-start gap-1 rounded-xl bg-transparent p-0">
+                <TabsTrigger value="overview" className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <LayoutDashboard className="h-4 w-4" /> Overview
+                </TabsTrigger>
+                <TabsTrigger value="members" className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <Users className="h-4 w-4" /> Members & roles
+                </TabsTrigger>
+                <TabsTrigger value="payments" className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <CreditCard className="h-4 w-4" /> Payments
+                </TabsTrigger>
+                <TabsTrigger value="developers" className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <Code2 className="h-4 w-4" /> Developer requests
+                </TabsTrigger>
+                <TabsTrigger value="contact" className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <Inbox className="h-4 w-4" /> Contact inbox
+                  {contactMessages.filter((item) => !item.read_at).length > 0 && (
+                    <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                      {contactMessages.filter((item) => !item.read_at).length}
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="sessions" className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <Activity className="h-4 w-4" /> Activity log
+                </TabsTrigger>
+                <TabsTrigger value="branding" className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <Settings className="h-4 w-4" /> Site settings
+                </TabsTrigger>
+                <TabsTrigger value="system" className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <Database className="h-4 w-4" /> System health
+                </TabsTrigger>
+              </TabsList>
+              <div className="mt-4 rounded-xl bg-secondary/60 p-3">
+                <div className="flex items-center gap-2 text-xs font-medium">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" /> Admin access active
+                </div>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  Sensitive controls are protected by your account role and database policies.
+                </p>
+              </div>
+            </aside>
+            <div className="min-w-0">
+              <TabsContent value="overview" className="mt-0 space-y-6">
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <Card className="gap-3 p-5">
+                    <div className="flex items-center justify-between text-muted-foreground"><span className="text-sm">Total members</span><Users className="h-4 w-4" /></div>
+                    <p className="font-display text-3xl font-bold tabular-nums">{members?.length ?? "—"}</p>
+                    <p className="text-xs text-muted-foreground">Registered community accounts</p>
+                  </Card>
+                  <Card className="gap-3 p-5">
+                    <div className="flex items-center justify-between text-muted-foreground"><span className="text-sm">Unread messages</span><Inbox className="h-4 w-4" /></div>
+                    <p className="font-display text-3xl font-bold tabular-nums">{contactMessages.filter((item) => !item.read_at).length}</p>
+                    <p className="text-xs text-muted-foreground">People waiting for a response</p>
+                  </Card>
+                  <Card className="gap-3 p-5">
+                    <div className="flex items-center justify-between text-muted-foreground"><span className="text-sm">Pending payments</span><CreditCard className="h-4 w-4" /></div>
+                    <p className="font-display text-3xl font-bold tabular-nums">{(upgrades ?? []).filter((item) => item.status === "pending").length}</p>
+                    <p className="text-xs text-muted-foreground">Subscription requests to review</p>
+                  </Card>
+                  <Card className="gap-3 p-5">
+                    <div className="flex items-center justify-between text-muted-foreground"><span className="text-sm">Developer applications</span><Code2 className="h-4 w-4" /></div>
+                    <p className="font-display text-3xl font-bold tabular-nums">{(projectRequests ?? []).filter((item) => item.status === "pending").length}</p>
+                    <p className="text-xs text-muted-foreground">Applications awaiting a decision</p>
+                  </Card>
+                </div>
+                <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+                  <Card className="gap-4 p-5">
+                    <div>
+                      <h2 className="font-display text-lg font-semibold">Administration at a glance</h2>
+                      <p className="mt-1 text-sm text-muted-foreground">Your key platform queues and account totals.</p>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl border border-border/70 p-4"><p className="text-xs text-muted-foreground">Members with accounts</p><p className="mt-1 text-xl font-semibold">{members?.length ?? "Loading…"}</p></div>
+                      <div className="rounded-xl border border-border/70 p-4"><p className="text-xs text-muted-foreground">Files tracked</p><p className="mt-1 text-xl font-semibold">{memberFileUsage.length}</p></div>
+                      <div className="rounded-xl border border-border/70 p-4"><p className="text-xs text-muted-foreground">Unread enquiries</p><p className="mt-1 text-xl font-semibold">{contactMessages.filter((item) => !item.read_at).length}</p></div>
+                      <div className="rounded-xl border border-border/70 p-4"><p className="text-xs text-muted-foreground">Pending reviews</p><p className="mt-1 text-xl font-semibold">{(upgrades ?? []).filter((item) => item.status === "pending").length + (projectRequests ?? []).filter((item) => item.status === "pending").length}</p></div>
+                    </div>
+                  </Card>
+                  <Card className="gap-3 p-5">
+                    <h2 className="font-display text-lg font-semibold">Quick actions</h2>
+                    <Button variant="outline" className="justify-start" onClick={() => void queryClient.invalidateQueries({ queryKey: ["admin", "members"] })}><Users className="mr-2 h-4 w-4" /> Refresh member list</Button>
+                    <Button variant="outline" className="justify-start" onClick={() => void queryClient.invalidateQueries({ queryKey: ["admin", "contact-messages"] })}><Mail className="mr-2 h-4 w-4" /> Check contact inbox</Button>
+                    <Button variant="outline" className="justify-start" onClick={() => void queryClient.invalidateQueries({ queryKey: ["admin", "system-status"] })}><HardDrive className="mr-2 h-4 w-4" /> Check system health</Button>
+                  </Card>
+                </div>
+              </TabsContent>
             <TabsTrigger value="branding">Branding & pricing</TabsTrigger>
             <TabsTrigger value="members">Members</TabsTrigger>
             <TabsTrigger value="sessions">Sign-in log</TabsTrigger>
@@ -360,7 +457,7 @@ function AdminPage() {
             <TabsTrigger value="system">System status</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="branding" className="pt-6">
+          <TabsContent value="branding" className="mt-0">
             <Card className="max-w-2xl gap-4 p-6">
               {form ? (
                 <>
@@ -395,9 +492,9 @@ function AdminPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="members" className="pt-6">
+          <TabsContent value="members" className="mt-0 space-y-4">\n            <div className="flex flex-wrap items-center justify-between gap-3">\n              <div><h2 className="font-display text-xl font-semibold">Member directory</h2><p className="text-sm text-muted-foreground">Find accounts, review storage and update access roles.</p></div>\n              <div className="w-full sm:max-w-xs"><Input value={memberSearch} onChange={(event) => setMemberSearch(event.target.value)} placeholder="Search members or usernames…" aria-label="Search members" /></div>\n            </div>
             <div className="grid gap-3">
-              {(members ?? []).map((member) => (
+              {(members ?? []).filter((member) => `${member.display_name ?? ""} ${member.username}`.toLowerCase().includes(memberSearch.toLowerCase())).map((member) => (
                 <Card
                   key={member.id}
                   className="flex-row flex-wrap items-center justify-between gap-3 p-4"
@@ -441,7 +538,7 @@ function AdminPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="sessions" className="pt-6">
+          <TabsContent value="sessions" className="mt-0">
             <Card className="divide-y divide-border p-0">
               {(sessions ?? []).map((event) => (
                 <div key={event.id} className="flex items-center justify-between gap-3 px-4 py-3">
@@ -460,7 +557,7 @@ function AdminPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="payments" className="pt-6">
+          <TabsContent value="payments" className="mt-0 space-y-4">\n            <div><h2 className="font-display text-xl font-semibold">Payment review</h2><p className="text-sm text-muted-foreground">Verify subscription requests before unlocking member benefits.</p></div>
             <div className="space-y-3">
               {(upgrades ?? []).map((request) => (
                 <Card key={request.id} className="gap-3 p-4">
@@ -508,7 +605,7 @@ function AdminPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="developers" className="pt-6">
+          <TabsContent value="developers" className="mt-0 space-y-4">\n            <div><h2 className="font-display text-xl font-semibold">Developer applications</h2><p className="text-sm text-muted-foreground">Review project proposals and decide who can join the developer team.</p></div>
             <div className="space-y-3">
               {(projectRequests ?? []).map((request) => (
                 <Card key={request.id} className="gap-2 p-4">
@@ -552,7 +649,7 @@ function AdminPage() {
               )}
             </div>
           </TabsContent>
-          <TabsContent value="contact" className="pt-6">
+          <TabsContent value="contact" className="mt-0 space-y-4">\n            <div><h2 className="font-display text-xl font-semibold">Contact inbox</h2><p className="text-sm text-muted-foreground">Read enquiries from visitors and follow up directly by email.</p></div>
             <div className="space-y-3">
               {contactMessagesLoading && <p className="text-sm text-muted-foreground">Loading contact messages…</p>}
               {contactMessagesError && (
@@ -595,7 +692,7 @@ function AdminPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="system" className="pt-6">
+          <TabsContent value="system" className="mt-0 space-y-4">\n            <div><h2 className="font-display text-xl font-semibold">System health</h2><p className="text-sm text-muted-foreground">Live checks for database access and tracked platform usage.</p></div>
             <div className="grid gap-4 md:grid-cols-3">
               <Card className="gap-2 p-5">
                 <p className="text-sm text-muted-foreground">Supabase connection</p>
