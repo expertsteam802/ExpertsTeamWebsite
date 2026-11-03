@@ -101,8 +101,9 @@ async function callCloudflare(request: GeminiRequest): Promise<GeminiResponse> {
 export async function generateGeminiContent(
   request: GeminiRequest,
   apiKey?: string,
+  providerOrder?: string[],
 ): Promise<GeminiResponse> {
-  const configuredOrder = (process.env["AI_PROVIDER_ORDER"] || "gemini,groq,openrouter,cloudflare")
+  const configuredOrder = providerOrder ?? (process.env["AI_PROVIDER_ORDER"] || "gemini,groq,openrouter,cloudflare")
     .split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
   const failures: string[] = [];
 
