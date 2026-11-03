@@ -98,7 +98,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "keywords",
         content:
-          "chrisprograms, chris programs, chris expert, expertchris, learn coding, coding lessons, game downloads",
+          "expertsteam, experts team, expert ai, ai studio, app builder, coding lessons, developer community",
       },
       { property: "og:site_name", content: "ExpertsTeam" },
       { property: "og:type", content: "website" },
@@ -115,11 +115,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "ExpertsTeam is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community.",
       },
-      { property: "og:image", content: "https://chrisprograms.lovable.app/social-preview.png" },
+      { property: "og:image", content: "https://expertsteam.giize.com/social-preview.png" },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
       { property: "og:image:alt", content: "ExpertsTeam logo" },
-      { name: "twitter:image", content: "https://chrisprograms.lovable.app/social-preview.png" },
+      { name: "twitter:image", content: "https://expertsteam.giize.com/social-preview.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
