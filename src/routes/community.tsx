@@ -66,10 +66,10 @@ function CommunityPage() {
       const { data, error } = await supabase
         .from("community_posts")
         .select(
-          "id, user_id, kind, title, body, link_url, created_at, profiles(username, display_name)",
+          "id, user_id, kind, title, body, link_url, created_at, profiles:profiles!community_posts_profile_fk(username, display_name)",
         )
         .order("created_at", { ascending: false });
-      if (error) throw error;
+      if (error) throw new Error(`Community feed: ${error.message}`);
       return (data ?? []) as Post[];
     },
   });
@@ -244,7 +244,7 @@ function PostCard({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("community_comments")
-        .select("id, user_id, body, created_at, profiles(username, display_name)")
+        .select("id, user_id, body, created_at, profiles:profiles!community_comments_profile_fk(username, display_name)")
         .eq("post_id", post.id)
         .order("created_at", { ascending: true });
       if (error) throw error;
