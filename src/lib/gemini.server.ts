@@ -35,7 +35,7 @@ function openAiMessages(request: GeminiRequest) {
     { role: "system", content: request.systemInstruction.parts.map((part) => part.text).join("\n") },
     ...request.contents.map((item) => ({
       role: item.role === "model" ? "assistant" : "user",
-      content: item.parts.map((part) => part.text).join("\\n"),
+      content: item.parts.map((part) => part.text).join("\n"),
     })),
   ];
 }
