@@ -173,7 +173,7 @@ function parseAgentFiles(text: string): {
     return {
       message: typeof parsed.message === "string" ? parsed.message : undefined,
       files,
-      complete: parsed.complete === true,
+      complete: parsed.complete !== false,
     };
   } catch (error) {
     if (error instanceof Error && /Invalid file path|Invalid content/.test(error.message)) throw error;
@@ -264,7 +264,7 @@ export async function runAgent({ prompt, files, history }: AgentInput, apiKey?: 
       for (const [path, content] of Object.entries(parsed.files)) completedFiles[path] = content;
       if (parsed.message) latestMessage = parsed.message;
 
-      if (parsed.complete && Object.keys(completedFiles).length > 0) {
+      if (parsed.complete && candidate?.finishReason !== "MAX_TOKENS" && Object.keys(completedFiles).length > 0) {
         return { message: latestMessage, files: completedFiles };
       }
       if (candidate?.finishReason === "MAX_TOKENS") {
