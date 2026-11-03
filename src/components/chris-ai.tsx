@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, Copy, ImagePlus, Loader2, Paperclip, Send, Sparkles, Trash2, User } from "lucide-react";
+import { Bot, Copy, ImagePlus, Loader2, Minimize2, Paperclip, Send, Sparkles, Trash2, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
