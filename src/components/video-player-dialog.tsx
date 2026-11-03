@@ -71,9 +71,32 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
   const countedRef = useRef(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [unlockedVideoId, setUnlockedVideoId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!videoId || !playerContainerRef.current) return;
+    setUnlockedVideoId(null);
+    setPlaybackError(null);
+    setLoading(false);
+  }, [videoId]);
+
+  // Load the supplied Adsterra display unit inside the pre-video unlock screen.
+  useEffect(() => {
+    if (!videoId || unlockedVideoId === videoId) return;
+    const container = document.getElementById("container-e6d8442231a964256120f8359c3b588e");
+    if (!container) return;
+    container.replaceChildren();
+    const script = document.createElement("script");
+    script.async = true;
+    script.setAttribute("data-cfasync", "false");
+    script.src = "https://bauval.org/21/e6d8442231a964256120f8359c3b588e";
+    container.parentElement?.insertBefore(script, container);
+    return () => {
+      script.remove();
+    };
+  }, [videoId, unlockedVideoId]);
+
+  useEffect(() => {
+    if (!videoId || unlockedVideoId !== videoId || !playerContainerRef.current) return;
     let cancelled = false;
     countedRef.current = false;
     setPlaybackError(null);
@@ -83,7 +106,7 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
         if (cancelled || !playerContainerRef.current) return;
         const iframe = document.createElement("iframe");
         iframe.title = title;
-        iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}&autoplay=1&playsinline=1&rel=0`;
+        iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}&autoplay=0&playsinline=1&rel=0`;
         iframe.referrerPolicy = "strict-origin-when-cross-origin";
         iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
         iframe.allowFullscreen = true;
@@ -92,7 +115,7 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
         playerRef.current = new YT.Player(iframe, {
           videoId,
           playerVars: {
-            autoplay: 1,
+            autoplay: 0,
             playsinline: 1,
             rel: 0,
             enablejsapi: 1,
@@ -100,6 +123,7 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
           },
           events: {
             onReady: (event) => {
+              setLoading(false);
               const iframe = event.target.getIframe();
               iframe.referrerPolicy = "strict-origin-when-cross-origin";
               iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
@@ -140,7 +164,7 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
       playerRef.current = null;
       playerContainerRef.current?.replaceChildren();
     };
-  }, [videoId]);
+  }, [videoId, unlockedVideoId, title]);
 
   return (
     <Dialog open={!!videoId} onOpenChange={(open) => !open && onClose()}>
@@ -149,13 +173,34 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
           <DialogTitle className="pr-8 text-left">{title}</DialogTitle>
         </DialogHeader>
         <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-secondary">
-          {videoId && <div ref={playerContainerRef} className="h-full w-full" />}
-          {loading && !playbackError && (
+          {videoId && unlockedVideoId !== videoId ? (
+            <div className="flex h-full w-full flex-col items-center justify-center gap-4 overflow-y-auto bg-background p-5 text-center">
+              <div>
+                <p className="font-display text-lg font-semibold">Support ExpertsTeam</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  An advertisement is displayed before this video. Continue when you're ready.
+                </p>
+              </div>
+              <div
+                id="container-e6d8442231a964256120f8359c3b588e"
+                className="flex min-h-[90px] w-full max-w-full items-center justify-center overflow-hidden rounded-lg"
+              />
+              <Button onClick={() => setUnlockedVideoId(videoId)}>
+                Continue to video
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                The ad may not appear if no advertisement is available or your browser blocks it.
+              </p>
+            </div>
+          ) : (
+            videoId && <div ref={playerContainerRef} className="h-full w-full" />
+          )}
+          {unlockedVideoId === videoId && loading && !playbackError && (
             <div className="absolute inset-0 grid place-items-center bg-background/70 text-sm text-muted-foreground">
               Loading video…
             </div>
           )}
-          {playbackError && (
+          {unlockedVideoId === videoId && playbackError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center">
               <p className="max-w-xl text-sm text-destructive">{playbackError}</p>
               {videoId && (
