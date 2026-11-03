@@ -153,7 +153,9 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
 
     // Remove a previous instance before creating a fresh Native Banner slot.
     document
-      .querySelectorAll<HTMLScriptElement>('script[src="https://bauval.org/21/e6d8442231a964256120f8359c3b588e"]')
+      .querySelectorAll<HTMLScriptElement>(
+        'script[src="https://bauval.org/21/e6d8442231a964256120f8359c3b588e"]',
+      )
       .forEach((oldScript) => oldScript.remove());
 
     // Keep the script immediately before its matching container, as supplied
@@ -164,7 +166,8 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
     script.src = "https://bauval.org/21/e6d8442231a964256120f8359c3b588e";
     script.onerror = () => {
       if (container.isConnected) {
-        container.textContent = "Advertisement could not load. Check your connection or ad-blocking settings.";
+        container.textContent =
+          "Advertisement could not load. Check your connection or ad-blocking settings.";
       }
     };
     container.parentElement?.insertBefore(script, container);
@@ -234,7 +237,9 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
           playerRef.current?.destroy();
           playerRef.current = null;
           setLoading(false);
-          setPlaybackError("YouTube did not finish opening this video. Check your connection or browser extensions, then try again.");
+          setPlaybackError(
+            "YouTube did not finish opening this video. Check your connection or browser extensions, then try again.",
+          );
         }, 12000);
       })
       .catch((error: unknown) => {
