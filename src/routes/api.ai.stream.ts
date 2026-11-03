@@ -135,7 +135,7 @@ export const Route = createFileRoute("/api/ai/stream")({
             generationConfig: { maxOutputTokens: 8192 },
           }, undefined, fallbackOrder);
 
-          const streamPayload = `data: ${JSON.stringify(result)}\\n\\ndata: [DONE]\\n\\n`;
+          const streamPayload = `data: ${JSON.stringify(result)}\n\ndata: [DONE]\n\n`;
           return new Response(streamPayload, {
             headers: {
               "Content-Type": "text/event-stream; charset=utf-8",
