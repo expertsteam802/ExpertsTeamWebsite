@@ -485,7 +485,7 @@ function AdminPage() {
                 </div>
               </TabsContent>
           <TabsContent value="branding" className="mt-0">
-            <Card className="max-w-2xl gap-4 p-6">
+            <Card className="max-w-3xl gap-4 p-6">
               {form ? (
                 <>
                   {(
@@ -497,10 +497,8 @@ function AdminPage() {
                       ["owner_email", "Owner email"],
                       ["subscription_price", "Subscription price (USD)"],
                       ["subscription_quota_bytes", "Subscriber storage (bytes)"],
-                      ["ai_subscription_price", "Studio plan price (USD/month)"],
-                      ["ai_subscription_credits", "Studio AI credits per month"],
-                      ["ai_subscription_price", "Studio subscription price (USD/month)"],
-                      ["ai_subscription_credits", "Studio AI credits per subscription"],
+                      ["ai_subscription_price", "Studio subscription price (USD per 30 days)"],
+                      ["ai_subscription_credits", "Studio AI credits per 30-day plan"],
                       ["payout_account", "Payout account (PayPal email / card account)"],
                     ] as Array<[keyof SettingsForm, string]>
                   ).map(([key, label]) => (
@@ -520,6 +518,27 @@ function AdminPage() {
               ) : (
                 <p className="text-sm text-muted-foreground">Loading settings…</p>
               )}
+            </Card>
+            <Card className="mt-4 max-w-3xl gap-4 p-6">
+              <div>
+                <h2 className="font-display text-lg font-semibold">Free AI providers</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Create API keys with the providers below, then add them in Vercel → Project → Settings → Environment Variables. Keep every key server-side; never use a VITE_ prefix.</p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {[
+                  ["Google AI Studio", "https://aistudio.google.com/api-keys"],
+                  ["Groq", "https://console.groq.com/keys"],
+                  ["Mistral Studio", "https://console.mistral.ai/api-keys/"],
+                  ["OpenRouter", "https://openrouter.ai/settings/keys"],
+                  ["Cloudflare Workers AI", "https://dash.cloudflare.com/"],
+                ].map(([label, url]) => (
+                  <a key={label} href={url} target="_blank" rel="noreferrer" className="rounded-lg border border-border p-3 text-sm font-medium transition-colors hover:border-primary/50 hover:bg-secondary/50">
+                    {label} <span className="ml-1 text-primary">↗</span>
+                  </a>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Recommended order: Gemini → Groq → Mistral → OpenRouter → Cloudflare. The AI setup guide lists the exact environment variable names and free-model defaults.</p>
+              <a href="https://github.com/expertsteam802/ExpertsTeamWebsite/blob/main/docs/AI_PROVIDER_SETUP.md" target="_blank" rel="noreferrer" className="text-sm font-medium text-primary underline underline-offset-4">Read AI provider setup guide</a>
             </Card>
           </TabsContent>
 
