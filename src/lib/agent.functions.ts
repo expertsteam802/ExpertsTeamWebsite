@@ -28,7 +28,9 @@ export const createCodingPlan = createServerFn({ method: "POST" })
     if (Object.keys(parsed.files).length > 80) throw new Error("This project has too many files to plan at once.");
     return parsed;
   })
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("consume_ai_credit");
+    if (error) throw new Error(error.message);
     const { createAgentPlan } = await import("./agent.server");
     return createAgentPlan(data.prompt, data.files);
   });
@@ -36,7 +38,9 @@ export const createCodingPlan = createServerFn({ method: "POST" })
 export const runCodingAgent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => codingRequest.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("consume_ai_credit");
+    if (error) throw new Error(error.message);
     const { runAgent } = await import("./agent.server");
     return runAgent(data, process.env["GEMINI_API_KEY"]);
   });
