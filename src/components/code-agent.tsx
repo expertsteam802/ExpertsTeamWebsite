@@ -65,7 +65,7 @@ const fileIcon = (name: string) => {
 };
 
 export function CodeAgent() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const queryClient = useQueryClient();
   const run = useServerFn(runCodingAgent);
   const createPlan = useServerFn(createCodingPlan);
@@ -426,6 +426,7 @@ export function CodeAgent() {
       const planText = `Plan: ${plan.summary}\\n\\n${plan.steps.map((step, index) => `${index + 1}. ${step}`).join("\\n")}\\n\\nReview this plan. No project files have changed yet.`;
       const plannedMessages: Message[] = [...nextMessages, { role: "assistant", content: planText }];
       setMessages(plannedMessages);
+      void queryClient.invalidateQueries({ queryKey: ["profile"] });
       setPendingPlan({ request: text, summary: plan.summary, steps: plan.steps, nextStep: 0 });
       await persist({ messages: plannedMessages });
     } catch (error) {
@@ -455,6 +456,7 @@ export function CodeAgent() {
       const answer = `Step ${completed}/${pendingPlan.steps.length}: ${step}\\n${result.message}${changed.length ? `\\n\\nUpdated files:\\n${changed.map((path) => `• ${path}`).join("\\n")}` : ""}${remaining ? "\\n\\nReview the result, then approve the next step." : "\\n\\nAll planned steps are complete."}`;
       const finalMessages: Message[] = [...messages, { role: "assistant", content: answer }];
       setFiles(updatedFiles);
+      void queryClient.invalidateQueries({ queryKey: ["profile"] });
       setMessages(finalMessages);
       setPendingPlan(remaining ? { ...pendingPlan, nextStep: completed } : null);
       setDirty(true);
@@ -1252,6 +1254,7 @@ export function CodeAgent() {
                 Workspace ready
               </span>
               <span>{Object.keys(files).length} files</span>
+              <span className="text-cyan-300">{profile?.ai_credits ?? 0} AI credits</span>
               <span>{activeFile || "No file selected"}</span>
             </div>
             <span className="text-[10px] text-slate-600">Experts Team · AI Studio</span>
