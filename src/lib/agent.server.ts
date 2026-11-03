@@ -101,118 +101,191 @@ export async function createAgentPlan(
   }
 }
 
+
+function skipWhitespace(source: string, start: number): number {
+  let index = start;
+  while (/\\s/.test(source[index] ?? "")) index++;
+  return index;
+}
+
+function scanJsonString(source: string, start: number): number {
+  if (source[start] !== '"') return -1;
+  let escaped = false;
+  for (let index = start + 1; index < source.length; index++) {
+    const char = source[index];
+    if (escaped) escaped = false;
+    else if (char === "\\\\") escaped = true;
+    else if (char === '"') return index + 1;
+  }
+  return -1;
+}
+
+function recoverCompleteFiles(source: string): Record<string, string | null> {
+  const filesKey = /"files"\\s*:\\s*\\{/.exec(source);
+  const recovered: Record<string, string | null> = {};
+  if (!filesKey || filesKey.index === undefined) return recovered;
+  let index = filesKey.index + filesKey[0].length;
+  while (index < source.length) {
+    index = skipWhitespace(source, index);
+    if (source[index] === "}" || source[index] === undefined) break;
+    const keyEnd = scanJsonString(source, index);
+    if (keyEnd < 0) break;
+    let path: string;
+    try { path = JSON.parse(source.slice(index, keyEnd)) as string; } catch { break; }
+    index = skipWhitespace(source, keyEnd);
+    if (source[index] !== ":") break;
+    index = skipWhitespace(source, index + 1);
+    let valueEnd = -1;
+    if (source[index] === '"') valueEnd = scanJsonString(source, index);
+    else if (source.startsWith("null", index)) valueEnd = index + 4;
+    if (valueEnd < 0) break;
+    try {
+      const value = JSON.parse(source.slice(index, valueEnd)) as unknown;
+      if ((typeof value === "string" || value === null) && isSafeProjectPath(path)) recovered[path] = value;
+    } catch { break; }
+    index = skipWhitespace(source, valueEnd);
+    if (source[index] === ",") index++;
+    else break;
+  }
+  return recovered;
+}
+
+function parseAgentFiles(text: string): {
+  message?: string;
+  files: Record<string, string | null>;
+  complete: boolean;
+} {
+  try {
+    const parsed = JSON.parse(text.trim()) as {
+      message?: string;
+      files?: Record<string, string | null>;
+      complete?: boolean;
+    };
+    if (!parsed.files || typeof parsed.files !== "object" || Array.isArray(parsed.files)) {
+      return { files: recoverCompleteFiles(text), complete: false };
+    }
+    const files: Record<string, string | null> = {};
+    for (const [path, content] of Object.entries(parsed.files)) {
+      if (!isSafeProjectPath(path)) throw new Error("Invalid file path: " + path);
+      if (typeof content !== "string" && content !== null) throw new Error("Invalid content for " + path);
+      files[path] = content;
+    }
+    return {
+      message: typeof parsed.message === "string" ? parsed.message : undefined,
+      files,
+      complete: parsed.complete === true,
+    };
+  } catch (error) {
+    if (error instanceof Error && /Invalid file path|Invalid content/.test(error.message)) throw error;
+    return { files: recoverCompleteFiles(text), complete: false };
+  }
+}
+
 export async function runAgent({ prompt, files, history }: AgentInput, apiKey?: string) {
   const cleanPrompt = prompt.trim();
   if (!cleanPrompt) throw new Error("Tell the agent what to build.");
   if (cleanPrompt.length > 16000) throw new Error("That request is too long.");
-
   const entries = Object.entries(files);
-  if (entries.length > 80)
-    throw new Error("This project has too many files to send to the agent at once.");
+  if (entries.length > 80) throw new Error("This project has too many files to send to the agent at once.");
   if (entries.some(([path, content]) => !isSafeProjectPath(path) || content.length > 100000)) {
     throw new Error("One or more project files are too large or have an invalid path.");
   }
 
   const promptTerms = new Set(cleanPrompt.toLowerCase().match(/[a-z0-9_./-]{3,}/g) ?? []);
-  const priorityFiles =
-    /(^|\/)(package\.json|vite\.config\.[^/]+|tsconfig\.json|index\.html|src\/main\.[^/]+|src\/app\.[^/]+|src\/index\.css|src\/routes\/[^/]+)$/i;
-  const rankedEntries = entries
-    .map(([name, content]) => {
-      const lowerName = name.toLowerCase();
-      let score = priorityFiles.test(lowerName) ? 8 : 0;
-      for (const term of promptTerms) if (lowerName.includes(term)) score += 3;
-      if (/lock|\.map$|node_modules|dist\//i.test(lowerName)) score -= 20;
-      return { name, content, score };
-    })
-    .sort((a, b) => b.score - a.score);
+  const priorityFiles = /(^|\\/)(package\\.json|vite\\.config\\.[^/]+|tsconfig\\.json|index\\.html|src\\/main\\.[^/]+|src\\/app\\.[^/]+|src\\/index\\.css|src\\/routes\\/[^/]+)$/i;
+  const rankedEntries = entries.map(([name, content]) => {
+    const lowerName = name.toLowerCase();
+    let score = priorityFiles.test(lowerName) ? 8 : 0;
+    for (const term of promptTerms) if (lowerName.includes(term)) score += 3;
+    if (/lock|\\.map$|node_modules|dist\\//i.test(lowerName)) score -= 20;
+    return { name, content, score };
+  }).sort((a, b) => b.score - a.score);
+
   const selected: Array<{ name: string; content: string }> = [];
-  let remainingCharacters = 6500;
+  let remainingCharacters = 4200;
   for (const entry of rankedEntries) {
-    if (remainingCharacters <= 0 || selected.length >= 16) break;
+    if (remainingCharacters <= 0 || selected.length >= 12) break;
     const content = entry.content.slice(0, Math.min(entry.content.length, remainingCharacters));
     if (!content) continue;
     selected.push({ name: entry.name, content });
     remainingCharacters -= content.length;
   }
-  const fileDump = selected
-    .map(({ name, content }) => "--- " + name + " ---\n" + content)
-    .join("\n\n");
+  const fileDump = selected.map(({ name, content }) => "--- " + name + " ---\\n" + content).join("\\n\\n");
 
-  const json = await generateGeminiContent(
-    {
-      systemInstruction: { parts: [{ text: AGENT_PROMPT }] },
-      generationConfig: { responseMimeType: "application/json", maxOutputTokens: 4096 },
-      contents: [
-        ...history.slice(-2).map((message) => ({
-          role: message.role === "assistant" ? ("model" as const) : ("user" as const),
-          parts: [{ text: message.content.slice(-900) }],
-        })),
-        {
-          role: "user",
-          parts: [
-            {
-              text:
-                "Relevant project files (selected to fit provider limits):\n" +
-                (fileDump || "(empty)") +
-                "\n\nRequest: " +
-                cleanPrompt,
-            },
-          ],
-        },
-      ],
-    },
-    apiKey,
-  );
+  const configured = (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
+    .split(",").map((item) => item.trim().toLowerCase())
+    .filter((item) => ["groq", "gemini", "openrouter"].includes(item));
+  const providerSequence = [...new Set([...configured, "groq", "gemini", "openrouter"])];
+  const completedFiles: Record<string, string | null> = {};
+  let latestMessage = "The agent generated the requested project files.";
+  let lastFailure = "";
+  const maxRounds = 7;
 
-  const candidate = json.candidates?.[0];
-  if (candidate?.finishReason === "MAX_TOKENS") {
-    throw new Error(
-      "Gemini's answer was too large. Ask for a smaller change; your files were not replaced.",
-    );
+  for (let round = 0; round < maxRounds; round++) {
+    const existingNames = Object.keys(completedFiles);
+    const continuation = round === 0
+      ? "User request: " + cleanPrompt + "\\nRelevant current project files:\\n" + (fileDump || "(empty starter project)")
+      : [
+          "Continue implementation of this same request: " + cleanPrompt,
+          "Return only additional files still required. Do not repeat completed files unless correcting a specific inconsistency.",
+          "Already completed files: " + (existingNames.join(", ") || "(none)") + ".",
+          "Keep this response small: return at most 2 complete files. If more remain, set complete:false. Set complete:true only when the requested app/change is fully implemented.",
+          "If a previous response was truncated, regenerate the missing file from scratch. Never return half a file as completed.",
+          "Previously generated file names and short contents:",
+          ...Object.entries(completedFiles).map(([path, content]) => "--- " + path + " ---\\n" + String(content).slice(0, 500)),
+        ].join("\\n\\n");
+
+    const systemPrompt = AGENT_PROMPT + "\\n\\nSmart Processing rules:\\n" +
+      '- Work in resumable batches of no more than 2 complete files per response.\\n' +
+      '- Return JSON: {"message":"...","files":{"path":"full file content"},"complete":false}.\\n' +
+      '- Set complete:true only after all necessary files have been supplied across continuation rounds.\\n' +
+      '- Never intentionally truncate a file. Finish the current file, stop, and set complete:false if output budget is low.\\n' +
+      '- Do not repeat files already supplied unless fixing a specific inconsistency.';
+
+    const startAt = round % providerSequence.length;
+    const rotatedProviders = [...providerSequence.slice(startAt), ...providerSequence.slice(0, startAt)];
+    try {
+      const response = await generateGeminiContent({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1400 },
+        contents: [
+          ...history.slice(-1).map((message) => ({
+            role: message.role === "assistant" ? ("model" as const) : ("user" as const),
+            parts: [{ text: message.content.slice(-500) }],
+          })),
+          { role: "user", parts: [{ text: continuation }] },
+        ],
+      }, apiKey, rotatedProviders);
+
+      const candidate = response.candidates?.[0];
+      const responseText = candidate?.content?.parts
+        ?.filter((part) => !part.thought).map((part) => part.text ?? "").join("") ?? "";
+      const parsed = parseAgentFiles(responseText);
+      for (const [path, content] of Object.entries(parsed.files)) completedFiles[path] = content;
+      if (parsed.message) latestMessage = parsed.message;
+
+      if (parsed.complete && Object.keys(completedFiles).length > 0) {
+        return { message: latestMessage, files: completedFiles };
+      }
+      if (candidate?.finishReason === "MAX_TOKENS") {
+        lastFailure = "A model reached its output limit; continuing with smaller batches and another provider.";
+      } else if (!Object.keys(parsed.files).length) {
+        lastFailure = "A model returned incomplete file data; switching providers and retrying.";
+      }
+    } catch (error) {
+      lastFailure = error instanceof Error ? error.message : String(error);
+    }
   }
 
-  const text =
-    candidate?.content?.parts
-      ?.filter((part) => !part.thought)
-      .map((part) => part.text ?? "")
-      .join("") ?? "";
-
-  try {
-    const cleaned = text.trim();
-    if (!cleaned.startsWith("{") || !cleaned.endsWith("}")) {
-      throw new Error("Not JSON");
-    }
-
-    const parsed = JSON.parse(cleaned) as {
-      message?: string;
-      files?: Record<string, string | null>;
-    };
-
-    if (!parsed.files || typeof parsed.files !== "object" || Array.isArray(parsed.files)) {
-      throw new Error("Invalid files");
-    }
-
-    const output: Record<string, string | null> = {};
-    for (const [path, content] of Object.entries(parsed.files)) {
-      if (!isSafeProjectPath(path)) throw new Error(`Invalid file path: ${path}`);
-      if (typeof content !== "string" && content !== null)
-        throw new Error(`Invalid content for ${path}`);
-      output[path] = content;
-    }
-
-    if (Object.keys(output).length === 0) {
-      throw new Error("No files returned");
-    }
-
+  if (Object.keys(completedFiles).length > 0) {
     return {
-      message: typeof parsed.message === "string" ? parsed.message : "Done.",
-      files: output,
+      message: latestMessage + " Some files are complete; the remaining files need another continuation pass.",
+      files: completedFiles,
     };
-  } catch {
-    throw new Error(
-      "Gemini did not return complete app files. Try a smaller request; your existing files were not changed.",
-    );
   }
+  throw new Error(lastFailure
+    ? "AI providers could not produce complete files. " + lastFailure + " Your existing files were not replaced."
+    : "AI did not return any complete files. Your existing files were not replaced.");
 }
 
 export async function pushToGithub({
