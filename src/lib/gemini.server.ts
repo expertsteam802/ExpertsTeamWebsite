@@ -26,7 +26,6 @@ export function resolveGeminiApiKey(apiKey?: string): string | undefined {
   return (
     apiKey?.trim() ||
     process.env["GEMINI_API_KEY"]?.trim() ||
-    process.env["VITE_GEMINI_API_KEY"]?.trim() ||
     undefined
   );
 }
