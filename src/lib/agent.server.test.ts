@@ -194,7 +194,6 @@ test("coding agent continues to Groq when Gemini rejects an oversized request", 
   }
 });
 
-
 test("agent salvages complete files from truncated JSON and continues with another provider", async () => {
   const previousOrder = process.env["AI_PROVIDER_ORDER"];
   const previousGroqKey = process.env["GROQ_API_KEY"];
@@ -205,22 +204,34 @@ test("agent salvages complete files from truncated JSON and continues with anoth
     urls.push(String(url));
     if (String(url).includes("generativelanguage.googleapis.com")) {
       return Response.json({
-        candidates: [{
-          finishReason: "MAX_TOKENS",
-          content: { parts: [{ text: '{"message":"partial","files":{"index.html":"<h1>Complete first file</h1>","src/App.tsx":"import React from' }] },
-        }],
+        candidates: [
+          {
+            finishReason: "MAX_TOKENS",
+            content: {
+              parts: [
+                {
+                  text: '{"message":"partial","files":{"index.html":"<h1>Complete first file</h1>","src/App.tsx":"import React from',
+                },
+              ],
+            },
+          },
+        ],
       });
     }
     return Response.json({
-      choices: [{
-        message: {
-          content: JSON.stringify({
-            message: "Finished remaining files with fallback model",
-            files: { "src/App.tsx": "export default function App(){return <main>Complete</main>}" },
-            complete: true,
-          }),
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              message: "Finished remaining files with fallback model",
+              files: {
+                "src/App.tsx": "export default function App(){return <main>Complete</main>}",
+              },
+              complete: true,
+            }),
+          },
         },
-      }],
+      ],
     });
   }) as typeof fetch;
 
@@ -242,12 +253,21 @@ test("agent salvages complete files from truncated JSON and continues with anoth
 test("agent returns completed files if continuation providers are exhausted", async () => {
   const previousOrder = process.env["AI_PROVIDER_ORDER"];
   process.env["AI_PROVIDER_ORDER"] = "gemini";
-  globalThis.fetch = (async () => Response.json({
-    candidates: [{
-      finishReason: "MAX_TOKENS",
-      content: { parts: [{ text: '{"files":{"index.html":"<h1>Finished file</h1>","src/App.tsx":"import React from' }] },
-    }],
-  })) as typeof fetch;
+  globalThis.fetch = (async () =>
+    Response.json({
+      candidates: [
+        {
+          finishReason: "MAX_TOKENS",
+          content: {
+            parts: [
+              {
+                text: '{"files":{"index.html":"<h1>Finished file</h1>","src/App.tsx":"import React from',
+              },
+            ],
+          },
+        },
+      ],
+    })) as typeof fetch;
 
   try {
     const result = await runAgent(input, "test-key");
