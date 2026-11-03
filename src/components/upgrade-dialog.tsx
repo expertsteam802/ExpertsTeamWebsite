@@ -29,6 +29,7 @@ export function UpgradeDialog() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [method, setMethod] = useState<PaymentMethod>("paypal");
+  const [planKind, setPlanKind] = useState<"ai" | "storage">("ai");
   const [reference, setReference] = useState("");
   const [note, setNote] = useState("");
 
@@ -47,7 +48,7 @@ export function UpgradeDialog() {
   });
 
   const pending = (requests ?? []).find((request) => request.status === "pending");
-  const configuredPrice = Number(settings.subscription_price);
+  const configuredPrice = Number(planKind === "ai" ? settings.ai_subscription_price : settings.subscription_price);
   const price = Number.isFinite(configuredPrice) && configuredPrice > 0 ? configuredPrice : 1;
   const payoutAccount = settings.payout_account?.trim();
   const activeMethod = PAYMENT_METHODS.find((item) => item.value === method)!;
@@ -63,6 +64,7 @@ export function UpgradeDialog() {
       const { error } = await supabase.from("subscription_requests").insert({
         user_id: user.id,
         amount: price,
+        kind: planKind,
         method,
         reference: reference.trim().slice(0, 120),
         note: note.trim().slice(0, 400) || null,
@@ -107,16 +109,24 @@ export function UpgradeDialog() {
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Unlock {formatBytes(settings.subscription_quota_bytes)} of space
+              {planKind === "ai" ? "Unlock ExpertsTeam Studio" : `Unlock ${formatBytes(settings.subscription_quota_bytes)} of space`}
             </DialogTitle>
             <DialogDescription>
-              One payment of ${price.toFixed(2)} raises your upload limit from{" "}
-              {formatBytes(profile?.storage_quota_bytes ?? 209715200)} to{" "}
-              {formatBytes(settings.subscription_quota_bytes)}.
+              {planKind === "ai"
+                ? `One payment of ${price.toFixed(2)} unlocks app creation and ${Number(settings.ai_subscription_credits) || 500} AI credits.`
+                : `One payment of ${price.toFixed(2)} raises your upload limit from ${formatBytes(profile?.storage_quota_bytes ?? 209715200)} to ${formatBytes(settings.subscription_quota_bytes)}.`}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Choose plan</Label>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" size="sm" variant={planKind === "ai" ? "default" : "outline"} onClick={() => setPlanKind("ai")}>Studio · ${Number(settings.ai_subscription_price) > 0 ? Number(settings.ai_subscription_price).toFixed(2) : "1.00"}/month</Button>
+                <Button type="button" size="sm" variant={planKind === "storage" ? "default" : "outline"} onClick={() => setPlanKind("storage")}>Extra storage · ${Number(settings.subscription_price).toFixed(2)}</Button>
+              </div>
+              <p className="text-xs text-muted-foreground">{planKind === "ai" ? "Unlocks app creation and a limited monthly AI allowance. Free-model quotas still apply." : "One-time storage upgrade, confirmed manually by the creator."}</p>
+            </div>
             <div className="space-y-2">
               <Label>Pay with</Label>
               <div className="flex flex-wrap gap-2">
