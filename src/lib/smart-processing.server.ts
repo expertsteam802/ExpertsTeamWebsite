@@ -75,14 +75,17 @@ export function compactSmartContents(
   return [...compactedHistory, { role: latest.role, parts: latestParts }];
 }
 
-export function compactSmartRequest(request: SmartRequest): SmartRequest {
+export function compactSmartRequest(
+  request: SmartRequest,
+  maxTextCharacters = DEFAULT_TEXT_BUDGET,
+): SmartRequest {
   const systemText = request.systemInstruction.parts.map((part) => part.text).join("\n");
   return {
     ...request,
     systemInstruction: {
       parts: [{ text: trimText(systemText, SYSTEM_TEXT_BUDGET) }],
     },
-    contents: compactSmartContents(request.contents),
+    contents: compactSmartContents(request.contents, maxTextCharacters),
   };
 }
 
