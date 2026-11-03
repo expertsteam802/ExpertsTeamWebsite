@@ -5,7 +5,7 @@ import {
   Bot, Check, ChevronDown, ChevronRight, Code2, Command, Copy,
   ExternalLink, Eye, File, FileCode2, FilePlus2, Folder,
   Github, Loader2, Maximize2, Monitor, MoreHorizontal, Play,
-  Plus, RefreshCw, Save, Send, Settings2, Smartphone,
+  Plus, RefreshCw, Save, Send, Settings2, Smartphone, Square,
   Sparkles, Tablet, Terminal, Trash2, X, Zap
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -406,6 +406,7 @@ export function CodeAgent() {
     }
 
     if (projectId === project.id) {
+      resetRuntimeForProjectChange();
       setProjectId(null);
       setName("Untitled project");
       setFiles(STARTER_FILES);
@@ -746,6 +747,22 @@ export function CodeAgent() {
                 )}
                 {runtimeBusy ? "Starting…" : runtimeUrl ? "Restart" : "Run"}
               </Button>
+              {runtimeUrl && !runtimeBusy && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    stopDevServer();
+                    setRuntimeUrl(null);
+                    setRuntimeStatus("Stopped");
+                  }}
+                  className="h-8 px-2 text-slate-400 hover:text-white"
+                  title="Stop the development server"
+                >
+                  <Square className="mr-1 h-3 w-3" />
+                  Stop
+                </Button>
+              )}
               {panel === "preview" && (
                 <>
                   {([
