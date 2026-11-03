@@ -179,7 +179,7 @@ export function CodeAgent() {
         (chunk) => setTerminalOutput((current) => (current + chunk).slice(-40000)),
         (exitCode) => {
           setTerminalReady(false);
-          setTerminalOutput((current) => `${current}\\r\\n[process exited with code ${exitCode}]\\r\\n`);
+          setTerminalOutput((current) => `${current}\r\n[process exited with code ${exitCode}]\r\n`);
         },
       );
       setTerminalReady(true);
