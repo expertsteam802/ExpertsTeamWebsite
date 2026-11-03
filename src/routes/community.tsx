@@ -239,7 +239,7 @@ function PostCard({
   const [open, setOpen] = useState(false);
   const [comment, setComment] = useState("");
 
-  const { data: comments = [] } = useQuery({
+  const { data: comments = [], isLoading: commentsLoading, isError: commentsError, refetch: refetchComments } = useQuery({
     queryKey: ["community-comments", post.id],
     enabled: open,
     queryFn: async () => {
@@ -311,7 +311,14 @@ function PostCard({
 
       {open && (
         <div className="space-y-3 border-t border-border/70 pt-3">
-          {comments.map((item) => (
+          {commentsLoading && <p className="text-xs text-muted-foreground">Loading replies…</p>}
+          {commentsError && (
+            <div role="alert" className="flex items-center justify-between gap-2 rounded-lg border border-destructive/30 p-3">
+              <p className="text-xs text-destructive">Could not load replies.</p>
+              <Button size="sm" variant="outline" onClick={() => void refetchComments()}>Retry</Button>
+            </div>
+          )}
+          {!commentsLoading && !commentsError && comments.map((item) => (
             <div key={item.id} className="rounded-lg bg-secondary/60 p-3 text-sm">
               <p className="text-xs text-muted-foreground">
                 {item.profiles?.display_name || item.profiles?.username || "Member"}
@@ -319,7 +326,7 @@ function PostCard({
               <p className="whitespace-pre-wrap">{item.body}</p>
             </div>
           ))}
-          {comments.length === 0 && (
+          {!commentsLoading && !commentsError && comments.length === 0 && (
             <p className="text-xs text-muted-foreground">No replies yet.</p>
           )}
           {user && (
@@ -331,7 +338,7 @@ function PostCard({
                 className="min-h-10 resize-none"
                 onChange={(event) => setComment(event.target.value)}
               />
-              <Button size="icon" aria-label="Send reply" onClick={() => addComment.mutate()}>
+              <Button size="icon" aria-label="Send reply" onClick={() => addComment.mutate()} disabled={addComment.isPending || !comment.trim()}>
                 <Send className="h-4 w-4" />
               </Button>
             </div>
