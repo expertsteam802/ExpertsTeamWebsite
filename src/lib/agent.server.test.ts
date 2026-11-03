@@ -127,14 +127,18 @@ test("agent rejects unsafe generated file paths", async () => {
   await assert.rejects(runAgent(input, "test-key"), /complete app files/i);
 });
 
-
 test("Smart Processing keeps the newest request while compacting old history", () => {
   const compacted = compactSmartContents([
     { role: "user", parts: [{ text: "old".repeat(1200) }] },
     { role: "model", parts: [{ text: "answer".repeat(1200) }] },
-    { role: "user", parts: [{ text: "Build the checkout page and preserve the existing layout." }] },
+    {
+      role: "user",
+      parts: [{ text: "Build the checkout page and preserve the existing layout." }],
+    },
   ]);
-  const combined = compacted.flatMap((item) => item.parts.map((part) => part.text ?? "")).join("\\n");
+  const combined = compacted
+    .flatMap((item) => item.parts.map((part) => part.text ?? ""))
+    .join("\\n");
   assert.match(combined, /Build the checkout page and preserve the existing layout/);
   assert.ok(combined.length <= 9_000);
   assert.ok(compacted.length <= 3);
@@ -152,7 +156,6 @@ test("Smart token estimate is deliberately conservative", () => {
   assert.equal(estimateSmartTokens("a".repeat(1000)), 500);
 });
 
-
 test("coding agent continues to Groq when Gemini rejects an oversized request", async () => {
   const previousOrder = process.env["AI_PROVIDER_ORDER"];
   const previousGroqKey = process.env["GROQ_API_KEY"];
@@ -165,14 +168,16 @@ test("coding agent continues to Groq when Gemini rejects an oversized request", 
       return new Response("request too large", { status: 413 });
     }
     return Response.json({
-      choices: [{
-        message: {
-          content: JSON.stringify({
-            message: "Recovered after Gemini rejected the request",
-            files: { "index.html": "<h1>Fallback</h1>" },
-          }),
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              message: "Recovered after Gemini rejected the request",
+              files: { "index.html": "<h1>Fallback</h1>" },
+            }),
+          },
         },
-      }],
+      ],
     });
   }) as typeof fetch;
 

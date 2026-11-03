@@ -229,7 +229,9 @@ export async function generateGeminiContent(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (message === "not_configured") continue;
-      if (/HTTP 413|HTTP 429|rate.?limit|quota|RESOURCE_EXHAUSTED|tokens per minute/i.test(message)) {
+      if (
+        /HTTP 413|HTTP 429|rate.?limit|quota|RESOURCE_EXHAUSTED|tokens per minute/i.test(message)
+      ) {
         markProviderCoolingDown(provider, 60);
         // Give the next provider a smaller prompt and output reserve automatically.
         activeRequest = compactSmartRequest(
@@ -237,13 +239,16 @@ export async function generateGeminiContent(
             ...activeRequest,
             generationConfig: {
               ...activeRequest.generationConfig,
-              maxOutputTokens: Math.min(activeRequest.generationConfig?.maxOutputTokens ?? 1400, 1400),
+              maxOutputTokens: Math.min(
+                activeRequest.generationConfig?.maxOutputTokens ?? 1400,
+                1400,
+              ),
             },
           },
           4500,
         );
-      }
-      else if (/HTTP 401|HTTP 403|HTTP 404/i.test(message)) markProviderCoolingDown(provider, 300);
+      } else if (/HTTP 401|HTTP 403|HTTP 404/i.test(message))
+        markProviderCoolingDown(provider, 300);
       else if (/HTTP 5\d\d|timed out|timeout/i.test(message)) markProviderCoolingDown(provider, 20);
       failures.push(`${provider}: ${message}`);
     }
