@@ -33,7 +33,7 @@ import {
   writeProjectFile,
 } from "@/lib/webcontainer-runtime";
 
-type Message = { role: "user" | "assistant"; content: string };
+type Message = { role: "user" | "assistant"; content: string; plan?: PendingPlan };
 type PendingPlan = { request: string; summary: string; steps: string[]; nextStep: number };
 
 type ProjectRow = {
@@ -416,7 +416,7 @@ export function CodeAgent() {
 
   async function sendPrompt() {
     const text = prompt.trim();
-    if (!text || busy) return;
+    if (!text || busy || pendingPlan) return;
     const nextMessages = [...messages, { role: "user" as const, content: text }];
     setMessages(nextMessages);
     setPrompt("");
@@ -424,10 +424,11 @@ export function CodeAgent() {
     try {
       const plan = await createPlan({ data: { prompt: text, files } });
       const planText = `Plan: ${plan.summary}\\n\\n${plan.steps.map((step, index) => `${index + 1}. ${step}`).join("\\n")}\\n\\nReview this plan. No project files have changed yet.`;
-      const plannedMessages: Message[] = [...nextMessages, { role: "assistant", content: planText }];
+      const approvedPlan: PendingPlan = { request: text, summary: plan.summary, steps: plan.steps, nextStep: 0 };
+      const plannedMessages: Message[] = [...nextMessages, { role: "assistant", content: planText, plan: approvedPlan }];
       setMessages(plannedMessages);
       void queryClient.invalidateQueries({ queryKey: ["profile"] });
-      setPendingPlan({ request: text, summary: plan.summary, steps: plan.steps, nextStep: 0 });
+      setPendingPlan(approvedPlan);
       await persist({ messages: plannedMessages });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "The AI could not prepare a plan.");
@@ -454,11 +455,12 @@ export function CodeAgent() {
       const completed = pendingPlan.nextStep + 1;
       const remaining = completed < pendingPlan.steps.length;
       const answer = `Step ${completed}/${pendingPlan.steps.length}: ${step}\\n${result.message}${changed.length ? `\\n\\nUpdated files:\\n${changed.map((path) => `• ${path}`).join("\\n")}` : ""}${remaining ? "\\n\\nReview the result, then approve the next step." : "\\n\\nAll planned steps are complete."}`;
-      const finalMessages: Message[] = [...messages, { role: "assistant", content: answer }];
+      const nextPlan = remaining ? { ...pendingPlan, nextStep: completed } : undefined;
+      const finalMessages: Message[] = [...messages, { role: "assistant", content: answer, ...(nextPlan ? { plan: nextPlan } : {}) }];
       setFiles(updatedFiles);
       void queryClient.invalidateQueries({ queryKey: ["profile"] });
       setMessages(finalMessages);
-      setPendingPlan(remaining ? { ...pendingPlan, nextStep: completed } : null);
+      setPendingPlan(nextPlan ?? null);
       setDirty(true);
       if (changed.length && updatedFiles[changed[0]]) {
         setActiveFile(changed[0]);
@@ -471,6 +473,18 @@ export function CodeAgent() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function cancelPendingPlan() {
+    if (!pendingPlan) return;
+    const updatedMessages = messages.map((message, index) =>
+      index === messages.length - 1 && message.plan
+        ? { role: message.role, content: `${message.content}\\n\\nPlan cancelled by the user.` }
+        : message,
+    );
+    setMessages(updatedMessages);
+    setPendingPlan(null);
+    void persist({ messages: updatedMessages });
   }
 
   function createProject() {
@@ -496,8 +510,10 @@ export function CodeAgent() {
         ? project.files
         : STARTER_FILES,
     );
-    setMessages(Array.isArray(project.messages) ? project.messages : []);
-    setPendingPlan(null);
+    const savedMessages = Array.isArray(project.messages) ? project.messages as Message[] : [];
+    setMessages(savedMessages);
+    const savedPlan = savedMessages[savedMessages.length - 1]?.plan;
+    setPendingPlan(savedPlan && savedPlan.nextStep < savedPlan.steps.length ? savedPlan : null);
     setActiveFile(Object.keys(project.files ?? {})[0] ?? "index.html");
     setGithubRepo(project.github_repo?.split("/").pop() ?? "");
     setLogs([]);
@@ -1196,7 +1212,7 @@ export function CodeAgent() {
                           {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
                           Approve & implement next step
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => setPendingPlan(null)} disabled={busy} className="h-8 border-white/10 text-slate-300">Cancel plan</Button>
+                        <Button size="sm" variant="outline" onClick={cancelPendingPlan} disabled={busy} className="h-8 border-white/10 text-slate-300">Cancel plan</Button>
                       </div>
                     </div>
                   )}
