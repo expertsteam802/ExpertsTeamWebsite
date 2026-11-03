@@ -21,7 +21,7 @@ test("agent never uses a browser-prefixed key when server credential is missing"
     return Response.json({});
   }) as typeof fetch;
   try {
-    await assert.rejects(runAgent(input), /not configured/i);
+    await assert.rejects(runAgent(input), /No AI provider is configured/i);
     assert.equal(calls, 0);
   } finally {
     if (previous === undefined) delete process.env["VITE_GEMINI_API_KEY"];
