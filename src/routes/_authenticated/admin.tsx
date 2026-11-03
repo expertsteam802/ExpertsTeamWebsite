@@ -20,14 +20,14 @@ import { paymentMethodLabel, type UpgradeRequest } from "@/lib/subscription";
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [
-      { title: "Admin panel — Chris Programs" },
+      { title: "Admin panel — ExpertsTeam" },
       {
         name: "description",
         content:
-          "Creator controls for Chris Programs: site branding, members, sessions and pricing.",
+          "Creator controls for ExpertsTeam: site branding, members, sessions and pricing.",
       },
-      { property: "og:title", content: "Admin panel — Chris Programs" },
-      { property: "og:description", content: "Creator controls for Chris Programs." },
+      { property: "og:title", content: "Admin panel — ExpertsTeam" },
+      { property: "og:description", content: "Creator controls for ExpertsTeam." },
     ],
   }),
   component: AdminPage,
