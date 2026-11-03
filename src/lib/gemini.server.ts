@@ -20,7 +20,7 @@ export type GeminiResponse = {
   promptFeedback?: { blockReason?: string };
 };
 
-const GEMINI_MODEL = "gemini-3.5-flash-lite";
+const GEMINI_MODEL = process.env["GEMINI_CODE_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.8-flash";
 
 export function resolveGeminiApiKey(apiKey?: string): string | undefined {
   return (
@@ -31,61 +31,112 @@ export function resolveGeminiApiKey(apiKey?: string): string | undefined {
   );
 }
 
+function openAiMessages(request: GeminiRequest) {
+  return [
+    { role: "system", content: request.systemInstruction.parts.map((part) => part.text).join("\\n") },
+    ...request.contents.map((item) => ({
+      role: item.role === "model" ? "assistant" : "user",
+      content: item.parts.map((part) => part.text).join("\\n"),
+    })),
+  ];
+}
+
+function asGeminiResponse(text: string): GeminiResponse {
+  return { candidates: [{ finishReason: "STOP", content: { parts: [{ text }] } }] };
+}
+
+async function callOpenAiCompatible(
+  provider: "groq" | "openrouter",
+  request: GeminiRequest,
+): Promise<GeminiResponse> {
+  const isGroq = provider === "groq";
+  const apiKey = process.env[isGroq ? "GROQ_API_KEY" : "OPENROUTER_API_KEY"]?.trim();
+  if (!apiKey) throw new Error("not_configured");
+  const model = process.env[isGroq ? "GROQ_MODEL" : "OPENROUTER_MODEL"] ||
+    (isGroq ? "openai/gpt-oss-120b" : "openrouter/free");
+  const response = await fetch(
+    isGroq ? "https://api.groq.com/openai/v1/chat/completions" : "https://openrouter.ai/api/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        ...(isGroq ? {} : { "HTTP-Referer": process.env["APP_URL"] || "https://expertsteam.giize.com", "X-Title": "ExpertsTeam" }),
+      },
+      body: JSON.stringify({
+        model,
+        messages: openAiMessages(request),
+        max_tokens: request.generationConfig?.maxOutputTokens ?? 8192,
+        ...(request.generationConfig?.responseMimeType === "application/json" ? { response_format: { type: "json_object" } } : {}),
+      }),
+      signal: AbortSignal.timeout(45000),
+    },
+  );
+  if (!response.ok) throw new Error(`${provider} HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`);
+  const data = await response.json() as { choices?: { message?: { content?: string | null } }[] };
+  const output = data.choices?.[0]?.message?.content;
+  if (!output) throw new Error(`${provider} returned an empty response.`);
+  return asGeminiResponse(output);
+}
+
+async function callCloudflare(request: GeminiRequest): Promise<GeminiResponse> {
+  const accountId = process.env["CLOUDFLARE_ACCOUNT_ID"]?.trim();
+  const apiToken = process.env["CLOUDFLARE_API_TOKEN"]?.trim();
+  if (!accountId || !apiToken) throw new Error("not_configured");
+  const model = process.env["CLOUDFLARE_AI_MODEL"] || "@cf/zai-org/glm-4.7-flash";
+  const response = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: openAiMessages(request), max_tokens: request.generationConfig?.maxOutputTokens ?? 8192 }),
+      signal: AbortSignal.timeout(45000),
+    },
+  );
+  if (!response.ok) throw new Error(`Cloudflare Workers AI HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`);
+  const data = await response.json() as { result?: { response?: string } };
+  if (!data.result?.response) throw new Error("Cloudflare Workers AI returned an empty response.");
+  return asGeminiResponse(data.result.response);
+}
+
 export async function generateGeminiContent(
   request: GeminiRequest,
   apiKey?: string,
 ): Promise<GeminiResponse> {
-  const resolvedApiKey = resolveGeminiApiKey(apiKey);
+  const configuredOrder = (process.env["AI_PROVIDER_ORDER"] || "gemini,groq,openrouter,cloudflare")
+    .split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
+  const failures: string[] = [];
 
-  if (!resolvedApiKey) {
-    throw new Error(
-      "Chris AI is not configured. Set GEMINI_API_KEY in the server environment. VITE_GEMINI_API_KEY is supported only for local development.",
-    );
-  }
-
-  let response: Response;
-  try {
-    response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "x-goog-api-key": resolvedApiKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(request),
-        signal: AbortSignal.timeout(30000),
-      },
-    );
-  } catch (error) {
-    if (error instanceof Error && error.name === "TimeoutError") {
-      throw new Error("Gemini took too long to respond. Please try again.");
+  for (const provider of configuredOrder) {
+    try {
+      if (provider === "gemini") {
+        const resolvedApiKey = resolveGeminiApiKey(apiKey);
+        if (!resolvedApiKey) continue;
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+          {
+            method: "POST",
+            headers: { "x-goog-api-key": resolvedApiKey, "Content-Type": "application/json" },
+            body: JSON.stringify(request),
+            signal: AbortSignal.timeout(45000),
+          },
+        );
+        if (!response.ok) throw new Error(`Gemini HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`);
+        return await response.json() as GeminiResponse;
+      }
+      if (provider === "groq" || provider === "openrouter") {
+        return await callOpenAiCompatible(provider, request);
+      }
+      if (provider === "cloudflare") return await callCloudflare(request);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message === "not_configured") continue;
+      failures.push(`${provider}: ${message}`);
     }
-    throw new Error(
-      "Could not connect to Gemini from the server. Check the server's network connection.",
-    );
   }
 
-  if (response.status === 429) {
-    throw new Error(
-      "Gemini is rate limited or out of quota. Check the API key's quota and try again later.",
-    );
+  if (failures.length) {
+    throw new Error(`All configured free AI providers are unavailable. ${failures.join(" | ")}`);
   }
-  if (response.status === 400 || response.status === 401 || response.status === 403) {
-    throw new Error(
-      "Gemini rejected the server API key or request. Check the key, model access, and API restrictions.",
-    );
-  }
-  if (response.status === 404) {
-    throw new Error(
-      `Gemini model ${GEMINI_MODEL} was not found or is unavailable to this API key.`,
-    );
-  }
-  if (!response.ok) {
-    throw new Error(
-      `Gemini could not finish that request (HTTP ${response.status}). Please try again.`,
-    );
-  }
-
-  return (await response.json()) as GeminiResponse;
+  throw new Error("No AI provider is configured. Add at least one server-side API key in Vercel Environment Variables.");
 }
