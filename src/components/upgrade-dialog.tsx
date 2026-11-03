@@ -47,7 +47,7 @@ export function UpgradeDialog() {
     },
   });
 
-  const pending = (requests ?? []).find((request) => request.status === "pending");
+  const pending = (requests ?? []).find((request) => request.status === "pending" && (request.kind ?? "storage") === planKind);
   const configuredPrice = Number(planKind === "ai" ? settings.ai_subscription_price : settings.subscription_price);
   const price = Number.isFinite(configuredPrice) && configuredPrice > 0 ? configuredPrice : 1;
   const payoutAccount = settings.payout_account?.trim();

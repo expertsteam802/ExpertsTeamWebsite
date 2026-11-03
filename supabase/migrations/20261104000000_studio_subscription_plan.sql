@@ -12,9 +12,13 @@ ALTER TABLE public.site_settings
 ALTER TABLE public.subscription_requests
   ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'storage';
 
+ALTER TABLE public.site_settings
+  ALTER COLUMN ai_subscription_price SET DEFAULT 1;
+
+-- 0.50 was the legacy default; move those installations to the requested $1 plan.
 UPDATE public.site_settings
 SET ai_subscription_price = 1
-WHERE ai_subscription_price IS NULL OR ai_subscription_price <= 0;
+WHERE ai_subscription_price IS NULL OR ai_subscription_price <= 0 OR ai_subscription_price = 0.5;
 
 UPDATE public.site_settings
 SET ai_subscription_credits = 500
