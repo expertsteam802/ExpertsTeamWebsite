@@ -897,6 +897,7 @@ export type Database = {
       };
       is_workspace_member: { Args: { _user_id: string }; Returns: boolean };
       redeem_invite: { Args: { _code: string }; Returns: Json };
+      record_video_view: { Args: { p_video_id: string }; Returns: number };
     };
     Enums: {
       app_role: "admin" | "developer" | "member";
