@@ -48,7 +48,8 @@ function AdminPage() {
   const { isAdmin, user } = useAuth();
   const queryClient = useQueryClient();
   const removeAccount = useServerFn(deleteUserAccount);
-  const [form, setForm] = useState<SettingsForm | null>(null);\n  const [memberSearch, setMemberSearch] = useState("");
+  const [form, setForm] = useState<SettingsForm | null>(null);
+  const [memberSearch, setMemberSearch] = useState("");
 
   const { data: settings } = useQuery({
     queryKey: ["site-settings"],
@@ -448,15 +449,6 @@ function AdminPage() {
                   </Card>
                 </div>
               </TabsContent>
-            <TabsTrigger value="branding">Branding & pricing</TabsTrigger>
-            <TabsTrigger value="members">Members</TabsTrigger>
-            <TabsTrigger value="sessions">Sign-in log</TabsTrigger>
-            <TabsTrigger value="payments">Payments</TabsTrigger>
-            <TabsTrigger value="developers">Developer requests</TabsTrigger>
-            <TabsTrigger value="contact">Contact messages{contactMessages.filter((item) => !item.read_at).length > 0 ? ` (${contactMessages.filter((item) => !item.read_at).length})` : ""}</TabsTrigger>
-            <TabsTrigger value="system">System status</TabsTrigger>
-          </TabsList>
-
           <TabsContent value="branding" className="mt-0">
             <Card className="max-w-2xl gap-4 p-6">
               {form ? (
@@ -492,7 +484,11 @@ function AdminPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="members" className="mt-0 space-y-4">\n            <div className="flex flex-wrap items-center justify-between gap-3">\n              <div><h2 className="font-display text-xl font-semibold">Member directory</h2><p className="text-sm text-muted-foreground">Find accounts, review storage and update access roles.</p></div>\n              <div className="w-full sm:max-w-xs"><Input value={memberSearch} onChange={(event) => setMemberSearch(event.target.value)} placeholder="Search members or usernames…" aria-label="Search members" /></div>\n            </div>
+          <TabsContent value="members" className="mt-0 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div><h2 className="font-display text-xl font-semibold">Member directory</h2><p className="text-sm text-muted-foreground">Find accounts, review storage and update access roles.</p></div>
+              <div className="w-full sm:max-w-xs"><Input value={memberSearch} onChange={(event) => setMemberSearch(event.target.value)} placeholder="Search members or usernames…" aria-label="Search members" /></div>
+            </div>
             <div className="grid gap-3">
               {(members ?? []).filter((member) => `${member.display_name ?? ""} ${member.username}`.toLowerCase().includes(memberSearch.toLowerCase())).map((member) => (
                 <Card
@@ -557,7 +553,8 @@ function AdminPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="payments" className="mt-0 space-y-4">\n            <div><h2 className="font-display text-xl font-semibold">Payment review</h2><p className="text-sm text-muted-foreground">Verify subscription requests before unlocking member benefits.</p></div>
+          <TabsContent value="payments" className="mt-0 space-y-4">
+            <div><h2 className="font-display text-xl font-semibold">Payment review</h2><p className="text-sm text-muted-foreground">Verify subscription requests before unlocking member benefits.</p></div>
             <div className="space-y-3">
               {(upgrades ?? []).map((request) => (
                 <Card key={request.id} className="gap-3 p-4">
@@ -605,7 +602,8 @@ function AdminPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="developers" className="mt-0 space-y-4">\n            <div><h2 className="font-display text-xl font-semibold">Developer applications</h2><p className="text-sm text-muted-foreground">Review project proposals and decide who can join the developer team.</p></div>
+          <TabsContent value="developers" className="mt-0 space-y-4">
+            <div><h2 className="font-display text-xl font-semibold">Developer applications</h2><p className="text-sm text-muted-foreground">Review project proposals and decide who can join the developer team.</p></div>
             <div className="space-y-3">
               {(projectRequests ?? []).map((request) => (
                 <Card key={request.id} className="gap-2 p-4">
@@ -649,7 +647,8 @@ function AdminPage() {
               )}
             </div>
           </TabsContent>
-          <TabsContent value="contact" className="mt-0 space-y-4">\n            <div><h2 className="font-display text-xl font-semibold">Contact inbox</h2><p className="text-sm text-muted-foreground">Read enquiries from visitors and follow up directly by email.</p></div>
+          <TabsContent value="contact" className="mt-0 space-y-4">
+            <div><h2 className="font-display text-xl font-semibold">Contact inbox</h2><p className="text-sm text-muted-foreground">Read enquiries from visitors and follow up directly by email.</p></div>
             <div className="space-y-3">
               {contactMessagesLoading && <p className="text-sm text-muted-foreground">Loading contact messages…</p>}
               {contactMessagesError && (
@@ -692,7 +691,8 @@ function AdminPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="system" className="mt-0 space-y-4">\n            <div><h2 className="font-display text-xl font-semibold">System health</h2><p className="text-sm text-muted-foreground">Live checks for database access and tracked platform usage.</p></div>
+          <TabsContent value="system" className="mt-0 space-y-4">
+            <div><h2 className="font-display text-xl font-semibold">System health</h2><p className="text-sm text-muted-foreground">Live checks for database access and tracked platform usage.</p></div>
             <div className="grid gap-4 md:grid-cols-3">
               <Card className="gap-2 p-5">
                 <p className="text-sm text-muted-foreground">Supabase connection</p>
@@ -712,6 +712,8 @@ function AdminPage() {
             </div>
             {systemStatus?.checkedAt && <p className="mt-3 text-xs text-muted-foreground">Last checked {formatDate(systemStatus.checkedAt)}</p>}
           </TabsContent>
+            </div>
+          </div>
         </Tabs>
       </section>
     </PageShell>
