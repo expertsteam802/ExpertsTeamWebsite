@@ -12,7 +12,20 @@ const requestSchema = z.object({
     name: z.string().max(255),
     mimeType: z.string().max(150).optional(),
     text: z.string().max(200000).optional(),
+    dataUrl: z.string().max(4000000).optional(),
   })).max(5).optional(),
+}).superRefine((data, context) => {
+  const totalAttachmentBytes = (data.attachments ?? []).reduce(
+    (total, file) => total + (file.dataUrl?.length ?? 0) + (file.text?.length ?? 0),
+    0,
+  );
+  if (totalAttachmentBytes > 5000000) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Attachments are too large. Please upload smaller files.",
+      path: ["attachments"],
+    });
+  }
 });
 
 export const Route = createFileRoute("/api/ai/stream")({
@@ -26,8 +39,8 @@ export const Route = createFileRoute("/api/ai/stream")({
             return Response.json({ error: "Please sign in again to use Expert AI." }, { status: 401 });
           }
 
-          const supabaseUrl = process.env["SUPABASE_URL"];
-          const supabaseKey = process.env["SUPABASE_PUBLISHABLE_KEY"];
+          const supabaseUrl = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
+          const supabaseKey = process.env["SUPABASE_PUBLISHABLE_KEY"] || process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
           if (!supabaseUrl || !supabaseKey) {
             return Response.json({ error: "Supabase server configuration is missing." }, { status: 500 });
           }
@@ -51,15 +64,35 @@ export const Route = createFileRoute("/api/ai/stream")({
           }
 
           const { prompt, history = [], attachments = [] } = parsed.data;
-          const attachmentText = attachments
-            .map((file) => `Attachment: ${file.name}\\n${file.text?.slice(0, 4000) ?? "[No readable text extracted]"}`)
-            .join("\\n\\n");
+          const attachmentParts = attachments.flatMap((file) => {
+            const parts: Array<Record<string, unknown>> = [
+              { text: `Attachment: ${file.name}` },
+            ];
+            if (file.text) {
+              parts.push({ text: file.text.slice(0, 12000) });
+            } else if (file.dataUrl) {
+              const match = file.dataUrl.match(/^data:([^;,]+);base64,([\\s\\S]+)$/);
+              if (match) {
+                parts.push({
+                  inlineData: {
+                    mimeType: file.mimeType || match[1],
+                    data: match[2],
+                  },
+                });
+              } else {
+                parts.push({ text: "[This attachment format could not be read]" });
+              }
+            } else {
+              parts.push({ text: "[No readable text extracted]" });
+            }
+            return parts;
+          });
           const contents = [
             ...history.slice(-8).map((message) => ({
               role: message.role === "ai" || message.role === "assistant" ? "model" : "user",
               parts: [{ text: message.content.slice(0, 4000) }],
             })),
-            { role: "user", parts: [{ text: [prompt, attachmentText].filter(Boolean).join("\\n\\n") }] },
+            { role: "user", parts: [{ text: prompt }, ...attachmentParts] },
           ];
 
           const model = process.env["GEMINI_CHAT_MODEL"] || "gemini-3.8-flash";
