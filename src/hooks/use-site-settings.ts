@@ -12,6 +12,8 @@ export type SiteSettings = {
   instagram_url: string;
   subscription_price: number;
   subscription_quota_bytes: number;
+  ai_subscription_price: number;
+  ai_subscription_credits: number;
   payout_account: string | null;
 };
 
@@ -41,6 +43,8 @@ export function useSiteSettings() {
       instagram_url: "https://instagram.com/m.chris_t2011",
       subscription_price: 0.2,
       subscription_quota_bytes: 2147483648,
+      ai_subscription_price: 1,
+      ai_subscription_credits: 500,
       payout_account: null,
     }
   );
