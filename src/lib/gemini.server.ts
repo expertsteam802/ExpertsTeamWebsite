@@ -1,3 +1,5 @@
+import { compactSmartRequest } from "./smart-processing.server";
+
 export type GeminiContent = {
   role: "user" | "model";
   parts: { text: string }[];
@@ -43,17 +45,17 @@ export function resolveGeminiApiKey(apiKey?: string): string | undefined {
 function openAiMessages(request: GeminiRequest) {
   // Keep requests below small free-tier TPM windows. Four characters per token
   // is a conservative approximation for mixed prose and code.
-  const maxInputCharacters = 16000;
+  const maxInputCharacters = 10000;
   const system = request.systemInstruction.parts
     .map((part) => part.text)
     .join("\n")
-    .slice(0, 2200);
-  const recent = request.contents.slice(-6).map((item) => ({
+    .slice(0, 1800);
+  const recent = request.contents.slice(-4).map((item) => ({
     role: item.role === "model" ? "assistant" : "user",
     content: item.parts
       .map((part) => part.text)
       .join("\n")
-      .slice(-3200),
+      .slice(-2400),
   }));
   const messages = [{ role: "system", content: system }, ...recent];
   let remaining = maxInputCharacters - system.length;
@@ -178,6 +180,7 @@ export async function generateGeminiContent(
   apiKey?: string,
   providerOrder?: string[],
 ): Promise<GeminiResponse> {
+  request = compactSmartRequest(request);
   const requestedOrder =
     providerOrder ??
     (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
