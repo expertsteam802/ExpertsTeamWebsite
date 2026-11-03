@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
-import { pushProjectToGithub, runCodingAgent } from "@/lib/agent.functions";
+import { createCodingPlan, pushProjectToGithub, runCodingAgent } from "@/lib/agent.functions";
 import { buildSrcDocWithConsole, STARTER_FILES, type ProjectFiles } from "@/lib/sandbox";
 import {
   installDependencies,
@@ -34,6 +34,7 @@ import {
 } from "@/lib/webcontainer-runtime";
 
 type Message = { role: "user" | "assistant"; content: string };
+type PendingPlan = { request: string; summary: string; steps: string[]; nextStep: number };
 
 type ProjectRow = {
   id: string;
@@ -67,6 +68,7 @@ export function CodeAgent() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const run = useServerFn(runCodingAgent);
+  const createPlan = useServerFn(createCodingPlan);
   const push = useServerFn(pushProjectToGithub);
 
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -74,6 +76,7 @@ export function CodeAgent() {
   const [files, setFiles] = useState<ProjectFiles>(STARTER_FILES);
   const [activeFile, setActiveFile] = useState("index.html");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [pendingPlan, setPendingPlan] = useState<PendingPlan | null>(null);
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<Panel>("preview");
@@ -410,48 +413,55 @@ export function CodeAgent() {
   async function sendPrompt() {
     const text = prompt.trim();
     if (!text || busy) return;
-
     const nextMessages = [...messages, { role: "user" as const, content: text }];
     setMessages(nextMessages);
     setPrompt("");
     setBusy(true);
-
     try {
-      const result = await run({
-        data: { prompt: text, files, history: messages.slice(-8) },
-      });
+      const plan = await createPlan({ data: { prompt: text, files } });
+      const planText = `Plan: ${plan.summary}\\n\\n${plan.steps.map((step, index) => `${index + 1}. ${step}`).join("\\n")}\\n\\nReview this plan. No project files have changed yet.`;
+      const plannedMessages: Message[] = [...nextMessages, { role: "assistant", content: planText }];
+      setMessages(plannedMessages);
+      setPendingPlan({ request: text, summary: plan.summary, steps: plan.steps, nextStep: 0 });
+      await persist({ messages: plannedMessages });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The AI could not prepare a plan.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
+  async function implementNextPlanStep() {
+    if (!pendingPlan || busy) return;
+    const step = pendingPlan.steps[pendingPlan.nextStep];
+    if (!step) return;
+    setBusy(true);
+    const stepPrompt = `Original request: ${pendingPlan.request}\\nPlan: ${pendingPlan.steps.map((item, index) => `${index + 1}. ${item}`).join("\\n")}\\nImplement ONLY step ${pendingPlan.nextStep + 1}: ${step}. Keep changes small and preserve unrelated files.`;
+    try {
+      const result = await run({ data: { prompt: stepPrompt, files, history: messages.slice(-8) } });
       const updatedFiles: ProjectFiles = { ...files };
       const changed: string[] = [];
-
       for (const [path, content] of Object.entries(result.files)) {
         if (content === null) delete updatedFiles[path];
         else updatedFiles[path] = String(content);
         changed.push(path);
       }
-
-      const answer =
-        result.message +
-        (changed.length ? `\n\nUpdated files:\n${changed.map((f) => `• ${f}`).join("\n")}` : "");
-
-      const finalMessages: Message[] = [
-        ...nextMessages,
-        { role: "assistant", content: answer },
-      ];
-
+      const completed = pendingPlan.nextStep + 1;
+      const remaining = completed < pendingPlan.steps.length;
+      const answer = `Step ${completed}/${pendingPlan.steps.length}: ${step}\\n${result.message}${changed.length ? `\\n\\nUpdated files:\\n${changed.map((path) => `• ${path}`).join("\\n")}` : ""}${remaining ? "\\n\\nReview the result, then approve the next step." : "\\n\\nAll planned steps are complete."}`;
+      const finalMessages: Message[] = [...messages, { role: "assistant", content: answer }];
       setFiles(updatedFiles);
       setMessages(finalMessages);
+      setPendingPlan(remaining ? { ...pendingPlan, nextStep: completed } : null);
       setDirty(true);
-
       if (changed.length && updatedFiles[changed[0]]) {
         setActiveFile(changed[0]);
         setPanel("code");
       }
-
       setPreviewKey((value) => value + 1);
       await persist({ files: updatedFiles, messages: finalMessages });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The AI agent could not complete that task.");
+      toast.error(error instanceof Error ? error.message : "The approved step could not be completed.");
     } finally {
       setBusy(false);
     }
@@ -463,6 +473,7 @@ export function CodeAgent() {
     setName("Untitled project");
     setFiles(STARTER_FILES);
     setMessages([]);
+    setPendingPlan(null);
     setActiveFile("index.html");
     setLogs([]);
     setPanel("preview");
@@ -480,6 +491,7 @@ export function CodeAgent() {
         : STARTER_FILES,
     );
     setMessages(Array.isArray(project.messages) ? project.messages : []);
+    setPendingPlan(null);
     setActiveFile(Object.keys(project.files ?? {})[0] ?? "index.html");
     setGithubRepo(project.github_repo?.split("/").pop() ?? "");
     setLogs([]);
@@ -1165,6 +1177,24 @@ export function CodeAgent() {
                       Working on your project…
                     </div>
                   )}
+                  {pendingPlan && (
+                    <div className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.06] p-3">
+                      <p className="text-xs font-semibold text-cyan-200">Implementation plan · approval required</p>
+                      <p className="mt-1 text-[11px] leading-5 text-slate-300">{pendingPlan.summary}</p>
+                      <ol className="mt-2 list-decimal space-y-1 pl-4 text-[11px] leading-5 text-slate-300">
+                        {pendingPlan.steps.map((step, index) => <li key={index} className={index < pendingPlan.nextStep ? "text-emerald-300" : ""}>{step}</li>)}
+                      </ol>
+                      <p className="mt-2 text-[10px] text-slate-500">Next: step {pendingPlan.nextStep + 1} of {pendingPlan.steps.length}. Each step waits for your approval.</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button size="sm" onClick={() => void implementNextPlanStep()} disabled={busy} className="h-8 bg-cyan-400 text-slate-950 hover:bg-cyan-300">
+                          {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
+                          Approve & implement next step
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setPendingPlan(null)} disabled={busy} className="h-8 border-white/10 text-slate-300">Cancel plan</Button>
+                      </div>
+                    </div>
+                  )}
+
                 </div>
 
                 <div className="border-t border-white/[0.08] p-3">
