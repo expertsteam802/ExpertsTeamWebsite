@@ -40,13 +40,11 @@ function loadYouTubeApi(): Promise<YouTubeApi> {
   youtubeApiPromise = new Promise<YouTubeApi>((resolve, reject) => {
     const scriptUrl = "https://www.youtube.com/iframe_api";
     let settled = false;
-    let pollId: number | undefined;
-    let timeoutId: number | undefined;
     const previousCallback = window.onYouTubeIframeAPIReady;
 
     const cleanup = () => {
-      if (pollId !== undefined) window.clearInterval(pollId);
-      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+      window.clearInterval(pollId);
+      window.clearTimeout(timeoutId);
     };
 
     const finish = (error?: Error) => {
@@ -95,11 +93,11 @@ function loadYouTubeApi(): Promise<YouTubeApi> {
     }
 
     // Covers an existing script whose ready callback was fired before we mounted.
-    checkReady();
-    pollId = window.setInterval(checkReady, 100);
-    timeoutId = window.setTimeout(() => {
+    const pollId = window.setInterval(checkReady, 100);
+    const timeoutId = window.setTimeout(() => {
       finish(new Error("YouTube's player took too long to load. Refresh the page and try again."));
     }, 15000);
+    checkReady();
   }).catch((error: unknown) => {
     youtubeApiPromise = null;
     throw error;
