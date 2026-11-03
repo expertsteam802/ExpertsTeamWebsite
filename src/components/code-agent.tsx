@@ -175,6 +175,30 @@ export function CodeAgent() {
     if (terminalReady) return;
     setTerminalOutput((current) => current || "Starting browser shell…\r\n");
     try {
+      // A terminal must open in the active project, not an empty WebContainer home.
+      await runtimeSyncQueueRef.current;
+      const runtimeAlreadyHasFiles =
+        JSON.stringify(runtimeFilesRef.current) === JSON.stringify(files);
+      if (!runtimeAlreadyHasFiles) {
+        await mountProjectFiles(files, {
+          onOutput: (output) => setTerminalOutput((current) => (current + output).slice(-40000)),
+          onError: (message) => setTerminalOutput((current) => (current + `\\r\\n[setup error] ${message}\\r\\n`).slice(-40000)),
+        });
+        runtimeFilesRef.current = { ...files };
+      }
+      const installKey = JSON.stringify({
+        packageJson: files["package.json"] ?? "default-vite",
+        packageLock: files["package-lock.json"] ?? "",
+        npmShrinkwrap: files["npm-shrinkwrap.json"] ?? "",
+      });
+      if (runtimeInstallKeyRef.current !== installKey) {
+        const exitCode = await installDependencies({
+          onOutput: (output) => setTerminalOutput((current) => (current + output).slice(-40000)),
+          onError: (message) => setTerminalOutput((current) => (current + `\\r\\n[setup error] ${message}\\r\\n`).slice(-40000)),
+        }, installKey);
+        if (exitCode !== 0) throw new Error("Project dependencies could not be installed. Review the terminal output.");
+        runtimeInstallKeyRef.current = installKey;
+      }
       await startTerminalSession(
         (chunk) => setTerminalOutput((current) => (current + chunk).slice(-40000)),
         (exitCode) => {
@@ -287,21 +311,28 @@ export function CodeAgent() {
 
   async function saveProjectName() {
     const nextName = name.trim().slice(0, 80) || "Untitled project";
-    setName(nextName);
-    setProjectNameEditing(false);
+    const previousName = name;
     try {
       if (projectId && user) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("agent_projects")
           .update({ name: nextName })
           .eq("id", projectId)
-          .eq("user_id", user.id);
+          .eq("user_id", user.id)
+          .select("id,name")
+          .maybeSingle();
         if (error) throw error;
+        if (!data) throw new Error("The project was not renamed. It may no longer belong to this account; refresh your projects and try again.");
+        setName(data.name);
         await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
       } else {
+        setName(nextName);
         await persist({ extra: { name: nextName } });
       }
+      setProjectNameEditing(false);
+      toast.success("Project name saved");
     } catch (error) {
+      setName(previousName);
       toast.error(error instanceof Error ? error.message : "Could not rename project.");
     }
   }
