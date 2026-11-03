@@ -43,19 +43,18 @@ export function resolveGeminiApiKey(apiKey?: string): string | undefined {
 }
 
 function openAiMessages(request: GeminiRequest) {
-  // Keep requests below small free-tier TPM windows. Four characters per token
-  // is a conservative approximation for mixed prose and code.
+  // Smart Processing compacts the request first; this is the final adapter guard.
   const maxInputCharacters = 10000;
   const system = request.systemInstruction.parts
     .map((part) => part.text)
     .join("\n")
     .slice(0, 1800);
-  const recent = request.contents.slice(-4).map((item) => ({
+  const recent = request.contents.slice(-4).map((item, index, items) => ({
     role: item.role === "model" ? "assistant" : "user",
     content: item.parts
       .map((part) => part.text ?? "")
       .join("\n")
-      .slice(-2400),
+      .slice(-(index === items.length - 1 ? 7200 : 700)),
   }));
   const messages = [{ role: "system", content: system }, ...recent];
   let remaining = maxInputCharacters - system.length;
