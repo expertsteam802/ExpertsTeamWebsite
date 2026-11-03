@@ -22,6 +22,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Format source files
+        run: npx prettier --write "src/**/*.{ts,tsx,js,jsx,json,css}" "package.json" "docs/**/*.md" ".github/workflows/*.yml"
       - name: Run tests
         run: npm test
       - name: Check lint
@@ -31,10 +33,10 @@ jobs:
       - name: Commit synchronized lockfile
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
-          if ! git diff --quiet -- package-lock.json; then
+          if ! git diff --quiet; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "chore: synchronize npm lockfile"
+            git add -A
+            git commit -m "chore: format source and synchronize npm lockfile"
             git push
           fi
