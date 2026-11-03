@@ -287,13 +287,10 @@ export async function startDevServer(
 
       void (async () => {
         try {
-          devProcess = await instance.spawn("npm", [
-            "run",
-            scriptName,
-            "--",
-            "--host",
-            "0.0.0.0",
-          ]);
+          // Respect the project's own dev/start script so Vite, Next,
+          // React tooling, and other Node-based frameworks can choose their
+          // supported host flags.
+          devProcess = await instance.spawn("npm", ["run", scriptName]);
 
           void devProcess.output.pipeTo(
             new WritableStream({
