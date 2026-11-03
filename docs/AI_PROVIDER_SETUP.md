@@ -8,11 +8,13 @@ Set these variables in Vercel (Production, Preview, and Development as needed):
 
 | Variable | Suggested value | Required |
 |---|---|---|
-| `AI_PROVIDER_ORDER` | `gemini,groq,openrouter,cloudflare` | Yes |
+| `AI_PROVIDER_ORDER` | `gemini,groq,mistral,openrouter,cloudflare` | Yes |
 | `GEMINI_API_KEY` | Your Google AI Studio key | Optional fallback |
 | `GEMINI_CODE_MODEL` | `gemini-3.6-flash` | Optional |
 | `GROQ_API_KEY` | Your Groq key | Optional fallback |
 | `GROQ_MODEL` | `openai/gpt-oss-120b` | Optional |
+| `MISTRAL_API_KEY` | Your Mistral Studio key | Optional fallback |
+| `MISTRAL_MODEL` | `mistral-small-latest` | Optional |
 | `OPENROUTER_API_KEY` | Your OpenRouter key | Optional fallback |
 | `OPENROUTER_MODEL` | `openrouter/free` | Optional |
 | `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID | Optional fallback |
@@ -25,6 +27,7 @@ At least one provider must be configured. Configure two or more providers for me
 
 - Google AI Studio: https://aistudio.google.com/api-keys
 - Groq: https://console.groq.com/keys
+- Mistral Studio: https://console.mistral.ai/api-keys/
 - OpenRouter: https://openrouter.ai/settings/keys
 - Cloudflare: https://dash.cloudflare.com/
 
@@ -32,6 +35,7 @@ At least one provider must be configured. Configure two or more providers for me
 
 - Gemini API has a free tier for eligible models/projects. Review its current model availability, rate limits, and data-use terms before using it with private customer information.
 - Groq publishes per-model free-plan limits. The default model above is a fast general-purpose fallback; change it if the account's model catalog or limits change.
+- Mistral Studio Free mode offers API access for evaluation with organization-level rate limits. Check account limits and data-use settings before using it for private data.
 - OpenRouter's `openrouter/free` is a dynamic free-model route. The available underlying model can change and request/day limits apply.
 - Cloudflare Workers AI includes a daily free Neurons allowance, but not every model is available on the Free plan. The suggested model should be checked in the current catalog.
 
