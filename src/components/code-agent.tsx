@@ -1,30 +1,17 @@
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  Bot,
-  Copy,
-  ExternalLink,
-  FilePlus2,
-  FileCode2,
-  Github,
-  Globe,
-  Loader2,
-  Monitor,
-  Smartphone,
-  Tablet,
-  Terminal,
-  Play,
-  Plus,
-  Save,
-  Send,
-  Trash2,
+  Bot, Check, ChevronDown, ChevronRight, Code2, Command, Copy,
+  ExternalLink, Eye, File, FileCode2, FilePlus2, Folder,
+  Github, Loader2, Maximize2, Monitor, MoreHorizontal, Play,
+  Plus, RefreshCw, Save, Send, Settings2, Smartphone,
+  Sparkles, Tablet, Terminal, Trash2, X, Zap
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,640 +20,933 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { pushProjectToGithub, runCodingAgent } from "@/lib/agent.functions";
-import { buildSrcDocWithConsole, slugify, STARTER_FILES, type ProjectFiles } from "@/lib/sandbox";
+import { buildSrcDocWithConsole, STARTER_FILES, type ProjectFiles } from "@/lib/sandbox";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Message = { role: "user" | "assistant"; content: string };
+
 type ProjectRow = {
   id: string;
   name: string;
   files: ProjectFiles;
-  messages: Msg[];
+  messages: Message[];
   published: boolean;
   slug: string | null;
   github_repo: string | null;
   updated_at: string;
 };
 
+type Panel = "preview" | "code" | "console";
+
+const suggestions = [
+  "Build a modern landing page for my business",
+  "Create a responsive dashboard with charts",
+  "Make this project look more professional",
+];
+
+const fileIcon = (name: string) => {
+  if (name.endsWith(".css")) return "text-sky-400";
+  if (name.endsWith(".html")) return "text-orange-400";
+  if (name.endsWith(".json")) return "text-yellow-400";
+  if (name.endsWith(".ts") || name.endsWith(".tsx")) return "text-blue-400";
+  if (name.endsWith(".js") || name.endsWith(".jsx")) return "text-yellow-300";
+  return "text-slate-400";
+};
+
 export function CodeAgent() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const push = useServerFn(pushProjectToGithub);
   const run = useServerFn(runCodingAgent);
+  const push = useServerFn(pushProjectToGithub);
 
   const [projectId, setProjectId] = useState<string | null>(null);
-  const [name, setName] = useState("Untitled app");
+  const [name, setName] = useState("Untitled project");
   const [files, setFiles] = useState<ProjectFiles>(STARTER_FILES);
-  const [active, setActive] = useState("index.html");
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const [activeFile, setActiveFile] = useState("index.html");
+  const [messages, setMessages] = useState<Message[]>([]);
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
-  const [previewKey, setPreviewKey] = useState(0);
-  const [view, setView] = useState<"code" | "preview" | "console">("preview");
+  const [panel, setPanel] = useState<Panel>("preview");
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [logs, setLogs] = useState<{ type: string; message: string }[]>([]);
-  const [pagesUrl, setPagesUrl] = useState<string | null>(null);
+  const [previewKey, setPreviewKey] = useState(0);
+  const [githubOpen, setGithubOpen] = useState(false);
+  const [githubToken, setGithubToken] = useState("");
+  const [githubRepo, setGithubRepo] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [assistantOpen, setAssistantOpen] = useState(true);
+  const [newFileOpen, setNewFileOpen] = useState(false);
+  const [newFileName, setNewFileName] = useState("");
+  const [projectNameEditing, setProjectNameEditing] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
-  useEffect(() => {
-    const onMsg = (e: MessageEvent) => {
-      const d = e.data as { __agentConsole?: boolean; type: string; message: string };
-      if (d && d.__agentConsole)
-        setLogs((l) => [...l.slice(-199), { type: d.type, message: d.message }]);
-    };
-    window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
-  }, []);
-  const [published, setPublished] = useState<{ on: boolean; slug: string | null }>({
-    on: false,
-    slug: null,
-  });
-  const [ghOpen, setGhOpen] = useState(false);
-  const [ghToken, setGhToken] = useState("");
-  const [ghRepo, setGhRepo] = useState("");
-
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const promptRef = useRef<HTMLTextAreaElement>(null);
   const srcDoc = useMemo(() => buildSrcDocWithConsole(files), [files]);
 
-  const { data: projects = [] } = useQuery({
+  const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["agent-projects", user?.id],
     enabled: !!user,
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
         .from("agent_projects")
-        .select("id, name, files, messages, published, slug, github_repo, updated_at")
+        .select("id,name,files,messages,published,slug,github_repo,updated_at")
         .eq("user_id", user.id)
         .order("updated_at", { ascending: false });
       if (error) throw error;
-      return data as unknown as ProjectRow[];
+      return (data ?? []) as unknown as ProjectRow[];
     },
   });
 
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      const data = event.data as {
+        __agentConsole?: boolean;
+        type?: string;
+        message?: string;
+      };
+      if (!data?.__agentConsole) return;
+      setLogs((current) => [
+        ...current.slice(-199),
+        { type: data.type ?? "log", message: data.message ?? "" },
+      ]);
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
   async function persist(
-    next: { files?: ProjectFiles; messages?: Msg[]; extra?: Record<string, unknown> } = {},
+    next: {
+      files?: ProjectFiles;
+      messages?: Message[];
+      extra?: Record<string, unknown>;
+    } = {},
   ) {
-    if (!user) throw new Error("Sign in before saving an app.");
+    if (!user) throw new Error("Please sign in to save your project.");
+
     const payload = {
       user_id: user.id,
-      name: name.trim().slice(0, 80) || "Untitled app",
+      name: name.trim().slice(0, 80) || "Untitled project",
       files: (next.files ?? files) as unknown as Json,
       messages: (next.messages ?? messages).slice(-40) as unknown as Json,
       ...next.extra,
     };
+
     if (projectId) {
-      const { error } = await supabase.from("agent_projects").update(payload).eq("id", projectId);
+      const { error } = await supabase
+        .from("agent_projects")
+        .update(payload)
+        .eq("id", projectId)
+        .eq("user_id", user.id);
       if (error) throw error;
-      void queryClient.invalidateQueries({ queryKey: ["agent-projects", user?.id] });
+      await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
+      setDirty(false);
       return projectId;
     }
+
     const { data, error } = await supabase
       .from("agent_projects")
       .insert(payload)
       .select("id")
       .single();
+
     if (error) throw error;
     setProjectId(data.id);
-    void queryClient.invalidateQueries({ queryKey: ["agent-projects", user?.id] });
+    setDirty(false);
+    await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
     return data.id;
   }
 
-  async function send() {
+  const saveMutation = useMutation({
+    mutationFn: () => persist(),
+    onSuccess: () => toast.success("Project saved successfully"),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const githubMutation = useMutation({
+    mutationFn: async () => {
+      const result = await push({
+        data: { token: githubToken, repo: githubRepo, files },
+      });
+      if (!result.ok) throw new Error(result.error || "GitHub push failed");
+      await persist({ extra: { github_repo: result.url } });
+      return result.url;
+    },
+    onSuccess: (url) => {
+      setGithubOpen(false);
+      setGithubToken("");
+      toast.success("Project pushed to GitHub", {
+        action: {
+          label: "Open repository",
+          onClick: () => window.open(url, "_blank", "noopener,noreferrer"),
+        },
+      });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  async function sendPrompt() {
     const text = prompt.trim();
     if (!text || busy) return;
-    setPrompt("");
-    const nextMessages: Msg[] = [...messages, { role: "user", content: text }];
+
+    const nextMessages = [...messages, { role: "user" as const, content: text }];
     setMessages(nextMessages);
+    setPrompt("");
     setBusy(true);
+
     try {
       const result = await run({
         data: { prompt: text, files, history: messages.slice(-8) },
       });
-      const merged: ProjectFiles = { ...files };
+
+      const updatedFiles: ProjectFiles = { ...files };
       const changed: string[] = [];
+
       for (const [path, content] of Object.entries(result.files)) {
-        if (content === null) delete merged[path];
-        else merged[path] = String(content);
+        if (content === null) delete updatedFiles[path];
+        else updatedFiles[path] = String(content);
         changed.push(path);
       }
-      const reply = `${result.message}${changed.length ? `\n\nFiles: ${changed.join(", ")}` : ""}`;
-      const finalMessages: Msg[] = [...nextMessages, { role: "assistant", content: reply }];
-      setFiles(merged);
+
+      const answer =
+        result.message +
+        (changed.length ? `\n\nUpdated files:\n${changed.map((f) => `• ${f}`).join("\n")}` : "");
+
+      const finalMessages: Message[] = [
+        ...nextMessages,
+        { role: "assistant", content: answer },
+      ];
+
+      setFiles(updatedFiles);
       setMessages(finalMessages);
-      if (changed[0] && merged[changed[0]] !== undefined) setActive(changed[0]);
-      else if (merged[active] === undefined) setActive(Object.keys(merged)[0] ?? "");
-      setPreviewKey((k) => k + 1);
-      await persist({ files: merged, messages: finalMessages });
+      setDirty(true);
+
+      if (changed.length && updatedFiles[changed[0]]) {
+        setActiveFile(changed[0]);
+        setPanel("code");
+      }
+
+      setPreviewKey((value) => value + 1);
+      await persist({ files: updatedFiles, messages: finalMessages });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Agent failed");
+      toast.error(error instanceof Error ? error.message : "The AI agent could not complete that task.");
     } finally {
       setBusy(false);
     }
   }
 
-  const save = useMutation({
-    mutationFn: () => persist(),
-    onSuccess: () => toast.success("Project saved"),
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const publish = useMutation({
-    mutationFn: async (on: boolean) => {
-      const slug = published.slug ?? `${slugify(name)}-${Math.random().toString(36).slice(2, 6)}`;
-      await persist({ extra: { published: on, slug } });
-      return { on, slug };
-    },
-    onSuccess: (result) => {
-      setPublished({ on: result.on, slug: result.slug });
-      toast.success(result.on ? "Your app is live" : "App unpublished");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const removeProject = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("agent_projects").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: (_d, id) => {
-      if (id === projectId) newProject();
-      void queryClient.invalidateQueries({ queryKey: ["agent-projects", user?.id] });
-    },
-  });
-
-  const github = useMutation({
-    mutationFn: async () => {
-      const result = await push({ data: { token: ghToken, repo: ghRepo, files } });
-      if (!result.ok) throw new Error(result.error);
-      await persist({ extra: { github_repo: result.url } });
-      setPagesUrl(result.pagesUrl);
-      return result.url;
-    },
-    onSuccess: (url) => {
-      setGhOpen(false);
-      setGhToken("");
-      toast.success("Pushed to GitHub", {
-        action: { label: "Open", onClick: () => window.open(url, "_blank") },
-      });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  function newProject() {
+  function createProject() {
     setProjectId(null);
-    setName("Untitled app");
+    setName("Untitled project");
     setFiles(STARTER_FILES);
     setMessages([]);
-    setActive("index.html");
-    setPublished({ on: false, slug: null });
-    setPagesUrl(null);
-    setGhRepo("");
+    setActiveFile("index.html");
     setLogs([]);
+    setPanel("preview");
+    setDirty(false);
+    toast.success("New workspace created");
   }
 
-  function load(p: ProjectRow) {
-    setProjectId(p.id);
-    setName(p.name);
-    setFiles(p.files && Object.keys(p.files).length ? p.files : STARTER_FILES);
-    setMessages(Array.isArray(p.messages) ? p.messages : []);
-    setActive(Object.keys(p.files ?? {})[0] ?? "index.html");
-    setPublished({ on: p.published, slug: p.slug });
-    setGhRepo(p.github_repo?.split("/").pop() ?? slugify(p.name));
-    setPagesUrl(null);
+  function openProject(project: ProjectRow) {
+    setProjectId(project.id);
+    setName(project.name);
+    setFiles(
+      project.files && Object.keys(project.files).length
+        ? project.files
+        : STARTER_FILES,
+    );
+    setMessages(Array.isArray(project.messages) ? project.messages : []);
+    setActiveFile(Object.keys(project.files ?? {})[0] ?? "index.html");
+    setGithubRepo(project.github_repo?.split("/").pop() ?? "");
     setLogs([]);
+    setPanel("preview");
+    setDirty(false);
   }
 
-  function addFile() {
-    const fileName = window.prompt("New file name (e.g. about.html, data.json)")?.trim();
-    if (!fileName) return;
-    setFiles((f) => ({ ...f, [fileName]: f[fileName] ?? "" }));
-    setActive(fileName);
-    setView("code");
+  function createFile() {
+    const path = newFileName.trim().replace(/^\/+/, "");
+    if (!path || path.includes("..") || path.startsWith(".")) {
+      toast.error("Enter a valid file name.");
+      return;
+    }
+    if (files[path] !== undefined) {
+      toast.error("That file already exists.");
+      return;
+    }
+    setFiles((current) => ({ ...current, [path]: "" }));
+    setActiveFile(path);
+    setNewFileName("");
+    setNewFileOpen(false);
+    setPanel("code");
+    setDirty(true);
+  }
+
+  function deleteFile(path: string) {
+    if (Object.keys(files).length <= 1) {
+      toast.error("A project must contain at least one file.");
+      return;
+    }
+    const updated = { ...files };
+    delete updated[path];
+    setFiles(updated);
+    if (activeFile === path) setActiveFile(Object.keys(updated)[0]);
+    setDirty(true);
+  }
+
+  function updateFile(value: string) {
+    setFiles((current) => ({ ...current, [activeFile]: value }));
+    setDirty(true);
   }
 
   if (!user) {
     return (
-      <Card className="p-8 text-center">
-        <Bot className="mx-auto h-8 w-8 text-primary" />
-        <h2 className="mt-3 font-display text-xl font-semibold">
-          Sign in to use the app builder agent
-        </h2>
-      </Card>
+      <div className="flex min-h-[620px] items-center justify-center rounded-2xl border border-border bg-card p-8 text-center">
+        <div className="max-w-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Sparkles className="h-7 w-7" />
+          </div>
+          <h2 className="mt-5 text-xl font-semibold">Your AI development studio</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Sign in to create projects, work with the AI agent and save your code.
+          </p>
+        </div>
+      </div>
     );
   }
 
-  const liveUrl = published.on && published.slug ? `/apps/${published.slug}` : null;
-
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[#050d1b] text-white">
-      <div className="mx-auto w-full max-w-[1800px] px-3 py-4 lg:px-5">
-        <div className="overflow-hidden rounded-[26px] border border-white/10 bg-[#081423] shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
-          <header className="flex items-center justify-between border-b border-white/10 bg-[#07111d] px-4 py-3 text-white">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 via-blue-500 to-violet-500 text-sm font-black text-slate-950 shadow-lg shadow-cyan-500/25">
-                E
+    <div className="not-prose w-full overflow-hidden rounded-2xl border border-[#273449] bg-[#080e19] text-slate-100 shadow-2xl">
+      {/* Workspace top bar */}
+      <header className="flex min-h-[62px] flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#0d1523] px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 text-slate-950 shadow-lg shadow-cyan-500/20">
+            <Zap className="h-5 w-5 fill-current" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">
+                Experts Team
+              </span>
+              <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[9px] font-semibold text-cyan-200">
+                AI STUDIO
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {projectNameEditing ? (
+                <Input
+                  autoFocus
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  onBlur={() => setProjectNameEditing(false)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") setProjectNameEditing(false);
+                  }}
+                  className="h-6 w-48 border-white/10 bg-white/5 px-2 text-sm"
+                />
+              ) : (
+                <button
+                  onClick={() => setProjectNameEditing(true)}
+                  className="max-w-[220px] truncate text-sm font-semibold hover:text-cyan-200"
+                  title="Rename project"
+                >
+                  {name}
+                </button>
+              )}
+              <span className="text-xs text-slate-500">
+                {dirty ? "• Unsaved changes" : "• Saved"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={createProject}
+            className="h-8 border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/10"
+          >
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            New project
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+            className="h-8 border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/10"
+          >
+            {saveMutation.isPending ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            Save
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => {
+              setGithubRepo((value) => value || name.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+              setGithubOpen(true);
+            }}
+            className="h-8 bg-white text-slate-950 hover:bg-slate-200"
+          >
+            <Github className="mr-1.5 h-3.5 w-3.5" />
+            GitHub
+          </Button>
+        </div>
+      </header>
+
+      {/* Main workspace */}
+      <div className="grid min-h-[760px] grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)]">
+        {/* Left sidebar */}
+        {sidebarOpen && (
+          <aside className="flex min-h-[300px] flex-col border-b border-white/[0.08] bg-[#0b1320] lg:border-b-0 lg:border-r">
+            <div className="flex items-center justify-between px-4 pb-3 pt-4">
+              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                Workspace
+              </span>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="rounded p-1 text-slate-500 hover:bg-white/10 hover:text-white"
+                aria-label="Hide sidebar"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <div className="px-3">
+              <div className="mb-2 flex items-center justify-between px-1">
+                <span className="flex items-center gap-2 text-xs font-semibold text-slate-300">
+                  <Folder className="h-3.5 w-3.5 text-cyan-300" />
+                  Your projects
+                </span>
+                <button
+                  onClick={createProject}
+                  className="rounded p-1 text-slate-500 hover:bg-white/10 hover:text-cyan-300"
+                  aria-label="Create project"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
               </div>
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-cyan-300/80">
-                  ExpertsAgent
-                </p>
-                <h1 className="text-base font-semibold tracking-tight">Full builder workspace</h1>
+
+              <div className="max-h-40 space-y-1 overflow-y-auto">
+                {projectsLoading && (
+                  <p className="px-2 py-2 text-xs text-slate-500">Loading projects…</p>
+                )}
+                {!projectsLoading && projects.length === 0 && (
+                  <p className="px-2 py-2 text-xs leading-5 text-slate-500">
+                    Your saved projects will appear here.
+                  </p>
+                )}
+                {projects.map((project) => (
+                  <button
+                    key={project.id}
+                    onClick={() => openProject(project)}
+                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition ${
+                      project.id === projectId
+                        ? "bg-cyan-400/10 text-cyan-200"
+                        : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
+                    }`}
+                  >
+                    <Code2 className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{project.name}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="hidden items-center gap-2 md:flex">
-              {[
-                "Builder",
-                "Files",
-                "Terminal",
-                "Preview",
-                "GitHub",
-                "Deploy",
-              ].map((item) => (
+            <div className="mx-3 my-4 border-t border-white/[0.07]" />
+
+            <div className="px-3">
+              <div className="mb-2 flex items-center justify-between px-1">
+                <span className="flex items-center gap-2 text-xs font-semibold text-slate-300">
+                  <Folder className="h-3.5 w-3.5 text-amber-300" />
+                  Project files
+                </span>
                 <button
-                  key={item}
-                  type="button"
-                  className={`rounded-full border px-3 py-1.5 text-xs transition ${
-                    item === "Builder"
-                      ? "border-cyan-400/50 bg-cyan-500/10 text-cyan-200"
-                      : "border-white/10 bg-white/5 text-slate-200 hover:border-white/20 hover:text-white"
+                  onClick={() => setNewFileOpen(true)}
+                  className="rounded p-1 text-slate-500 hover:bg-white/10 hover:text-cyan-300"
+                  aria-label="Add file"
+                >
+                  <FilePlus2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              <div className="space-y-0.5">
+                {Object.keys(files).sort().map((path) => (
+                  <div
+                    key={path}
+                    className={`group flex items-center rounded-lg ${
+                      path === activeFile ? "bg-white/[0.07]" : "hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    <button
+                      onClick={() => {
+                        setActiveFile(path);
+                        setPanel("code");
+                      }}
+                      className={`flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-xs ${
+                        path === activeFile ? "text-white" : "text-slate-400"
+                      }`}
+                    >
+                      <FileCode2 className={`h-3.5 w-3.5 shrink-0 ${fileIcon(path)}`} />
+                      <span className="truncate">{path}</span>
+                    </button>
+                    <button
+                      onClick={() => deleteFile(path)}
+                      className="mr-1 hidden rounded p-1 text-slate-600 hover:bg-red-500/10 hover:text-red-300 group-hover:block"
+                      aria-label={`Delete ${path}`}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-auto p-3">
+              <div className="rounded-xl border border-white/[0.07] bg-[#101c2d] p-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
+                  <Sparkles className="h-3.5 w-3.5 text-cyan-300" />
+                  AI workspace
+                </div>
+                <p className="mt-2 text-[11px] leading-5 text-slate-500">
+                  Describe a feature, ask for a change or let the agent create project files.
+                </p>
+              </div>
+            </div>
+          </aside>
+        )}
+
+        {/* Centre and assistant area */}
+        <main className="flex min-w-0 flex-col">
+          {/* Toolbar */}
+          <div className="flex min-h-[48px] flex-wrap items-center justify-between gap-2 border-b border-white/[0.08] bg-[#0d1726] px-3 py-2">
+            <div className="flex items-center gap-1">
+              {!sidebarOpen && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setSidebarOpen(true)}
+                  className="h-8 w-8 text-slate-400"
+                >
+                  <Folder className="h-4 w-4" />
+                </Button>
+              )}
+              <span className="hidden items-center gap-1.5 text-xs text-slate-500 sm:flex">
+                <ChevronRight className="h-3 w-3" />
+                {activeFile}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1">
+              {([
+                ["preview", Eye, "Preview"],
+                ["code", Code2, "Code"],
+                ["console", Terminal, "Console"],
+              ] as const).map(([value, Icon, label]) => (
+                <button
+                  key={value}
+                  onClick={() => setPanel(value)}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                    panel === value
+                      ? "bg-cyan-400/10 text-cyan-200"
+                      : "text-slate-500 hover:bg-white/[0.05] hover:text-slate-200"
                   }`}
                 >
-                  {item}
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
                 </button>
               ))}
             </div>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                className="border-white/10 bg-white/5 text-white hover:bg-white/10"
-                onClick={() => save.mutate()}
-                disabled={save.isPending}
-              >
-                Save
-              </Button>
-              <Button
-                className="bg-cyan-500 text-slate-950 hover:bg-cyan-400"
-                onClick={() => publish.mutate(!published.on)}
-                disabled={publish.isPending}
-              >
-                {published.on ? "Unpublish" : "Publish"}
-              </Button>
-            </div>
-          </header>
-
-          <div className="grid gap-0 border-b border-white/10 bg-[#0a1528] p-3 lg:grid-cols-[280px_minmax(0,1fr)]">
-            <aside className="rounded-[18px] border border-white/10 bg-[#0e1a2d] p-3">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-slate-400">
-                  <span className="font-semibold text-slate-200">Project</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={addFile}
-                  className="flex h-7 w-7 items-center justify-center rounded-md border border-cyan-500/30 bg-cyan-500/10 text-cyan-300"
-                  aria-label="Add file"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                {Object.keys(files).map((file) => (
+            <div className="flex items-center gap-1">
+              {panel === "preview" && (
+                <>
+                  {([
+                    ["desktop", Monitor],
+                    ["tablet", Tablet],
+                    ["mobile", Smartphone],
+                  ] as const).map(([value, Icon]) => (
+                    <button
+                      key={value}
+                      onClick={() => setDevice(value)}
+                      className={`rounded-lg p-2 ${
+                        device === value
+                          ? "bg-white/10 text-cyan-200"
+                          : "text-slate-500 hover:bg-white/5"
+                      }`}
+                      aria-label={`${value} preview`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                    </button>
+                  ))}
                   <button
-                    key={file}
-                    type="button"
-                    onClick={() => {
-                      setActive(file);
-                      setView("code");
-                    }}
-                    className={`flex w-full items-center justify-between rounded-lg border px-2 py-2 text-left text-xs transition ${
-                      file === active
-                        ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-100"
-                        : "border-transparent bg-transparent text-slate-300 hover:bg-white/5"
-                    }`}
+                    onClick={() => setPreviewKey((value) => value + 1)}
+                    className="rounded-lg p-2 text-slate-500 hover:bg-white/5 hover:text-white"
+                    aria-label="Reload preview"
                   >
-                    <span className="truncate">{file}</span>
-                    {file === active && <span className="ml-2 h-2 w-2 rounded-full bg-cyan-400" />}
+                    <RefreshCw className="h-3.5 w-3.5" />
                   </button>
-                ))}
-              </div>
-
-              <div className="mt-5 rounded-xl border border-white/10 bg-[#0b1626] p-3">
-                <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                  Live status
-                </div>
-                <div className="space-y-2 text-xs text-slate-300">
-                  <div className="flex items-center justify-between">
-                    <span>Build</span>
-                    <span className="text-emerald-400">Ready</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Deploy</span>
-                    <span className="text-cyan-400">Online</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>GitHub</span>
-                    <span className="text-violet-400">Synced</span>
-                  </div>
-                </div>
-              </div>
-            </aside>
-
-            <div className="rounded-[18px] border border-white/10 bg-[#081827] p-3">
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="h-10 max-w-xs border-white/10 bg-white/5 text-white placeholder:text-slate-400"
-                  aria-label="App name"
-                />
-                <Button size="sm" variant="secondary" onClick={newProject} className="bg-white/5 hover:bg-white/10">
-                  <Plus className="mr-1 h-3.5 w-3.5" /> New
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => save.mutate()} className="bg-white/5 hover:bg-white/10">
-                  <Save className="mr-1 h-3.5 w-3.5" /> Save
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
+                </>
+              )}
+              {panel === "console" && (
+                <button
+                  onClick={() => setLogs([])}
+                  className="rounded-lg px-2 py-1 text-xs text-slate-500 hover:bg-white/5 hover:text-white"
+                >
+                  Clear
+                </button>
+              )}
+              {panel === "code" && (
+                <button
                   onClick={() => {
-                    setGhRepo((r) => r || slugify(name));
-                    setGhOpen(true);
+                    void navigator.clipboard.writeText(files[activeFile] ?? "");
+                    toast.success("Code copied");
                   }}
-                  className="bg-white/5 hover:bg-white/10"
+                  className="rounded-lg p-2 text-slate-500 hover:bg-white/5 hover:text-white"
+                  aria-label="Copy code"
                 >
-                  <Github className="mr-1 h-3.5 w-3.5" /> Push to GitHub
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => publish.mutate(!published.on)}
-                  disabled={publish.isPending}
-                  className="bg-cyan-500 text-slate-950 hover:bg-cyan-400"
-                >
-                  <Globe className="mr-1 h-3.5 w-3.5" /> {published.on ? "Unpublish" : "Publish"}
-                </Button>
-                {pagesUrl && (
-                  <a
-                    href={pagesUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-cyan-300 hover:underline"
-                  >
-                    <Github className="h-3 w-3" /> GitHub Pages
-                  </a>
-                )}
-                {liveUrl && published.slug && (
-                  <Link
-                    to="/apps/$slug"
-                    params={{ slug: published.slug }}
-                    target="_blank"
-                    className="inline-flex items-center gap-1 text-xs text-cyan-300 hover:underline"
-                  >
-                    <ExternalLink className="h-3 w-3" /> {liveUrl}
-                  </Link>
-                )}
-              </div>
-
-              <div className="overflow-hidden rounded-[18px] border border-white/10 bg-[#0a1320]">
-                <div className="flex items-center gap-2 border-b border-white/10 bg-[#0a1320] px-3 py-2.5">
-                  <Bot className="h-4 w-4 text-cyan-300" />
-                  <span className="text-sm font-semibold text-white">Agent</span>
-                </div>
-
-                <div className="grid gap-0 lg:grid-cols-[minmax(0, 320px)_1fr]">
-                  <div className="border-r border-white/10 bg-[#0c1828]">
-                    <div className="space-y-2 p-3">
-                      {messages.length === 0 && (
-                        <div className="space-y-2">
-                          {[
-                            "Build a snake game with a score board",
-                            "Make a portfolio page with dark theme and contact form",
-                            "Create a todo app saving to localStorage",
-                          ].map((idea) => (
-                            <button
-                              key={idea}
-                              type="button"
-                              onClick={() => setPrompt(idea)}
-                              className="w-full rounded-xl border border-white/10 bg-white/5 p-2 text-left text-xs text-slate-200 transition hover:border-cyan-400/40 hover:bg-cyan-500/10"
-                            >
-                              {idea}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {messages.map((m, i) => (
-                        <div
-                          key={i}
-                          className={`whitespace-pre-wrap rounded-xl px-3 py-2 text-xs ${
-                            m.role === "user"
-                              ? "ml-5 bg-cyan-500/15 text-cyan-50"
-                              : "mr-3 border border-white/10 bg-white/5 text-slate-200"
-                          }`}
-                        >
-                          {m.content}
-                        </div>
-                      ))}
-
-                      {busy && (
-                        <p className="flex items-center gap-2 text-xs text-slate-300">
-                          <Loader2 className="h-3 w-3 animate-spin" /> Agent is writing files…
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex items-end gap-2 border-t border-white/10 p-3">
-                      <Textarea
-                        rows={2}
-                        value={prompt}
-                        placeholder="Describe the app or a change…"
-                        onChange={(e) => setPrompt(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            void send();
-                          }
-                        }}
-                        className="min-h-10 resize-none border-white/10 bg-white/5 text-sm text-white placeholder:text-slate-400"
-                      />
-                      <Button size="icon" onClick={() => void send()} disabled={busy} aria-label="Send to agent">
-                        <Send className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="bg-[#081827]">
-                    <div className="flex flex-wrap items-center gap-1 border-b border-white/10 px-2 py-2">
-                      <Button size="sm" variant={view === "preview" ? "default" : "ghost"} onClick={() => setView("preview")}>
-                        <Play className="mr-1 h-3.5 w-3.5" /> Preview
-                      </Button>
-                      <Button size="sm" variant={view === "code" ? "default" : "ghost"} onClick={() => setView("code")}>
-                        <FileCode2 className="mr-1 h-3.5 w-3.5" /> Code
-                      </Button>
-                      <Button size="sm" variant={view === "console" ? "default" : "ghost"} onClick={() => setView("console")}>
-                        <Terminal className="mr-1 h-3.5 w-3.5" /> Console
-                        {logs.some((l) => l.type === "error") && (
-                          <span className="ml-1 h-2 w-2 rounded-full bg-destructive" />
-                        )}
-                      </Button>
-
-                      {view === "preview" && (
-                        <div className="ml-2 flex gap-0.5">
-                          {(
-                            [
-                              ["desktop", Monitor],
-                              ["tablet", Tablet],
-                              ["mobile", Smartphone],
-                            ] as const
-                          ).map(([d, Icon]) => (
-                            <Button
-                              key={d}
-                              size="icon"
-                              variant={device === d ? "secondary" : "ghost"}
-                              className="h-8 w-8"
-                              aria-label={`${d} view`}
-                              onClick={() => setDevice(d)}
-                            >
-                              <Icon className="h-3.5 w-3.5" />
-                            </Button>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="ml-auto flex gap-1">
-                        {view === "console" ? (
-                          <Button size="sm" variant="ghost" onClick={() => setLogs([])}>
-                            Clear
-                          </Button>
-                        ) : view === "preview" ? (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setLogs([]);
-                              setPreviewKey((k) => k + 1);
-                            }}
-                          >
-                            Reload
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              void navigator.clipboard.writeText(files[active] ?? "");
-                              toast.success(`Copied ${active}`);
-                            }}
-                          >
-                            <Copy className="mr-1 h-3.5 w-3.5" /> Copy
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-
-                    {view === "console" ? (
-                      <div className="flex-1 overflow-y-auto bg-[#050d1b] p-2 font-mono text-xs text-slate-200">
-                        {!logs.length && <p className="text-slate-400">No console output yet.</p>}
-                        {logs.map((l, i) => (
-                          <p
-                            key={i}
-                            className={`border-b border-white/10 py-1 ${
-                              l.type === "error" ? "text-red-400" : l.type === "warn" ? "text-cyan-300" : ""
-                            }`}
-                          >
-                            [{l.type}] {l.message}
-                          </p>
-                        ))}
-                      </div>
-                    ) : view === "preview" ? (
-                      <div className="flex h-[560px] items-center justify-center overflow-auto bg-[#050d1b] p-4">
-                        <iframe
-                          key={previewKey}
-                          title="App sandbox"
-                          srcDoc={srcDoc}
-                          sandbox="allow-scripts allow-forms allow-modals allow-popups"
-                          style={{ width: device === "desktop" ? "100%" : device === "tablet" ? 768 : 375 }}
-                          className="h-full max-w-full rounded-xl border border-white/10 bg-white transition-all duration-300"
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex min-h-[560px]">
-                        <div className="w-44 shrink-0 space-y-1 overflow-y-auto border-r border-white/10 bg-[#0b1626] p-2">
-                          {Object.keys(files).map((f) => (
-                            <div key={f} className="group flex items-center">
-                              <button
-                                onClick={() => setActive(f)}
-                                className={`flex-1 truncate rounded px-2 py-1 text-left text-xs ${
-                                  f === active ? "bg-cyan-500/10 text-cyan-100" : "text-slate-300 hover:bg-white/5"
-                                }`}
-                              >
-                                {f}
-                              </button>
-                              <button
-                                aria-label={`Delete ${f}`}
-                                className="hidden px-1 text-slate-400 group-hover:block"
-                                onClick={() => {
-                                  const next = { ...files };
-                                  delete next[f];
-                                  setFiles(next);
-                                  if (active === f) setActive(Object.keys(next)[0] ?? "");
-                                }}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
-                          ))}
-                          <button onClick={addFile} className="flex w-full items-center gap-1 px-2 py-1 text-xs text-cyan-300">
-                            <FilePlus2 className="h-3 w-3" /> Add file
-                          </button>
-                        </div>
-                        <textarea
-                          aria-label="File contents"
-                          disabled={!active}
-                          value={files[active] ?? ""}
-                          onChange={(e) => setFiles((cur) => ({ ...cur, [active]: e.target.value }))}
-                          spellCheck={false}
-                          className="h-full flex-1 resize-none bg-[#050d1b] p-3 font-mono text-xs text-slate-200 outline-none"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+              )}
+              <button
+                onClick={() => setAssistantOpen((value) => !value)}
+                className={`ml-1 rounded-lg p-2 ${
+                  assistantOpen ? "bg-cyan-400/10 text-cyan-200" : "text-slate-500 hover:bg-white/5"
+                }`}
+                aria-label="Toggle AI assistant"
+              >
+                <Bot className="h-4 w-4" />
+              </button>
             </div>
           </div>
-        </div>
+
+          {/* Work area */}
+          <div className={`grid min-h-[650px] flex-1 ${assistantOpen ? "xl:grid-cols-[minmax(0,1fr)_320px]" : "grid-cols-1"}`}>
+            <section className="flex min-w-0 flex-col bg-[#080e19]">
+              {panel === "preview" && (
+                <>
+                  <div className="flex h-10 items-center justify-between border-b border-white/[0.07] px-3">
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                      Live preview
+                    </div>
+                    <span className="text-[10px] text-slate-600">Local HTML preview</span>
+                  </div>
+                  <div className="flex min-h-[600px] flex-1 items-start justify-center overflow-auto bg-[#111a29] p-3 sm:p-5">
+                    <iframe
+                      ref={iframeRef}
+                      key={previewKey}
+                      title="Experts Team project preview"
+                      srcDoc={srcDoc}
+                      sandbox="allow-scripts allow-forms allow-modals allow-popups"
+                      className="h-[590px] max-w-full rounded-xl border border-slate-300/20 bg-white shadow-2xl"
+                      style={{
+                        width:
+                          device === "desktop"
+                            ? "100%"
+                            : device === "tablet"
+                              ? "768px"
+                              : "375px",
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+
+              {panel === "code" && (
+                <>
+                  <div className="flex h-10 items-center justify-between border-b border-white/[0.07] px-4">
+                    <span className="flex items-center gap-2 text-xs text-slate-300">
+                      <File className={`h-3.5 w-3.5 ${fileIcon(activeFile)}`} />
+                      {activeFile || "Select a file"}
+                    </span>
+                    <span className="text-[10px] text-slate-600">Editor</span>
+                  </div>
+                  <div className="flex min-h-[600px] flex-1 bg-[#080e19]">
+                    <div className="select-none border-r border-white/[0.06] px-3 py-3 text-right font-mono text-xs leading-6 text-slate-600">
+                      {Array.from(
+                        { length: Math.max(1, (files[activeFile] ?? "").split("\n").length) },
+                        (_, index) => <div key={index}>{index + 1}</div>,
+                      )}
+                    </div>
+                    <textarea
+                      aria-label="Code editor"
+                      value={files[activeFile] ?? ""}
+                      onChange={(event) => updateFile(event.target.value)}
+                      spellCheck={false}
+                      disabled={!activeFile}
+                      className="min-h-[600px] min-w-0 flex-1 resize-none bg-transparent p-3 font-mono text-xs leading-6 text-slate-200 outline-none selection:bg-cyan-500/30"
+                      placeholder="Select a file to start editing…"
+                    />
+                  </div>
+                </>
+              )}
+
+              {panel === "console" && (
+                <>
+                  <div className="flex h-10 items-center justify-between border-b border-white/[0.07] px-4">
+                    <span className="flex items-center gap-2 text-xs text-slate-300">
+                      <Terminal className="h-3.5 w-3.5 text-cyan-300" />
+                      Browser console
+                    </span>
+                    <span className="text-[10px] text-slate-600">Preview logs only</span>
+                  </div>
+                  <div className="min-h-[600px] flex-1 overflow-auto bg-[#050a12] p-4 font-mono text-xs">
+                    {logs.length === 0 && (
+                      <div className="py-8 text-center text-slate-600">
+                        <Terminal className="mx-auto mb-3 h-6 w-6 opacity-50" />
+                        <p>No browser console messages yet.</p>
+                        <p className="mt-1 text-[10px]">
+                          Run the preview to see JavaScript logs and errors here.
+                        </p>
+                      </div>
+                    )}
+                    {logs.map((log, index) => (
+                      <div
+                        key={index}
+                        className={`border-b border-white/[0.05] py-2 ${
+                          log.type === "error"
+                            ? "text-red-300"
+                            : log.type === "warn"
+                              ? "text-amber-300"
+                              : "text-slate-300"
+                        }`}
+                      >
+                        <span className="mr-2 text-slate-600">[{log.type}]</span>
+                        {log.message}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
+
+            {/* AI panel */}
+            {assistantOpen && (
+              <aside className="flex min-h-[650px] min-w-0 flex-col border-t border-white/[0.08] bg-[#0c1523] xl:border-l xl:border-t-0">
+                <div className="flex h-12 items-center justify-between border-b border-white/[0.08] px-4">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400/20 to-blue-500/20 text-cyan-200">
+                      <Sparkles className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-white">Experts Agent</p>
+                      <p className="text-[9px] text-emerald-400">AI coding assistant</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setMessages([])}
+                    className="rounded-lg p-1.5 text-slate-500 hover:bg-white/5 hover:text-white"
+                    title="Clear conversation"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="flex-1 space-y-4 overflow-y-auto p-4">
+                  {messages.length === 0 && (
+                    <div className="flex min-h-[400px] flex-col justify-center">
+                      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
+                        <Bot className="h-6 w-6" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-white">
+                        What are we building?
+                      </h3>
+                      <p className="mt-2 text-xs leading-5 text-slate-400">
+                        Describe your idea. I'll work with your project files and help you build it.
+                      </p>
+                      <div className="mt-6 space-y-2">
+                        {suggestions.map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            onClick={() => setPrompt(suggestion)}
+                            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.025] p-3 text-left text-xs leading-5 text-slate-300 transition hover:border-cyan-400/30 hover:bg-cyan-400/[0.06] hover:text-white"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {messages.map((message, index) => (
+                    <div
+                      key={index}
+                      className={`flex gap-2.5 ${
+                        message.role === "user" ? "flex-row-reverse" : ""
+                      }`}
+                    >
+                      <div
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+                          message.role === "user"
+                            ? "bg-blue-500/15 text-blue-200"
+                            : "bg-cyan-400/10 text-cyan-200"
+                        }`}
+                      >
+                        {message.role === "user" ? (
+                          <span className="text-[10px] font-bold">YOU</span>
+                        ) : (
+                          <Sparkles className="h-3.5 w-3.5" />
+                        )}
+                      </div>
+                      <div
+                        className={`max-w-[88%] whitespace-pre-wrap rounded-xl px-3 py-2.5 text-xs leading-6 ${
+                          message.role === "user"
+                            ? "bg-blue-500/15 text-blue-50"
+                            : "border border-white/[0.07] bg-white/[0.035] text-slate-200"
+                        }`}
+                      >
+                        {message.content}
+                      </div>
+                    </div>
+                  ))}
+
+                  {busy && (
+                    <div className="flex items-center gap-2 text-xs text-cyan-200">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Working on your project…
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-white/[0.08] p-3">
+                  <div className="rounded-xl border border-white/[0.12] bg-[#101c2d] p-2 focus-within:border-cyan-400/40">
+                    <Textarea
+                      ref={promptRef}
+                      value={prompt}
+                      onChange={(event) => setPrompt(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && !event.shiftKey) {
+                          event.preventDefault();
+                          void sendPrompt();
+                        }
+                      }}
+                      rows={3}
+                      placeholder="Ask the agent to build or change something…"
+                      className="min-h-[76px] resize-none border-0 bg-transparent px-1 text-xs text-white shadow-none placeholder:text-slate-500 focus-visible:ring-0"
+                    />
+                    <div className="flex items-center justify-between px-1 pt-2">
+                      <span className="text-[9px] text-slate-600">
+                        Enter to send · Shift + Enter for new line
+                      </span>
+                      <Button
+                        size="icon"
+                        onClick={() => void sendPrompt()}
+                        disabled={busy || !prompt.trim()}
+                        className="h-8 w-8 bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+                        aria-label="Send prompt"
+                      >
+                        {busy ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-center text-[9px] text-slate-600">
+                    AI can make mistakes. Review generated changes before publishing.
+                  </p>
+                </div>
+              </aside>
+            )}
+          </div>
+
+          {/* Bottom status bar */}
+          <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.08] bg-[#0d1523] px-4 py-2">
+            <div className="flex items-center gap-4 text-[10px] text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                Workspace ready
+              </span>
+              <span>{Object.keys(files).length} files</span>
+              <span>{activeFile || "No file selected"}</span>
+            </div>
+            <span className="text-[10px] text-slate-600">Experts Team · AI Studio</span>
+          </footer>
+        </main>
       </div>
 
-      <Dialog open={ghOpen} onOpenChange={setGhOpen}>
-        <DialogContent>
+      {/* New file dialog */}
+      <Dialog open={newFileOpen} onOpenChange={setNewFileOpen}>
+        <DialogContent className="border-slate-700 bg-[#101a29] text-white sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Push to your GitHub</DialogTitle>
+            <DialogTitle>New project file</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1">
-              <Label htmlFor="gh-repo">Repository name</Label>
-              <Input id="gh-repo" value={ghRepo} onChange={(e) => setGhRepo(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="gh-token">GitHub access token</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-file-name">File name</Label>
               <Input
-                id="gh-token"
-                type="password"
-                value={ghToken}
-                onChange={(e) => setGhToken(e.target.value)}
+                id="new-file-name"
+                autoFocus
+                value={newFileName}
+                onChange={(event) => setNewFileName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") createFile();
+                }}
+                placeholder="src/App.tsx"
+                className="border-white/10 bg-white/5"
               />
-              <p className="text-xs text-muted-foreground">
-                Create one at github.com → Settings → Developer settings → Tokens with "repo" access.
-                It's used once and never saved.
+            </div>
+            <Button onClick={createFile} className="w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300">
+              <Plus className="mr-2 h-4 w-4" />
+              Create file
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* GitHub dialog */}
+      <Dialog open={githubOpen} onOpenChange={setGithubOpen}>
+        <DialogContent className="border-slate-700 bg-[#101a29] text-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Github className="h-5 w-5" />
+              Push project to GitHub
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="github-repo">Repository name</Label>
+              <Input
+                id="github-repo"
+                value={githubRepo}
+                onChange={(event) => setGithubRepo(event.target.value)}
+                placeholder="my-awesome-project"
+                className="border-white/10 bg-white/5"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="github-token">GitHub personal access token</Label>
+              <Input
+                id="github-token"
+                type="password"
+                autoComplete="off"
+                value={githubToken}
+                onChange={(event) => setGithubToken(event.target.value)}
+                placeholder="Paste token for this push"
+                className="border-white/10 bg-white/5"
+              />
+              <p className="text-[11px] leading-5 text-slate-500">
+                The token is sent to the server for this operation and is not saved in your project.
+                Never share it with anyone.
               </p>
             </div>
-            <Button className="w-full" onClick={() => github.mutate()} disabled={github.isPending}>
-              {github.isPending ? (
+            <Button
+              className="w-full bg-white text-slate-950 hover:bg-slate-200"
+              disabled={githubMutation.isPending || !githubToken.trim() || !githubRepo.trim()}
+              onClick={() => githubMutation.mutate()}
+            >
+              {githubMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Github className="mr-2 h-4 w-4" />
               )}
-              Push files
+              Push files to GitHub
             </Button>
           </div>
         </DialogContent>
