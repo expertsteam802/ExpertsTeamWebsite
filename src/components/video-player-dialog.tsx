@@ -1,30 +1,128 @@
+import { useEffect, useRef, useState } from "react";
+
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { youTubeEmbed } from "@/lib/youtube";
+import { supabase } from "@/integrations/supabase/client";
 
-type Props = {
-  videoId: string | null;
-  title: string;
-  onClose: () => void;
+type YouTubePlayer = { destroy: () => void };
+type YouTubeApi = {
+  Player: new (element: HTMLElement, options: {
+    videoId: string;
+    playerVars?: Record<string, string | number>;
+    events?: {
+      onStateChange?: (event: { data: number }) => void;
+      onError?: (event: { data: number }) => void;
+    };
+  }) => YouTubePlayer;
+  PlayerState: { PLAYING: number };
 };
-
+declare global {
+  interface Window {
+    YT?: YouTubeApi;
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
+let youtubeApiPromise: Promise<YouTubeApi> | null = null;
+function loadYouTubeApi(): Promise<YouTubeApi> {
+  if (window.YT?.Player) return Promise.resolve(window.YT);
+  if (!youtubeApiPromise) {
+    youtubeApiPromise = new Promise((resolve, reject) => {
+      const previousCallback = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        previousCallback?.();
+        if (window.YT?.Player) resolve(window.YT);
+        else reject(new Error("YouTube player API did not initialize."));
+      };
+      let script = document.querySelector<HTMLScriptElement>('script[src="https://www.youtube.com/iframe_api"]');
+      if (!script) {
+        script = document.createElement("script");
+        script.src = "https://www.youtube.com/iframe_api";
+        script.async = true;
+        script.onerror = () => reject(new Error("Could not load the YouTube player."));
+        document.head.appendChild(script);
+      }
+    }).catch((error: unknown) => {
+      youtubeApiPromise = null;
+      throw error;
+    });
+  }
+  return youtubeApiPromise;
+}
+function playerErrorMessage(code: number) {
+  if (code === 2) return "This video has an invalid ID or URL.";
+  if (code === 5) return "YouTube could not play this video in the embedded player.";
+  if (code === 100) return "This video was removed, deleted or made private.";
+  if (code === 101 || code === 150) return "The video owner does not allow playback on other websites.";
+  if (code === 153) return "YouTube did not receive the required referrer information. Check the site's domain and referrer policy.";
+  return `YouTube player error (${code}). Try opening the video on YouTube.`;
+}
+type Props = { videoId: string | null; title: string; onClose: () => void };
 export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
+  const playerContainerRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<YouTubePlayer | null>(null);
+  const countedRef = useRef(false);
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!videoId || !playerContainerRef.current) return;
+    let cancelled = false;
+    countedRef.current = false;
+    setPlaybackError(null);
+    setLoading(true);
+    void loadYouTubeApi().then((YT) => {
+      if (cancelled || !playerContainerRef.current) return;
+      playerRef.current = new YT.Player(playerContainerRef.current, {
+        videoId,
+        playerVars: { autoplay: 1, playsinline: 1, rel: 0, enablejsapi: 1, origin: window.location.origin },
+        events: {
+          onStateChange: (event) => {
+            if (event.data === YT.PlayerState.PLAYING) {
+              setLoading(false);
+              if (!countedRef.current) {
+                countedRef.current = true;
+                void supabase.rpc("record_video_view", { p_video_id: videoId }).then(({ error }) => {
+                  if (error) console.error("[Video analytics] Could not record view:", error.message);
+                });
+              }
+            }
+          },
+          onError: (event) => {
+            setLoading(false);
+            setPlaybackError(playerErrorMessage(event.data));
+          },
+        },
+      });
+    }).catch((error: unknown) => {
+      if (!cancelled) {
+        setLoading(false);
+        setPlaybackError(error instanceof Error ? error.message : "Could not load the video player.");
+      }
+    });
+    return () => {
+      cancelled = true;
+      playerRef.current?.destroy();
+      playerRef.current = null;
+    };
+  }, [videoId]);
+
   return (
     <Dialog open={!!videoId} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <DialogTitle className="pr-8 text-left">{title}</DialogTitle>
-        </DialogHeader>
-        {videoId && (
-          <div className="aspect-video w-full overflow-hidden rounded-xl bg-secondary">
-            <iframe
-              src={youTubeEmbed(videoId)}
-              title={title}
-              className="h-full w-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          </div>
-        )}
+      <DialogContent className="max-w-5xl">
+        <DialogHeader><DialogTitle className="pr-8 text-left">{title}</DialogTitle></DialogHeader>
+        <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-secondary">
+          {videoId && <div ref={playerContainerRef} className="h-full w-full" />}
+          {loading && !playbackError && (
+            <div className="absolute inset-0 grid place-items-center bg-background/70 text-sm text-muted-foreground">Loading video…</div>
+          )}
+          {playbackError && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center">
+              <p className="max-w-xl text-sm text-destructive">{playbackError}</p>
+              {videoId && <Button asChild><a href={`https://www.youtube.com/watch?v=${videoId}`} target="_blank" rel="noreferrer">Open on YouTube</a></Button>}
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">A view is counted only after YouTube confirms that playback has started.</p>
       </DialogContent>
     </Dialog>
   );
