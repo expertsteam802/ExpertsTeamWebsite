@@ -21,6 +21,14 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { pushProjectToGithub, runCodingAgent } from "@/lib/agent.functions";
 import { buildSrcDocWithConsole, STARTER_FILES, type ProjectFiles } from "@/lib/sandbox";
+import {
+  installDependencies,
+  mountProjectFiles,
+  removeProjectFile,
+  startDevServer,
+  stopDevServer,
+  writeProjectFile,
+} from "@/lib/webcontainer-runtime";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -78,6 +86,12 @@ export function CodeAgent() {
   const [newFileName, setNewFileName] = useState("");
   const [projectNameEditing, setProjectNameEditing] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [runtimeBusy, setRuntimeBusy] = useState(false);
+  const [runtimeUrl, setRuntimeUrl] = useState<string | null>(null);
+  const [runtimeStatus, setRuntimeStatus] = useState("Not started");
+  const runtimeFilesRef = useRef<ProjectFiles>({});
+  const runtimeInstallKeyRef = useRef<string | null>(null);
+  const runtimeSyncQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
@@ -99,6 +113,34 @@ export function CodeAgent() {
   });
 
   useEffect(() => {
+    if (!runtimeUrl) return;
+
+    const previousFiles = runtimeFilesRef.current;
+    const nextFiles = files;
+    const changedPaths = new Set([
+      ...Object.keys(previousFiles),
+      ...Object.keys(nextFiles),
+    ]);
+
+    runtimeSyncQueueRef.current = runtimeSyncQueueRef.current
+      .then(async () => {
+        for (const path of changedPaths) {
+          if (previousFiles[path] === nextFiles[path]) continue;
+          if (nextFiles[path] === undefined) {
+            await removeProjectFile(path);
+          } else {
+            await writeProjectFile(path, nextFiles[path]);
+          }
+        }
+        runtimeFilesRef.current = { ...nextFiles };
+      })
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : "Could not sync project files.";
+        setLogs((current) => [...current.slice(-199), { type: "error", message }]);
+      });
+  }, [files, runtimeUrl]);
+
+  useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
       const data = event.data as {
@@ -115,6 +157,79 @@ export function CodeAgent() {
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, []);
+
+  async function runProject() {
+    if (runtimeBusy) return;
+
+    setRuntimeBusy(true);
+    setRuntimeStatus("Starting browser runtime…");
+    setPanel("preview");
+    setLogs([]);
+
+    const callbacks = {
+      onOutput: (output: string) => {
+        setLogs((current) => [
+          ...current.slice(-199),
+          { type: "runtime", message: output },
+        ]);
+      },
+      onError: (message: string) => {
+        setLogs((current) => [
+          ...current.slice(-199),
+          { type: "error", message },
+        ]);
+      },
+      onServerReady: (_port: number, url: string) => {
+        setRuntimeUrl(url);
+        setRuntimeStatus("Running");
+      },
+    };
+
+    try {
+      await mountProjectFiles(files, callbacks);
+      runtimeFilesRef.current = { ...files };
+
+      const installKey = JSON.stringify({
+        packageJson: files["package.json"] ?? "default-vite",
+        packageLock: files["package-lock.json"] ?? "",
+        npmShrinkwrap: files["npm-shrinkwrap.json"] ?? "",
+      });
+
+      if (runtimeInstallKeyRef.current !== installKey) {
+        setRuntimeStatus("Installing npm packages…");
+        const exitCode = await installDependencies(callbacks);
+        if (exitCode !== 0) {
+          throw new Error("Package installation failed. Review the Console for details.");
+        }
+        runtimeInstallKeyRef.current = installKey;
+      }
+
+      setRuntimeStatus("Starting development server…");
+      await startDevServer(callbacks);
+      setPanel("preview");
+      toast.success("Your project is running");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "The project runtime could not start.";
+      setRuntimeStatus("Could not start");
+      setRuntimeUrl(null);
+      setLogs((current) => [
+        ...current.slice(-199),
+        { type: "error", message },
+      ]);
+      toast.error(message);
+    } finally {
+      setRuntimeBusy(false);
+    }
+  }
+
+  function resetRuntimeForProjectChange() {
+    stopDevServer();
+    setRuntimeUrl(null);
+    setRuntimeStatus("Not started");
+    runtimeFilesRef.current = {};
+    runtimeInstallKeyRef.current = null;
+  }
 
   async function persist(
     next: {
@@ -237,6 +352,7 @@ export function CodeAgent() {
   }
 
   function createProject() {
+    resetRuntimeForProjectChange();
     setProjectId(null);
     setName("Untitled project");
     setFiles(STARTER_FILES);
@@ -249,6 +365,7 @@ export function CodeAgent() {
   }
 
   function openProject(project: ProjectRow) {
+    resetRuntimeForProjectChange();
     setProjectId(project.id);
     setName(project.name);
     setFiles(
@@ -607,6 +724,21 @@ export function CodeAgent() {
             </div>
 
             <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void runProject()}
+                disabled={runtimeBusy}
+                className="h-8 border-cyan-400/25 bg-cyan-400/10 px-2.5 text-cyan-100 hover:bg-cyan-400/20"
+                title="Install dependencies and run this project"
+              >
+                {runtimeBusy ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Play className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                {runtimeBusy ? "Starting…" : runtimeUrl ? "Restart" : "Run"}
+              </Button>
               {panel === "preview" && (
                 <>
                   {([
@@ -675,18 +807,21 @@ export function CodeAgent() {
                 <>
                   <div className="flex h-10 items-center justify-between border-b border-white/[0.07] px-3">
                     <div className="flex items-center gap-2 text-xs text-slate-400">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                      Live preview
+                      <span className={`h-2 w-2 rounded-full ${runtimeUrl ? "bg-emerald-400" : "bg-amber-400"}`} />
+                      {runtimeUrl ? "Running project" : "Project preview"}
                     </div>
-                    <span className="text-[10px] text-slate-600">Local HTML preview</span>
+                    <span className="max-w-[55%] truncate text-[10px] text-slate-500">
+                      {runtimeUrl ? "WebContainer · Vite / npm" : runtimeBusy ? runtimeStatus : "HTML quick preview · press Run for React/Vite"}
+                    </span>
                   </div>
                   <div className="flex min-h-0 flex-1 items-stretch justify-center overflow-hidden bg-[#111a29] p-2 sm:p-3">
                     <iframe
                       ref={iframeRef}
                       key={previewKey}
                       title="Experts Team project preview"
-                      srcDoc={srcDoc}
-                      sandbox="allow-scripts allow-forms allow-modals allow-popups"
+                      src={runtimeUrl ?? undefined}
+                      srcDoc={runtimeUrl ? undefined : srcDoc}
+                      sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin allow-downloads"
                       className="h-full min-h-0 max-w-full rounded-lg border border-slate-300/20 bg-white shadow-2xl"
                       style={{
                         width:
@@ -739,7 +874,7 @@ export function CodeAgent() {
                     </span>
                     <span className="text-[10px] text-slate-600">Preview logs only</span>
                   </div>
-                  <div className="min-h-[600px] flex-1 overflow-auto bg-[#050a12] p-4 font-mono text-xs">
+                  <div className="min-h-0 flex-1 overflow-auto bg-[#050a12] p-4 font-mono text-xs">
                     {logs.length === 0 && (
                       <div className="py-8 text-center text-slate-600">
                         <Terminal className="mx-auto mb-3 h-6 w-6 opacity-50" />
