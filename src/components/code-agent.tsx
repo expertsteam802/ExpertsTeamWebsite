@@ -50,13 +50,13 @@ type ProjectRow = {
 type Panel = "preview" | "code" | "console" | "terminal";
 
 const EDITOR_SNIPPETS = [
-  { pack: "react", label: "React component", value: "export default function App() {\\n  return (\\n    <main>\\n      <h1>Hello, ExpertsTeam</h1>\\n    </main>\\n  );\\n}" },
+  { pack: "react", label: "React component", value: "export default function App() {\n  return (\n    <main>\n      <h1>Hello, ExpertsTeam</h1>\n    </main>\n  );\n}" },
   { pack: "react", label: "useState hook", value: "const [value, setValue] = useState(\\"\\");" },
-  { pack: "react", label: "useEffect hook", value: "useEffect(() => {\\n  // Run side effects here\\n}, []);" },
-  { pack: "html", label: "HTML page", value: "<!doctype html>\\n<html lang=\\"en\\">\\n  <head>\\n    <meta charset=\\"UTF-8\\" />\\n    <meta name=\\"viewport\\" content=\\"width=device-width, initial-scale=1.0\\" />\\n    <title>New page</title>\\n  </head>\\n  <body>\\n    <main></main>\\n  </body>\\n</html>" },
+  { pack: "react", label: "useEffect hook", value: "useEffect(() => {\n  // Run side effects here\n}, []);" },
+  { pack: "html", label: "HTML page", value: "<!doctype html>\n<html lang=\\"en\\">\n  <head>\n    <meta charset=\\"UTF-8\\" />\n    <meta name=\\"viewport\\" content=\\"width=device-width, initial-scale=1.0\\" />\n    <title>New page</title>\n  </head>\n  <body>\n    <main></main>\n  </body>\n</html>" },
   { pack: "html", label: "Accessible button", value: "<button type=\\"button\\" aria-label=\\"Action\\">Click me</button>" },
-  { pack: "css", label: "Responsive layout", value: ".container {\\n  display: grid;\\n  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));\\n  gap: 1rem;\\n}" },
-  { pack: "css", label: "Mobile breakpoint", value: "@media (max-width: 640px) {\\n  .container {\\n    grid-template-columns: 1fr;\\n  }\\n}" },
+  { pack: "css", label: "Responsive layout", value: ".container {\n  display: grid;\n  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));\n  gap: 1rem;\n}" },
+  { pack: "css", label: "Mobile breakpoint", value: "@media (max-width: 640px) {\n  .container {\n    grid-template-columns: 1fr;\n  }\n}" },
 ];
 
 const suggestions = [
@@ -569,7 +569,7 @@ export function CodeAgent() {
 
   const availableEditorSnippets = EDITOR_SNIPPETS.filter((snippet) =>
     enabledEditorPacks.includes(snippet.pack) &&
-    (snippet.pack === "react" ? /\\.tsx?$|\\.jsx?$/.test(activeFile) :
+    (snippet.pack === "react" ? /\.tsx?$|\.jsx?$/.test(activeFile) :
       snippet.pack === "html" ? activeFile.endsWith(".html") :
       activeFile.endsWith(".css")),
   );
@@ -609,10 +609,10 @@ export function CodeAgent() {
     if (event.key === "Enter") {
       event.preventDefault();
       const before = editor.value.slice(0, editor.selectionStart);
-      const line = before.split("\\n").pop() ?? "";
-      const indent = line.match(/^\\s*/)?.[0] ?? "";
-      const extraIndent = /[({[]\\s*$/.test(before) ? "  " : "";
-      editor.setRangeText("\\n" + indent + extraIndent, editor.selectionStart, editor.selectionEnd, "end");
+      const line = before.split("\n").pop() ?? "";
+      const indent = line.match(/^\s*/)?.[0] ?? "";
+      const extraIndent = /[({\[]\s*$/.test(before) ? "  " : "";
+      editor.setRangeText("\n" + indent + extraIndent, editor.selectionStart, editor.selectionEnd, "end");
       updateFile(editor.value);
       return;
     }
