@@ -318,7 +318,7 @@ export function CodeAgent() {
 
   async function saveProjectName() {
     const nextName = name.trim().slice(0, 80) || "Untitled project";
-    const previousName = name;
+    const previousName = projects.find((project) => project.id === projectId)?.name ?? name;
     try {
       if (projectId && user) {
         const { data, error } = await supabase
