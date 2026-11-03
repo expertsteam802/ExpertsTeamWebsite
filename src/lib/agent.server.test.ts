@@ -151,3 +151,40 @@ test("Smart Processing retains image payloads for Gemini", () => {
 test("Smart token estimate is deliberately conservative", () => {
   assert.equal(estimateSmartTokens("a".repeat(1000)), 500);
 });
+
+
+test("coding agent continues to Groq when Gemini rejects an oversized request", async () => {
+  const previousOrder = process.env["AI_PROVIDER_ORDER"];
+  const previousGroqKey = process.env["GROQ_API_KEY"];
+  process.env["AI_PROVIDER_ORDER"] = "gemini,groq";
+  process.env["GROQ_API_KEY"] = "groq-test-key";
+  const urls: string[] = [];
+  globalThis.fetch = (async (url) => {
+    urls.push(String(url));
+    if (String(url).includes("generativelanguage.googleapis.com")) {
+      return new Response("request too large", { status: 413 });
+    }
+    return Response.json({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            message: "Recovered after Gemini rejected the request",
+            files: { "index.html": "<h1>Fallback</h1>" },
+          }),
+        },
+      }],
+    });
+  }) as typeof fetch;
+
+  try {
+    const result = await runAgent(input, "test-key");
+    assert.equal(result.files["index.html"], "<h1>Fallback</h1>");
+    assert.equal(urls.length, 2);
+    assert.match(urls[1], /api.groq.com/);
+  } finally {
+    if (previousOrder === undefined) delete process.env["AI_PROVIDER_ORDER"];
+    else process.env["AI_PROVIDER_ORDER"] = previousOrder;
+    if (previousGroqKey === undefined) delete process.env["GROQ_API_KEY"];
+    else process.env["GROQ_API_KEY"] = previousGroqKey;
+  }
+});
