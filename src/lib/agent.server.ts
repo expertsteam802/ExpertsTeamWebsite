@@ -55,8 +55,8 @@ export async function createAgentPlan(
   if (!cleanPrompt) throw new Error("Describe what you want to build.");
   const fileList = Object.entries(files)
     .slice(0, 24)
-    .map(([path, content]) => '--- ' + path + ' ---\\n' + content.slice(0, 350))
-    .join('\\n')
+    .map(([path, content]) => '--- ' + path + ' ---\n' + content.slice(0, 350))
+    .join('\n')
     .slice(0, 14000);
   const response = await generateGeminiContent(
     {
