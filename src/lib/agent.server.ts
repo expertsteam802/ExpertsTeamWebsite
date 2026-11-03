@@ -66,11 +66,11 @@ export async function runAgent({ prompt, files, history }: AgentInput, apiKey?: 
   const json = await generateGeminiContent(
     {
       systemInstruction: { parts: [{ text: AGENT_PROMPT }] },
-      generationConfig: { responseMimeType: "application/json", maxOutputTokens: 32768 },
+      generationConfig: { responseMimeType: "application/json", maxOutputTokens: 16384 },
       contents: [
-        ...history.slice(-8).map((message) => ({
+        ...history.slice(-4).map((message) => ({
           role: message.role === "assistant" ? ("model" as const) : ("user" as const),
-          parts: [{ text: message.content.slice(0, 3000) }],
+          parts: [{ text: message.content.slice(0, 1600) }],
         })),
         {
           role: "user",
