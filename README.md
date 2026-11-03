@@ -11,3 +11,17 @@ Google sign-in and email/password authentication are handled by Supabase Auth:
 - To allow users to sign up without verifying their email, disable **Confirm email** under **Authentication → Providers → Email** in Supabase. With confirmation enabled, Supabase does not create an authenticated session after signup.
 
 The Gemini API key is used by authenticated server functions. Set `GEMINI_API_KEY` in the server environment; `VITE_GEMINI_API_KEY` remains supported for local development. Supabase provider, redirect, and server environment settings must also match the active project.
+
+## Production deployment to Vercel
+
+The repository includes a GitHub Actions workflow at `.github/workflows/vercel-deploy.yml` that deploys the `main` branch to Vercel production on every push and can also be run manually.
+
+Before the workflow can deploy, add these three values in **GitHub → Settings → Secrets and variables → Actions → New repository secret**:
+
+- `VERCEL_TOKEN`: create a token in your Vercel account settings.
+- `VERCEL_ORG_ID`: the Vercel team/account ID for the project.
+- `VERCEL_PROJECT_ID`: the project ID for this website.
+
+Find the project and team IDs in Vercel under **Project → Settings → General** (the project ID) and the Vercel team/account settings (the team ID). Keep the token private; do not commit it to the repository.
+
+After saving all three secrets, open **GitHub → Actions → Deploy to Vercel → Run workflow** and run it on `main`. The workflow pulls the production Vercel settings, builds the app, and deploys the prebuilt output to production. If credentials are missing, the workflow reports that deployment was skipped rather than pretending a deployment succeeded.
