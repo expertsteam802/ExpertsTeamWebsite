@@ -51,6 +51,7 @@ export function UpgradeDialog() {
   const configuredPrice = Number(planKind === "ai" ? settings.ai_subscription_price : settings.subscription_price);
   const price = Number.isFinite(configuredPrice) && configuredPrice > 0 ? configuredPrice : 1;
   const payoutAccount = settings.payout_account?.trim();
+  const studioActive = Boolean(profile?.ai_subscribed && (!profile.ai_subscription_expires_at || new Date(profile.ai_subscription_expires_at).getTime() > Date.now()));
   const activeMethod = PAYMENT_METHODS.find((item) => item.value === method)!;
 
   const submit = useMutation({
@@ -84,7 +85,7 @@ export function UpgradeDialog() {
 
   if (!user) return null;
 
-  if (profile?.ai_subscribed) {
+  if (studioActive) {
     return (
       <Badge variant="secondary" className="w-fit gap-1">
         <CheckCircle2 className="h-3.5 w-3.5" /> Subscriber ·{" "}
@@ -113,7 +114,7 @@ export function UpgradeDialog() {
             </DialogTitle>
             <DialogDescription>
               {planKind === "ai"
-                ? `One payment of ${price.toFixed(2)} unlocks app creation and ${Number(settings.ai_subscription_credits) || 500} AI credits.`
+                ? `A 30-day Studio subscription for ${price.toFixed(2)} unlocks app creation and ${Number(settings.ai_subscription_credits) || 500} AI credits.`
                 : `One payment of ${price.toFixed(2)} raises your upload limit from ${formatBytes(profile?.storage_quota_bytes ?? 209715200)} to ${formatBytes(settings.subscription_quota_bytes)}.`}
             </DialogDescription>
           </DialogHeader>
@@ -122,10 +123,10 @@ export function UpgradeDialog() {
             <div className="space-y-2">
               <Label>Choose plan</Label>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" size="sm" variant={planKind === "ai" ? "default" : "outline"} onClick={() => setPlanKind("ai")}>Studio · ${Number(settings.ai_subscription_price) > 0 ? Number(settings.ai_subscription_price).toFixed(2) : "1.00"}/month</Button>
+                <Button type="button" size="sm" variant={planKind === "ai" ? "default" : "outline"} onClick={() => setPlanKind("ai")}>Studio · ${Number(settings.ai_subscription_price) > 0 ? Number(settings.ai_subscription_price).toFixed(2) : "1.00"}</Button>
                 <Button type="button" size="sm" variant={planKind === "storage" ? "default" : "outline"} onClick={() => setPlanKind("storage")}>Extra storage · ${Number(settings.subscription_price).toFixed(2)}</Button>
               </div>
-              <p className="text-xs text-muted-foreground">{planKind === "ai" ? "Unlocks app creation and a limited monthly AI allowance. Free-model quotas still apply." : "One-time storage upgrade, confirmed manually by the creator."}</p>
+              <p className="text-xs text-muted-foreground">{planKind === "ai" ? "Unlocks app creation for 30 days with a limited AI credit allowance. Free-model provider quotas still apply." : "One-time storage upgrade, confirmed manually by the creator."}</p>
             </div>
             <div className="space-y-2">
               <Label>Pay with</Label>
@@ -194,7 +195,7 @@ export function UpgradeDialog() {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Your space unlocks as soon as the creator confirms the payment in the admin panel.
+              Your selected plan unlocks after the creator confirms payment in the Admin panel. Studio access lasts 30 days.
             </p>
           </div>
 
