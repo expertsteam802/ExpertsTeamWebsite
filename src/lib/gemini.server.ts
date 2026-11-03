@@ -20,7 +20,7 @@ export type GeminiResponse = {
   promptFeedback?: { blockReason?: string };
 };
 
-const GEMINI_MODEL = process.env["GEMINI_CODE_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.8-flash";
+const GEMINI_MODEL = process.env["GEMINI_CODE_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.6-flash";
 
 export function resolveGeminiApiKey(apiKey?: string): string | undefined {
   return (
