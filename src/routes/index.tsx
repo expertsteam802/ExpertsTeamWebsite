@@ -20,17 +20,17 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Chris Programs — Watch, Learn & Share Code" },
+      { title: "ExpertsTeam — Watch, Learn & Share Code" },
       {
         name: "description",
         content:
-          "Chris Programs is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community.",
+          "ExpertsTeam is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community.",
       },
-      { property: "og:title", content: "Chris Programs — Watch, Learn & Share Code" },
+      { property: "og:title", content: "ExpertsTeam — Watch, Learn & Share Code" },
       {
         property: "og:description",
         content:
-          "Chris Programs is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community.",
+          "ExpertsTeam is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community.",
       },
     ],
   }),
