@@ -113,6 +113,10 @@ export function CodeAgent() {
   });
 
   useEffect(() => {
+    return () => stopDevServer();
+  }, []);
+
+  useEffect(() => {
     if (!runtimeUrl) return;
 
     const previousFiles = runtimeFilesRef.current;
