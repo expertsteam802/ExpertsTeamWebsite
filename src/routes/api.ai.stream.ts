@@ -137,7 +137,9 @@ export const Route = createFileRoute("/api/ai/stream")({
             }
             if (!upstream.ok) {
               await upstream.text();
-              if (upstream.status === 429 || upstream.status >= 500) markProviderCoolingDown("gemini", upstream.status === 429 ? 60 : 20);
+              if (upstream.status === 429) markProviderCoolingDown("gemini", 60);
+              else if ([401, 403, 404].includes(upstream.status)) markProviderCoolingDown("gemini", 300);
+              else if (upstream.status >= 500) markProviderCoolingDown("gemini", 20);
             }
           }
 

@@ -141,9 +141,13 @@ export async function generateGeminiContent(
   const configuredOrder = providerOrder ?? (process.env["AI_PROVIDER_ORDER"] || "gemini,groq,mistral,openrouter,cloudflare")
     .split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
   const failures: string[] = [];
+  const coolingDown: string[] = [];
 
   for (const provider of configuredOrder) {
-    if ((providerCooldowns.get(provider) ?? 0) > Date.now()) continue;
+    if (isProviderCoolingDown(provider)) {
+      coolingDown.push(provider);
+      continue;
+    }
     try {
       if (provider === "gemini") {
         const resolvedApiKey = resolveGeminiApiKey(apiKey);
@@ -174,8 +178,9 @@ export async function generateGeminiContent(
     }
   }
 
-  if (failures.length) {
-    throw new Error(`All configured free AI providers are unavailable. ${failures.join(" | ")}`);
+  if (failures.length || coolingDown.length) {
+    const details = [...failures, ...coolingDown.map((provider) => `${provider}: temporarily cooling down after a provider limit or outage`)];
+    throw new Error(`All configured free AI providers are unavailable. ${details.join(" | ")}`);
   }
   throw new Error("No AI provider is configured. Add at least one server-side API key in Vercel Environment Variables.");
 }
