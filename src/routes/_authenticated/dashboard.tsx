@@ -39,14 +39,14 @@ import { formatBytes, formatDate } from "@/lib/format";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
-      { title: "My dashboard — Chris Programs" },
+      { title: "My dashboard — ExpertsTeam" },
       {
         name: "description",
         content:
-          "Manage your uploads, videos, storage space and account settings on Chris Programs.",
+          "Manage your uploads, videos, storage space and account settings on ExpertsTeam.",
       },
-      { property: "og:title", content: "My dashboard — Chris Programs" },
-      { property: "og:description", content: "Your Chris Programs member dashboard." },
+      { property: "og:title", content: "My dashboard — ExpertsTeam" },
+      { property: "og:description", content: "Your ExpertsTeam member dashboard." },
     ],
   }),
   component: DashboardPage,
