@@ -1,9 +1,9 @@
-type GeminiContent = {
+export type GeminiContent = {
   role: "user" | "model";
   parts: { text: string }[];
 };
 
-type GeminiRequest = {
+export type GeminiRequest = {
   systemInstruction: { parts: { text: string }[] };
   contents: GeminiContent[];
   generationConfig?: {
