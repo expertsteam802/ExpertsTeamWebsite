@@ -1,7 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { compactSmartContents } from "@/lib/smart-processing.server";
+import {
+  compactSmartContents,
+  type SmartContent,
+  type SmartPart,
+} from "@/lib/smart-processing.server";
 import {
   generateGeminiContent,
   isProviderCoolingDown,
@@ -124,8 +128,8 @@ export const Route = createFileRoute("/api/ai/stream")({
           }
 
           const { prompt, history = [], attachments = [] } = parsed.data;
-          const attachmentParts = attachments.flatMap((file) => {
-            const parts: Array<Record<string, unknown>> = [{ text: `Attachment: ${file.name}` }];
+          const attachmentParts = attachments.flatMap((file): SmartPart[] => {
+            const parts: SmartPart[] = [{ text: `Attachment: ${file.name}` }];
             if (file.text) {
               parts.push({ text: file.text.slice(0, 3500) });
             } else if (file.dataUrl) {
@@ -148,17 +152,15 @@ export const Route = createFileRoute("/api/ai/stream")({
             }
             return parts;
           });
-          const contents = [
+          const contents: SmartContent[] = [
             ...history.slice(-4).map((message) => ({
-              role: message.role === "ai" || message.role === "assistant" ? "model" : "user",
+              role: message.role === "ai" || message.role === "assistant" ? ("model" as const) : ("user" as const),
               parts: [{ text: message.content.slice(-1200) }],
             })),
             { role: "user", parts: [{ text: prompt }, ...attachmentParts] },
           ];
 
-          const compactedContents = compactSmartContents(
-            contents as Parameters<typeof compactSmartContents>[0],
-          );
+          const compactedContents = compactSmartContents(contents);
           const systemText =
             "You are Expert AI for ExpertsTeam. Be accurate, direct, practical, and helpful. Use plain English and ordinary ASCII punctuation. Do not add emojis, decorative symbols, unusual Unicode characters, or ornamental bullets. Use simple hyphen bullets. Preserve required syntax inside code. Never claim access to private user data unless it was supplied in the conversation.";
           const providerOrder = (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
