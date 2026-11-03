@@ -49,7 +49,7 @@ export type AgentPlan = { summary: string; steps: string[] };
 export async function createAgentPlan(prompt: string, files: Record<string, string>, apiKey?: string): Promise<AgentPlan> {
   const cleanPrompt = prompt.trim();
   if (!cleanPrompt) throw new Error("Describe what you want to build.");
-  const fileList = Object.keys(files).slice(0, 80).join("\n");
+  const fileList = Object.entries(files).slice(0, 60).map(([path, content]) => `--- ${path} ---\\n${content.slice(0, 500)}`).join("\n").slice(0, 40000);
   const response = await generateGeminiContent({
     systemInstruction: {
       parts: [{ text: "You are the planning lead for ExpertsTeam Studio. Do not write or modify code. Return valid JSON only with shape {\"summary\": string, \"steps\": string[]}. Make a safe, incremental plan of 2 to 6 small implementation steps. Each step must be independently reviewable and avoid changing unrelated files. Mention testing/verification as a final step when useful." }],
