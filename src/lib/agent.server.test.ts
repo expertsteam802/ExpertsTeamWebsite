@@ -3,6 +3,7 @@ import { afterEach, test } from "node:test";
 
 import { runAgent } from "./agent.server";
 import { resetProviderCooldowns } from "./gemini.server";
+import { compactSmartContents, estimateSmartTokens } from "./smart-processing.server";
 
 const originalFetch = globalThis.fetch;
 afterEach(() => {
@@ -124,4 +125,29 @@ test("agent rejects unsafe generated file paths", async () => {
     })) as typeof fetch;
 
   await assert.rejects(runAgent(input, "test-key"), /complete app files/i);
+});
+
+
+test("Smart Processing keeps the newest request while compacting old history", () => {
+  const compacted = compactSmartContents([
+    { role: "user", parts: [{ text: "old".repeat(1200) }] },
+    { role: "model", parts: [{ text: "answer".repeat(1200) }] },
+    { role: "user", parts: [{ text: "Build the checkout page and preserve the existing layout." }] },
+  ]);
+  const combined = compacted.flatMap((item) => item.parts.map((part) => part.text ?? "")).join("\\n");
+  assert.match(combined, /Build the checkout page and preserve the existing layout/);
+  assert.ok(combined.length <= 9_000);
+  assert.ok(compacted.length <= 3);
+});
+
+test("Smart Processing retains image payloads for Gemini", () => {
+  const image = { mimeType: "image/png", data: "aGVsbG8=" };
+  const compacted = compactSmartContents([
+    { role: "user", parts: [{ text: "Please inspect this image." }, { inlineData: image }] },
+  ]);
+  assert.deepEqual(compacted[0].parts[1], { inlineData: image });
+});
+
+test("Smart token estimate is deliberately conservative", () => {
+  assert.equal(estimateSmartTokens("a".repeat(1000)), 500);
 });
