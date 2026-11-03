@@ -172,29 +172,35 @@ export function ChrisAiChat({
       const decoder = new TextDecoder();
       let buffer = "";
       let streamedText = "";
+      const consumeEvent = (event: string) => {
+        const payload = event
+          .split(/\r?\n/)
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => line.slice(5).trim())
+          .filter(Boolean)
+          .join("\n");
+        if (!payload || payload === "[DONE]") return;
+        const chunk = JSON.parse(payload) as {
+          candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>;
+          error?: string;
+        };
+        if (chunk.error) throw new Error(chunk.error);
+        const text = chunk.candidates?.[0]?.content?.parts?.filter((part) => !part.thought).map((part) => part.text ?? "").join("") ?? "";
+        if (text) {
+          streamedText += text;
+          setStreamingReply(streamedText);
+        }
+      };
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split("\n\n");
+        const events = buffer.split(/\r?\n\r?\n/);
         buffer = events.pop() ?? "";
-        for (const event of events) {
-          const dataLine = event.split("\n").find((line) => line.startsWith("data:"));
-          if (!dataLine) continue;
-          const payload = dataLine.slice(5).trim();
-          if (!payload || payload === "[DONE]") continue;
-          const chunk = JSON.parse(payload) as {
-            candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }>;
-            error?: string;
-          };
-          if (chunk.error) throw new Error(chunk.error);
-          const text = chunk.candidates?.[0]?.content?.parts?.filter((part) => !part.thought).map((part) => part.text ?? "").join("") ?? "";
-          if (text) {
-            streamedText += text;
-            setStreamingReply(streamedText);
-          }
-        }
+        for (const event of events) consumeEvent(event);
       }
+      buffer += decoder.decode();
+      if (buffer.trim()) consumeEvent(buffer);
       const reply = streamedText.trim();
       if (!reply) {
         throw new Error("Expert AI returned an empty answer. Please try again.");
