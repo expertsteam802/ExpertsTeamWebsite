@@ -8,7 +8,7 @@ Set these variables in Vercel (Production, Preview, and Development as needed):
 
 | Variable                | Suggested value                              | Required          |
 | ----------------------- | -------------------------------------------- | ----------------- |
-| `AI_PROVIDER_ORDER`     | `gemini,groq,mistral,openrouter,cloudflare`  | Yes               |
+| `AI_PROVIDER_ORDER`     | `groq,gemini,openrouter`                    | Yes               |
 | `GEMINI_API_KEY`        | Your Google AI Studio key                    | Optional fallback |
 | `GEMINI_CODE_MODEL`     | `gemini-3.8-flash`                           | Optional          |
 | `GEMINI_MODEL`          | `gemini-3.8-flash`                           | Optional          |
@@ -23,24 +23,20 @@ Set these variables in Vercel (Production, Preview, and Development as needed):
 | `CLOUDFLARE_API_TOKEN`  | A token with Workers AI inference permission | Optional fallback |
 | `CLOUDFLARE_AI_MODEL`   | `@cf/zai-org/glm-4.7-flash`                  | Optional          |
 
-At least one provider must be configured. Configure two or more providers for meaningful failover. The router tries the providers in `AI_PROVIDER_ORDER`; missing provider keys are skipped. It moves to the next provider after a failed request and temporarily cools down providers after rate limits, authentication failures, unavailable models, or outages. Provider quotas are account-specific and can change, so free access is never guaranteed to be unlimited.
+At least one provider must be configured. Configure two or more providers for meaningful failover. The router tries Groq, Gemini, then OpenRouter by default (or the providers in `AI_PROVIDER_ORDER` if you override it); missing provider keys are skipped. It moves to the next provider after a failed request and temporarily cools down providers after rate limits, authentication failures, unavailable models, or outages. Provider quotas are account-specific and can change, so free access is never guaranteed to be unlimited.
 
 ## Get keys
 
 - Google AI Studio: https://aistudio.google.com/api-keys
 - Groq: https://console.groq.com/keys
-- Mistral Studio: https://console.mistral.ai/api-keys/
 - OpenRouter: https://openrouter.ai/settings/keys
-- Cloudflare: https://dash.cloudflare.com/
 
 ## Free-tier notes
 
 - Gemini API has a free tier for eligible models/projects. Review its current model availability, rate limits, and data-use terms before using it with private customer information.
-- Groq publishes per-model free-plan limits. The default model above is a fast general-purpose fallback; change it if the account's model catalog or limits change.
-- Mistral Studio Free mode offers API access for evaluation with organization-level rate limits. Check account limits and data-use settings before using it for private data; free evaluation data may be subject to Mistral's service terms.
-- OpenRouter's `openrouter/free` is a dynamic free-model route. The available underlying model can change and request/day limits apply.
-- Cloudflare Workers AI includes a daily free Neurons allowance, but not every model is available on the Free plan. The suggested model should be checked in the current catalog.
-
+- Groq publishes per-model free-plan limits. The default model above is fast, but free-tier TPM limits can be tight. ExpertsTeam now trims conversation history and caps completion tokens to reduce 413 token-limit errors.
+- - OpenRouter's `openrouter/free` is a dynamic free-model route. The available underlying model can change and request/day limits apply.
+- 
 ## After adding keys
 
 1. Add the variables in Vercel without the `VITE_` prefix.
@@ -52,4 +48,4 @@ At least one provider must be configured. Configure two or more providers for me
 
 - Keys are only read by server-side code and must never be returned to the browser.
 - Do not enable automatic paid billing unless you deliberately choose to.
-- The $1 subscription must have a configurable AI allowance. It cannot promise unlimited AI usage while relying on third-party free quotas.
+- Administrators bypass credit limits. The $1 subscription must have a configurable AI allowance. It cannot promise unlimited AI usage while relying on third-party free quotas.
