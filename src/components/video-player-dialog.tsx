@@ -73,7 +73,15 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
     setLoading(true);
     void loadYouTubeApi().then((YT) => {
       if (cancelled || !playerContainerRef.current) return;
-      playerRef.current = new YT.Player(playerContainerRef.current, {
+      const iframe = document.createElement("iframe");
+      iframe.title = title;
+      iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}&autoplay=1&playsinline=1&rel=0`;
+      iframe.referrerPolicy = "strict-origin-when-cross-origin";
+      iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+      iframe.allowFullscreen = true;
+      iframe.className = "h-full w-full";
+      playerContainerRef.current.replaceChildren(iframe);
+      playerRef.current = new YT.Player(iframe, {
         videoId,
         playerVars: { autoplay: 1, playsinline: 1, rel: 0, enablejsapi: 1, origin: window.location.origin },
         events: {
@@ -110,6 +118,7 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
       cancelled = true;
       playerRef.current?.destroy();
       playerRef.current = null;
+      playerContainerRef.current?.replaceChildren();
     };
   }, [videoId]);
 
