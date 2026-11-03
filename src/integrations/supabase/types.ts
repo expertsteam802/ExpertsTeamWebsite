@@ -794,6 +794,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      consume_ai_credit: { Args: Record<PropertyKey, never>; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
