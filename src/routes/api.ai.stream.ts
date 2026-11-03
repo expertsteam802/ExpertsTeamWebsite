@@ -102,11 +102,18 @@ export const Route = createFileRoute("/api/ai/stream")({
               { status: 500 },
             );
           }
-          if (profile.ai_credits < 1) {
+          const { data: isAdmin, error: roleError } = await supabase.rpc("has_role", {
+            _user_id: authData.user.id,
+            _role: "admin",
+          });
+          if (roleError) {
+            return Response.json({ error: "Could not verify your account permissions." }, { status: 500 });
+          }
+          if (!isAdmin && profile.ai_credits < 1) {
             return Response.json(
               {
                 error:
-                  "You have no AI credits remaining. Upgrade your Studio plan or wait for your allowance to renew.",
+                  "You have no AI credits remaining. Upgrade your Studio plan or watch a reward ad when available.",
               },
               { status: 402 },
             );
@@ -171,10 +178,12 @@ export const Route = createFileRoute("/api/ai/stream")({
                 },
               );
               if (upstream.ok && upstream.body) {
-                const { error: creditError } = await supabase.rpc("consume_ai_credit");
-                if (creditError) {
-                  await upstream.body.cancel();
-                  return Response.json({ error: creditError.message }, { status: 402 });
+                if (!isAdmin) {
+                  const { error: creditError } = await supabase.rpc("consume_ai_credit");
+                  if (creditError) {
+                    await upstream.body.cancel();
+                    return Response.json({ error: creditError.message }, { status: 402 });
+                  }
                 }
                 return new Response(upstream.body, {
                   headers: {
@@ -215,9 +224,11 @@ export const Route = createFileRoute("/api/ai/stream")({
             fallbackOrder,
           );
 
-          const { error: creditError } = await supabase.rpc("consume_ai_credit");
-          if (creditError) {
-            return Response.json({ error: creditError.message }, { status: 402 });
+          if (!isAdmin) {
+            const { error: creditError } = await supabase.rpc("consume_ai_credit");
+            if (creditError) {
+              return Response.json({ error: creditError.message }, { status: 402 });
+            }
           }
 
           const streamPayload = `data: ${JSON.stringify(result)}\n\ndata: [DONE]\n\n`;
