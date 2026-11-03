@@ -24,8 +24,11 @@ export const createCodingPlan = createServerFn({ method: "POST" })
     const parsed = z.object({
       prompt: z.string().trim().min(1).max(16000),
       files: z.record(z.string(), z.string().max(100000)),
-    }).parse(input);
-    if (Object.keys(parsed.files).length > 80) throw new Error("This project has too many files to plan at once.");
+    }).refine(
+      ({ files }) => Object.keys(files).length <= 80 &&
+        Object.values(files).reduce((total, content) => total + content.length, 0) <= 200000,
+      "The project is too large to plan in one request.",
+    ).parse(input);
     return parsed;
   })
   .handler(async ({ data, context }) => {
