@@ -178,14 +178,17 @@ export async function mountProjectFiles(
 
   // Remove files from the previously opened project while retaining installed
   // dependencies so switching projects does not require a full cold install.
-  const existingEntries = await instance.fs.readdir(instance.workdir, {
+  // WebContainer filesystem methods resolve paths from the current workdir.
+  // Passing instance.workdir here would prepend it a second time and cause
+  // ENOENT errors such as /home/.../home/....
+  const existingEntries = await instance.fs.readdir(".", {
     encoding: "utf-8",
   });
   await Promise.all(
     existingEntries
       .filter((entry) => entry !== "node_modules")
       .map((entry) =>
-        instance.fs.rm(`${instance.workdir}/${entry}`, {
+        instance.fs.rm(entry, {
           recursive: true,
           force: true,
         }),
@@ -338,20 +341,20 @@ export async function writeProjectFile(
   const instance = await bootWebContainer(callbacks);
   const safePath = normalizePath(path);
   const parts = safePath.split("/");
-  let directory = instance.workdir;
+  let directory = ".";
 
   for (const part of parts.slice(0, -1)) {
-    directory = `${directory}/${part}`;
+    directory = directory === "." ? part : `${directory}/${part}`;
     await instance.fs.mkdir(directory, { recursive: true });
   }
 
-  await instance.fs.writeFile(`${instance.workdir}/${safePath}`, contents);
+  await instance.fs.writeFile(safePath, contents);
 }
 
 export async function removeProjectFile(path: string) {
   const instance = await bootWebContainer();
   const safePath = normalizePath(path);
-  await instance.fs.rm(`${instance.workdir}/${safePath}`, {
+  await instance.fs.rm(safePath, {
     recursive: true,
     force: true,
   });
