@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { askChrisAi, generateExpertImage } from "@/lib/ai.functions";
+import { generateExpertImage } from "@/lib/ai.functions";
 
 type ChatRow = { id: string; role: string; content: string; created_at: string; thread_id?: string };
 type UploadedFile = { name: string; mimeType: string; dataUrl?: string; text?: string; size?: number };
@@ -99,7 +99,6 @@ export function ChrisAiChat({
 } = {}) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const ask = useServerFn(askChrisAi);
   const generateImage = useServerFn(generateExpertImage);
   const [input, setInput] = useState("");
   const [threadId, setThreadId] = useState<string | null>(null);
