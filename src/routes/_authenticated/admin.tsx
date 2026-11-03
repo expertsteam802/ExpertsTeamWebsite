@@ -70,7 +70,7 @@ function AdminPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, username, display_name, is_subscribed, storage_quota_bytes, created_at")
+        .select("id, username, display_name, is_subscribed, storage_quota_bytes, ai_subscribed, ai_credits, ai_subscription_expires_at, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -539,7 +539,7 @@ function AdminPage() {
                     <p className="text-xs text-muted-foreground">
                       @{member.username} · joined {formatDate(member.created_at)} ·{" "}
                       {formatBytes(memberFileUsage.filter((file) => file.user_id === member.id).reduce((total, file) => total + Number(file.size_bytes), 0))} used / {formatBytes(member.storage_quota_bytes)} quota
-                      {member.is_subscribed ? " · subscriber" : ""}
+                      {member.is_subscribed ? " · storage subscriber" : ""}{member.ai_subscribed && (!member.ai_subscription_expires_at || new Date(member.ai_subscription_expires_at) > new Date()) ? ` · Studio subscriber (${member.ai_credits} credits)` : ""}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
