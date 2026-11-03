@@ -1,3 +1,4 @@
+
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -8,7 +9,8 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Bot } from "lucide-react";
 
 import { ChrisAiChat } from "@/components/chris-ai";
 import { Toaster } from "@/components/ui/sonner";
@@ -42,6 +44,7 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
+
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
@@ -153,6 +156,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const [aiChatOpen, setAiChatOpen] = useState(true);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -160,10 +164,25 @@ function RootComponent() {
         <AuthProvider>
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
+
           <Toaster richColors position="top-center" />
-          <div className="fixed bottom-6 right-6 z-50 w-80 shadow-2xl rounded-2xl overflow-hidden border border-border bg-background/95 backdrop-blur-xl">
-            <ChrisAiChat />
-          </div>
+
+          {/* Global Expert AI floating window */}
+          {aiChatOpen ? (
+            <div className="fixed bottom-4 right-4 z-[100] h-[min(680px,calc(100dvh-2rem))] w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
+              <ChrisAiChat onMinimize={() => setAiChatOpen(false)} />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAiChatOpen(true)}
+              aria-label="Open Expert AI"
+              title="Open Expert AI"
+              className="fixed bottom-5 right-5 z-[100] flex h-14 w-14 items-center justify-center rounded-full border border-primary/40 bg-primary text-primary-foreground shadow-2xl transition-all hover:scale-105 hover:bg-primary/90"
+            >
+              <Bot className="h-7 w-7" />
+            </button>
+          )}
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
