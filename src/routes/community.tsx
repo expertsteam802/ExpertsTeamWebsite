@@ -17,16 +17,16 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/community")({
   head: () => ({
     meta: [
-      { title: "Community — ideas, quests & links | Experts Team 802" },
+      { title: "Community — ideas, quests & links | ExpertsTeam" },
       {
         name: "description",
         content:
-          "Share ideas, post public quests, drop useful links and discuss with the Experts Team 802 community.",
+          "Share ideas, post public quests, drop useful links and discuss with the ExpertsTeam community.",
       },
-      { property: "og:title", content: "Community — ideas, quests & links | Experts Team 802" },
+      { property: "og:title", content: "Community — ideas, quests & links | ExpertsTeam" },
       {
         property: "og:description",
-        content: "Post ideas, ask public quests and share links with the Experts Team 802 community.",
+        content: "Post ideas, ask public quests and share links with the ExpertsTeam community.",
       },
     ],
   }),
@@ -120,7 +120,7 @@ function CommunityPage() {
         <div className="animate-rise">
           <h1 className="font-display text-3xl font-semibold tracking-tight">Community</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Ideas, public quests and shared links from the Experts Team 802 community.
+            Ideas, public quests and shared links from the ExpertsTeam community.
           </p>
         </div>
 
