@@ -155,7 +155,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const [aiChatOpen, setAiChatOpen] = useState(true);
+  const [aiChatOpen, setAiChatOpen] = useState(false);
 
   return (
     <QueryClientProvider client={queryClient}>
