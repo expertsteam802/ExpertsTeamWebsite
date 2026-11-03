@@ -1,0 +1,91 @@
+# Database migration and security audit
+
+## Migration engines
+
+This repository contains two migration directories:
+
+- `supabase/migrations/` is the active Supabase migration sequence.
+- `drizzle/migrations/` contains a legacy Drizzle bootstrap migration.
+
+**Do not apply the Drizzle bootstrap after applying the Supabase migrations.** Both create some of the same tables (including `agent_projects`), and the Drizzle file is not a Supabase migration.
+
+The Supabase history includes the original August 2026 schema, subscription/invite/workspace additions, the November project/AI/community/contact migrations, and the new Studio subscription/security migrations. A manual SQL Editor run does not necessarily record a migration version in Supabase's migration ledger.
+
+## New migrations added for Studio
+
+Apply these in filename order if they are not already recorded as applied:
+
+1. `20261104000000_studio_subscription_plan.sql` — configurable $1 default Studio plan and request type.
+2. `20261104010000_studio_ai_credit_metering.sql` — atomic AI credit consumption.
+3. `20261104020000_studio_subscription_expiry.sql` — 30-day access and expired-plan fallback.
+4. `20261104030000_expertsteam_branding.sql` — restores ExpertsTeam site name.
+5. `20261104040000_profile_entitlement_security.sql` — blocks users from editing their own credits/subscription entitlements and removes first-signup admin escalation.
+6. `20261104050000_project_ownership_constraints.sql` — user deletion cascades for Studio projects and run records.
+
+The Studio payment workflow currently uses manual payment-reference submission and admin confirmation. Approval grants 30 days of access and the configured credit allowance. It is not automatic recurring billing; automatic renewal needs a payment processor secret and webhook configuration.
+
+## Read-only verification SQL
+
+Run these in Supabase SQL Editor to inspect migration history, row-level security and ownership. They do not modify data.
+
+```sql
+-- 1) Migration ledger (manual SQL Editor runs may not appear here).
+select version, name
+from supabase_migrations.schema_migrations
+order by version;
+
+-- 2) Tables with RLS disabled in public schema.
+select n.nspname as schema_name, c.relname as table_name
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public'
+  and c.relkind = 'r'
+  and c.relrowsecurity = false
+order by c.relname;
+
+-- 3) Current policies for public tables.
+select schemaname, tablename, policyname, roles, cmd, qual, with_check
+from pg_policies
+where schemaname in ('public', 'storage')
+order by schemaname, tablename, policyname;
+
+-- 4) Check for orphaned Studio projects/runs before validating new foreign keys.
+select count(*) as orphaned_projects
+from public.agent_projects p
+left join auth.users u on u.id = p.user_id
+where u.id is null;
+
+select count(*) as orphaned_runs
+from public.agent_project_runs r
+left join auth.users u on u.id = r.user_id
+where u.id is null;
+
+-- 5) Check current Studio subscription defaults and balances.
+select ai_subscription_price, ai_subscription_credits
+from public.site_settings
+where id = 1;
+
+select count(*) as studio_subscribers
+from public.profiles
+where ai_subscribed = true
+  and (ai_subscription_expires_at is null or ai_subscription_expires_at > now());
+
+-- 6) Confirm sensitive profile fields cannot be updated directly by ordinary users.
+select tgname, tgenabled
+from pg_trigger
+where tgrelid = 'public.profiles'::regclass
+  and tgname = 'profiles_guard_entitlements';
+```
+
+## Important deployment notes
+
+- Apply the new Supabase migrations before testing Studio credit balances or the new subscription plan.
+- If you applied migration SQL manually, compare the ledger query before using `supabase db push`; do not blindly mark versions applied or re-run non-idempotent legacy migrations.
+- The new project ownership constraints are added `NOT VALID` to avoid blocking a deployment if historical orphan rows exist. If both orphan counts are zero, validate them with:
+
+```sql
+alter table public.agent_projects validate constraint agent_projects_user_fk;
+alter table public.agent_project_runs validate constraint agent_project_runs_user_fk;
+```
+
+- Keep all AI provider API keys in Vercel server-side Environment Variables. Never put them in `VITE_*` variables or commit them.
