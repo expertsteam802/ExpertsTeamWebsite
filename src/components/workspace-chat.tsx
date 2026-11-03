@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Hash, Loader2, Lock, Plus, Send, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -69,6 +69,30 @@ export function WorkspaceChat() {
 
   const activeGroup = groups.find((group) => group.id === activeId) ?? groups[0] ?? null;
 
+  useEffect(() => {
+    if (!activeGroup?.id) return;
+    const channel = supabase
+      .channel("workspace-live-" + activeGroup.id)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "workspace_messages",
+          filter: "group_id=eq." + activeGroup.id,
+        },
+        () => {
+          void queryClient.invalidateQueries({
+            queryKey: ["workspace-messages", activeGroup.id],
+          });
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [activeGroup?.id, queryClient]);
+
   const {
     data: messages = [],
     isLoading: messagesLoading,
@@ -77,7 +101,6 @@ export function WorkspaceChat() {
   } = useQuery({
     queryKey: ["workspace-messages", activeGroup?.id],
     enabled: Boolean(activeGroup),
-    refetchInterval: 8000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workspace_messages")
