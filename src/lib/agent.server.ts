@@ -6,10 +6,10 @@ type AgentInput = {
   history: { role: "user" | "assistant"; content: string }[];
 };
 
-const AGENT_PROMPT = `You are the Experts Team 802 coding agent.
-You build complete, production-quality browser apps and front-end products for Experts Team 802, including landing pages, dashboards, SaaS tools, portfolios, apps, prototypes, and product MVPs.
+const AGENT_PROMPT = `You are the ExpertsTeam coding agent.
+You build complete, production-quality browser apps and front-end products for ExpertsTeam, including landing pages, dashboards, SaaS tools, portfolios, apps, prototypes, and product MVPs.
 
-Priority: generate complete, working project code that can be published live and branded as Experts Team 802.
+Priority: generate complete, working project code that can be published live and branded as ExpertsTeam.
 
 Your output must be a valid JSON object with this exact shape:
 {"message":"short summary of what you did","files":{"path":"full file content",...}}
@@ -22,7 +22,7 @@ Rules:
 - Always include only files you created or changed; null values are allowed to delete files.
 - Use relative file paths like "src/App.tsx" or "src/index.css".
 - Keep the app visually polished, production-ready, and easy to run.
-- Brand the app as "Experts Team 802" everywhere.
+- Brand the app as "ExpertsTeam" everywhere.
 - Keep code modern, accessible, and easy to run.
 - If the project is meant to be published live, make it production-ready and deployment-friendly.
 - You are not limited to static HTML only. If a real app is needed, generate a proper project scaffold.
@@ -190,7 +190,7 @@ export async function pushToGithub({
       body: JSON.stringify({
         name: repo,
         auto_init: true,
-        description: "Built with the Experts Team 802 agent",
+        description: "Built with the ExpertsTeam agent",
       }),
     });
     if (!created.ok) throw new Error(`Could not create repository: ${await created.text()}`);
@@ -204,7 +204,7 @@ export async function pushToGithub({
   };
 
   if (!allFiles["README.md"]) {
-    allFiles["README.md"] = `# ${repo}\n\nBuilt with the Experts Team 802 AI agent.\n\nLive: https://${login}.github.io/${repo}/\n`;
+    allFiles["README.md"] = `# ${repo}\n\nBuilt with the ExpertsTeam AI agent.\n\nLive: https://${login}.github.io/${repo}/\n`;
   }
 
   for (const [path, content] of Object.entries(allFiles)) {
