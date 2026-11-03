@@ -8,7 +8,6 @@ import {
   Compass,
   Cpu,
   Gamepad2,
-  Github,
   Layers3,
   MessageCircle,
   Play,
@@ -283,19 +282,21 @@ function Index() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <span className="text-xs font-semibold tracking-[0.22em] text-primary">FROM THE CREATOR</span>
-            <h2 className="mt-2 font-display text-3xl font-bold sm:text-4xl">Watch. Learn. Get inspired.</h2>
-            <p className="mt-2 max-w-xl text-sm text-muted-foreground">Explore the latest videos and practical ideas from the ExpertsTeam creator community.</p>
+      {videos && videos.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <span className="text-xs font-semibold tracking-[0.22em] text-primary">FROM THE CREATOR</span>
+              <h2 className="mt-2 font-display text-3xl font-bold sm:text-4xl">Watch. Learn. Get inspired.</h2>
+              <p className="mt-2 max-w-xl text-sm text-muted-foreground">Explore the latest videos and practical ideas from the ExpertsTeam creator community.</p>
+            </div>
+            <Link to="/videos" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">Browse all videos <ArrowRight className="h-4 w-4" /></Link>
           </div>
-          <Link to="/videos" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">Browse all videos <ArrowRight className="h-4 w-4" /></Link>
-        </div>
-        <div className="mt-8">
-          <VideoGrid videos={videos ?? []} />
-        </div>
-      </section>
+          <div className="mt-8">
+            <VideoGrid videos={videos} />
+          </div>
+        </section>
+      )}
 
       <section className="px-4 pb-20 sm:px-6 lg:px-8">
         <div className="relative mx-auto max-w-7xl overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 via-card to-accent/10 p-8 sm:p-12 lg:p-14">
