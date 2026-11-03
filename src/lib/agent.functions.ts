@@ -32,20 +32,30 @@ export const createCodingPlan = createServerFn({ method: "POST" })
     return parsed;
   })
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.rpc("consume_ai_credit");
-    if (error) throw new Error(error.message);
+    const { data: profile, error: profileError } = await context.supabase
+      .from("profiles").select("ai_credits").eq("id", context.userId).single();
+    if (profileError) throw new Error(profileError.message);
+    if (profile.ai_credits < 1) throw new Error("You have no AI credits remaining. Upgrade your Studio plan or wait for your allowance to renew.");
     const { createAgentPlan } = await import("./agent.server");
-    return createAgentPlan(data.prompt, data.files);
+    const plan = await createAgentPlan(data.prompt, data.files);
+    const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
+    if (creditError) throw new Error(creditError.message);
+    return plan;
   });
 
 export const runCodingAgent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => codingRequest.parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.rpc("consume_ai_credit");
-    if (error) throw new Error(error.message);
+    const { data: profile, error: profileError } = await context.supabase
+      .from("profiles").select("ai_credits").eq("id", context.userId).single();
+    if (profileError) throw new Error(profileError.message);
+    if (profile.ai_credits < 1) throw new Error("You have no AI credits remaining. Upgrade your Studio plan or wait for your allowance to renew.");
     const { runAgent } = await import("./agent.server");
-    return runAgent(data, process.env["GEMINI_API_KEY"]);
+    const result = await runAgent(data, process.env["GEMINI_API_KEY"]);
+    const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
+    if (creditError) throw new Error(creditError.message);
+    return result;
   });
 
 export const pushProjectToGithub = createServerFn({ method: "POST" })
