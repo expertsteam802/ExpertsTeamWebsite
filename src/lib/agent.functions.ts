@@ -42,10 +42,16 @@ export const createCodingPlan = createServerFn({ method: "POST" })
       .eq("id", context.userId)
       .single();
     if (profileError) throw new Error(profileError.message);
+    const { data: isAdmin, error: roleError } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (roleError) throw new Error(roleError.message);
     const studioActive =
-      profile.ai_subscribed &&
-      (!profile.ai_subscription_expires_at ||
-        new Date(profile.ai_subscription_expires_at).getTime() > Date.now());
+      Boolean(isAdmin) ||
+      (profile.ai_subscribed &&
+        (!profile.ai_subscription_expires_at ||
+          new Date(profile.ai_subscription_expires_at).getTime() > Date.now()));
     if (!studioActive)
       throw new Error(
         "Studio app creation requires an active $1 / 30-day plan. Use the Upgrade button in AI Studio to subscribe.",
@@ -71,10 +77,16 @@ export const runCodingAgent = createServerFn({ method: "POST" })
       .eq("id", context.userId)
       .single();
     if (profileError) throw new Error(profileError.message);
+    const { data: isAdmin, error: roleError } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (roleError) throw new Error(roleError.message);
     const studioActive =
-      profile.ai_subscribed &&
-      (!profile.ai_subscription_expires_at ||
-        new Date(profile.ai_subscription_expires_at).getTime() > Date.now());
+      Boolean(isAdmin) ||
+      (profile.ai_subscribed &&
+        (!profile.ai_subscription_expires_at ||
+          new Date(profile.ai_subscription_expires_at).getTime() > Date.now()));
     if (!studioActive)
       throw new Error(
         "Studio app creation requires an active $1 / 30-day plan. Use the Upgrade button in AI Studio to subscribe.",
