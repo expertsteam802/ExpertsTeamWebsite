@@ -5,6 +5,7 @@ import { Bot, Code2, MessageSquare, Sparkles } from "lucide-react";
 
 import { ChrisAiChat } from "@/components/chris-ai";
 import { CodeAgent } from "@/components/code-agent";
+import { UpgradeDialog } from "@/components/upgrade-dialog";
 
 export const Route = createFileRoute("/ai")({
   head: () => ({
@@ -33,7 +34,7 @@ function AiPage() {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold tracking-wide">
-                EXPERTS TEAM
+                EXPERTSTEAM
               </span>
               <span className="hidden rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[9px] font-semibold text-cyan-300 sm:inline">
                 WORKSPACE
@@ -74,6 +75,10 @@ function AiPage() {
             <span>AI Chat</span>
           </button>
         </nav>
+
+        <div className="flex items-center gap-2">
+          <UpgradeDialog />
+        </div>
 
         <div className="hidden items-center gap-2 text-xs text-emerald-300 sm:flex">
           <span className="h-2 w-2 rounded-full bg-emerald-400" />

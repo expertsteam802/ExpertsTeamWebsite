@@ -33,9 +33,11 @@ export const createCodingPlan = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const { data: profile, error: profileError } = await context.supabase
-      .from("profiles").select("ai_credits").eq("id", context.userId).single();
+      .from("profiles").select("ai_credits,ai_subscribed,ai_subscription_expires_at").eq("id", context.userId).single();
     if (profileError) throw new Error(profileError.message);
-    if (profile.ai_credits < 1) throw new Error("You have no AI credits remaining. Upgrade your Studio plan or wait for your allowance to renew.");
+    const studioActive = profile.ai_subscribed && (!profile.ai_subscription_expires_at || new Date(profile.ai_subscription_expires_at).getTime() > Date.now());
+    if (!studioActive) throw new Error("Studio app creation requires an active $1 / 30-day plan. Use the Upgrade button in AI Studio to subscribe.");
+    if (profile.ai_credits < 1) throw new Error("You have no AI credits remaining. Renew your Studio plan to continue building.");
     const { createAgentPlan } = await import("./agent.server");
     const plan = await createAgentPlan(data.prompt, data.files);
     const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
