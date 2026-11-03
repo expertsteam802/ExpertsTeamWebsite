@@ -306,6 +306,10 @@ export function CodeAgent() {
 
   function resetRuntimeForProjectChange() {
     stopDevServer();
+    stopTerminalSession();
+    setTerminalReady(false);
+    setTerminalInput("");
+    setTerminalOutput("");
     setRuntimeUrl(null);
     setRuntimeStatus("Not started");
     runtimeFilesRef.current = {};
