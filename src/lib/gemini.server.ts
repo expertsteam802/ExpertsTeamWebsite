@@ -2,7 +2,7 @@ import { compactSmartRequest } from "./smart-processing.server";
 
 export type GeminiContent = {
   role: "user" | "model";
-  parts: { text: string }[];
+  parts: { text?: string; inlineData?: { mimeType?: string; data?: string } }[];
 };
 
 export type GeminiRequest = {
@@ -53,7 +53,7 @@ function openAiMessages(request: GeminiRequest) {
   const recent = request.contents.slice(-4).map((item) => ({
     role: item.role === "model" ? "assistant" : "user",
     content: item.parts
-      .map((part) => part.text)
+      .map((part) => part.text ?? "")
       .join("\n")
       .slice(-2400),
   }));
