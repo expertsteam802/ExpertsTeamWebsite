@@ -266,7 +266,7 @@ function AdminPage() {
           const credits = Number(settings?.ai_subscription_credits ?? 500);
           const { error: profileError } = await supabase
             .from("profiles")
-            .update({ ai_subscribed: true, ai_credits: credits })
+            .update({ ai_subscribed: true, ai_credits: credits, ai_subscription_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() })
             .eq("id", request.user_id);
           if (profileError) throw profileError;
         } else {
