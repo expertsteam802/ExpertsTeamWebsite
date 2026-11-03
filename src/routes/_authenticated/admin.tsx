@@ -73,6 +73,26 @@ function AdminPage() {
     },
   });
 
+  const { data: memberRoles = [] } = useQuery({
+    queryKey: ["admin", "roles"],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("user_roles").select("user_id, role");
+      if (error) throw error;
+      return data as Array<{ user_id: string; role: string }>;
+    },
+  });
+
+  const { data: memberFileUsage = [] } = useQuery({
+    queryKey: ["admin", "file-usage"],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("files").select("user_id, size_bytes");
+      if (error) throw error;
+      return data as Array<{ user_id: string; size_bytes: number }>;
+    },
+  });
+
   const { data: sessions } = useQuery({
     queryKey: ["admin", "auth-events"],
     enabled: isAdmin,
@@ -229,6 +249,23 @@ function AdminPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const changeMemberRole = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: "admin" | "developer" | "member" }) => {
+      if (userId === user?.id) throw new Error("You cannot change your own role.");
+      const { error: deleteError } = await supabase.from("user_roles").delete().eq("user_id", userId);
+      if (deleteError) throw deleteError;
+      if (role !== "member") {
+        const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Member role updated");
+      void queryClient.invalidateQueries({ queryKey: ["admin", "roles"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   if (!isAdmin) {
     return (
       <PageShell>
@@ -313,10 +350,25 @@ function AdminPage() {
                     <p className="font-medium">{member.display_name || member.username}</p>
                     <p className="text-xs text-muted-foreground">
                       @{member.username} · joined {formatDate(member.created_at)} ·{" "}
-                      {formatBytes(member.storage_quota_bytes)} quota
+                      {formatBytes(memberFileUsage.filter((file) => file.user_id === member.id).reduce((total, file) => total + Number(file.size_bytes), 0))} used / {formatBytes(member.storage_quota_bytes)} quota
                       {member.is_subscribed ? " · subscriber" : ""}
                     </p>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      aria-label={`Role for ${member.username}`}
+                      value={memberRoles.find((item) => item.user_id === member.id)?.role ?? "member"}
+                      disabled={member.id === user?.id || changeMemberRole.isPending}
+                      onChange={(event) => changeMemberRole.mutate({
+                        userId: member.id,
+                        role: event.target.value as "admin" | "developer" | "member",
+                      })}
+                      className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                    >
+                      <option value="member">Member</option>
+                      <option value="developer">Developer</option>
+                      <option value="admin">Admin</option>
+                    </select>
                   {member.id !== user?.id && (
                     <Button
                       variant="destructive"
@@ -327,6 +379,7 @@ function AdminPage() {
                       Delete user
                     </Button>
                   )}
+                  </div>
                 </Card>
               ))}
             </div>
