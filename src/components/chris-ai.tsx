@@ -97,7 +97,7 @@ export function ChrisAiChat({
 }: {
   onMinimize?: () => void;
 } = {}) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const queryClient = useQueryClient();
   const generateImage = useServerFn(generateExpertImage);
   const [input, setInput] = useState("");
@@ -262,7 +262,10 @@ export function ChrisAiChat({
       setAttachments([]);
       setStreamingReply("");
     },
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
     onError: (error: Error) => {
       setStreamingReply("");
       toast.error(error.message);
@@ -346,7 +349,7 @@ export function ChrisAiChat({
           </span>
           <div>
             <p className="text-sm font-semibold">Expert AI</p>
-            <p className="text-xs text-muted-foreground">File analysis · image ideas · app building</p>
+            <p className="text-xs text-muted-foreground">File analysis · image ideas · app building · {profile?.ai_credits ?? 0} AI credits</p>
           </div>
         </div>
         
