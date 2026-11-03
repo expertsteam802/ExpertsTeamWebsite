@@ -71,6 +71,9 @@ export const Route = createFileRoute("/api/ai/stream")({
 
           const supabase = createClient(supabaseUrl, supabaseKey, {
             auth: { persistSession: false, autoRefreshToken: false },
+            // Forward the already-validated user's JWT to PostgREST so RPCs run
+            // with the authenticated role rather than the anonymous role.
+            global: { headers: { Authorization: `Bearer ${token}` } },
           });
           const { data: authData, error: authError } = await supabase.auth.getUser(token);
           if (authError || !authData.user) {
