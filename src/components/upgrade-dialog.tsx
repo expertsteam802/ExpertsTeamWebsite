@@ -114,7 +114,7 @@ export function UpgradeDialog() {
             </DialogTitle>
             <DialogDescription>
               {planKind === "ai"
-                ? `A 30-day Studio subscription for ${price.toFixed(2)} unlocks app creation and ${Number(settings.ai_subscription_credits) || 500} AI credits.`
+                ? `A 30-day Studio plan for ${price.toFixed(2)} unlocks the app builder and ${Number(settings.ai_subscription_credits) || 500} AI credits. Expert AI chat has a separate starter allowance.`
                 : `One payment of ${price.toFixed(2)} raises your upload limit from ${formatBytes(profile?.storage_quota_bytes ?? 209715200)} to ${formatBytes(settings.subscription_quota_bytes)}.`}
             </DialogDescription>
           </DialogHeader>
