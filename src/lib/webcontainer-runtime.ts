@@ -170,6 +170,20 @@ export async function mountProjectFiles(
 
   log(callbacks, "Preparing project files...\n");
 
+  // Remove files from the previously opened project while retaining installed
+  // dependencies so switching projects does not require a full cold install.
+  const existingEntries = await instance.fs.readdir(instance.workdir);
+  await Promise.all(
+    existingEntries
+      .filter((entry) => entry !== "node_modules")
+      .map((entry) =>
+        instance.fs.rm(`${instance.workdir}/${entry}`, {
+          recursive: true,
+          force: true,
+        }),
+      ),
+  );
+
   await instance.mount(createFileTree(projectFiles));
 
   log(callbacks, "Project files loaded successfully.\n");
@@ -187,7 +201,7 @@ export async function installDependencies(
 
   log(callbacks, "\nInstalling project dependencies...\n");
 
-  const process = await instance.spawn("npm", ["install"]);
+  const process = await instance.spawn("npm", ["install", "--no-audit", "--no-fund"]);
 
   void process.output.pipeTo(
     new WritableStream({
@@ -305,8 +319,24 @@ export async function writeProjectFile(
 ) {
   const instance = await bootWebContainer(callbacks);
   const safePath = normalizePath(path);
+  const parts = safePath.split("/");
+  let directory = instance.workdir;
 
-  await instance.fs.writeFile(safePath, contents);
+  for (const part of parts.slice(0, -1)) {
+    directory = `${directory}/${part}`;
+    await instance.fs.mkdir(directory, { recursive: true });
+  }
+
+  await instance.fs.writeFile(`${instance.workdir}/${safePath}`, contents);
+}
+
+export async function removeProjectFile(path: string) {
+  const instance = await bootWebContainer();
+  const safePath = normalizePath(path);
+  await instance.fs.rm(`${instance.workdir}/${safePath}`, {
+    recursive: true,
+    force: true,
+  });
 }
 
 /**
