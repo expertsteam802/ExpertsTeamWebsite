@@ -14,7 +14,7 @@ const requestSchema = z
       .array(
         z.object({
           role: z.string().max(20),
-          content: z.string().max(4000),
+          content: z.string().max(1800),
         }),
       )
       .max(10)
@@ -25,7 +25,7 @@ const requestSchema = z
           name: z.string().max(255),
           mimeType: z.string().max(150).optional(),
           text: z.string().max(200000).optional(),
-          dataUrl: z.string().max(4000000).optional(),
+          dataUrl: z.string().max(1800000).optional(),
         }),
       )
       .max(5)
@@ -36,7 +36,7 @@ const requestSchema = z
       (total, file) => total + (file.dataUrl?.length ?? 0) + (file.text?.length ?? 0),
       0,
     );
-    if (totalAttachmentBytes > 5000000) {
+    if (totalAttachmentBytes > 2200000) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Attachments are too large. Please upload smaller files.",
@@ -116,7 +116,7 @@ export const Route = createFileRoute("/api/ai/stream")({
           const attachmentParts = attachments.flatMap((file) => {
             const parts: Array<Record<string, unknown>> = [{ text: `Attachment: ${file.name}` }];
             if (file.text) {
-              parts.push({ text: file.text.slice(0, 12000) });
+              parts.push({ text: file.text.slice(0, 3500) });
             } else if (file.dataUrl) {
               const match = file.dataUrl.match(/^data:([^;,]+);base64,([\s\S]+)$/);
               if (match) {
@@ -135,9 +135,9 @@ export const Route = createFileRoute("/api/ai/stream")({
             return parts;
           });
           const contents = [
-            ...history.slice(-8).map((message) => ({
+            ...history.slice(-4).map((message) => ({
               role: message.role === "ai" || message.role === "assistant" ? "model" : "user",
-              parts: [{ text: message.content.slice(0, 4000) }],
+              parts: [{ text: message.content.slice(-1200) }],
             })),
             { role: "user", parts: [{ text: prompt }, ...attachmentParts] },
           ];
@@ -145,7 +145,7 @@ export const Route = createFileRoute("/api/ai/stream")({
           const systemText =
             "You are Expert AI for ExpertsTeam. Be accurate, direct, practical, and helpful. Stream your answer naturally. Use markdown and code fences when useful. Never claim access to private user data unless it was supplied in the conversation.";
           const providerOrder = (
-            process.env["AI_PROVIDER_ORDER"] || "gemini,groq,mistral,openrouter,cloudflare"
+            process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter"
           )
             .split(",")
             .map((item) => item.trim().toLowerCase())
@@ -165,7 +165,7 @@ export const Route = createFileRoute("/api/ai/stream")({
                   body: JSON.stringify({
                     systemInstruction: { parts: [{ text: systemText }] },
                     contents,
-                    generationConfig: { maxOutputTokens: 8192 },
+                    generationConfig: { maxOutputTokens: 1800 },
                   }),
                   signal: request.signal,
                 },
