@@ -303,6 +303,18 @@ function AdminPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const deleteUpgradeRequest = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("subscription_requests").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Payment request deleted");
+      void queryClient.invalidateQueries({ queryKey: ["admin", "upgrades"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const { data: projectRequests } = useQuery({
     queryKey: ["admin", "project-requests"],
     enabled: isAdmin,
@@ -339,6 +351,18 @@ function AdminPage() {
     },
     onSuccess: (_data, variables) => {
       toast.success(variables.approve ? "Developer accepted" : "Application declined");
+      void queryClient.invalidateQueries({ queryKey: ["admin", "project-requests"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const deleteProjectRequest = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("project_requests").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Developer request deleted");
       void queryClient.invalidateQueries({ queryKey: ["admin", "project-requests"] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -825,25 +849,39 @@ function AdminPage() {
                             <p className="mt-1 text-xs text-muted-foreground">“{request.note}”</p>
                           )}
                         </div>
-                        {request.status === "pending" && (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              disabled={reviewUpgrade.isPending}
-                              onClick={() => reviewUpgrade.mutate({ request, approve: true })}
-                            >
-                              Confirm payment
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={reviewUpgrade.isPending}
-                              onClick={() => reviewUpgrade.mutate({ request, approve: false })}
-                            >
-                              Decline
-                            </Button>
-                          </div>
-                        )}
+                        <div className="flex flex-wrap gap-2">
+                          {request.status === "pending" && (
+                            <>
+                              <Button
+                                size="sm"
+                                disabled={reviewUpgrade.isPending}
+                                onClick={() => reviewUpgrade.mutate({ request, approve: true })}
+                              >
+                                Confirm payment
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={reviewUpgrade.isPending}
+                                onClick={() => reviewUpgrade.mutate({ request, approve: false })}
+                              >
+                                Decline
+                              </Button>
+                            </>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            disabled={deleteUpgradeRequest.isPending}
+                            onClick={() => {
+                              if (window.confirm("Delete this payment request permanently?")) {
+                                deleteUpgradeRequest.mutate(request.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
+                          </Button>
+                        </div>
                       </div>
                     </Card>
                   ))}
@@ -880,29 +918,43 @@ function AdminPage() {
                           </p>
                           <p className="mt-1 text-sm text-muted-foreground">{request.summary}</p>
                         </div>
-                        {request.status === "pending" && (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              disabled={reviewProject.isPending}
-                              onClick={() =>
-                                reviewProject.mutate({ id: request.id, approve: true })
+                        <div className="flex flex-wrap gap-2">
+                          {request.status === "pending" && (
+                            <>
+                              <Button
+                                size="sm"
+                                disabled={reviewProject.isPending}
+                                onClick={() =>
+                                  reviewProject.mutate({ id: request.id, approve: true })
+                                }
+                              >
+                                Accept
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={reviewProject.isPending}
+                                onClick={() =>
+                                  reviewProject.mutate({ id: request.id, approve: false })
+                                }
+                              >
+                                Decline
+                              </Button>
+                            </>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            disabled={deleteProjectRequest.isPending}
+                            onClick={() => {
+                              if (window.confirm("Delete this developer request permanently?")) {
+                                deleteProjectRequest.mutate(request.id);
                               }
-                            >
-                              Accept
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={reviewProject.isPending}
-                              onClick={() =>
-                                reviewProject.mutate({ id: request.id, approve: false })
-                              }
-                            >
-                              Decline
-                            </Button>
-                          </div>
-                        )}
+                            }}
+                          >
+                            <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
+                          </Button>
+                        </div>
                       </div>
                     </Card>
                   ))}
