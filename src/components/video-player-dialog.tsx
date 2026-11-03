@@ -27,31 +27,84 @@ declare global {
   }
 }
 let youtubeApiPromise: Promise<YouTubeApi> | null = null;
+
+/**
+ * Load the YouTube IFrame API safely, including when another component has
+ * already inserted the script or its ready callback fired before this player
+ * mounted. Always time out instead of leaving the video dialog stuck loading.
+ */
 function loadYouTubeApi(): Promise<YouTubeApi> {
   if (window.YT?.Player) return Promise.resolve(window.YT);
-  if (!youtubeApiPromise) {
-    youtubeApiPromise = new Promise((resolve, reject) => {
-      const previousCallback = window.onYouTubeIframeAPIReady;
-      window.onYouTubeIframeAPIReady = () => {
-        previousCallback?.();
-        if (window.YT?.Player) resolve(window.YT);
-        else reject(new Error("YouTube player API did not initialize."));
-      };
-      let script = document.querySelector<HTMLScriptElement>(
-        'script[src="https://www.youtube.com/iframe_api"]',
-      );
-      if (!script) {
-        script = document.createElement("script");
-        script.src = "https://www.youtube.com/iframe_api";
-        script.async = true;
-        script.onerror = () => reject(new Error("Could not load the YouTube player."));
-        document.head.appendChild(script);
+  if (youtubeApiPromise) return youtubeApiPromise;
+
+  youtubeApiPromise = new Promise<YouTubeApi>((resolve, reject) => {
+    const scriptUrl = "https://www.youtube.com/iframe_api";
+    let settled = false;
+    let pollId: number | undefined;
+    let timeoutId: number | undefined;
+    const previousCallback = window.onYouTubeIframeAPIReady;
+
+    const cleanup = () => {
+      if (pollId !== undefined) window.clearInterval(pollId);
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+    };
+
+    const finish = (error?: Error) => {
+      if (settled) return;
+      const api = window.YT;
+      if (!error && api?.Player) {
+        settled = true;
+        cleanup();
+        resolve(api);
+      } else if (error) {
+        settled = true;
+        cleanup();
+        if (window.onYouTubeIframeAPIReady === handleApiReady) {
+          window.onYouTubeIframeAPIReady = previousCallback;
+        }
+        reject(error);
       }
-    }).catch((error: unknown) => {
-      youtubeApiPromise = null;
-      throw error;
-    });
-  }
+    };
+
+    const checkReady = () => {
+      if (window.YT?.Player) finish();
+    };
+
+    const handleApiReady = () => {
+      try {
+        previousCallback?.();
+      } finally {
+        checkReady();
+      }
+    };
+
+    // Register before appending the script to avoid missing a fast callback.
+    window.onYouTubeIframeAPIReady = handleApiReady;
+    let script = document.querySelector<HTMLScriptElement>(`script[src="${scriptUrl}"]`);
+
+    if (!script) {
+      script = document.createElement("script");
+      script.src = scriptUrl;
+      script.async = true;
+      script.onerror = () => finish(new Error("Could not load the YouTube player. Check your connection or content blockers."));
+      document.head.appendChild(script);
+    } else {
+      script.addEventListener("error", () => {
+        finish(new Error("Could not load the YouTube player. Check your connection or content blockers."));
+      }, { once: true });
+    }
+
+    // Covers an existing script whose ready callback was fired before we mounted.
+    checkReady();
+    pollId = window.setInterval(checkReady, 100);
+    timeoutId = window.setTimeout(() => {
+      finish(new Error("YouTube's player took too long to load. Refresh the page and try again."));
+    }, 15000);
+  }).catch((error: unknown) => {
+    youtubeApiPromise = null;
+    throw error;
+  });
+
   return youtubeApiPromise;
 }
 function playerErrorMessage(code: number) {
@@ -67,6 +120,7 @@ function playerErrorMessage(code: number) {
 type Props = { videoId: string | null; title: string; onClose: () => void };
 export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
   const playerContainerRef = useRef<HTMLDivElement>(null);
+  const adContainerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YouTubePlayer | null>(null);
   const countedRef = useRef(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
@@ -82,7 +136,7 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
   // Load the supplied Adsterra display unit inside the pre-video unlock screen.
   useEffect(() => {
     if (!videoId || unlockedVideoId === videoId) return;
-    const container = document.getElementById("container-e6d8442231a964256120f8359c3b588e");
+    const container = adContainerRef.current;
     if (!container) return;
     container.replaceChildren();
 
@@ -181,6 +235,7 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
               </div>
               <div
                 id="container-e6d8442231a964256120f8359c3b588e"
+                ref={adContainerRef}
                 className="flex min-h-[90px] w-full max-w-full items-center justify-center overflow-hidden rounded-lg"
               />
               <Button onClick={() => setUnlockedVideoId(videoId)}>Continue to video</Button>
