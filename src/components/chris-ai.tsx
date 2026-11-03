@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bot,
   Copy,
+  Home,
   ImagePlus,
   Loader2,
   Minimize2,
@@ -429,6 +430,14 @@ export function ChrisAiChat({
               <Minimize2 className="h-4 w-4" />
             </Button>
           )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.location.assign("/")}
+            title="Back to the ExpertsTeam website"
+          >
+            <Home className="mr-1.5 h-4 w-4" /> Back to website
+          </Button>
           <Button variant="secondary" size="sm" onClick={newChat} disabled={send.isPending}>
             New chat
           </Button>
