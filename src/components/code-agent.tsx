@@ -204,7 +204,7 @@ export function CodeAgent() {
 
       if (runtimeInstallKeyRef.current !== installKey) {
         setRuntimeStatus("Installing npm packages…");
-        const exitCode = await installDependencies(callbacks);
+        const exitCode = await installDependencies(callbacks, installKey);
         if (exitCode !== 0) {
           throw new Error("Package installation failed. Review the Console for details.");
         }
