@@ -8,7 +8,7 @@ import {
   Plus, RefreshCw, Save, Send, Settings2, Smartphone, Square,
   Sparkles, Tablet, Terminal, Trash2, X, Zap
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,16 @@ type ProjectRow = {
 };
 
 type Panel = "preview" | "code" | "console" | "terminal";
+
+const EDITOR_SNIPPETS = [
+  { pack: "react", label: "React component", value: "export default function App() {\\n  return (\\n    <main>\\n      <h1>Hello, ExpertsTeam</h1>\\n    </main>\\n  );\\n}" },
+  { pack: "react", label: "useState hook", value: "const [value, setValue] = useState(\\"\\");" },
+  { pack: "react", label: "useEffect hook", value: "useEffect(() => {\\n  // Run side effects here\\n}, []);" },
+  { pack: "html", label: "HTML page", value: "<!doctype html>\\n<html lang=\\"en\\">\\n  <head>\\n    <meta charset=\\"UTF-8\\" />\\n    <meta name=\\"viewport\\" content=\\"width=device-width, initial-scale=1.0\\" />\\n    <title>New page</title>\\n  </head>\\n  <body>\\n    <main></main>\\n  </body>\\n</html>" },
+  { pack: "html", label: "Accessible button", value: "<button type=\\"button\\" aria-label=\\"Action\\">Click me</button>" },
+  { pack: "css", label: "Responsive layout", value: ".container {\\n  display: grid;\\n  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));\\n  gap: 1rem;\\n}" },
+  { pack: "css", label: "Mobile breakpoint", value: "@media (max-width: 640px) {\\n  .container {\\n    grid-template-columns: 1fr;\\n  }\\n}" },
+];
 
 const suggestions = [
   "Build a modern landing page for my business",
@@ -90,6 +100,9 @@ export function CodeAgent() {
   const [assistantOpen, setAssistantOpen] = useState(true);
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [newFileName, setNewFileName] = useState("");
+  const [extensionsOpen, setExtensionsOpen] = useState(false);
+  const [completionsOpen, setCompletionsOpen] = useState(false);
+  const [enabledEditorPacks, setEnabledEditorPacks] = useState<string[]>(["react", "html", "css"]);
   const [projectNameEditing, setProjectNameEditing] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [runtimeBusy, setRuntimeBusy] = useState(false);
@@ -104,6 +117,7 @@ export function CodeAgent() {
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
   const srcDoc = useMemo(() => buildSrcDocWithConsole(files), [files]);
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
@@ -551,6 +565,67 @@ export function CodeAgent() {
 
     await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
     toast.success("Project deleted");
+  }
+
+  const availableEditorSnippets = EDITOR_SNIPPETS.filter((snippet) =>
+    enabledEditorPacks.includes(snippet.pack) &&
+    (snippet.pack === "react" ? /\\.tsx?$|\\.jsx?$/.test(activeFile) :
+      snippet.pack === "html" ? activeFile.endsWith(".html") :
+      activeFile.endsWith(".css")),
+  );
+
+  function insertEditorSnippet(value: string) {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+    const nextValue = editor.value.slice(0, start) + value + editor.value.slice(end);
+    updateFile(nextValue);
+    setCompletionsOpen(false);
+    window.setTimeout(() => {
+      editor.focus();
+      editor.setSelectionRange(start + value.length, start + value.length);
+    }, 0);
+  }
+
+  function handleEditorKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    const editor = event.currentTarget;
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+      event.preventDefault();
+      saveMutation.mutate();
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && event.code === "Space") {
+      event.preventDefault();
+      setCompletionsOpen(true);
+      return;
+    }
+    if (event.key === "Tab") {
+      event.preventDefault();
+      editor.setRangeText("  ", editor.selectionStart, editor.selectionEnd, "end");
+      updateFile(editor.value);
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const before = editor.value.slice(0, editor.selectionStart);
+      const line = before.split("\\n").pop() ?? "";
+      const indent = line.match(/^\\s*/)?.[0] ?? "";
+      const extraIndent = /[({[]\\s*$/.test(before) ? "  " : "";
+      editor.setRangeText("\\n" + indent + extraIndent, editor.selectionStart, editor.selectionEnd, "end");
+      updateFile(editor.value);
+      return;
+    }
+    const pairs: Record<string, string> = { "(": ")", "[": "]", "{": "}", '"': '"', "'": "'" };
+    const closing = pairs[event.key];
+    if (closing && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+      editor.setRangeText(event.key + closing, start, end, "end");
+      editor.setSelectionRange(start + 1, start + 1);
+      updateFile(editor.value);
+    }
   }
 
   function createFile() {
@@ -1006,21 +1081,35 @@ export function CodeAgent() {
 
               {panel === "code" && (
                 <>
-                  <div className="flex h-10 items-center justify-between border-b border-white/[0.07] px-4">
-                    <span className="flex items-center gap-2 text-xs text-slate-300">
+                  <div className="flex h-10 items-center justify-between gap-2 border-b border-white/[0.07] px-4">
+                    <span className="flex min-w-0 items-center gap-2 truncate text-xs text-slate-300">
                       <File className={`h-3.5 w-3.5 ${fileIcon(activeFile)}`} />
                       {activeFile || "Select a file"}
                     </span>
-                    <span className="text-[10px] text-slate-600">Editor</span>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => setCompletionsOpen((value) => !value)} className="h-7 px-2 text-[10px] text-slate-400">Autocomplete</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setExtensionsOpen(true)} className="h-7 px-2 text-[10px] text-slate-400"><Settings2 className="mr-1 h-3 w-3" /> Extensions</Button>
+                    </div>
                   </div>
-                  <div className="flex min-h-0 flex-1 overflow-hidden bg-[#080e19]">
+                  <div className="relative flex min-h-0 flex-1 overflow-hidden bg-[#080e19]">
                     <div className="select-none border-r border-white/[0.06] px-3 py-3 text-right font-mono text-xs leading-6 text-slate-600">
                       {Array.from(
                         { length: Math.max(1, (files[activeFile] ?? "").split("\n").length) },
                         (_, index) => <div key={index}>{index + 1}</div>,
                       )}
                     </div>
+                    {completionsOpen && (
+                      <div className="absolute right-3 top-3 z-20 w-64 overflow-hidden rounded-lg border border-slate-700 bg-[#111c2c] shadow-2xl">
+                        <div className="border-b border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Built-in completions · Ctrl+Space</div>
+                        {availableEditorSnippets.map((snippet) => (
+                          <button key={snippet.label} type="button" onClick={() => insertEditorSnippet(snippet.value)} className="block w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-cyan-400/10">{snippet.label}<span className="ml-2 text-[10px] text-slate-500">{snippet.pack}</span></button>
+                        ))}
+                        {!availableEditorSnippets.length && <p className="px-3 py-3 text-xs text-slate-500">Enable a matching snippet pack in Extensions.</p>}
+                      </div>
+                    )}
                     <textarea
+                      ref={editorRef}
+                      onKeyDown={handleEditorKeyDown}
                       aria-label="Code editor"
                       value={files[activeFile] ?? ""}
                       onChange={(event) => updateFile(event.target.value)}
@@ -1303,6 +1392,31 @@ export function CodeAgent() {
               <Plus className="mr-2 h-4 w-4" />
               Create file
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Built-in editor extension packs */}
+      <Dialog open={extensionsOpen} onOpenChange={setExtensionsOpen}>
+        <DialogContent className="border-slate-700 bg-[#101a29] text-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editor extensions</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-slate-400">Enable lightweight built-in completion and snippet packs for the languages you use.</p>
+          <div className="space-y-2">
+            {[
+              { id: "react", title: "React & TypeScript", detail: "Components and common React hooks" },
+              { id: "html", title: "HTML & accessibility", detail: "Page structure and accessible elements" },
+              { id: "css", title: "CSS & responsive layouts", detail: "Grid, media queries and layout snippets" },
+            ].map((pack) => {
+              const enabled = enabledEditorPacks.includes(pack.id);
+              return (
+                <button key={pack.id} type="button" onClick={() => setEnabledEditorPacks((current) => enabled ? current.filter((item) => item !== pack.id) : [...current, pack.id])} className="flex w-full items-center justify-between rounded-lg border border-white/10 p-3 text-left hover:bg-white/5">
+                  <span><span className="block text-sm font-medium">{pack.title}</span><span className="mt-1 block text-xs text-slate-500">{pack.detail}</span></span>
+                  <span className={enabled ? "rounded-full bg-emerald-400/15 px-2 py-1 text-[10px] text-emerald-300" : "rounded-full bg-white/5 px-2 py-1 text-[10px] text-slate-500"}>{enabled ? "Enabled" : "Disabled"}</span>
+                </button>
+              );
+            })}
           </div>
         </DialogContent>
       </Dialog>
