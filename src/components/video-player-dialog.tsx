@@ -185,9 +185,7 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
                 id="container-e6d8442231a964256120f8359c3b588e"
                 className="flex min-h-[90px] w-full max-w-full items-center justify-center overflow-hidden rounded-lg"
               />
-              <Button onClick={() => setUnlockedVideoId(videoId)}>
-                Continue to video
-              </Button>
+              <Button onClick={() => setUnlockedVideoId(videoId)}>Continue to video</Button>
               <p className="text-xs text-muted-foreground">
                 The ad may not appear if no advertisement is available or your browser blocks it.
               </p>
