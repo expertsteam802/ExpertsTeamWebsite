@@ -94,7 +94,6 @@ alter table public.agent_project_runs validate constraint agent_project_runs_use
 
 - Keep all AI provider API keys in Vercel server-side Environment Variables. Never put them in `VITE_*` variables or commit them.
 
-
 ## Platform follow-up migrations (2026-11-03)
 
 - `20261103195458_admin_delete_subscription_requests.sql`: permits admins to delete subscription payment requests, with RLS limited to the admin role.
