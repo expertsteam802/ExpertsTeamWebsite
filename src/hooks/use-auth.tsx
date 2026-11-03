@@ -13,6 +13,8 @@ export type Profile = {
   theme: string;
   storage_quota_bytes: number;
   is_subscribed: boolean;
+  ai_subscribed: boolean;
+  ai_credits: number;
   created_at: string;
 };
 
