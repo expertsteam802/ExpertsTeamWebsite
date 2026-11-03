@@ -497,6 +497,8 @@ function AdminPage() {
                       ["owner_email", "Owner email"],
                       ["subscription_price", "Subscription price (USD)"],
                       ["subscription_quota_bytes", "Subscriber storage (bytes)"],
+                      ["ai_subscription_price", "Studio plan price (USD/month)"],
+                      ["ai_subscription_credits", "Studio AI credits per month"],
                       ["ai_subscription_price", "Studio subscription price (USD/month)"],
                       ["ai_subscription_credits", "Studio AI credits per subscription"],
                       ["payout_account", "Payout account (PayPal email / card account)"],
