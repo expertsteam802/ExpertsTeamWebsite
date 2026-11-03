@@ -54,7 +54,7 @@ test("coding agent uses Gemini and returns complete files", async () => {
   const result = await runAgent(input, "test-key");
 
   assert.deepEqual(urls, [
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent",
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
   ]);
   assert.equal(result.files["index.html"], "<h1>Game</h1>");
 });
