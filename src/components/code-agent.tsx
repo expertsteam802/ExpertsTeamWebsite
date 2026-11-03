@@ -163,6 +163,8 @@ export function CodeAgent() {
 
     setRuntimeBusy(true);
     setRuntimeStatus("Starting browser runtime…");
+    setRuntimeUrl(null);
+    stopDevServer();
     setPanel("preview");
     setLogs([]);
 
@@ -186,6 +188,7 @@ export function CodeAgent() {
     };
 
     try {
+      await runtimeSyncQueueRef.current;
       await mountProjectFiles(files, callbacks);
       runtimeFilesRef.current = { ...files };
 
