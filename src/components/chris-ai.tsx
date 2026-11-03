@@ -92,7 +92,11 @@ function loadFileForAi(file: File): Promise<UploadedFile> {
   });
 }
 
-export function ChrisAiChat() {
+export function ChrisAiChat({
+  onMinimize,
+}: {
+  onMinimize?: () => void;
+} = {}) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const ask = useServerFn(askChrisAi);
