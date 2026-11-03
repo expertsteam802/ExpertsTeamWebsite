@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/learn")({
   head: () => ({
     meta: [
-      { title: "Learn to code with Chris — Chris Programs" },
+      { title: "Learn to code with Chris — ExpertsTeam" },
       {
         name: "description",
         content:
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/learn")({
       { property: "og:title", content: "Learn to code with Chris" },
       {
         property: "og:description",
-        content: "Free coding basics, books and lessons on Chris Programs.",
+        content: "Free coding basics, books and lessons on ExpertsTeam.",
       },
     ],
   }),
