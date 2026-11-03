@@ -258,11 +258,20 @@ export async function startDevServer(
   log(callbacks, `\nStarting project with npm run ${scriptName}...\n`);
 
   let serverReadyHandler: (() => void) | undefined;
+  let timeoutId: ReturnType<typeof setTimeout>;
 
   const serverReady = new Promise<{ port: number; url: string }>(
     (resolve, reject) => {
+      timeoutId = setTimeout(() => {
+        serverReadyHandler?.();
+        serverReadyHandler = undefined;
+        reject(new Error("The development server did not become ready within 90 seconds. Check the Console for errors."));
+      }, 90000);
+
       serverReadyHandler = instance.on("server-ready", (port, url) => {
         serverReadyHandler?.();
+        serverReadyHandler = undefined;
+        clearTimeout(timeoutId);
         callbacks.onServerReady?.(port, url);
         log(callbacks, `\nPreview ready at ${url}\n`);
         resolve({ port, url });
@@ -289,17 +298,21 @@ export async function startDevServer(
           const runningProcess = devProcess;
 
           void runningProcess.exit.then((exitCode) => {
-            if (exitCode !== 0) {
-              serverReadyHandler?.();
+            if (serverReadyHandler) {
+              serverReadyHandler();
+              serverReadyHandler = undefined;
+              clearTimeout(timeoutId);
               reject(
                 new Error(
-                  `Development server stopped with exit code ${exitCode}. Check the terminal output.`,
+                  `Development server exited with code ${exitCode} before opening a preview. Check the terminal output.`,
                 ),
               );
             }
           });
         } catch (error) {
           serverReadyHandler?.();
+          serverReadyHandler = undefined;
+          clearTimeout(timeoutId);
           reject(error);
         }
       })();
