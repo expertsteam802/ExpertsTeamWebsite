@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ShieldAlert } from "lucide-react";
+import { Check, Mail, ShieldAlert, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -109,6 +109,44 @@ function AdminPage() {
       };
     },
   });
+  const { data: contactMessages = [], isLoading: contactMessagesLoading, isError: contactMessagesError } = useQuery({
+    queryKey: ["admin", "contact-messages"],
+    enabled: isAdmin,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contact_messages")
+        .select("id, sender_name, sender_email, subject, message, read_at, created_at")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const updateContactMessage = useMutation({
+    mutationFn: async ({ id, read }: { id: string; read: boolean }) => {
+      const { error } = await supabase
+        .from("contact_messages")
+        .update({ read_at: read ? new Date().toISOString() : null })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["admin", "contact-messages"] }),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const deleteContactMessage = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("contact_messages").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Contact message deleted");
+      void queryClient.invalidateQueries({ queryKey: ["admin", "contact-messages"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const { data: sessions } = useQuery({
     queryKey: ["admin", "auth-events"],
     enabled: isAdmin,
@@ -318,6 +356,7 @@ function AdminPage() {
             <TabsTrigger value="sessions">Sign-in log</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="developers">Developer requests</TabsTrigger>
+            <TabsTrigger value="contact">Contact messages{contactMessages.filter((item) => !item.read_at).length > 0 ? ` (${contactMessages.filter((item) => !item.read_at).length})` : ""}</TabsTrigger>
             <TabsTrigger value="system">System status</TabsTrigger>
           </TabsList>
 
@@ -513,6 +552,49 @@ function AdminPage() {
               )}
             </div>
           </TabsContent>
+          <TabsContent value="contact" className="pt-6">
+            <div className="space-y-3">
+              {contactMessagesLoading && <p className="text-sm text-muted-foreground">Loading contact messages…</p>}
+              {contactMessagesError && (
+                <Card className="p-4">
+                  <p className="text-sm text-destructive">Could not load contact messages. Check that the latest database migration has been applied.</p>
+                </Card>
+              )}
+              {!contactMessagesLoading && !contactMessagesError && contactMessages.length === 0 && (
+                <Card className="p-6 text-center">
+                  <Mail className="mx-auto h-7 w-7 text-muted-foreground" />
+                  <p className="mt-2 text-sm text-muted-foreground">No contact messages yet.</p>
+                </Card>
+              )}
+              {contactMessages.map((item) => (
+                <Card key={item.id} className={`gap-3 p-4 ${item.read_at ? "opacity-80" : "border-primary/40"}`}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold">{item.subject}</p>
+                        {!item.read_at && <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">New</span>}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {item.sender_name} · <a className="text-primary hover:underline" href={`mailto:${item.sender_email}`}>{item.sender_email}</a> · {formatDate(item.created_at)}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" disabled={updateContactMessage.isPending}
+                        onClick={() => updateContactMessage.mutate({ id: item.id, read: !item.read_at })}>
+                        <Check className="mr-1.5 h-3.5 w-3.5" /> {item.read_at ? "Mark unread" : "Mark read"}
+                      </Button>
+                      <Button size="icon" variant="ghost" aria-label="Delete contact message"
+                        disabled={deleteContactMessage.isPending} onClick={() => deleteContactMessage.mutate(item.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="whitespace-pre-wrap text-sm text-muted-foreground">{item.message}</p>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
           <TabsContent value="system" className="pt-6">
             <div className="grid gap-4 md:grid-cols-3">
               <Card className="gap-2 p-5">
