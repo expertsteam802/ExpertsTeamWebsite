@@ -91,18 +91,49 @@ export const Route = createFileRoute("/api/ai/stream")({
             { role: "user", parts: [{ text: prompt }, ...attachmentParts] },
           ];
 
+          const systemText = "You are Expert AI for ExpertsTeam. Be accurate, direct, practical, and helpful. Stream your answer naturally. Use markdown and code fences when useful. Never claim access to private user data unless it was supplied in the conversation.";
+          const providerOrder = (process.env["AI_PROVIDER_ORDER"] || "gemini,groq,openrouter,cloudflare")
+            .split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
+          const geminiKey = process.env["GEMINI_API_KEY"]?.trim();
+
+          // Keep true token streaming for Gemini when it is the first configured provider.
+          if (geminiKey && providerOrder[0] === "gemini") {
+            const model = process.env["GEMINI_CHAT_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.8-flash";
+            const upstream = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`,
+              {
+                method: "POST",
+                headers: { "x-goog-api-key": geminiKey, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  systemInstruction: { parts: [{ text: systemText }] },
+                  contents,
+                  generationConfig: { maxOutputTokens: 8192 },
+                }),
+                signal: request.signal,
+              },
+            );
+            if (upstream.ok && upstream.body) {
+              return new Response(upstream.body, {
+                headers: {
+                  "Content-Type": "text/event-stream; charset=utf-8",
+                  "Cache-Control": "no-cache, no-transform",
+                  "X-Accel-Buffering": "no",
+                },
+              });
+            }
+          }
+
+          const fallbackOrder = geminiKey && providerOrder[0] === "gemini"
+            ? providerOrder.slice(1)
+            : providerOrder;
           const result = await generateGeminiContent({
-            systemInstruction: {
-              parts: [{
-                text: "You are Expert AI for ExpertsTeam. Be accurate, direct, practical, and helpful. Stream your answer naturally. Use markdown and code fences when useful. Never claim access to private user data unless it was supplied in the conversation.",
-              }],
-            },
+            systemInstruction: { parts: [{ text: systemText }] },
             contents: contents.map((item) => ({
               role: item.role === "model" ? "model" as const : "user" as const,
               parts: item.parts.filter((part): part is { text: string } => typeof part.text === "string"),
             })),
             generationConfig: { maxOutputTokens: 8192 },
-          });
+          }, undefined, fallbackOrder);
 
           const streamPayload = `data: ${JSON.stringify(result)}\\n\\ndata: [DONE]\\n\\n`;
           return new Response(streamPayload, {
