@@ -57,6 +57,7 @@ type SettingsForm = {
   subscription_quota_bytes: string;
   ai_subscription_price: string;
   ai_subscription_credits: string;
+  ai_free_credits: string;
   payout_account: string;
 };
 
@@ -228,6 +229,7 @@ function AdminPage() {
         subscription_quota_bytes: String(settings.subscription_quota_bytes),
         ai_subscription_price: String(settings.ai_subscription_price ?? 1),
         ai_subscription_credits: String(settings.ai_subscription_credits ?? 500),
+        ai_free_credits: String(settings.ai_free_credits ?? 25),
         payout_account: settings.payout_account ?? "",
       });
     }
@@ -238,6 +240,9 @@ function AdminPage() {
       if (!form || !settings) return;
       const studioPrice = Number(form.ai_subscription_price);
       const studioCredits = Number(form.ai_subscription_credits);
+      const freeCredits = Number(form.ai_free_credits);
+      if (!Number.isInteger(freeCredits) || freeCredits < 0 || freeCredits > 100000)
+        throw new Error("Free AI credits must be between 0 and 100,000.");
       if (!Number.isFinite(studioPrice) || studioPrice < 0.01 || studioPrice > 1000)
         throw new Error("Studio subscription price must be between $0.01 and $1,000.");
       if (!Number.isInteger(studioCredits) || studioCredits < 1 || studioCredits > 100000)
@@ -254,6 +259,7 @@ function AdminPage() {
           subscription_quota_bytes: Number(form.subscription_quota_bytes) || 209715200,
           ai_subscription_price: studioPrice,
           ai_subscription_credits: studioCredits,
+          ai_free_credits: freeCredits,
           payout_account: form.payout_account.trim() || null,
         })
         .eq("id", settings.id);
@@ -647,6 +653,7 @@ function AdminPage() {
                           ["subscription_quota_bytes", "Subscriber storage (bytes)"],
                           ["ai_subscription_price", "Studio subscription price (USD per 30 days)"],
                           ["ai_subscription_credits", "Studio AI credits per 30-day plan"],
+                          ["ai_free_credits", "Free AI credits for new accounts"],
                           ["payout_account", "Payout account (PayPal email / card account)"],
                         ] as Array<[keyof SettingsForm, string]>
                       ).map(([key, label]) => (
