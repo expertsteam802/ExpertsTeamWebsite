@@ -41,6 +41,8 @@ type SettingsForm = {
   owner_email: string;
   subscription_price: string;
   subscription_quota_bytes: string;
+  ai_subscription_price: string;
+  ai_subscription_credits: string;
   payout_account: string;
 };
 
@@ -194,6 +196,8 @@ function AdminPage() {
         owner_email: settings.owner_email,
         subscription_price: String(settings.subscription_price),
         subscription_quota_bytes: String(settings.subscription_quota_bytes),
+        ai_subscription_price: String(settings.ai_subscription_price ?? 1),
+        ai_subscription_credits: String(settings.ai_subscription_credits ?? 500),
         payout_account: settings.payout_account ?? "",
       });
     }
@@ -202,6 +206,10 @@ function AdminPage() {
   const saveSettings = useMutation({
     mutationFn: async () => {
       if (!form || !settings) return;
+      const studioPrice = Number(form.ai_subscription_price);
+      const studioCredits = Number(form.ai_subscription_credits);
+      if (!Number.isFinite(studioPrice) || studioPrice < 0.01 || studioPrice > 1000) throw new Error("Studio subscription price must be between $0.01 and $1,000.");
+      if (!Number.isInteger(studioCredits) || studioCredits < 1 || studioCredits > 100000) throw new Error("Studio AI credits must be between 1 and 100,000.");
       const { error } = await supabase
         .from("site_settings")
         .update({
@@ -212,6 +220,8 @@ function AdminPage() {
           owner_email: form.owner_email.trim(),
           subscription_price: Number(form.subscription_price) || 0,
           subscription_quota_bytes: Number(form.subscription_quota_bytes) || 209715200,
+          ai_subscription_price: studioPrice,
+          ai_subscription_credits: studioCredits,
           payout_account: form.payout_account.trim() || null,
         })
         .eq("id", settings.id);
@@ -252,16 +262,25 @@ function AdminPage() {
       if (error) throw error;
 
       if (approve) {
-        const quota = Number(settings?.subscription_quota_bytes ?? 2147483648);
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .update({ is_subscribed: true, storage_quota_bytes: quota })
-          .eq("id", request.user_id);
-        if (profileError) throw profileError;
+        if (request.kind === "ai") {
+          const credits = Number(settings?.ai_subscription_credits ?? 500);
+          const { error: profileError } = await supabase
+            .from("profiles")
+            .update({ ai_subscribed: true, ai_credits: credits })
+            .eq("id", request.user_id);
+          if (profileError) throw profileError;
+        } else {
+          const quota = Number(settings?.subscription_quota_bytes ?? 2147483648);
+          const { error: profileError } = await supabase
+            .from("profiles")
+            .update({ is_subscribed: true, storage_quota_bytes: quota })
+            .eq("id", request.user_id);
+          if (profileError) throw profileError;
+        }
       }
     },
     onSuccess: (_data, variables) => {
-      toast.success(variables.approve ? "Payment confirmed — space unlocked" : "Payment declined");
+      toast.success(variables.approve ? (variables.request.kind === "ai" ? "Payment confirmed — Studio access unlocked" : "Payment confirmed — space unlocked") : "Payment declined");
       void queryClient.invalidateQueries({ queryKey: ["admin"] });
       void queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
@@ -478,6 +497,8 @@ function AdminPage() {
                       ["owner_email", "Owner email"],
                       ["subscription_price", "Subscription price (USD)"],
                       ["subscription_quota_bytes", "Subscriber storage (bytes)"],
+                      ["ai_subscription_price", "Studio subscription price (USD/month)"],
+                      ["ai_subscription_credits", "Studio AI credits per subscription"],
                       ["payout_account", "Payout account (PayPal email / card account)"],
                     ] as Array<[keyof SettingsForm, string]>
                   ).map(([key, label]) => (
@@ -578,7 +599,7 @@ function AdminPage() {
                     <div>
                       <p className="font-medium">
                         {request.profiles?.display_name || request.profiles?.username || "Member"} ·
-                        ${Number(request.amount).toFixed(2)}
+                        ${Number(request.amount).toFixed(2)} · {request.kind === "ai" ? "Studio plan" : "Storage"}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {paymentMethodLabel(request.method)} · ref {request.reference} ·{" "}
