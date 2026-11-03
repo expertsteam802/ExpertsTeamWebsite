@@ -54,14 +54,18 @@ export const Route = createFileRoute("/api/ai/stream")({
             return Response.json({ error: "Your session is invalid. Please sign in again." }, { status: 401 });
           }
 
-          const { error: creditError } = await supabase.rpc("consume_ai_credit");
-          if (creditError) {
-            return Response.json({ error: creditError.message }, { status: 402 });
-          }
-
           const parsed = requestSchema.safeParse(await request.json());
           if (!parsed.success) {
             return Response.json({ error: "The message or attachments are invalid or too large." }, { status: 400 });
+          }
+
+          const { data: profile, error: profileError } = await supabase
+            .from("profiles").select("ai_credits").eq("id", authData.user.id).single();
+          if (profileError) {
+            return Response.json({ error: "Could not check your AI credit balance." }, { status: 500 });
+          }
+          if (profile.ai_credits < 1) {
+            return Response.json({ error: "You have no AI credits remaining. Upgrade your Studio plan or wait for your allowance to renew." }, { status: 402 });
           }
 
           const { prompt, history = [], attachments = [] } = parsed.data;
@@ -118,6 +122,11 @@ export const Route = createFileRoute("/api/ai/stream")({
               },
             );
             if (upstream.ok && upstream.body) {
+              const { error: creditError } = await supabase.rpc("consume_ai_credit");
+              if (creditError) {
+                await upstream.body.cancel();
+                return Response.json({ error: creditError.message }, { status: 402 });
+              }
               return new Response(upstream.body, {
                 headers: {
                   "Content-Type": "text/event-stream; charset=utf-8",
@@ -143,6 +152,11 @@ export const Route = createFileRoute("/api/ai/stream")({
             })),
             generationConfig: { maxOutputTokens: 8192 },
           }, undefined, fallbackOrder);
+
+          const { error: creditError } = await supabase.rpc("consume_ai_credit");
+          if (creditError) {
+            return Response.json({ error: creditError.message }, { status: 402 });
+          }
 
           const streamPayload = `data: ${JSON.stringify(result)}\n\ndata: [DONE]\n\n`;
           return new Response(streamPayload, {
