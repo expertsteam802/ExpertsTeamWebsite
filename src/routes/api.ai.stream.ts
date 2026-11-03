@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { generateGeminiContent } from "@/lib/gemini.server";
 
 const requestSchema = z.object({
   prompt: z.string().trim().min(1).max(6000),
@@ -58,11 +59,6 @@ export const Route = createFileRoute("/api/ai/stream")({
             return Response.json({ error: "The message or attachments are invalid or too large." }, { status: 400 });
           }
 
-          const apiKey = process.env["GEMINI_API_KEY"];
-          if (!apiKey) {
-            return Response.json({ error: "Expert AI is not configured on the server. Add GEMINI_API_KEY to the deployment environment." }, { status: 503 });
-          }
-
           const { prompt, history = [], attachments = [] } = parsed.data;
           const attachmentParts = attachments.flatMap((file) => {
             const parts: Array<Record<string, unknown>> = [
@@ -95,45 +91,21 @@ export const Route = createFileRoute("/api/ai/stream")({
             { role: "user", parts: [{ text: prompt }, ...attachmentParts] },
           ];
 
-          const model = process.env["GEMINI_CHAT_MODEL"] || "gemini-3.8-flash";
-          const upstream = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`,
-            {
-              method: "POST",
-              headers: {
-                "x-goog-api-key": apiKey,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                systemInstruction: {
-                  parts: [{
-                    text: "You are Expert AI for Experts Team. Be accurate, direct, practical, and helpful. Stream your answer naturally. Use markdown and code fences when useful. Never claim access to private user data unless it was supplied in the conversation.",
-                  }],
-                },
-                contents,
-                generationConfig: { maxOutputTokens: 8192 },
-              }),
-              signal: request.signal,
+          const result = await generateGeminiContent({
+            systemInstruction: {
+              parts: [{
+                text: "You are Expert AI for ExpertsTeam. Be accurate, direct, practical, and helpful. Stream your answer naturally. Use markdown and code fences when useful. Never claim access to private user data unless it was supplied in the conversation.",
+              }],
             },
-          );
+            contents: contents.map((item) => ({
+              role: item.role === "model" ? "model" as const : "user" as const,
+              parts: item.parts.filter((part): part is { text: string } => typeof part.text === "string"),
+            })),
+            generationConfig: { maxOutputTokens: 8192 },
+          });
 
-          if (!upstream.ok) {
-            const errorText = await upstream.text();
-            let message = `Gemini request failed (HTTP ${upstream.status}).`;
-            try {
-              const errorJson = JSON.parse(errorText) as { error?: { message?: string } };
-              message = errorJson.error?.message || message;
-            } catch {
-              // Keep the concise status message when the provider did not return JSON.
-            }
-            return Response.json({ error: message }, { status: upstream.status });
-          }
-
-          if (!upstream.body) {
-            return Response.json({ error: "The AI provider did not return a response stream." }, { status: 502 });
-          }
-
-          return new Response(upstream.body, {
+          const streamPayload = `data: ${JSON.stringify(result)}\\n\\ndata: [DONE]\\n\\n`;
+          return new Response(streamPayload, {
             headers: {
               "Content-Type": "text/event-stream; charset=utf-8",
               "Cache-Control": "no-cache, no-transform",
