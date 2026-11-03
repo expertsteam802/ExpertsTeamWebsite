@@ -153,39 +153,45 @@ export const Route = createFileRoute("/api/ai/stream")({
           if (geminiKey && providerOrder[0] === "gemini" && !isProviderCoolingDown("gemini")) {
             const model =
               process.env["GEMINI_CHAT_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.6-flash";
-            const upstream = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`,
-              {
-                method: "POST",
-                headers: { "x-goog-api-key": geminiKey, "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  systemInstruction: { parts: [{ text: systemText }] },
-                  contents,
-                  generationConfig: { maxOutputTokens: 8192 },
-                }),
-                signal: request.signal,
-              },
-            );
-            if (upstream.ok && upstream.body) {
-              const { error: creditError } = await supabase.rpc("consume_ai_credit");
-              if (creditError) {
-                await upstream.body.cancel();
-                return Response.json({ error: creditError.message }, { status: 402 });
-              }
-              return new Response(upstream.body, {
-                headers: {
-                  "Content-Type": "text/event-stream; charset=utf-8",
-                  "Cache-Control": "no-cache, no-transform",
-                  "X-Accel-Buffering": "no",
+            try {
+              const upstream = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`,
+                {
+                  method: "POST",
+                  headers: { "x-goog-api-key": geminiKey, "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    systemInstruction: { parts: [{ text: systemText }] },
+                    contents,
+                    generationConfig: { maxOutputTokens: 8192 },
+                  }),
+                  signal: request.signal,
                 },
-              });
-            }
-            if (!upstream.ok) {
-              await upstream.text();
-              if (upstream.status === 429) markProviderCoolingDown("gemini", 60);
-              else if ([401, 403, 404].includes(upstream.status))
-                markProviderCoolingDown("gemini", 300);
-              else if (upstream.status >= 500) markProviderCoolingDown("gemini", 20);
+              );
+              if (upstream.ok && upstream.body) {
+                const { error: creditError } = await supabase.rpc("consume_ai_credit");
+                if (creditError) {
+                  await upstream.body.cancel();
+                  return Response.json({ error: creditError.message }, { status: 402 });
+                }
+                return new Response(upstream.body, {
+                  headers: {
+                    "Content-Type": "text/event-stream; charset=utf-8",
+                    "Cache-Control": "no-cache, no-transform",
+                    "X-Accel-Buffering": "no",
+                  },
+                });
+              }
+              if (!upstream.ok) {
+                await upstream.text();
+                if (upstream.status === 429) markProviderCoolingDown("gemini", 60);
+                else if ([401, 403, 404].includes(upstream.status))
+                  markProviderCoolingDown("gemini", 300);
+                else if (upstream.status >= 500) markProviderCoolingDown("gemini", 20);
+              }
+            } catch (error) {
+              if (request.signal.aborted) throw error;
+              markProviderCoolingDown("gemini", 20);
+              console.error("[Expert AI Gemini stream; trying fallback]", error);
             }
           }
 
