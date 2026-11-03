@@ -1,6 +1,8 @@
+import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Instagram, Mail, Youtube } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
@@ -9,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useSiteSettings } from "@/hooks/use-site-settings";
+import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -28,13 +32,39 @@ export const Route = createFileRoute("/contact")({
 
 function ContactPage() {
   const settings = useSiteSettings();
+  const { user } = useAuth();
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
 
-  const mailto = `mailto:${settings.owner_email}?subject=${encodeURIComponent(
-    subject.slice(0, 120) || "Chris Programs enquiry",
-  )}&body=${encodeURIComponent(`${message.slice(0, 2000)}\n\n— ${name.slice(0, 80)}`)}`;
+  const sendMessage = useMutation({
+    mutationFn: async () => {
+      const cleanName = name.trim();
+      const cleanEmail = email.trim();
+      const cleanSubject = subject.trim() || "Website enquiry";
+      const cleanMessage = message.trim();
+      if (!cleanName || !cleanEmail || !cleanMessage) {
+        throw new Error("Please enter your name, email and message.");
+      }
+      const { error } = await supabase.from("contact_messages").insert({
+        user_id: user?.id ?? null,
+        sender_name: cleanName.slice(0, 80),
+        sender_email: cleanEmail.slice(0, 254),
+        subject: cleanSubject.slice(0, 120),
+        message: cleanMessage.slice(0, 4000),
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setName("");
+      setEmail("");
+      setSubject("");
+      setMessage("");
+      toast.success("Your message has been sent to the Experts Team.");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   return (
     <PageShell>
@@ -53,35 +83,29 @@ function ContactPage() {
         <Card className="animate-rise gap-4 p-6">
           <div className="space-y-2">
             <Label htmlFor="contact-name">Your name</Label>
-            <Input
-              id="contact-name"
-              maxLength={80}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
+            <Input id="contact-name" maxLength={80} required value={name}
+              onChange={(event) => setName(event.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="contact-email">Your email</Label>
+            <Input id="contact-email" type="email" maxLength={254} required value={email}
+              onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="contact-subject">Subject</Label>
-            <Input
-              id="contact-subject"
-              maxLength={120}
-              value={subject}
-              onChange={(event) => setSubject(event.target.value)}
-            />
+            <Input id="contact-subject" maxLength={120} value={subject}
+              onChange={(event) => setSubject(event.target.value)} placeholder="What is this about?" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="contact-message">Message</Label>
-            <Textarea
-              id="contact-message"
-              rows={6}
-              maxLength={2000}
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-            />
+            <Textarea id="contact-message" rows={6} maxLength={4000} required value={message}
+              onChange={(event) => setMessage(event.target.value)} placeholder="Write your message…" />
           </div>
-          <a href={mailto}>
-            <Button disabled={!message.trim()}>Send message</Button>
-          </a>
+          <Button type="button" disabled={sendMessage.isPending || !name.trim() || !email.trim() || !message.trim()}
+            onClick={() => sendMessage.mutate()}>
+            {sendMessage.isPending ? "Sending…" : "Send message"}
+          </Button>
+          <p className="text-xs text-muted-foreground">Your message will be delivered to the site admin inbox.</p>
         </Card>
 
         <Card className="animate-rise gap-4 p-6">
