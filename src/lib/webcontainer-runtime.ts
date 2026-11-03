@@ -186,7 +186,7 @@ export async function mountProjectFiles(
   });
   await Promise.all(
     existingEntries
-      .filter((entry) => entry !== "node_modules")
+      .filter((entry) => entry !== "node_modules" && entry !== ".experts-install-signature")
       .map((entry) =>
         instance.fs.rm(entry, {
           recursive: true,
@@ -207,12 +207,23 @@ export async function mountProjectFiles(
  */
 export async function installDependencies(
   callbacks: RuntimeCallbacks = {},
+  signature = "",
 ): Promise<number> {
   const instance = await bootWebContainer(callbacks);
+  const hasNodeModules = await instance.fs.readdir("node_modules", { encoding: "utf-8" })
+    .then((entries) => entries.length > 0)
+    .catch(() => false);
+  const installedSignature = await instance.fs.readFile(".experts-install-signature", "utf-8")
+    .catch(() => "");
+
+  if (hasNodeModules && signature && installedSignature === signature) {
+    log(callbacks, "Dependencies are already installed. Reusing cached packages.\n");
+    return 0;
+  }
 
   log(callbacks, "\nInstalling project dependencies...\n");
 
-  const process = await instance.spawn("npm", ["install", "--no-audit", "--no-fund"]);
+  const process = await instance.spawn("npm", ["install", "--prefer-offline", "--no-audit", "--no-fund"]);
 
   void process.output.pipeTo(
     new WritableStream({
@@ -229,6 +240,7 @@ export async function installDependencies(
       `Dependency installation failed with exit code ${exitCode}.`,
     );
   } else {
+    if (signature) await instance.fs.writeFile(".experts-install-signature", signature);
     log(callbacks, "\nDependencies installed successfully.\n");
   }
 
