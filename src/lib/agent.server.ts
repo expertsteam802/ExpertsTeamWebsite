@@ -104,7 +104,7 @@ export async function createAgentPlan(
 
 function skipWhitespace(source: string, start: number): number {
   let index = start;
-  while (/\\s/.test(source[index] ?? "")) index++;
+  while (/\s/.test(source[index] ?? "")) index++;
   return index;
 }
 
@@ -114,14 +114,14 @@ function scanJsonString(source: string, start: number): number {
   for (let index = start + 1; index < source.length; index++) {
     const char = source[index];
     if (escaped) escaped = false;
-    else if (char === "\\\\") escaped = true;
+    else if (char === "\\") escaped = true;
     else if (char === '"') return index + 1;
   }
   return -1;
 }
 
 function recoverCompleteFiles(source: string): Record<string, string | null> {
-  const filesKey = /"files"\\s*:\\s*\\{/.exec(source);
+  const filesKey = /"files"\s*:\s*\{/.exec(source);
   const recovered: Record<string, string | null> = {};
   if (!filesKey || filesKey.index === undefined) return recovered;
   let index = filesKey.index + filesKey[0].length;
@@ -192,12 +192,12 @@ export async function runAgent({ prompt, files, history }: AgentInput, apiKey?: 
   }
 
   const promptTerms = new Set(cleanPrompt.toLowerCase().match(/[a-z0-9_./-]{3,}/g) ?? []);
-  const priorityFiles = /(^|\\/)(package\\.json|vite\\.config\\.[^/]+|tsconfig\\.json|index\\.html|src\\/main\\.[^/]+|src\\/app\\.[^/]+|src\\/index\\.css|src\\/routes\\/[^/]+)$/i;
+  const priorityFiles = ["package.json", "vite.config.", "tsconfig.json", "index.html", "src/main.", "src/app.", "src/index.css", "src/routes/"];
   const rankedEntries = entries.map(([name, content]) => {
     const lowerName = name.toLowerCase();
     let score = priorityFiles.some((path) => lowerName.endsWith(path) || lowerName.includes(path)) ? 8 : 0;
     for (const term of promptTerms) if (lowerName.includes(term)) score += 3;
-    if (/lock|\\.map$|node_modules|dist\\//i.test(lowerName)) score -= 20;
+    if (/lock|\.map$|node_modules|dist\//i.test(lowerName)) score -= 20;
     return { name, content, score };
   }).sort((a, b) => b.score - a.score);
 
