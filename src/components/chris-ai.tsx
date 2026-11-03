@@ -109,10 +109,56 @@ export function ChrisAiChat({
 
   useEffect(() => {
     if (!user) return;
-    if (!threadId) setThreadId(crypto.randomUUID());
-  }, [user, threadId]);
+    let cancelled = false;
+    const storageKey = `experts-team:ai-thread:${user.id}`;
 
-  const { data: messages = [], isError: messagesError } = useQuery({
+    const restoreThread = async () => {
+      let savedThreadId: string | null = null;
+      try {
+        savedThreadId = window.localStorage.getItem(storageKey);
+      } catch {
+        // Continue with the database's latest conversation when browser storage is unavailable.
+      }
+
+      if (savedThreadId) {
+        if (!cancelled) setThreadId(savedThreadId);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("ai_chats")
+        .select("thread_id")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const restoredId = !error && data?.thread_id ? data.thread_id : crypto.randomUUID();
+      if (cancelled) return;
+      try {
+        window.localStorage.setItem(storageKey, restoredId);
+      } catch {
+        // The conversation still works for this session without local storage.
+      }
+      setThreadId(restoredId);
+    };
+
+    void restoreThread();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user || !threadId) return;
+    try {
+      window.localStorage.setItem(`experts-team:ai-thread:${user.id}`, threadId);
+    } catch {
+      // Keep the active thread in component state if browser storage is unavailable.
+    }
+  }, [user?.id, threadId]);
+
+  const { data: messages = [], isError: messagesError, refetch: refetchMessages } = useQuery({
     queryKey: ["ai-chats", user?.id, threadId],
     enabled: !!user && !!threadId,
     queryFn: async () => {
@@ -334,9 +380,10 @@ export function ChrisAiChat({
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
         {messagesError && (
-          <p role="alert" className="text-sm text-destructive">
-            Could not load your saved messages. Please refresh and try again.
-          </p>
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+            <p className="text-sm text-destructive">Could not load your saved messages. Check the database migration, then try again.</p>
+            <Button size="sm" variant="outline" onClick={() => void refetchMessages()}>Retry</Button>
+          </div>
         )}
         {messages.length === 0 && (
           <div className="grid gap-2 sm:grid-cols-2">
