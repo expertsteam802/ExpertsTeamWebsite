@@ -93,3 +93,10 @@ alter table public.agent_project_runs validate constraint agent_project_runs_use
 ```
 
 - Keep all AI provider API keys in Vercel server-side Environment Variables. Never put them in `VITE_*` variables or commit them.
+
+
+## Platform follow-up migrations (2026-11-03)
+
+- `20261103195458_admin_delete_subscription_requests.sql`: permits admins to delete subscription payment requests, with RLS limited to the admin role.
+- `20261103200100_configurable_free_ai_credit_allowance.sql`: adds `site_settings.ai_free_credits` and uses it as the initial credit balance for newly registered accounts.
+- `20261103200536_workspace_messages_realtime_publication.sql`: adds `workspace_messages` to the Supabase Realtime publication for live workspace chat updates.
