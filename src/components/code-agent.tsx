@@ -175,9 +175,13 @@ export function CodeAgent() {
     if (terminalReady) return;
     setTerminalOutput((current) => current || "Starting browser shell…\r\n");
     try {
-      await startTerminalSession((chunk) => {
-        setTerminalOutput((current) => (current + chunk).slice(-40000));
-      });
+      await startTerminalSession(
+        (chunk) => setTerminalOutput((current) => (current + chunk).slice(-40000)),
+        (exitCode) => {
+          setTerminalReady(false);
+          setTerminalOutput((current) => `${current}\\r\\n[process exited with code ${exitCode}]\\r\\n`);
+        },
+      );
       setTerminalReady(true);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not start the terminal.";
