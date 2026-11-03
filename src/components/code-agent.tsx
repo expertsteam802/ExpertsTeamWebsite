@@ -8,7 +8,7 @@ import {
   Plus, RefreshCw, Save, Send, Settings2, Smartphone, Square,
   Sparkles, Tablet, Terminal, Trash2, X, Zap
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -186,7 +186,7 @@ export function CodeAgent() {
     }
   }
 
-  async function submitTerminalCommand(event: React.FormEvent<HTMLFormElement>) {
+  async function submitTerminalCommand(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const command = terminalInput;
     if (!command.trim()) return;
