@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export type WorkspaceGroup = {
@@ -330,31 +329,51 @@ export function WorkspaceChat() {
               )}
               {messages.map((message) => {
                 const mine = message.user_id === user?.id;
+                const displayName =
+                  message.profiles?.display_name || message.profiles?.username || "Member";
                 return (
                   <div
                     key={message.id}
-                    className={cn("flex", mine ? "justify-end" : "justify-start")}
+                    className={cn("flex items-end gap-2", mine ? "justify-end" : "justify-start")}
                   >
+                    {!mine && (
+                      <div className="mb-1 grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-secondary text-xs font-semibold text-muted-foreground">
+                        {message.profiles?.avatar_url ? (
+                          <img
+                            src={message.profiles.avatar_url}
+                            alt={displayName}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          displayName.slice(0, 1).toUpperCase()
+                        )}
+                      </div>
+                    )}
                     <div
                       className={cn(
-                        "max-w-[78%] rounded-2xl px-4 py-2",
+                        "max-w-[82%] rounded-2xl px-3.5 py-2.5 shadow-sm",
                         mine
-                          ? "bg-primary text-primary-foreground"
-                          : "border border-border bg-secondary",
+                          ? "rounded-br-md bg-primary text-primary-foreground"
+                          : "rounded-bl-md border border-border/70 bg-secondary/80",
                       )}
                     >
                       {!mine && (
-                        <p className="text-xs font-semibold text-primary">
-                          {message.profiles?.display_name || message.profiles?.username || "Member"}
-                        </p>
+                        <p className="mb-1 text-[11px] font-semibold text-primary">{displayName}</p>
                       )}
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.body}</p>
-                      <div className="mt-1 flex items-center gap-2 text-[10px] opacity-70">
-                        <span>{formatDate(message.created_at)}</span>
+                      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+                        {message.body}
+                      </p>
+                      <div className="mt-1 flex items-center justify-end gap-2 text-[10px] opacity-65">
+                        <span>
+                          {new Date(message.created_at).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
                         {(mine || isAdmin) && (
                           <button
                             onClick={() => removeMessage.mutate(message.id)}
-                            className="underline"
+                            className="underline underline-offset-2"
                           >
                             delete
                           </button>
