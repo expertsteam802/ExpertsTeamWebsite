@@ -84,12 +84,25 @@ function loadYouTubeApi(): Promise<YouTubeApi> {
       script = document.createElement("script");
       script.src = scriptUrl;
       script.async = true;
-      script.onerror = () => finish(new Error("Could not load the YouTube player. Check your connection or content blockers."));
+      script.onerror = () =>
+        finish(
+          new Error(
+            "Could not load the YouTube player. Check your connection or content blockers.",
+          ),
+        );
       document.head.appendChild(script);
     } else {
-      script.addEventListener("error", () => {
-        finish(new Error("Could not load the YouTube player. Check your connection or content blockers."));
-      }, { once: true });
+      script.addEventListener(
+        "error",
+        () => {
+          finish(
+            new Error(
+              "Could not load the YouTube player. Check your connection or content blockers.",
+            ),
+          );
+        },
+        { once: true },
+      );
     }
 
     // Covers an existing script whose ready callback was fired before we mounted.
