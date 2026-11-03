@@ -52,7 +52,7 @@ export async function createAgentPlan(prompt: string, files: Record<string, stri
   const fileList = Object.keys(files).slice(0, 80).join("\n");
   const response = await generateGeminiContent({
     systemInstruction: {
-      parts: [{ text: "You are the planning lead for ExpertsTeam Studio. Do not write or modify code. Return valid JSON only with shape {\\\"summary\\\": string, \\\"steps\\\": string[]}. Make a safe, incremental plan of 2 to 6 small implementation steps. Each step must be independently reviewable and avoid changing unrelated files. Mention testing/verification as a final step when useful." }],
+      parts: [{ text: "You are the planning lead for ExpertsTeam Studio. Do not write or modify code. Return valid JSON only with shape {\"summary\": string, \"steps\": string[]}. Make a safe, incremental plan of 2 to 6 small implementation steps. Each step must be independently reviewable and avoid changing unrelated files. Mention testing/verification as a final step when useful." }],
     },
     generationConfig: { responseMimeType: "application/json", maxOutputTokens: 2500 },
     contents: [{
