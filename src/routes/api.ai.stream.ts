@@ -150,7 +150,7 @@ export const Route = createFileRoute("/api/ai/stream")({
           ];
 
           const systemText =
-            "You are Expert AI for ExpertsTeam. Be accurate, direct, practical, and helpful. Stream your answer naturally. Use markdown and code fences when useful. Never claim access to private user data unless it was supplied in the conversation.";
+            "You are Expert AI for ExpertsTeam. Be accurate, direct, practical, and helpful. Use plain English and ordinary ASCII punctuation. Do not add emojis, decorative symbols, unusual Unicode characters, or ornamental bullets. Use simple hyphen bullets. Preserve required syntax inside code. Never claim access to private user data unless it was supplied in the conversation.";
           const providerOrder = (
             process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter"
           )
@@ -218,7 +218,7 @@ export const Route = createFileRoute("/api/ai/stream")({
                   (part): part is { text: string } => typeof part.text === "string",
                 ),
               })),
-              generationConfig: { maxOutputTokens: 8192 },
+              generationConfig: { maxOutputTokens: 1800 },
             },
             undefined,
             fallbackOrder,
@@ -231,8 +231,25 @@ export const Route = createFileRoute("/api/ai/stream")({
             }
           }
 
-          const streamPayload = `data: ${JSON.stringify(result)}\n\ndata: [DONE]\n\n`;
-          return new Response(streamPayload, {
+          const answerText =
+            result.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
+          const encoder = new TextEncoder();
+          let cursor = 0;
+          const typedStream = new ReadableStream<Uint8Array>({
+            async pull(controller) {
+              if (cursor >= answerText.length) {
+                controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+                controller.close();
+                return;
+              }
+              const text = answerText.slice(cursor, cursor + 32);
+              cursor += text.length;
+              const event = { candidates: [{ content: { parts: [{ text }] } }] };
+              controller.enqueue(encoder.encode("data: " + JSON.stringify(event) + "\n\n"));
+              await new Promise((resolve) => setTimeout(resolve, 12));
+            },
+          });
+          return new Response(typedStream, {
             headers: {
               "Content-Type": "text/event-stream; charset=utf-8",
               "Cache-Control": "no-cache, no-transform",
