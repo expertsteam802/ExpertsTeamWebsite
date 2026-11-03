@@ -3,7 +3,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   BookOpen,
   Gamepad2,
-  MessagesSquare,
   Palette,
   Play,
   ShieldCheck,
@@ -158,21 +157,6 @@ function Index() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 pb-8">
-        <Card className="hero-surface items-start gap-4 p-8 sm:p-12">
-          <MessagesSquare className="h-8 w-8 text-accent" />
-          <h2 className="font-display text-2xl font-semibold sm:text-3xl">
-            Coming next: community chat, developer applications and paid resources
-          </h2>
-          <p className="max-w-2xl text-muted-foreground">
-            Create your account now — the first account becomes the creator/admin, and everyone else
-            joins as a member with 200MB of free upload space.
-          </p>
-          <Link to="/auth">
-            <Button size="lg">Create your account</Button>
-          </Link>
-        </Card>
-      </section>
     </PageShell>
   );
 }
