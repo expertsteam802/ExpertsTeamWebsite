@@ -14,14 +14,14 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in or join — Chris Programs" },
+      { title: "Sign in or join — ExpertsTeam" },
       {
         name: "description",
         content:
-          "Create your Chris Programs account with email or Google to upload files, watch videos and join the community.",
+          "Create your ExpertsTeam account with email or Google to upload files, watch videos and join the community.",
       },
-      { property: "og:title", content: "Sign in or join — Chris Programs" },
-      { property: "og:description", content: "Join the Chris Programs creator community." },
+      { property: "og:title", content: "Sign in or join — ExpertsTeam" },
+      { property: "og:description", content: "Join the ExpertsTeam creator community." },
     ],
   }),
   component: AuthPage,
@@ -108,7 +108,7 @@ function AuthPage() {
     <PageShell>
       <div className="hero-surface min-h-[80vh] px-4 py-16">
         <Card className="animate-rise mx-auto w-full max-w-md p-8 glow-panel">
-          <h1 className="font-display text-2xl font-semibold">Welcome to Chris Programs</h1>
+          <h1 className="font-display text-2xl font-semibold">Welcome to ExpertsTeam</h1>
           <p className="text-sm text-muted-foreground">
             The very first account created becomes the creator/admin of this site.
           </p>
