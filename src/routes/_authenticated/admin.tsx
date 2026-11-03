@@ -49,7 +49,7 @@ function AdminPage() {
   const queryClient = useQueryClient();
   const removeAccount = useServerFn(deleteUserAccount);
   const [form, setForm] = useState<SettingsForm | null>(null);
-  const [memberSearch, setMemberSearch] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");\n  const [contactSearch, setContactSearch] = useState("");
 
   const { data: settings } = useQuery({
     queryKey: ["site-settings"],
@@ -143,6 +143,21 @@ function AdminPage() {
     },
     onSuccess: () => {
       toast.success("Contact message deleted");
+      void queryClient.invalidateQueries({ queryKey: ["admin", "contact-messages"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const markAllContactsRead = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("contact_messages")
+        .update({ read_at: new Date().toISOString() })
+        .is("read_at", null);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("All contact messages marked as read");
       void queryClient.invalidateQueries({ queryKey: ["admin", "contact-messages"] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -648,7 +663,15 @@ function AdminPage() {
             </div>
           </TabsContent>
           <TabsContent value="contact" className="mt-0 space-y-4">
-            <div><h2 className="font-display text-xl font-semibold">Contact inbox</h2><p className="text-sm text-muted-foreground">Read enquiries from visitors and follow up directly by email.</p></div>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div><h2 className="font-display text-xl font-semibold">Contact inbox</h2><p className="text-sm text-muted-foreground">Read enquiries from visitors and follow up directly by email.</p></div>
+              <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+                <Input className="w-full sm:w-64" value={contactSearch} onChange={(event) => setContactSearch(event.target.value)} placeholder="Search sender, email or subject…" aria-label="Search contact messages" />
+                <Button size="sm" variant="outline" disabled={markAllContactsRead.isPending || !contactMessages.some((item) => !item.read_at)} onClick={() => markAllContactsRead.mutate()}>
+                  <Check className="mr-2 h-4 w-4" /> Mark all read
+                </Button>
+              </div>
+            </div>
             <div className="space-y-3">
               {contactMessagesLoading && <p className="text-sm text-muted-foreground">Loading contact messages…</p>}
               {contactMessagesError && (
@@ -662,7 +685,7 @@ function AdminPage() {
                   <p className="mt-2 text-sm text-muted-foreground">No contact messages yet.</p>
                 </Card>
               )}
-              {contactMessages.map((item) => (
+              {contactMessages.filter((item) => `${item.sender_name} ${item.sender_email} ${item.subject} ${item.message}`.toLowerCase().includes(contactSearch.toLowerCase())).map((item) => (
                 <Card key={item.id} className={`gap-3 p-4 ${item.read_at ? "opacity-80" : "border-primary/40"}`}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
