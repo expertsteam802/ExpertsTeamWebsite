@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 
 import { runAgent } from "./agent.server";
+import { resetProviderCooldowns } from "./gemini.server";
 
 const originalFetch = globalThis.fetch;
 afterEach(() => {
   globalThis.fetch = originalFetch;
+  resetProviderCooldowns();
 });
 
 const input = { prompt: "Build a game", files: {}, history: [] };
