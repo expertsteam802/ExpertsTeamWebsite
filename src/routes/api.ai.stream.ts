@@ -54,6 +54,11 @@ export const Route = createFileRoute("/api/ai/stream")({
             return Response.json({ error: "Your session is invalid. Please sign in again." }, { status: 401 });
           }
 
+          const { error: creditError } = await supabase.rpc("consume_ai_credit");
+          if (creditError) {
+            return Response.json({ error: creditError.message }, { status: 402 });
+          }
+
           const parsed = requestSchema.safeParse(await request.json());
           if (!parsed.success) {
             return Response.json({ error: "The message or attachments are invalid or too large." }, { status: 400 });
