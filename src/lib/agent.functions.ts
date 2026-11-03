@@ -18,6 +18,21 @@ const codingRequest = z
     "The project is too large to send to the agent.",
   );
 
+export const createCodingPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => {
+    const parsed = z.object({
+      prompt: z.string().trim().min(1).max(16000),
+      files: z.record(z.string(), z.string().max(100000)),
+    }).parse(input);
+    if (Object.keys(parsed.files).length > 80) throw new Error("This project has too many files to plan at once.");
+    return parsed;
+  })
+  .handler(async ({ data }) => {
+    const { createAgentPlan } = await import("./agent.server");
+    return createAgentPlan(data.prompt, data.files);
+  });
+
 export const runCodingAgent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => codingRequest.parse(input))
