@@ -39,7 +39,7 @@ export function UpgradeDialog() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("subscription_requests")
-        .select("id, user_id, amount, method, reference, note, status, reviewed_at, created_at")
+        .select("id, user_id, amount, kind, method, reference, note, status, reviewed_at, created_at")
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -84,11 +84,11 @@ export function UpgradeDialog() {
 
   if (!user) return null;
 
-  if (profile?.is_subscribed) {
+  if (profile?.ai_subscribed) {
     return (
       <Badge variant="secondary" className="w-fit gap-1">
         <CheckCircle2 className="h-3.5 w-3.5" /> Subscriber ·{" "}
-        {formatBytes(profile.storage_quota_bytes)} unlocked
+        Studio access · {Number(profile.ai_credits ?? 0)} AI credits available
       </Badge>
     );
   }
