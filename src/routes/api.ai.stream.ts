@@ -107,7 +107,10 @@ export const Route = createFileRoute("/api/ai/stream")({
             _role: "admin",
           });
           if (roleError) {
-            return Response.json({ error: "Could not verify your account permissions." }, { status: 500 });
+            return Response.json(
+              { error: "Could not verify your account permissions." },
+              { status: 500 },
+            );
           }
           if (!isAdmin && profile.ai_credits < 1) {
             return Response.json(
@@ -151,9 +154,7 @@ export const Route = createFileRoute("/api/ai/stream")({
 
           const systemText =
             "You are Expert AI for ExpertsTeam. Be accurate, direct, practical, and helpful. Use plain English and ordinary ASCII punctuation. Do not add emojis, decorative symbols, unusual Unicode characters, or ornamental bullets. Use simple hyphen bullets. Preserve required syntax inside code. Never claim access to private user data unless it was supplied in the conversation.";
-          const providerOrder = (
-            process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter"
-          )
+          const providerOrder = (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
             .split(",")
             .map((item) => item.trim().toLowerCase())
             .filter(Boolean);

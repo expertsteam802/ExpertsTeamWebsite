@@ -55,8 +55,8 @@ export async function createAgentPlan(
   if (!cleanPrompt) throw new Error("Describe what you want to build.");
   const fileList = Object.entries(files)
     .slice(0, 24)
-    .map(([path, content]) => '--- ' + path + ' ---\n' + content.slice(0, 350))
-    .join('\n')
+    .map(([path, content]) => "--- " + path + " ---\n" + content.slice(0, 350))
+    .join("\n")
     .slice(0, 14000);
   const response = await generateGeminiContent(
     {
@@ -114,14 +114,17 @@ export async function runAgent({ prompt, files, history }: AgentInput, apiKey?: 
   }
 
   const promptTerms = new Set(cleanPrompt.toLowerCase().match(/[a-z0-9_./-]{3,}/g) ?? []);
-  const priorityFiles = /(^|\/)(package\.json|vite\.config\.[^/]+|tsconfig\.json|index\.html|src\/main\.[^/]+|src\/app\.[^/]+|src\/index\.css|src\/routes\/[^/]+)$/i;
-  const rankedEntries = entries.map(([name, content]) => {
-    const lowerName = name.toLowerCase();
-    let score = priorityFiles.test(lowerName) ? 8 : 0;
-    for (const term of promptTerms) if (lowerName.includes(term)) score += 3;
-    if (/lock|\.map$|node_modules|dist\//i.test(lowerName)) score -= 20;
-    return { name, content, score };
-  }).sort((a, b) => b.score - a.score);
+  const priorityFiles =
+    /(^|\/)(package\.json|vite\.config\.[^/]+|tsconfig\.json|index\.html|src\/main\.[^/]+|src\/app\.[^/]+|src\/index\.css|src\/routes\/[^/]+)$/i;
+  const rankedEntries = entries
+    .map(([name, content]) => {
+      const lowerName = name.toLowerCase();
+      let score = priorityFiles.test(lowerName) ? 8 : 0;
+      for (const term of promptTerms) if (lowerName.includes(term)) score += 3;
+      if (/lock|\.map$|node_modules|dist\//i.test(lowerName)) score -= 20;
+      return { name, content, score };
+    })
+    .sort((a, b) => b.score - a.score);
   const selected: Array<{ name: string; content: string }> = [];
   let remainingCharacters = 26000;
   for (const entry of rankedEntries) {
@@ -131,20 +134,30 @@ export async function runAgent({ prompt, files, history }: AgentInput, apiKey?: 
     selected.push({ name: entry.name, content });
     remainingCharacters -= content.length;
   }
-  const fileDump = selected.map(({ name, content }) => '--- ' + name + ' ---\n' + content).join('\n\n');
+  const fileDump = selected
+    .map(({ name, content }) => "--- " + name + " ---\n" + content)
+    .join("\n\n");
 
   const json = await generateGeminiContent(
     {
       systemInstruction: { parts: [{ text: AGENT_PROMPT }] },
-      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 4096 },
+      generationConfig: { responseMimeType: "application/json", maxOutputTokens: 4096 },
       contents: [
         ...history.slice(-2).map((message) => ({
-          role: message.role === 'assistant' ? ('model' as const) : ('user' as const),
+          role: message.role === "assistant" ? ("model" as const) : ("user" as const),
           parts: [{ text: message.content.slice(-900) }],
         })),
         {
-          role: 'user',
-          parts: [{ text: 'Relevant project files (selected to fit provider limits):\n' + (fileDump || '(empty)') + '\n\nRequest: ' + cleanPrompt }],
+          role: "user",
+          parts: [
+            {
+              text:
+                "Relevant project files (selected to fit provider limits):\n" +
+                (fileDump || "(empty)") +
+                "\n\nRequest: " +
+                cleanPrompt,
+            },
+          ],
         },
       ],
     },

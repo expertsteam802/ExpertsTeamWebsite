@@ -6,17 +6,17 @@ ExpertsTeam sends AI requests through server-side routes. Provider keys must be 
 
 Set these variables in Vercel (Production, Preview, and Development as needed):
 
-| Variable                | Suggested value                              | Required          |
-| ----------------------- | -------------------------------------------- | ----------------- |
-| `AI_PROVIDER_ORDER`     | `groq,gemini,openrouter`                    | Yes               |
-| `GEMINI_API_KEY`        | Your Google AI Studio key                    | Optional fallback |
-| `GEMINI_CODE_MODEL`     | `gemini-3.8-flash`                           | Optional          |
-| `GEMINI_MODEL`          | `gemini-3.8-flash`                           | Optional          |
-| `GEMINI_CHAT_MODEL`     | `gemini-3.8-flash`                           | Optional          |
-| `GROQ_API_KEY`          | Your Groq key                                | Optional fallback |
-| `GROQ_MODEL`            | `openai/gpt-oss-120b`                        | Optional          |
-| `OPENROUTER_API_KEY`    | Your OpenRouter key                          | Optional fallback |
-| `OPENROUTER_MODEL`      | `openrouter/free`                            | Optional          |
+| Variable             | Suggested value           | Required          |
+| -------------------- | ------------------------- | ----------------- |
+| `AI_PROVIDER_ORDER`  | `groq,gemini,openrouter`  | Yes               |
+| `GEMINI_API_KEY`     | Your Google AI Studio key | Optional fallback |
+| `GEMINI_CODE_MODEL`  | `gemini-3.8-flash`        | Optional          |
+| `GEMINI_MODEL`       | `gemini-3.8-flash`        | Optional          |
+| `GEMINI_CHAT_MODEL`  | `gemini-3.8-flash`        | Optional          |
+| `GROQ_API_KEY`       | Your Groq key             | Optional fallback |
+| `GROQ_MODEL`         | `openai/gpt-oss-120b`     | Optional          |
+| `OPENROUTER_API_KEY` | Your OpenRouter key       | Optional fallback |
+| `OPENROUTER_MODEL`   | `openrouter/free`         | Optional          |
 
 At least one provider must be configured. Configure two or more providers for meaningful failover. The router tries Groq, Gemini, then OpenRouter by default (or the providers in `AI_PROVIDER_ORDER` if you override it); missing provider keys are skipped. It moves to the next provider after a failed request and temporarily cools down providers after rate limits, authentication failures, unavailable models, or outages. Provider quotas are account-specific and can change, so free access is never guaranteed to be unlimited.
 

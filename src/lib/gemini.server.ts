@@ -44,7 +44,10 @@ function openAiMessages(request: GeminiRequest) {
   // Keep requests below small free-tier TPM windows. Four characters per token
   // is a conservative approximation for mixed prose and code.
   const maxInputCharacters = 16000;
-  const system = request.systemInstruction.parts.map((part) => part.text).join("\n").slice(0, 2200);
+  const system = request.systemInstruction.parts
+    .map((part) => part.text)
+    .join("\n")
+    .slice(0, 2200);
   const recent = request.contents.slice(-6).map((item) => ({
     role: item.role === "model" ? "assistant" : "user",
     content: item.parts
@@ -184,7 +187,10 @@ export async function generateGeminiContent(
   const freeProviders = ["groq", "gemini", "openrouter"];
   // Ignore old paid-provider entries and always retain the free fallbacks.
   const configuredOrder = [
-    ...new Set([...requestedOrder.filter((item) => freeProviders.includes(item)), ...freeProviders]),
+    ...new Set([
+      ...requestedOrder.filter((item) => freeProviders.includes(item)),
+      ...freeProviders,
+    ]),
   ];
   const failures: string[] = [];
   const coolingDown: string[] = [];

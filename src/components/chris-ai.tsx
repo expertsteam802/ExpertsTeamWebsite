@@ -100,13 +100,13 @@ function loadFileForAi(file: File): Promise<UploadedFile> {
     /\.(txt|md|json|csv|js|ts|tsx|jsx|html|css|sql|yaml|yml|xml)$/i.test(file.name);
   if (file.size > (textLike ? 200_000 : 1_200_000)) {
     return Promise.reject(
-      new Error(`${file.name} is too large. Text files must be under 200 KB and images under 1.2 MB.`),
+      new Error(
+        `${file.name} is too large. Text files must be under 200 KB and images under 1.2 MB.`,
+      ),
     );
   }
   if (!textLike && !file.type.startsWith("image/")) {
-    return Promise.reject(
-      new Error(`${file.name} is not supported. Upload text files or images.`),
-    );
+    return Promise.reject(new Error(`${file.name} is not supported. Upload text files or images.`));
   }
   if (textLike) {
     return fileToText(file).then((text) => ({
