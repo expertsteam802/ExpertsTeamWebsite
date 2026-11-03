@@ -250,10 +250,23 @@ export function ChrisAiChat({
             <p className="text-xs text-muted-foreground">File analysis · image ideas · app building</p>
           </div>
         </div>
+        
         <div className="flex items-center gap-2">
+          {onMinimize && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Minimize Expert AI"
+              title="Minimize Expert AI"
+              onClick={onMinimize}
+            >
+              <Minimize2 className="h-4 w-4" />
+            </Button>
+          )}
           <Button variant="secondary" size="sm" onClick={newChat} disabled={send.isPending}>
             New chat
           </Button>
+
           <Button
             variant="ghost"
             size="icon"
