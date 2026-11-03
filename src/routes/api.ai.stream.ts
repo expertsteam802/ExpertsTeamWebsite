@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { compactSmartContents } from "@/lib/smart-processing.server";
 import {
   generateGeminiContent,
   isProviderCoolingDown,
@@ -155,6 +156,9 @@ export const Route = createFileRoute("/api/ai/stream")({
             { role: "user", parts: [{ text: prompt }, ...attachmentParts] },
           ];
 
+          const compactedContents = compactSmartContents(
+            contents as Parameters<typeof compactSmartContents>[0],
+          );
           const systemText =
             "You are Expert AI for ExpertsTeam. Be accurate, direct, practical, and helpful. Use plain English and ordinary ASCII punctuation. Do not add emojis, decorative symbols, unusual Unicode characters, or ornamental bullets. Use simple hyphen bullets. Preserve required syntax inside code. Never claim access to private user data unless it was supplied in the conversation.";
           const providerOrder = (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
@@ -179,7 +183,7 @@ export const Route = createFileRoute("/api/ai/stream")({
                   headers: { "x-goog-api-key": geminiKey, "Content-Type": "application/json" },
                   body: JSON.stringify({
                     systemInstruction: { parts: [{ text: systemText }] },
-                    contents,
+                    contents: compactedContents,
                     generationConfig: { maxOutputTokens: 1800 },
                   }),
                   signal: request.signal,
@@ -203,7 +207,8 @@ export const Route = createFileRoute("/api/ai/stream")({
               }
               if (!upstream.ok) {
                 await upstream.text();
-                if (upstream.status === 429) markProviderCoolingDown("gemini", 60);
+                if (upstream.status === 429 || upstream.status === 413)
+                  markProviderCoolingDown("gemini", 60);
                 else if ([401, 403, 404].includes(upstream.status))
                   markProviderCoolingDown("gemini", 300);
                 else if (upstream.status >= 500) markProviderCoolingDown("gemini", 20);
@@ -222,7 +227,7 @@ export const Route = createFileRoute("/api/ai/stream")({
           const result = await generateGeminiContent(
             {
               systemInstruction: { parts: [{ text: systemText }] },
-              contents: contents.map((item) => ({
+              contents: compactedContents.map((item) => ({
                 role: item.role === "model" ? ("model" as const) : ("user" as const),
                 parts: item.parts.filter(
                   (part): part is { text: string } => typeof part.text === "string",
