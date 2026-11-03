@@ -15,6 +15,7 @@ export type Profile = {
   is_subscribed: boolean;
   ai_subscribed: boolean;
   ai_credits: number;
+  ai_subscription_expires_at: string | null;
   created_at: string;
 };
 
