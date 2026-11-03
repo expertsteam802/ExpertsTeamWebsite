@@ -17,13 +17,13 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
-      { title: "Contact Chris Programs" },
+      { title: "Contact ExpertsTeam" },
       {
         name: "description",
         content:
           "Reach Chris Expert by email, YouTube or Instagram for collaborations, questions and project ideas.",
       },
-      { property: "og:title", content: "Contact Chris Programs" },
+      { property: "og:title", content: "Contact ExpertsTeam" },
       { property: "og:description", content: "Get in touch with Chris Expert." },
     ],
   }),
