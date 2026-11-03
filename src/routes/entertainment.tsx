@@ -12,16 +12,16 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/entertainment")({
   head: () => ({
     meta: [
-      { title: "Entertainment — Chris Programs" },
+      { title: "Entertainment — ExpertsTeam" },
       {
         name: "description",
         content:
-          "Community videos, games and files shared by Chris Programs members. Upload up to 200MB and share with everyone.",
+          "Community videos, games and files shared by ExpertsTeam members. Upload up to 200MB and share with everyone.",
       },
-      { property: "og:title", content: "Entertainment — Chris Programs" },
+      { property: "og:title", content: "Entertainment — ExpertsTeam" },
       {
         property: "og:description",
-        content: "Community games, clips and files on Chris Programs.",
+        content: "Community games, clips and files on ExpertsTeam.",
       },
     ],
   }),
