@@ -21,7 +21,7 @@ export type GeminiResponse = {
 };
 
 const GEMINI_MODEL =
-  process.env["GEMINI_CODE_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.6-flash";
+  process.env["GEMINI_CODE_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.8-flash";
 const providerCooldowns = new Map<string, number>();
 
 export function markProviderCoolingDown(provider: string, seconds = 60) {
