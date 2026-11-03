@@ -53,17 +53,39 @@ export function SiteHeader() {
           </span>
         </Link>
 
-        <nav className={cn("hidden flex-1 items-center gap-1 md:flex", ALIGN[navAlign])}>
-          {TABS.map((tab) => (
-            <Link
-              key={tab.to}
-              to={tab.to}
-              activeOptions={{ exact: tab.to === "/" }}
-              className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:text-foreground"
-            >
-              {tab.label}
-            </Link>
-          ))}
+        <nav className={cn("hidden flex-1 items-center gap-2 md:flex", ALIGN[navAlign])}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="gap-2 text-sm">Explore <span className="text-xs text-muted-foreground">⌄</span></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuLabel>Discover</DropdownMenuLabel>
+              {TABS.filter((tab) => ["/", "/videos", "/entertainment", "/community"].includes(tab.to)).map((tab) => (
+                <DropdownMenuItem key={tab.to} asChild>
+                  <Link to={tab.to} activeOptions={{ exact: tab.to === "/" }}>{tab.label}</Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="gap-2 text-sm">Create & learn <span className="text-xs text-muted-foreground">⌄</span></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuLabel>Creator tools</DropdownMenuLabel>
+              {TABS.filter((tab) => ["/learn", "/projects", "/ai"].includes(tab.to)).map((tab) => (
+                <DropdownMenuItem key={tab.to} asChild>
+                  <Link to={tab.to}>{tab.label}</Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Link
+            to="/contact"
+            className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:text-foreground"
+          >
+            Contact
+          </Link>
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
