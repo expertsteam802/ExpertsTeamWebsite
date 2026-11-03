@@ -397,6 +397,7 @@ export type Database = {
         Row: {
           ai_credits: number
           ai_subscribed: boolean
+          ai_subscription_expires_at: string | null
           avatar_url: string | null
           bio: string | null
           bonus_bytes: number
@@ -412,6 +413,7 @@ export type Database = {
         Insert: {
           ai_credits?: number
           ai_subscribed?: boolean
+          ai_subscription_expires_at?: string | null
           avatar_url?: string | null
           bio?: string | null
           bonus_bytes?: number
@@ -427,6 +429,7 @@ export type Database = {
         Update: {
           ai_credits?: number
           ai_subscribed?: boolean
+          ai_subscription_expires_at?: string | null
           avatar_url?: string | null
           bio?: string | null
           bonus_bytes?: number
