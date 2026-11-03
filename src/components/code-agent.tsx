@@ -1132,7 +1132,7 @@ export function CodeAgent() {
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       <span className="text-[10px] text-slate-500">{terminalReady ? "WORKSPACE ONLINE" : "SHELL OFFLINE"}</span>
                       {["ls", "pwd", "npm run dev", "npm run build"].map((command) => (
-                        <button key={command} type="button" disabled={!terminalReady} onClick={() => void writeTerminalInput(command + "\\n").catch((error) => toast.error(error instanceof Error ? error.message : "Command failed"))} className="rounded border border-white/10 px-2 py-1 font-mono text-[10px] text-slate-400 hover:border-emerald-400/40 hover:text-emerald-200 disabled:opacity-30">{command}</button>
+                        <button key={command} type="button" disabled={!terminalReady} onClick={() => void writeTerminalInput(command + "\n").catch((error) => toast.error(error instanceof Error ? error.message : "Command failed"))} className="rounded border border-white/10 px-2 py-1 font-mono text-[10px] text-slate-400 hover:border-emerald-400/40 hover:text-emerald-200 disabled:opacity-30">{command}</button>
                       ))}
                       <button type="button" onClick={() => setTerminalOutput("")} className="text-xs text-slate-500 hover:text-white">Clear</button>
                       {!terminalReady && (
