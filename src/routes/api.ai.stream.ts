@@ -136,6 +136,9 @@ export const Route = createFileRoute("/api/ai/stream")({
                     data: match[2],
                   },
                 });
+                parts.push({
+                  text: "Image attachment. If this provider cannot inspect images, ask the user to describe it.",
+                });
               } else {
                 parts.push({ text: "[This attachment format could not be read]" });
               }
@@ -159,9 +162,13 @@ export const Route = createFileRoute("/api/ai/stream")({
             .map((item) => item.trim().toLowerCase())
             .filter(Boolean);
           const geminiKey = process.env["GEMINI_API_KEY"]?.trim();
+          const hasImageAttachments = attachments.some((file) => Boolean(file.dataUrl));
+          const orderedProviders = hasImageAttachments
+            ? ["gemini", ...providerOrder.filter((provider) => provider !== "gemini")]
+            : providerOrder;
 
-          // Keep true token streaming for Gemini when it is the first configured provider.
-          if (geminiKey && providerOrder[0] === "gemini" && !isProviderCoolingDown("gemini")) {
+          // Prefer Gemini for image inputs because the text-only providers cannot inspect them.
+          if (geminiKey && orderedProviders[0] === "gemini" && !isProviderCoolingDown("gemini")) {
             const model =
               process.env["GEMINI_CHAT_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.8-flash";
             try {
@@ -209,7 +216,9 @@ export const Route = createFileRoute("/api/ai/stream")({
           }
 
           const fallbackOrder =
-            geminiKey && providerOrder[0] === "gemini" ? providerOrder.slice(1) : providerOrder;
+            geminiKey && orderedProviders[0] === "gemini"
+              ? orderedProviders.slice(1)
+              : orderedProviders;
           const result = await generateGeminiContent(
             {
               systemInstruction: { parts: [{ text: systemText }] },
