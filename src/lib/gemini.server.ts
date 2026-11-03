@@ -32,7 +32,7 @@ export function resolveGeminiApiKey(apiKey?: string): string | undefined {
 
 function openAiMessages(request: GeminiRequest) {
   return [
-    { role: "system", content: request.systemInstruction.parts.map((part) => part.text).join("\\n") },
+    { role: "system", content: request.systemInstruction.parts.map((part) => part.text).join("\n") },
     ...request.contents.map((item) => ({
       role: item.role === "model" ? "assistant" : "user",
       content: item.parts.map((part) => part.text).join("\\n"),
