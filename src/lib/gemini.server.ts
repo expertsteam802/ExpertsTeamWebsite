@@ -27,6 +27,10 @@ export function markProviderCoolingDown(provider: string, seconds = 60) {
   providerCooldowns.set(provider, Date.now() + Math.max(5, Math.min(seconds, 300)) * 1000);
 }
 
+export function isProviderCoolingDown(provider: string) {
+  return (providerCooldowns.get(provider) ?? 0) > Date.now();
+}
+
 export function resolveGeminiApiKey(apiKey?: string): string | undefined {
   return (
     apiKey?.trim() ||
