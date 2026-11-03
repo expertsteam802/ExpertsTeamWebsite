@@ -811,7 +811,11 @@ export function CodeAgent() {
                       {runtimeUrl ? "Running project" : "Project preview"}
                     </div>
                     <span className="max-w-[55%] truncate text-[10px] text-slate-500">
-                      {runtimeUrl ? "WebContainer · Vite / npm" : runtimeBusy ? runtimeStatus : "HTML quick preview · press Run for React/Vite"}
+                      {runtimeUrl
+                        ? "WebContainer · Vite / npm"
+                        : runtimeBusy || runtimeStatus !== "Not started"
+                          ? runtimeStatus
+                          : "HTML quick preview · press Run for React/Vite"}
                     </span>
                   </div>
                   <div className="flex min-h-0 flex-1 items-stretch justify-center overflow-hidden bg-[#111a29] p-2 sm:p-3">
@@ -821,7 +825,9 @@ export function CodeAgent() {
                       title="Experts Team project preview"
                       src={runtimeUrl ?? undefined}
                       srcDoc={runtimeUrl ? undefined : srcDoc}
-                      sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin allow-downloads"
+                      sandbox={runtimeUrl
+                        ? "allow-scripts allow-forms allow-modals allow-popups allow-same-origin allow-downloads"
+                        : "allow-scripts allow-forms allow-modals allow-popups"}
                       className="h-full min-h-0 max-w-full rounded-lg border border-slate-300/20 bg-white shadow-2xl"
                       style={{
                         width:
