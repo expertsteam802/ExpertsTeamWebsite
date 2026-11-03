@@ -238,6 +238,27 @@ export function CodeAgent() {
     runtimeInstallKeyRef.current = null;
   }
 
+  async function saveProjectName() {
+    const nextName = name.trim().slice(0, 80) || "Untitled project";
+    setName(nextName);
+    setProjectNameEditing(false);
+    try {
+      if (projectId && user) {
+        const { error } = await supabase
+          .from("agent_projects")
+          .update({ name: nextName })
+          .eq("id", projectId)
+          .eq("user_id", user.id);
+        if (error) throw error;
+        await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
+      } else {
+        await persist();
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not rename project.");
+    }
+  }
+
   async function persist(
     next: {
       files?: ProjectFiles;
@@ -494,9 +515,13 @@ export function CodeAgent() {
                   autoFocus
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  onBlur={() => setProjectNameEditing(false)}
+                  onBlur={() => void saveProjectName()}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter") setProjectNameEditing(false);
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void saveProjectName();
+                    }
+                    if (event.key === "Escape") setProjectNameEditing(false);
                   }}
                   className="h-6 w-48 border-white/10 bg-white/5 px-2 text-sm"
                 />
