@@ -84,11 +84,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ExpertsTeam — Watch, Learn & Share Code" },
+      { title: "ExpertsTeam — Turn ideas into real apps" },
       {
         name: "description",
         content:
-          "ExpertsTeam is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community.",
+          "ExpertsTeam is an AI-powered creative workspace to plan, build and edit apps, explore code, learn new skills and create alongside a community.",
       },
       { name: "author", content: "Chris Expert" },
       {
