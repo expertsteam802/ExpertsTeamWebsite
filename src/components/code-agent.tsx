@@ -690,7 +690,7 @@ export function CodeAgent() {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">
-                Experts Team
+                ExpertsTeam
               </span>
               <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[9px] font-semibold text-cyan-200">
                 AI STUDIO
@@ -1059,7 +1059,7 @@ export function CodeAgent() {
                     <iframe
                       ref={iframeRef}
                       key={previewKey}
-                      title="Experts Team project preview"
+                      title="ExpertsTeam project preview"
                       src={runtimeUrl ?? undefined}
                       srcDoc={runtimeUrl ? undefined : srcDoc}
                       sandbox={runtimeUrl

@@ -23,7 +23,7 @@ const TABS = [
   { to: "/learn", label: "Learn to code" },
   { to: "/community", label: "Community" },
   { to: "/projects", label: "Workspace" },
-  { to: "/ai", label: "Chris AI" },
+  { to: "/ai", label: "Expert AI" },
   { to: "/contact", label: "Contact" },
 ] as const;
 

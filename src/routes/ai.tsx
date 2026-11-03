@@ -9,11 +9,11 @@ import { CodeAgent } from "@/components/code-agent";
 export const Route = createFileRoute("/ai")({
   head: () => ({
     meta: [
-      { title: "Experts Team — AI Workspace" },
+      { title: "ExpertsTeam — AI Studio" },
       {
         name: "description",
         content:
-          "Build, edit, preview, and publish applications in the Experts Team workspace.",
+          "Build, edit, preview, and publish applications in the ExpertsTeam workspace.",
       },
     ],
   }),

@@ -73,7 +73,7 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
       const { pushToGithub } = await import("./agent.server");
       return {
         ok: true as const,
-        ...(await pushToGithub({ ...data, message: "Update from Experts Team agent" })),
+        ...(await pushToGithub({ ...data, message: "Update from ExpertsTeam agent" })),
       };
     } catch (error) {
       return { ok: false as const, error: error instanceof Error ? error.message : "Push failed" };

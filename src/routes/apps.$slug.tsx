@@ -11,15 +11,15 @@ import { buildSrcDoc, type ProjectFiles } from "@/lib/sandbox";
 export const Route = createFileRoute("/apps/$slug")({
   head: () => ({
     meta: [
-      { title: "Live app — Experts Team" },
+      { title: "Live app — ExpertsTeam" },
       {
         name: "description",
-        content: "An app built and published with the Experts Team coding agent.",
+        content: "An app built and published with the ExpertsTeam coding agent.",
       },
-      { property: "og:title", content: "Live app — Experts Team" },
+      { property: "og:title", content: "Live app — ExpertsTeam" },
       {
         property: "og:description",
-        content: "An app built and published with the Experts Team coding agent.",
+        content: "An app built and published with the ExpertsTeam coding agent.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

@@ -11,7 +11,7 @@ export const STARTER_FILES: ProjectFiles = {
 </head>
 <body>
   <main>
-    <h1>Hello from Experts Team</h1>
+    <h1>Hello from ExpertsTeam</h1>
     <p>Ask the agent to build something.</p>
   </main>
   <script src="script.js"></script>

@@ -61,7 +61,7 @@ function ContactPage() {
       setEmail("");
       setSubject("");
       setMessage("");
-      toast.success("Your message has been sent to the Experts Team.");
+      toast.success("Your message has been sent to ExpertsTeam.");
     },
     onError: (error: Error) => toast.error(error.message),
   });
