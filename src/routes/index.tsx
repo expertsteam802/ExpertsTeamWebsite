@@ -122,14 +122,17 @@ function Index() {
                 Make it real.
               </h1>
               <p className="max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
-                {settings.site_name} is your creative space to turn ideas into apps with AI,
-                explore real code, learn by doing and share what you make.
+                {settings.site_name} is your creative space to turn ideas into apps with AI, explore
+                real code, learn by doing and share what you make.
               </p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link to="/ai">
-                <Button size="lg" className="group h-12 w-full px-6 text-sm font-semibold sm:w-auto">
+                <Button
+                  size="lg"
+                  className="group h-12 w-full px-6 text-sm font-semibold sm:w-auto"
+                >
                   <Sparkles className="mr-2 h-4 w-4" />
                   Open AI Studio
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -144,9 +147,15 @@ function Index() {
             </div>
 
             <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-border/60 pt-5 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-2"><Cpu className="h-4 w-4 text-primary" /> AI-assisted creation</span>
-              <span className="inline-flex items-center gap-2"><Braces className="h-4 w-4 text-primary" /> Real editable code</span>
-              <span className="inline-flex items-center gap-2"><Compass className="h-4 w-4 text-primary" /> Learn as you build</span>
+              <span className="inline-flex items-center gap-2">
+                <Cpu className="h-4 w-4 text-primary" /> AI-assisted creation
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <Braces className="h-4 w-4 text-primary" /> Real editable code
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <Compass className="h-4 w-4 text-primary" /> Learn as you build
+              </span>
             </div>
           </div>
 
@@ -158,22 +167,36 @@ function Index() {
                   <span className="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
                   <span className="h-2.5 w-2.5 rounded-full bg-amber-300/80" />
                   <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
-                  <span className="ml-2 text-[11px] font-medium tracking-wide text-slate-400">EXPERTSTEAM / STUDIO</span>
+                  <span className="ml-2 text-[11px] font-medium tracking-wide text-slate-400">
+                    EXPERTSTEAM / STUDIO
+                  </span>
                 </div>
-                <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] text-emerald-300">WORKSPACE</span>
+                <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] text-emerald-300">
+                  WORKSPACE
+                </span>
               </div>
 
               <div className="grid min-h-[330px] grid-cols-[116px_1fr] sm:min-h-[390px] sm:grid-cols-[145px_1fr]">
                 <aside className="border-r border-white/10 bg-white/[0.02] p-3 sm:p-4">
                   <div className="mb-6 flex items-center gap-2 text-xs font-bold text-white">
-                    <span className="grid h-6 w-6 place-items-center rounded-lg bg-gradient-to-br from-cyan-300 to-violet-400 text-[11px] text-slate-950">E</span>
+                    <span className="grid h-6 w-6 place-items-center rounded-lg bg-gradient-to-br from-cyan-300 to-violet-400 text-[11px] text-slate-950">
+                      E
+                    </span>
                     <span>Studio</span>
                   </div>
                   <div className="space-y-2 text-[10px] text-slate-400 sm:text-[11px]">
-                    <div className="flex items-center gap-2 rounded-lg bg-cyan-300/10 px-2 py-2 text-cyan-200"><WandSparkles className="h-3.5 w-3.5" /> Builder</div>
-                    <div className="flex items-center gap-2 px-2 py-2"><Code2 className="h-3.5 w-3.5" /> Editor</div>
-                    <div className="flex items-center gap-2 px-2 py-2"><TerminalSquare className="h-3.5 w-3.5" /> Terminal</div>
-                    <div className="mt-5 border-t border-white/10 pt-4 text-[9px] uppercase tracking-widest text-slate-600">Your projects</div>
+                    <div className="flex items-center gap-2 rounded-lg bg-cyan-300/10 px-2 py-2 text-cyan-200">
+                      <WandSparkles className="h-3.5 w-3.5" /> Builder
+                    </div>
+                    <div className="flex items-center gap-2 px-2 py-2">
+                      <Code2 className="h-3.5 w-3.5" /> Editor
+                    </div>
+                    <div className="flex items-center gap-2 px-2 py-2">
+                      <TerminalSquare className="h-3.5 w-3.5" /> Terminal
+                    </div>
+                    <div className="mt-5 border-t border-white/10 pt-4 text-[9px] uppercase tracking-widest text-slate-600">
+                      Your projects
+                    </div>
                     <div className="truncate px-2 py-2 text-slate-300">✦ Launchpad</div>
                     <div className="truncate px-2 py-2">◈ Portfolio</div>
                   </div>
@@ -182,22 +205,36 @@ function Index() {
                 <div className="flex min-w-0 flex-col p-4 sm:p-6">
                   <div className="mb-5 flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-[10px] uppercase tracking-[0.2em] text-cyan-300">New project</p>
-                      <h2 className="mt-1 font-display text-lg font-semibold text-white sm:text-xl">What will you create?</h2>
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-cyan-300">
+                        New project
+                      </p>
+                      <h2 className="mt-1 font-display text-lg font-semibold text-white sm:text-xl">
+                        What will you create?
+                      </h2>
                     </div>
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/5 text-cyan-200"><Bot className="h-4 w-4" /></span>
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/5 text-cyan-200">
+                      <Bot className="h-4 w-4" />
+                    </span>
                   </div>
 
                   <div className="rounded-2xl border border-white/10 bg-[#0e1727] p-3 sm:p-4">
-                    <p className="text-xs leading-6 text-slate-300 sm:text-sm">Build a clean website for a creative studio with a project gallery, contact form and a bold dark theme.</p>
+                    <p className="text-xs leading-6 text-slate-300 sm:text-sm">
+                      Build a clean website for a creative studio with a project gallery, contact
+                      form and a bold dark theme.
+                    </p>
                     <div className="mt-4 flex items-center justify-between gap-2 border-t border-white/10 pt-3">
-                      <span className="text-[10px] text-slate-500">Describe your idea in your own words…</span>
-                      <span className="grid h-8 w-8 place-items-center rounded-lg bg-cyan-300 text-slate-950"><ArrowRight className="h-4 w-4" /></span>
+                      <span className="text-[10px] text-slate-500">
+                        Describe your idea in your own words…
+                      </span>
+                      <span className="grid h-8 w-8 place-items-center rounded-lg bg-cyan-300 text-slate-950">
+                        <ArrowRight className="h-4 w-4" />
+                      </span>
                     </div>
                   </div>
 
                   <div className="my-5 flex items-center gap-3 text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                    <span className="h-px flex-1 bg-white/10" /> BUILD PLAN <span className="h-px flex-1 bg-white/10" />
+                    <span className="h-px flex-1 bg-white/10" /> BUILD PLAN{" "}
+                    <span className="h-px flex-1 bg-white/10" />
                   </div>
 
                   <div className="space-y-3">
@@ -206,27 +243,50 @@ function Index() {
                       ["02", "Create the experience", "Build the layout and components"],
                       ["03", "Preview and refine", "Test it, then polish the details"],
                     ].map(([number, title, detail], index) => (
-                      <div key={number} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] p-3">
-                        <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[10px] font-bold ${index === 0 ? "bg-cyan-300/15 text-cyan-200" : "bg-white/5 text-slate-500"}`}>{number}</span>
+                      <div
+                        key={number}
+                        className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] p-3"
+                      >
+                        <span
+                          className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[10px] font-bold ${index === 0 ? "bg-cyan-300/15 text-cyan-200" : "bg-white/5 text-slate-500"}`}
+                        >
+                          {number}
+                        </span>
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-medium text-slate-200">{title}</p>
                           <p className="mt-0.5 text-[10px] text-slate-500">{detail}</p>
                         </div>
-                        {index === 0 ? <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" /> : <span className="text-[10px] text-slate-600">NEXT</span>}
+                        {index === 0 ? (
+                          <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
+                        ) : (
+                          <span className="text-[10px] text-slate-600">NEXT</span>
+                        )}
                       </div>
                     ))}
                   </div>
-                  <div className="mt-auto flex items-center gap-2 pt-5 text-[10px] text-slate-500"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> A plan you can review before the build begins</div>
+                  <div className="mt-auto flex items-center gap-2 pt-5 text-[10px] text-slate-500">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> A plan you can
+                    review before the build begins
+                  </div>
                 </div>
               </div>
               <div className="flex items-center justify-between border-t border-white/10 bg-white/[0.025] px-4 py-3 text-[10px] text-slate-500">
                 <span>IDEAS → PLAN → BUILD → PREVIEW</span>
-                <span className="inline-flex items-center gap-1.5 text-cyan-300"><Sparkles className="h-3 w-3" /> Made to create</span>
+                <span className="inline-flex items-center gap-1.5 text-cyan-300">
+                  <Sparkles className="h-3 w-3" /> Made to create
+                </span>
               </div>
             </div>
             <div className="absolute -bottom-5 -left-3 hidden items-center gap-2 rounded-2xl border border-border bg-card/95 px-4 py-3 shadow-xl backdrop-blur sm:flex">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary"><Rocket className="h-4 w-4" /></span>
-              <span><span className="block text-xs font-semibold">From thought to launch</span><span className="block text-[10px] text-muted-foreground">One workspace. Your next move.</span></span>
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary">
+                <Rocket className="h-4 w-4" />
+              </span>
+              <span>
+                <span className="block text-xs font-semibold">From thought to launch</span>
+                <span className="block text-[10px] text-muted-foreground">
+                  One workspace. Your next move.
+                </span>
+              </span>
             </div>
           </div>
         </div>
@@ -234,15 +294,27 @@ function Index() {
 
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
         <div className="mx-auto max-w-2xl text-center">
-          <span className="text-xs font-semibold tracking-[0.22em] text-primary">MORE THAN A PROMPT BOX</span>
-          <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">Everything you need to keep creating.</h2>
-          <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-base">A connected creative workflow — from the first rough idea to the details that make a project yours.</p>
+          <span className="text-xs font-semibold tracking-[0.22em] text-primary">
+            MORE THAN A PROMPT BOX
+          </span>
+          <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">
+            Everything you need to keep creating.
+          </h2>
+          <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-base">
+            A connected creative workflow — from the first rough idea to the details that make a
+            project yours.
+          </p>
         </div>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {CAPABILITIES.map((item) => (
-            <Card key={item.number} className="group relative overflow-hidden gap-4 p-6 transition-all duration-300 hover:-translate-y-1 hover:glow-panel">
+            <Card
+              key={item.number}
+              className="group relative overflow-hidden gap-4 p-6 transition-all duration-300 hover:-translate-y-1 hover:glow-panel"
+            >
               <div className="flex items-center justify-between">
-                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground"><item.icon className="h-5 w-5" /></span>
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <item.icon className="h-5 w-5" />
+                </span>
                 <span className="font-display text-sm text-muted-foreground/50">{item.number}</span>
               </div>
               <div>
@@ -258,11 +330,21 @@ function Index() {
       <section className="border-y border-border/60 bg-surface/40">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8 lg:py-20">
           <div>
-            <span className="text-xs font-semibold tracking-[0.22em] text-primary">A SIMPLE WAY TO START</span>
-            <h2 className="mt-3 max-w-xl font-display text-3xl font-bold sm:text-4xl">You bring the idea. We give you room to build.</h2>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground sm:text-base">No need to know every technical step before you begin. Start with what you want to make, review the plan, and shape the result as you go.</p>
+            <span className="text-xs font-semibold tracking-[0.22em] text-primary">
+              A SIMPLE WAY TO START
+            </span>
+            <h2 className="mt-3 max-w-xl font-display text-3xl font-bold sm:text-4xl">
+              You bring the idea. We give you room to build.
+            </h2>
+            <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground sm:text-base">
+              No need to know every technical step before you begin. Start with what you want to
+              make, review the plan, and shape the result as you go.
+            </p>
             <Link to="/ai" className="mt-7 inline-flex">
-              <Button size="lg" className="group">Try the AI workspace <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" /></Button>
+              <Button size="lg" className="group">
+                Try the AI workspace{" "}
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Button>
             </Link>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -286,11 +368,23 @@ function Index() {
         <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <span className="text-xs font-semibold tracking-[0.22em] text-primary">FROM THE CREATOR</span>
-              <h2 className="mt-2 font-display text-3xl font-bold sm:text-4xl">Watch. Learn. Get inspired.</h2>
-              <p className="mt-2 max-w-xl text-sm text-muted-foreground">Explore the latest videos and practical ideas from the ExpertsTeam creator community.</p>
+              <span className="text-xs font-semibold tracking-[0.22em] text-primary">
+                FROM THE CREATOR
+              </span>
+              <h2 className="mt-2 font-display text-3xl font-bold sm:text-4xl">
+                Watch. Learn. Get inspired.
+              </h2>
+              <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+                Explore the latest videos and practical ideas from the ExpertsTeam creator
+                community.
+              </p>
             </div>
-            <Link to="/videos" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">Browse all videos <ArrowRight className="h-4 w-4" /></Link>
+            <Link
+              to="/videos"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
+            >
+              Browse all videos <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
           <div className="mt-8">
             <VideoGrid videos={videos} />
@@ -303,13 +397,28 @@ function Index() {
           <div className="absolute -right-12 -top-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
           <div className="relative flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
             <div className="max-w-2xl">
-              <span className="inline-flex items-center gap-2 text-xs font-semibold tracking-[0.2em] text-primary"><Gamepad2 className="h-4 w-4" /> THE NEXT CHAPTER IS YOURS</span>
-              <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">Curious what you could make?</h2>
-              <p className="mt-3 text-sm leading-7 text-muted-foreground sm:text-base">Step into ExpertsTeam, explore the tools and turn that idea you have been thinking about into your next project.</p>
+              <span className="inline-flex items-center gap-2 text-xs font-semibold tracking-[0.2em] text-primary">
+                <Gamepad2 className="h-4 w-4" /> THE NEXT CHAPTER IS YOURS
+              </span>
+              <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">
+                Curious what you could make?
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-muted-foreground sm:text-base">
+                Step into ExpertsTeam, explore the tools and turn that idea you have been thinking
+                about into your next project.
+              </p>
             </div>
             <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
-              <Link to="/auth"><Button size="lg" className="w-full sm:w-auto">Create your account <ArrowRight className="ml-2 h-4 w-4" /></Button></Link>
-              <Link to="/community"><Button size="lg" variant="outline" className="w-full sm:w-auto"><Users className="mr-2 h-4 w-4" /> Meet the community</Button></Link>
+              <Link to="/auth">
+                <Button size="lg" className="w-full sm:w-auto">
+                  Create your account <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+              <Link to="/community">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                  <Users className="mr-2 h-4 w-4" /> Meet the community
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
