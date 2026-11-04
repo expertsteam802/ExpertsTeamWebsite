@@ -232,17 +232,20 @@ export function CodeAgent() {
     if (!runtimeUrl || !projectId) return;
     if (JSON.stringify(runtimeFilesRef.current) === JSON.stringify(files)) return;
     const nextFiles = files;
-    runtimeSyncQueueRef.current = runtimeSyncQueueRef.current
-      .then(async () => {
-        await startPreview({ data: { projectId, files: nextFiles } });
-        runtimeFilesRef.current = { ...nextFiles };
-        setRuntimeStatus("Running · files synced");
-      })
-      .catch((error) => {
-        const message = error instanceof Error ? error.message : "Could not sync project files.";
-        setLogs((current) => [...current.slice(-199), { type: "error", message }]);
-        setRuntimeStatus("Sync failed");
-      });
+    const timer = window.setTimeout(() => {
+      runtimeSyncQueueRef.current = runtimeSyncQueueRef.current
+        .then(async () => {
+          await startPreview({ data: { projectId, files: nextFiles } });
+          runtimeFilesRef.current = { ...nextFiles };
+          setRuntimeStatus("Running · files synced");
+        })
+        .catch((error) => {
+          const message = error instanceof Error ? error.message : "Could not sync project files.";
+          setLogs((current) => [...current.slice(-199), { type: "error", message }]);
+          setRuntimeStatus("Sync failed");
+        });
+    }, 1200);
+    return () => window.clearTimeout(timer);
   }, [files, runtimeUrl, projectId]);
 
   useEffect(() => {
