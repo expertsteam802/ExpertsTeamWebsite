@@ -7,6 +7,9 @@ import type { Json } from "@/integrations/supabase/types";
 export const MYBID_VAST_DEFAULT_URL = "https://vast.vstserv.com/vast?spot_id=2030847";
 
 type MyBidSettings = {
+  myBidActiveFormat: "vast" | "overlay";
+  myBidOverlayEnabled: boolean;
+  myBidOverlayAdCodeId: string;
   myBidVastEnabled: boolean;
   myBidVastUrl: string;
   myBidAdCodeId: string;
@@ -15,6 +18,9 @@ type MyBidSettings = {
 };
 
 const DEFAULT_SETTINGS: MyBidSettings = {
+  myBidActiveFormat: "vast",
+  myBidOverlayEnabled: true,
+  myBidOverlayAdCodeId: "470837",
   myBidVastEnabled: true,
   myBidVastUrl: MYBID_VAST_DEFAULT_URL,
   myBidAdCodeId: "470834",
@@ -26,6 +32,15 @@ function parseAdSettings(value: Json | null | undefined): MyBidSettings {
   if (!value || typeof value !== "object" || Array.isArray(value)) return DEFAULT_SETTINGS;
   const raw = value as Record<string, Json | undefined>;
   return {
+    myBidActiveFormat: raw.myBidActiveFormat === "overlay" ? "overlay" : "vast",
+    myBidOverlayEnabled:
+      typeof raw.myBidOverlayEnabled === "boolean"
+        ? raw.myBidOverlayEnabled
+        : DEFAULT_SETTINGS.myBidOverlayEnabled,
+    myBidOverlayAdCodeId:
+      typeof raw.myBidOverlayAdCodeId === "string"
+        ? raw.myBidOverlayAdCodeId
+        : DEFAULT_SETTINGS.myBidOverlayAdCodeId,
     myBidVastEnabled:
       typeof raw.myBidVastEnabled === "boolean"
         ? raw.myBidVastEnabled
@@ -146,7 +161,13 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
   );
 
   useEffect(() => {
-    if (!isFetched || isError || !settings.myBidVastEnabled) return;
+    if (
+      !isFetched ||
+      isError ||
+      settings.myBidActiveFormat !== "vast" ||
+      !settings.myBidVastEnabled
+    )
+      return;
     let cancelled = false;
     void loadImaSdk()
       .then(() => {
@@ -161,11 +182,15 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
     return () => {
       cancelled = true;
     };
-  }, [isFetched, isError, settings.myBidVastEnabled, onFinished]);
+  }, [isFetched, isError, settings.myBidActiveFormat, settings.myBidVastEnabled, onFinished]);
 
   useEffect(() => {
-    if (isFetched && (isError || !settings.myBidVastEnabled)) onFinished?.();
-  }, [isFetched, isError, settings.myBidVastEnabled, onFinished]);
+    if (
+      isFetched &&
+      (isError || settings.myBidActiveFormat !== "vast" || !settings.myBidVastEnabled)
+    )
+      onFinished?.();
+  }, [isFetched, isError, settings.myBidActiveFormat, settings.myBidVastEnabled, onFinished]);
 
   function playAd(userInitiated = false) {
     if (
@@ -282,7 +307,13 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
     playAd(false);
   }, [sdkReady]);
 
-  if (!isFetched || isError || !settings.myBidVastEnabled) return null;
+  if (
+    !isFetched ||
+    isError ||
+    settings.myBidActiveFormat !== "vast" ||
+    !settings.myBidVastEnabled
+  )
+    return null;
 
   return (
     <div className="w-full max-w-3xl space-y-3">
