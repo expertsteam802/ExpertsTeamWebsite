@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Hash, Loader2, Lock, Plus, Send, Trash2 } from "lucide-react";
+import { Hash, Loader2, Lock, Plus, Search, Send, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -48,6 +48,7 @@ export function WorkspaceChat() {
   const [name, setName] = useState("");
   const [category, setCategory] = useState<string>("general");
   const [description, setDescription] = useState("");
+  const [groupSearch, setGroupSearch] = useState("");
 
   const {
     data: groups = [],
@@ -67,6 +68,7 @@ export function WorkspaceChat() {
   });
 
   const activeGroup = groups.find((group) => group.id === activeId) ?? groups[0] ?? null;
+  const visibleGroups = groups.filter((group) => `${group.name} ${group.category} ${group.description ?? ""}`.toLowerCase().includes(groupSearch.toLowerCase()));
 
   useEffect(() => {
     if (!activeGroup?.id) return;
@@ -177,10 +179,10 @@ export function WorkspaceChat() {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
-      <Card className="glow-panel gap-3 p-4">
+    <div className="grid min-h-[72vh] overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-0">
+      <Card className="flex flex-col gap-3 rounded-none border-0 border-r border-border/70 bg-background/80 p-4 shadow-none">
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold">Groups</h2>
+          <div><h2 className="font-display text-lg font-semibold">Messages</h2><p className="text-xs text-muted-foreground">Your live workspaces</p></div>
           {isAdmin && (
             <Button
               size="icon"
@@ -245,7 +247,9 @@ export function WorkspaceChat() {
           </div>
         )}
 
-        <div className="space-y-1">
+        <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={groupSearch} onChange={(event) => setGroupSearch(event.target.value)} placeholder="Search conversations" className="h-10 rounded-xl pl-9" /></div>
+
+        <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">
           {groupsLoading && <p className="text-sm text-muted-foreground">Loading groups…</p>}
           {groupsError && (
             <div role="alert" className="space-y-2 rounded-lg border border-destructive/30 p-3">
@@ -260,21 +264,21 @@ export function WorkspaceChat() {
               {isAdmin ? "Create your first group — e.g. Map editors." : "No groups yet."}
             </p>
           )}
-          {groups.map((group) => (
+          {visibleGroups.map((group) => (
             <div key={group.id} className="group flex items-center gap-1">
               <button
                 onClick={() => setActiveId(group.id)}
                 className={cn(
-                  "flex-1 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-secondary",
+                  "flex-1 rounded-xl px-3 py-3 text-left text-sm transition-colors hover:bg-secondary/80",
                   activeGroup?.id === group.id && "bg-secondary text-foreground",
                 )}
               >
-                <span className="flex items-center gap-2">
-                  <Hash className="h-3.5 w-3.5 text-primary" />
-                  <span className="truncate">{group.name}</span>
-                </span>
-                <span className="mt-0.5 block truncate pl-5 text-xs capitalize text-muted-foreground">
-                  {group.category}
+                <span className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary/20 to-accent/20 text-primary"><Hash className="h-4 w-4" /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold">{group.name}</span>
+                    <span className="mt-1 block truncate text-xs capitalize text-muted-foreground">{group.category}</span>
+                  </span>
                 </span>
               </button>
               {isAdmin && (
@@ -293,19 +297,15 @@ export function WorkspaceChat() {
         </div>
       </Card>
 
-      <Card className="glow-panel flex h-[70vh] flex-col overflow-hidden p-0">
+      <Card className="flex min-h-[72vh] flex-col overflow-hidden rounded-none border-0 bg-background p-0 shadow-none">
         {activeGroup ? (
           <>
-            <div className="border-b border-border/70 px-4 py-3">
-              <p className="flex items-center gap-2 text-sm font-semibold">
-                <Hash className="h-4 w-4 text-primary" /> {activeGroup.name}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {activeGroup.description || `${activeGroup.category} workspace channel`}
-              </p>
+            <div className="flex items-center justify-between gap-3 border-b border-border/70 px-5 py-4">
+              <div className="flex min-w-0 items-center gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><Hash className="h-5 w-5" /></div><div className="min-w-0"><p className="truncate text-sm font-semibold">{activeGroup.name}</p><p className="truncate text-xs text-muted-foreground">{activeGroup.description || `${activeGroup.category} workspace channel`}</p></div></div>
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-600"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />LIVE</span>
             </div>
 
-            <div className="flex-1 space-y-3 overflow-y-auto p-4">
+            <div className="flex-1 space-y-4 overflow-y-auto bg-secondary/20 px-4 py-5 sm:px-6">
               {messagesLoading && (
                 <p className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Loader2 className="h-3 w-3 animate-spin" /> Loading messages…
@@ -351,10 +351,10 @@ export function WorkspaceChat() {
                     )}
                     <div
                       className={cn(
-                        "max-w-[82%] rounded-2xl px-3.5 py-2.5 shadow-sm",
+                        "max-w-[82%] rounded-2xl px-4 py-3 shadow-sm",
                         mine
-                          ? "rounded-br-md bg-primary text-primary-foreground"
-                          : "rounded-bl-md border border-border/70 bg-secondary/80",
+                          ? "rounded-br-md bg-gradient-to-br from-primary to-primary/85 text-primary-foreground"
+                          : "rounded-bl-md border border-border/70 bg-card",
                       )}
                     >
                       {!mine && (
@@ -385,7 +385,7 @@ export function WorkspaceChat() {
               })}
             </div>
 
-            <div className="flex items-end gap-2 border-t border-border/70 p-3">
+            <div className="flex items-end gap-2 border-t border-border/70 bg-card p-4 sm:px-5">
               <Textarea
                 rows={1}
                 value={draft}
@@ -397,9 +397,9 @@ export function WorkspaceChat() {
                     submit();
                   }
                 }}
-                className="min-h-10 resize-none"
+                className="min-h-11 resize-none rounded-2xl bg-secondary/50 px-4 py-3"
               />
-              <Button onClick={submit} disabled={send.isPending} aria-label="Send message">
+              <Button onClick={submit} disabled={send.isPending} aria-label="Send message" className="h-11 w-11 shrink-0 rounded-full">
                 <Send className="h-4 w-4" />
               </Button>
             </div>
