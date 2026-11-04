@@ -9,6 +9,7 @@ import {
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { SiteHeader } from "@/components/layout/site-header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -366,9 +367,10 @@ function MessagesPage() {
   }
 
   return (
-    <PageShell>
-      <main className="mx-auto flex max-w-7xl flex-col px-3 py-5 sm:px-5 lg:px-8">
-        <div className="mb-4 flex items-end justify-between gap-3">
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
+      <SiteHeader />
+      <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col overflow-hidden px-3 py-3 sm:px-5 lg:px-8">
+        <div className="mb-3 flex shrink-0 items-end justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Stay connected</p>
             <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">Messages</h1>
@@ -379,8 +381,8 @@ function MessagesPage() {
           </Button>
         </div>
 
-        <section className="grid min-h-[min(76vh,780px)] overflow-hidden rounded-3xl border border-border/70 bg-card shadow-2xl shadow-black/5 md:grid-cols-[320px_minmax(0,1fr)]">
-          <aside className={`flex min-h-[68vh] flex-col border-r border-border/70 bg-background/70 ${mobileChatOpen ? "hidden md:flex" : "flex"}`}>
+        <section className="grid min-h-0 flex-1 overflow-hidden rounded-3xl border border-border/70 bg-card shadow-2xl shadow-black/5 md:grid-cols-[320px_minmax(0,1fr)]">
+          <aside className={`flex min-h-0 flex-col overflow-hidden border-r border-border/70 bg-background/70 ${mobileChatOpen ? "hidden md:flex" : "flex"}`}>
             <div className="border-b border-border/70 p-4">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -432,7 +434,7 @@ function MessagesPage() {
             </div>
           </aside>
 
-          <div className={`flex min-h-[68vh] min-w-0 flex-col bg-gradient-to-b from-background to-secondary/20 ${mobileChatOpen ? "flex" : "hidden md:flex"}`}>
+          <div className={`flex min-h-0 min-w-0 flex-col overflow-hidden bg-gradient-to-b from-background to-secondary/20 ${mobileChatOpen ? "flex" : "hidden md:flex"}`}>
             {activeConversation && recipient ? <>
               <header className="flex h-[76px] shrink-0 items-center justify-between border-b border-border/70 bg-background/70 px-4 backdrop-blur">
                 <div className="flex min-w-0 items-center gap-3">
@@ -442,7 +444,7 @@ function MessagesPage() {
                 </div>
 
               </header>
-              <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-7">
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-5 sm:px-7">
                 <div className="mb-7 text-center"><Avatar className="mx-auto h-16 w-16"><AvatarImage src={recipient.avatar_url ?? undefined} /><AvatarFallback>{initials(personName(recipient))}</AvatarFallback></Avatar><p className="mt-3 font-semibold">{personName(recipient)}</p><p className="text-xs text-muted-foreground">@{recipient.username || "member"} · ExpertsTeam</p></div>
                 {messagesLoading && <p className="text-center text-xs text-muted-foreground">Loading conversation…</p>}
                 {!messagesLoading && messages.length === 0 && <div className="mx-auto max-w-xs rounded-2xl border border-border/70 bg-card p-5 text-center"><Sparkles className="mx-auto h-6 w-6 text-primary" /><p className="mt-2 text-sm font-semibold">Say hello</p><p className="mt-1 text-xs text-muted-foreground">This is the beginning of your conversation. Send a message or share a photo.</p></div>}
@@ -463,7 +465,7 @@ function MessagesPage() {
                 {attachmentPreview && <div className="mb-3 flex items-center gap-3 rounded-xl border border-border bg-card p-2"><img src={attachmentPreview} alt="Attachment preview" className="h-14 w-14 rounded-lg object-cover" /><span className="min-w-0 flex-1 truncate text-xs">{attachment?.name}</span><Button type="button" size="icon" variant="ghost" onClick={() => { setAttachment(null); setAttachmentPreview(""); }}><X className="h-4 w-4" /></Button></div>}
                 <div className="flex items-end gap-2 rounded-2xl border border-border bg-card p-2 shadow-inner">
                   <label className="grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-xl text-muted-foreground transition hover:bg-secondary hover:text-primary" title="Attach photo"><ImagePlus className="h-5 w-5" /><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="sr-only" onChange={(event) => chooseAttachment(event.target.files?.[0])} /></label>
-                  <textarea value={draft} onChange={(event) => updateDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); if (!sendMessage.isPending) sendMessage.mutate(); } }} rows={1} maxLength={5000} placeholder="Message…" className="max-h-32 min-h-10 flex-1 resize-y bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground" />
+                  <textarea value={draft} onChange={(event) => updateDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); if (!sendMessage.isPending) sendMessage.mutate(); } }} rows={1} maxLength={5000} placeholder="Message…" className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground" />
                   <Button type="submit" size="icon" disabled={sendMessage.isPending || (!draft.trim() && !attachment)} className="h-10 w-10 shrink-0 rounded-xl"><Send className="h-4 w-4" /></Button>
                 </div>
                 <p className="mt-2 px-2 text-[10px] text-muted-foreground">Enter to send · Shift + Enter for a new line</p>
@@ -477,6 +479,6 @@ function MessagesPage() {
           </div>
         </section>
       </main>
-    </PageShell>
+    </div>
   );
 }
