@@ -514,7 +514,7 @@ export type Database = {
           created_at: string
           edited_at: string | null
           id: string
-          media_url: string | null
+          media_path: string | null
           sender_id: string
         }
         Insert: {
@@ -523,7 +523,7 @@ export type Database = {
           created_at?: string
           edited_at?: string | null
           id?: string
-          media_url?: string | null
+          media_path?: string | null
           sender_id: string
         }
         Update: {
@@ -532,7 +532,7 @@ export type Database = {
           created_at?: string
           edited_at?: string | null
           id?: string
-          media_url?: string | null
+          media_path?: string | null
           sender_id?: string
         }
         Relationships: [
