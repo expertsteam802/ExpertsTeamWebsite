@@ -22,6 +22,9 @@ export type SiteSettings = {
 
 export const siteSettingsQuery = {
   queryKey: ["site-settings"],
+  staleTime: 5 * 60 * 1000,
+  gcTime: 30 * 60 * 1000,
+  refetchOnWindowFocus: false,
   queryFn: async () => {
     const { data, error } = await supabase
       .from("site_settings")
