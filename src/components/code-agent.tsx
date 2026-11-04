@@ -34,7 +34,15 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -700,7 +708,10 @@ export function CodeAgent() {
     }
   }
 
-  function beginPanelResize(event: React.PointerEvent<HTMLDivElement>, target: "sidebar" | "assistant") {
+  function beginPanelResize(
+    event: React.PointerEvent<HTMLDivElement>,
+    target: "sidebar" | "assistant",
+  ) {
     event.preventDefault();
     const startX = event.clientX;
     const startWidth = target === "sidebar" ? sidebarWidth : assistantWidth;
@@ -1514,7 +1525,10 @@ export function CodeAgent() {
                             : "border border-white/[0.07] bg-white/[0.035] text-slate-200"
                         }`}
                       >
-                        <TypewriterText text={message.content} animate={index === typingMessageIndex} />
+                        <TypewriterText
+                          text={message.content}
+                          animate={index === typingMessageIndex}
+                        />
                       </div>
                     </div>
                   ))}

@@ -74,6 +74,8 @@ export const generateExpertImage = createServerFn({ method: "POST" })
       return await generate({ prompt: data.prompt }, process.env["GEMINI_API_KEY"]);
     } catch (error) {
       console.error("[ExpertAI image] Generation failed:", error);
-      throw new Error("ExpertAI image generation is temporarily unavailable. Please try again later.");
+      throw new Error(
+        "ExpertAI image generation is temporarily unavailable. Please try again later.",
+      );
     }
   });

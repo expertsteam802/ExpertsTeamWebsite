@@ -353,7 +353,11 @@ function Index() {
           <div className="grid gap-3 sm:grid-cols-3">
             {[
               { icon: MessageCircle, title: "Tell us", text: "Explain what you want to create." },
-              { icon: Layers3, title: "Shape it", text: "Review the changes and guide the result." },
+              {
+                icon: Layers3,
+                title: "Shape it",
+                text: "Review the changes and guide the result.",
+              },
               { icon: Rocket, title: "Launch it", text: "Preview, refine and keep ownership." },
             ].map((step, index) => (
               <div key={step.title} className="rounded-2xl border border-border bg-card p-5">

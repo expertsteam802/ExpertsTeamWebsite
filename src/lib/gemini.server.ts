@@ -261,7 +261,9 @@ export async function generateGeminiContent(
         (provider) => `${provider}: temporarily cooling down after a provider limit or outage`,
       ),
     ];
-    throw new Error(`All configured ExpertAI services are temporarily unavailable. ${details.join(" | ")}`);
+    throw new Error(
+      `All configured ExpertAI services are temporarily unavailable. ${details.join(" | ")}`,
+    );
   }
   throw new Error(
     "ExpertAI is not connected yet. Add at least one server-side service key in the hosting environment.",

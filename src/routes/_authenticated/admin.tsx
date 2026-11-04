@@ -800,7 +800,9 @@ function AdminPage() {
                 </Card>
                 <Card className="mt-4 max-w-3xl gap-4 p-6">
                   <div>
-                    <h2 className="font-display text-lg font-semibold">ExpertAI service connections</h2>
+                    <h2 className="font-display text-lg font-semibold">
+                      ExpertAI service connections
+                    </h2>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Create API keys with the providers below, then add them in Vercel → Project →
                       Settings → Environment Variables. Keep every key server-side; never use a
@@ -828,7 +830,8 @@ function AdminPage() {
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Recommended order is managed automatically. Keep service keys in Vercel
-                    server-side environment variables. ExpertAI hides provider details from regular users.
+                    server-side environment variables. ExpertAI hides provider details from regular
+                    users.
                   </p>
                   <a
                     href="https://github.com/expertsteam802/ExpertsTeamWebsite/blob/main/docs/AI_PROVIDER_SETUP.md"
