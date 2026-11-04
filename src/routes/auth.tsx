@@ -2,7 +2,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { PageShell } from "@/components/layout/page-shell";\nimport { BannerUnlockAd } from "@/components/ads/banner-unlock-ad";\nimport { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PageShell } from "@/components/layout/page-shell";
+import { BannerUnlockAd } from "@/components/ads/banner-unlock-ad";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -34,7 +36,10 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
-  const [busy, setBusy] = useState(false);\n  const signupFlow = useRef(false);\n  const [signupResult, setSignupResult] = useState<{ email: string; needsConfirmation: boolean } | null>(null);\n  const [signupAdFinished, setSignupAdFinished] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const signupFlow = useRef(false);
+  const [signupResult, setSignupResult] = useState<{ email: string; needsConfirmation: boolean } | null>(null);
+  const [signupAdFinished, setSignupAdFinished] = useState(false);
 
   useEffect(() => {
     if (user && !signupFlow.current) void navigate({ to: "/dashboard", replace: true });
