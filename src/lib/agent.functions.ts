@@ -13,7 +13,7 @@ const codingRequest = z
     referenceImage: z.object({
       name: z.string().max(180),
       mimeType: z.enum(["image/png", "image/jpeg", "image/webp"]),
-      data: z.string().min(100).max(8_500_000),
+      data: z.string().min(100).max(4_000_000),
     }).optional(),
   })
   .refine(
