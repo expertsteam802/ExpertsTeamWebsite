@@ -250,7 +250,9 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
                 </p>
               </div>
               <VideoVastAd onFinished={handleAdFinished} />
-              {adFinished && <Button onClick={() => setUnlockedVideoId(videoId)}>Continue to video</Button>}
+              {adFinished && (
+                <Button onClick={() => setUnlockedVideoId(videoId)}>Continue to video</Button>
+              )}
               <p className="text-xs text-muted-foreground">
                 If no ad is available, you can continue without waiting.
               </p>
