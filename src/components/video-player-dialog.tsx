@@ -241,7 +241,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
         <DialogHeader>
           <DialogTitle className="pr-8 text-left">{title}</DialogTitle>
         </DialogHeader>
-        <div className={`expertsteam-video-player relative aspect-video max-h-[72vh] w-full overflow-hidden rounded-xl bg-secondary ${alignment === "left" ? "mr-auto" : alignment === "right" ? "ml-auto" : "mx-auto"}`}>
+        <div className={`expertsteam-video-player relative aspect-video max-h-[72vh] w-[92%] max-w-[1200px] overflow-hidden rounded-xl bg-secondary ${alignment === "left" ? "mr-auto" : alignment === "right" ? "ml-auto" : "mx-auto"}`}>
           {videoId && !shouldLoadLesson ? (
             <div className="flex h-full w-full flex-col items-center justify-center gap-4 overflow-y-auto bg-background p-4 text-center sm:p-6">
               <div>
