@@ -56,7 +56,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
-import { pushProjectToGithub, runCodingAgent, runAgentTerminalCommand, startAgentPreview, stopAgentPreview } from "@/lib/agent.functions";
+import {
+  pushProjectToGithub,
+  runCodingAgent,
+  runAgentTerminalCommand,
+  startAgentPreview,
+  stopAgentPreview,
+} from "@/lib/agent.functions";
 import { buildSrcDocWithConsole, STARTER_FILES, type ProjectFiles } from "@/lib/sandbox";
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -198,12 +204,28 @@ export function CodeAgent() {
   const editorRef = useRef<EditorView | null>(null);
   const srcDoc = useMemo(() => buildSrcDocWithConsole(files), [files]);
   const editorExtensions = useMemo(() => {
-    const language = activeFile.endsWith(".tsx") || activeFile.endsWith(".ts") || activeFile.endsWith(".jsx") || activeFile.endsWith(".js")
-      ? javascript({ jsx: true, typescript: /\\.tsx?$/.test(activeFile) })
-      : activeFile.endsWith(".html") ? html()
-      : activeFile.endsWith(".css") ? css()
-      : activeFile.endsWith(".json") ? json() : null;
-    return [foldGutter(), bracketMatching(), indentOnInput(), closeBrackets(), autocompletion(), keymap.of([indentWithTab]), ...(language ? [language] : [])];
+    const language =
+      activeFile.endsWith(".tsx") ||
+      activeFile.endsWith(".ts") ||
+      activeFile.endsWith(".jsx") ||
+      activeFile.endsWith(".js")
+        ? javascript({ jsx: true, typescript: /\\.tsx?$/.test(activeFile) })
+        : activeFile.endsWith(".html")
+          ? html()
+          : activeFile.endsWith(".css")
+            ? css()
+            : activeFile.endsWith(".json")
+              ? json()
+              : null;
+    return [
+      foldGutter(),
+      bracketMatching(),
+      indentOnInput(),
+      closeBrackets(),
+      autocompletion(),
+      keymap.of([indentWithTab]),
+      ...(language ? [language] : []),
+    ];
   }, [activeFile]);
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
@@ -269,15 +291,20 @@ export function CodeAgent() {
   async function openTerminal() {
     if (terminalReady) return;
     try {
-      const activeProjectId = projectId ?? await persist();
+      const activeProjectId = projectId ?? (await persist());
       const result = await startPreview({ data: { projectId: activeProjectId, files } });
       setRuntimeUrl(result.url);
       setRuntimeStatus("Running in Vercel Sandbox");
       runtimeFilesRef.current = { ...files };
       setTerminalReady(true);
-      setTerminalOutput((current) => current || "Cloud terminal connected. Commands run inside your isolated project sandbox.\\r\\n");
+      setTerminalOutput(
+        (current) =>
+          current ||
+          "Cloud terminal connected. Commands run inside your isolated project sandbox.\\r\\n",
+      );
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not connect to the cloud terminal.";
+      const message =
+        error instanceof Error ? error.message : "Could not connect to the cloud terminal.";
       setTerminalOutput((current) => current + `\\r\\n[terminal error] ${message}\\r\\n`);
       toast.error(message);
     }
@@ -292,12 +319,18 @@ export function CodeAgent() {
     try {
       const result = await terminalCommand({ data: { projectId, command } });
       setTerminalOutput((current) =>
-        (current + result.stdout + (result.stderr ? `\\r\\n${result.stderr}` : "") +
-          `\\r\\n[exit ${result.exitCode}]\\r\\n`).slice(-40000),
+        (
+          current +
+          result.stdout +
+          (result.stderr ? `\\r\\n${result.stderr}` : "") +
+          `\\r\\n[exit ${result.exitCode}]\\r\\n`
+        ).slice(-40000),
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Command failed.";
-      setTerminalOutput((current) => (current + `\\r\\n[terminal error] ${message}\\r\\n`).slice(-40000));
+      setTerminalOutput((current) =>
+        (current + `\\r\\n[terminal error] ${message}\\r\\n`).slice(-40000),
+      );
     }
   }
 
@@ -308,7 +341,7 @@ export function CodeAgent() {
     setPanel("preview");
     setLogs([]);
     try {
-      const activeProjectId = projectId ?? await persist();
+      const activeProjectId = projectId ?? (await persist());
       const result = await startPreview({ data: { projectId: activeProjectId, files } });
       setRuntimeUrl(result.url);
       setRuntimeStatus("Running in Vercel Sandbox");
@@ -1188,7 +1221,9 @@ export function CodeAgent() {
                         height="100%"
                         theme={oneDark}
                         extensions={editorExtensions}
-                        onCreateEditor={(view) => { editorRef.current = view; }}
+                        onCreateEditor={(view) => {
+                          editorRef.current = view;
+                        }}
                         onChange={(value) => updateFile(value)}
                         editable={Boolean(activeFile)}
                         basicSetup={{
@@ -1228,10 +1263,25 @@ export function CodeAgent() {
                           disabled={!terminalReady}
                           onClick={() => {
                             if (!projectId) return;
-                            setTerminalOutput((current) => (current + `\\r\\n$ ${command}\\r\\n`).slice(-40000));
-                            void terminalCommand({ data: { projectId, command } }).then((result) => {
-                              setTerminalOutput((current) => (current + result.stdout + (result.stderr ? `\\r\\n${result.stderr}` : "") + `\\r\\n[exit ${result.exitCode}]\\r\\n`).slice(-40000));
-                            }).catch((error) => toast.error(error instanceof Error ? error.message : "Command failed"));
+                            setTerminalOutput((current) =>
+                              (current + `\\r\\n$ ${command}\\r\\n`).slice(-40000),
+                            );
+                            void terminalCommand({ data: { projectId, command } })
+                              .then((result) => {
+                                setTerminalOutput((current) =>
+                                  (
+                                    current +
+                                    result.stdout +
+                                    (result.stderr ? `\\r\\n${result.stderr}` : "") +
+                                    `\\r\\n[exit ${result.exitCode}]\\r\\n`
+                                  ).slice(-40000),
+                                );
+                              })
+                              .catch((error) =>
+                                toast.error(
+                                  error instanceof Error ? error.message : "Command failed",
+                                ),
+                              );
                           }}
                           className="rounded border border-white/10 px-2 py-1 font-mono text-[10px] text-slate-400 hover:border-emerald-400/40 hover:text-emerald-200 disabled:opacity-30"
                         >
