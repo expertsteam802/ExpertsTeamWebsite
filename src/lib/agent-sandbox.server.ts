@@ -162,10 +162,16 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
 
   if (!alreadyRunning) {
     if (scriptName) {
-      const args = ["run", scriptName, "--"];
-      if (isNext) args.push("--hostname", "0.0.0.0", "--port", String(port));
-      else args.push("--host", "0.0.0.0", "--port", String(port));
-      await sandbox.runCommand({ cmd: "npm", args, cwd: WORKDIR, detached: true });
+      const args = ["run", scriptName];
+      if (isNext) args.push("--", "--hostname", "0.0.0.0", "--port", String(port));
+      else if (isVite) args.push("--", "--host", "0.0.0.0", "--port", String(port));
+      await sandbox.runCommand({
+        cmd: "npm",
+        args,
+        cwd: WORKDIR,
+        env: { HOST: "0.0.0.0", PORT: String(port) },
+        detached: true,
+      });
     } else {
       await sandbox.runCommand({
         cmd: "npx",
