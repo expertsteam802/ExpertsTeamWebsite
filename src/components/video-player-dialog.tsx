@@ -247,7 +247,7 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
   }, [videoId, shouldLoadLesson, title]);
 
   useEffect(() => {
-    if (!videoId || !overlayActive || !/^\\d+$/.test(overlayAdCodeId)) return;
+    if (!videoId || !overlayActive || !/^\d+$/.test(overlayAdCodeId)) return;
     const existing = document.querySelector<HTMLScriptElement>(
       "script[data-expertsteam-my-bid-overlay='true']",
     );
