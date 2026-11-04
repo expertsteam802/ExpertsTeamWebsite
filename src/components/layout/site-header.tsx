@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Instagram, LogOut, Menu, Palette, Shield, Youtube } from "lucide-react";
 import { useState } from "react";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -127,8 +128,12 @@ export function SiteHeader() {
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="secondary" className="max-w-40 truncate">
-                  {profile?.display_name || profile?.username || "Account"}
+                <Button variant="secondary" className="max-w-48 gap-2 truncate">
+                  <Avatar className="h-7 w-7">
+                    <AvatarImage src={profile?.avatar_url ?? undefined} />
+                    <AvatarFallback>{(profile?.display_name || profile?.username || "A").slice(0, 1).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <span className="truncate">{profile?.display_name || profile?.username || "Account"}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
