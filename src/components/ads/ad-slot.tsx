@@ -198,7 +198,9 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
         manager.addEventListener(ima.AdEvent.Type.SKIPPED, () => {
           wasSkipped = true;
           setStatus("unavailable");
-          setMessage("The sponsored video was skipped. The lesson remains locked; play the ad to completion.");
+          setMessage(
+            "The sponsored video was skipped. The lesson remains locked; play the ad to completion.",
+          );
         });
         manager.addEventListener(ima.AdEvent.Type.ALL_ADS_COMPLETED, () => {
           if (requestTimeoutRef.current !== undefined)
