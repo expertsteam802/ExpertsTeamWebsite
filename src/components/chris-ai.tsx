@@ -616,7 +616,8 @@ export function ChrisAiChat({
       <div className="border-t border-border/70 p-3">
         {guestCreditsExhausted && (
           <div role="status" className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">Your 15 free guest credits are used. Create an account to continue chatting with ExpertAI. <button type="button" className="ml-2 font-semibold text-primary underline" onClick={() => window.location.assign("/auth")}>Create account</button></div>
-        )}\n        {chatIsFull && (
+        )}
+        {chatIsFull && (
           <div role="status" className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
             <span>This chat is full. Your conversation is saved. Start a new chat to continue.</span>
             <Button size="sm" onClick={newChat}>New chat</Button>
