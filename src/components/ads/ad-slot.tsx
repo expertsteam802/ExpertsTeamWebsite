@@ -167,13 +167,21 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
   }, [isFetched, isError, settings.myBidVastEnabled, onFinished]);
 
   function playAd(userInitiated = false) {
-    if (!videoRef.current || !adContainerRef.current || status === "loading" || status === "playing") return;
+    if (
+      !videoRef.current ||
+      !adContainerRef.current ||
+      status === "loading" ||
+      status === "playing"
+    )
+      return;
     const ima = window.google?.ima;
     const video = videoRef.current;
     const container = adContainerRef.current;
     if (!ima || !video || !container) {
       setStatus("unavailable");
-      setMessage("The sponsored video could not be initialized. The lesson remains locked; please retry.");
+      setMessage(
+        "The sponsored video could not be initialized. The lesson remains locked; please retry.",
+      );
       return;
     }
     setStatus("loading");
@@ -186,7 +194,8 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
         const manager = event.getAdsManager(video);
         managerRef.current = manager;
         manager.addEventListener(ima.AdEvent.Type.ALL_ADS_COMPLETED, () => {
-          if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
+          if (requestTimeoutRef.current !== undefined)
+            window.clearTimeout(requestTimeoutRef.current);
           setStatus("complete");
           onFinished?.();
           manager.destroy();
@@ -197,20 +206,32 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
           onFinished?.();
         });
         manager.addEventListener(ima.AdEvent.Type.STARTED, () => {
-          if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
+          if (requestTimeoutRef.current !== undefined)
+            window.clearTimeout(requestTimeoutRef.current);
           setStatus("playing");
         });
         manager.addEventListener(ima.AdErrorEvent.Type.AD_ERROR, () => {
-          if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
+          if (requestTimeoutRef.current !== undefined)
+            window.clearTimeout(requestTimeoutRef.current);
           setStatus("unavailable");
-          setMessage("MyBid could not play an ad. The lesson is still locked. Retry the sponsored video.");
+          setMessage(
+            "MyBid could not play an ad. The lesson is still locked. Retry the sponsored video.",
+          );
           manager.destroy();
           managerRef.current = null;
         });
-        manager.init(container.clientWidth || 640, container.clientHeight || 360, ima.ViewMode.NORMAL);
-        try { manager.start(); } catch {
+        manager.init(
+          container.clientWidth || 640,
+          container.clientHeight || 360,
+          ima.ViewMode.NORMAL,
+        );
+        try {
+          manager.start();
+        } catch {
           setStatus("ready");
-          setMessage("Your browser requires a tap before video playback. Tap Start sponsored video to play the ad.");
+          setMessage(
+            "Your browser requires a tap before video playback. Tap Start sponsored video to play the ad.",
+          );
           manager.destroy();
           managerRef.current = null;
         }
@@ -238,7 +259,11 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
       }, 20000);
     } catch {
       setStatus(userInitiated ? "unavailable" : "ready");
-      setMessage(userInitiated ? "The sponsored video could not start. The lesson remains locked; please retry." : "Your browser requires a tap before video playback. Tap Start sponsored video to play the ad.");
+      setMessage(
+        userInitiated
+          ? "The sponsored video could not start. The lesson remains locked; please retry."
+          : "Your browser requires a tap before video playback. Tap Start sponsored video to play the ad.",
+      );
     }
   }
 
@@ -261,11 +286,17 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
             <p className="text-sm font-medium">Sponsored video</p>
             {message && <p className="max-w-md text-sm text-muted-foreground">{message}</p>}
             {sdkReady && (
-              <button type="button" onClick={() => playAd(true)} className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">
+              <button
+                type="button"
+                onClick={() => playAd(true)}
+                className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
+              >
                 Start sponsored video
               </button>
             )}
-            {!sdkReady && <p className="text-sm text-muted-foreground">Preparing sponsored video…</p>}
+            {!sdkReady && (
+              <p className="text-sm text-muted-foreground">Preparing sponsored video…</p>
+            )}
           </div>
         )}
         {status === "loading" && (
@@ -276,7 +307,15 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
         {status === "unavailable" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/95 p-5 text-center">
             <p className="max-w-md text-sm">{message}</p>
-            {sdkReady && <button type="button" onClick={() => playAd(true)} className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">Retry sponsored video</button>}
+            {sdkReady && (
+              <button
+                type="button"
+                onClick={() => playAd(true)}
+                className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
+              >
+                Retry sponsored video
+              </button>
+            )}
           </div>
         )}
         {status === "complete" && (
