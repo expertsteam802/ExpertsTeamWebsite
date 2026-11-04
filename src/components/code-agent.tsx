@@ -1585,7 +1585,9 @@ export function CodeAgent() {
                           <button
                             type="button"
                             onClick={() => {
-                              setReferenceImages((current) => current.filter((_, itemIndex) => itemIndex !== index));
+                              setReferenceImages((current) =>
+                                current.filter((_, itemIndex) => itemIndex !== index),
+                              );
                               if (referenceInputRef.current) referenceInputRef.current.value = "";
                             }}
                             className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white"
@@ -1623,23 +1625,37 @@ export function CodeAgent() {
                         return true;
                       });
                       event.target.value = "";
-                      void Promise.all(valid.map((file) => new Promise<ReferenceImage | null>((resolve) => {
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          const data = String(reader.result ?? "").split(",")[1];
-                          resolve(data ? {
-                            name: file.name,
-                            mimeType: file.type as ReferenceImage["mimeType"],
-                            data,
-                          } : null);
-                        };
-                        reader.onerror = () => {
-                          toast.error("Could not read " + file.name + ".");
-                          resolve(null);
-                        };
-                        reader.readAsDataURL(file);
-                      }))).then((images) => {
-                        setReferenceImages((current) => [...current, ...images.filter((image): image is ReferenceImage => Boolean(image))].slice(0, 3));
+                      void Promise.all(
+                        valid.map(
+                          (file) =>
+                            new Promise<ReferenceImage | null>((resolve) => {
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                const data = String(reader.result ?? "").split(",")[1];
+                                resolve(
+                                  data
+                                    ? {
+                                        name: file.name,
+                                        mimeType: file.type as ReferenceImage["mimeType"],
+                                        data,
+                                      }
+                                    : null,
+                                );
+                              };
+                              reader.onerror = () => {
+                                toast.error("Could not read " + file.name + ".");
+                                resolve(null);
+                              };
+                              reader.readAsDataURL(file);
+                            }),
+                        ),
+                      ).then((images) => {
+                        setReferenceImages((current) =>
+                          [
+                            ...current,
+                            ...images.filter((image): image is ReferenceImage => Boolean(image)),
+                          ].slice(0, 3),
+                        );
                       });
                     }}
                   />

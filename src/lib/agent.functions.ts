@@ -25,14 +25,17 @@ const codingRequest = z
       Object.values(files).reduce((total, content) => total + content.length, 0) <= 200000,
     "The project is too large to send to the agent.",
   )
-  .refine(
-    ({ referenceImage, referenceImages }) => {
-      const references = referenceImages?.length ? referenceImages : referenceImage ? [referenceImage] : [];
-      return references.length <= 3 &&
-        references.reduce((total, image) => total + image.data.length, 0) <= 8_000_000;
-    },
-    "Attach up to three visual references with a combined size under 8 MB.",
-  );
+  .refine(({ referenceImage, referenceImages }) => {
+    const references = referenceImages?.length
+      ? referenceImages
+      : referenceImage
+        ? [referenceImage]
+        : [];
+    return (
+      references.length <= 3 &&
+      references.reduce((total, image) => total + image.data.length, 0) <= 8_000_000
+    );
+  }, "Attach up to three visual references with a combined size under 8 MB.");
 
 export const runCodingAgent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

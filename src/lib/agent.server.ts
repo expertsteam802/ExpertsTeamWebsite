@@ -172,7 +172,9 @@ export async function runAgent(
     ) ||
     visualReferences.reduce((total, image) => total + image.data.length, 0) > 8_000_000
   )
-    throw new Error("Use up to three PNG, JPG or WebP references, with a combined size under 8 MB.");
+    throw new Error(
+      "Use up to three PNG, JPG or WebP references, with a combined size under 8 MB.",
+    );
   if (cleanPrompt.length > 16000) throw new Error("That request is too long.");
   const entries = Object.entries(files);
   if (entries.length > 80)
@@ -330,7 +332,9 @@ export async function runAgent(
   if (Object.keys(completedFiles).length > 0) {
     throw new Error(
       "The agent reached its continuation limit before the full request was complete. " +
-        "It prepared " + Object.keys(completedFiles).length + " complete file(s), but did not apply a partial project update. " +
+        "It prepared " +
+        Object.keys(completedFiles).length +
+        " complete file(s), but did not apply a partial project update. " +
         "Retry with a narrower request or ask the agent to continue in smaller steps.",
     );
   }

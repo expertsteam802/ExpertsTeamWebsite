@@ -273,7 +273,10 @@ test("agent refuses partial files when continuation providers are exhausted", as
     })) as typeof fetch;
 
   try {
-    await assert.rejects(runAgent(input, "test-key"), /continuation limit.*did not apply a partial project update/i);
+    await assert.rejects(
+      runAgent(input, "test-key"),
+      /continuation limit.*did not apply a partial project update/i,
+    );
   } finally {
     if (previousOrder === undefined) delete process.env["AI_PROVIDER_ORDER"];
     else process.env["AI_PROVIDER_ORDER"] = previousOrder;
@@ -296,15 +299,17 @@ test("Groq retries a 413 TPM response with smaller context and output budgets", 
     outputBudgets.push(body.max_tokens ?? 0);
     if (calls === 1) return new Response("TPM limit exceeded", { status: 413 });
     return Response.json({
-      choices: [{
-        message: {
-          content: JSON.stringify({
-            message: "Recovered with compact context",
-            files: { "index.html": "<h1>Recovered</h1>" },
-            complete: true,
-          }),
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              message: "Recovered with compact context",
+              files: { "index.html": "<h1>Recovered</h1>" },
+              complete: true,
+            }),
+          },
         },
-      }],
+      ],
     });
   }) as typeof fetch;
 
@@ -329,31 +334,39 @@ test("AI builder forwards multiple visual references to Gemini vision", async ()
     const body = JSON.parse(String(init?.body ?? "{}")) as {
       contents?: { parts?: { inlineData?: { mimeType?: string; data?: string } }[] }[];
     };
-    imageParts = body.contents?.at(-1)?.parts?.filter((part) => Boolean(part.inlineData)).length ?? 0;
+    imageParts =
+      body.contents?.at(-1)?.parts?.filter((part) => Boolean(part.inlineData)).length ?? 0;
     return Response.json({
-      candidates: [{
-        finishReason: "STOP",
-        content: {
-          parts: [{
-            text: JSON.stringify({
-              message: "Built from both references",
-              files: { "index.html": "<h1>Reference matched</h1>" },
-              complete: true,
-            }),
-          }],
+      candidates: [
+        {
+          finishReason: "STOP",
+          content: {
+            parts: [
+              {
+                text: JSON.stringify({
+                  message: "Built from both references",
+                  files: { "index.html": "<h1>Reference matched</h1>" },
+                  complete: true,
+                }),
+              },
+            ],
+          },
         },
-      }],
+      ],
     });
   }) as typeof fetch;
 
   try {
-    const result = await runAgent({
-      ...input,
-      referenceImages: [
-        { name: "feed.png", mimeType: "image/png", data: "a".repeat(120) },
-        { name: "builder.png", mimeType: "image/png", data: "b".repeat(120) },
-      ],
-    }, "test-key");
+    const result = await runAgent(
+      {
+        ...input,
+        referenceImages: [
+          { name: "feed.png", mimeType: "image/png", data: "a".repeat(120) },
+          { name: "builder.png", mimeType: "image/png", data: "b".repeat(120) },
+        ],
+      },
+      "test-key",
+    );
     assert.equal(result.files["index.html"], "<h1>Reference matched</h1>");
     assert.equal(imageParts, 2);
   } finally {
