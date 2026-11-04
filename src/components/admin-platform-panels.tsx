@@ -108,14 +108,9 @@ export function AdminAdsSettingsPanel() {
 
   const save = useMutation({
     mutationFn: async () => {
-      if (draft.myBidActiveFormat === "vast") {
-        const parsedUrl = new URL(draft.myBidVastUrl);
-        if (parsedUrl.protocol !== "https:" || parsedUrl.hostname !== "vast.vstserv.com") {
-          throw new Error("Use the secure MyBid VAST URL supplied for this placement.");
-        }
-      }
-      if (draft.myBidActiveFormat === "overlay" && !/^\d+$/.test(draft.myBidOverlayAdCodeId)) {
-        throw new Error("Enter a valid MyBid Video Overlay ad code ID.");
+      const parsedUrl = new URL(draft.myBidVastUrl);
+      if (parsedUrl.protocol !== "https:" || parsedUrl.hostname !== "vast.vstserv.com") {
+        throw new Error("Use the secure MyBid VAST URL supplied for this placement.");
       }
       const { error } = await supabase
         .from("site_settings")
