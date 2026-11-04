@@ -165,7 +165,8 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
         const manager = event.getAdsManager(video);
         managerRef.current = manager;
         manager.addEventListener(ima.AdEvent.Type.ALL_ADS_COMPLETED, () => {
-          if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
+          if (requestTimeoutRef.current !== undefined)
+            window.clearTimeout(requestTimeoutRef.current);
           setStatus("complete");
           onFinished?.();
           manager.destroy();
@@ -175,11 +176,13 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
           setStatus("complete"),
         );
         manager.addEventListener(ima.AdEvent.Type.STARTED, () => {
-          if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
+          if (requestTimeoutRef.current !== undefined)
+            window.clearTimeout(requestTimeoutRef.current);
           setStatus("playing");
         });
         manager.addEventListener(ima.AdErrorEvent.Type.AD_ERROR, () => {
-          if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
+          if (requestTimeoutRef.current !== undefined)
+            window.clearTimeout(requestTimeoutRef.current);
           setStatus("unavailable");
           setMessage("The MyBid video ad could not be played. You can continue to the video.");
           onFinished?.();
