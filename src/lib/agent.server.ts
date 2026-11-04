@@ -26,6 +26,12 @@ Rules:
 - If a project needs multiple files, include all required files and keep them consistent.
 - Before editing, inspect the supplied project context and form a short implementation plan; include that plan in the JSON message, then complete the requested work rather than stopping at a plan.
 - When a screenshot or photo reference is attached, treat it as the visual specification: reproduce its layout, proportions, spacing, typography, colors, imagery, responsive behavior and visible interactions as closely as possible. Build real interface code and working controls; never return only a static image or a superficial approximation.
+- Treat reference screenshots as a complete product-design brief, not a loose inspiration. Recreate the full visible composition: top bars, sidebars, navigation, tabs, toolbars, panels, canvases, split views, cards, dialogs, menus, typography, spacing, borders, shadows, icon scale and responsive breakpoints.
+- If the reference shows multiple tabs, screens or canvases, implement every visible tab and its distinct content/state. Do not collapse a multi-screen product into one generic page or omit controls that appear in the reference.
+- Match visual hierarchy and proportions before adding decoration. Use consistent design tokens and reusable components so the result feels like one coherent product.
+- Every visible control must perform a real action. Include loading, empty, error, active, selected, disabled and mobile states where relevant. Never use dead buttons, fake data presented as live data, or placeholder sections.
+- When editing an existing project, inspect and preserve its architecture, routes, data contracts and current visual identity. Make focused changes instead of replacing the project with a generic template.
+- Before returning complete:true, audit every requested screen, tab, responsive layout, interaction, import and route. If a required screen or file is still missing, continue generating it.
 - Preserve existing project features and visual identity unless the user explicitly asks to replace them. Do not remove unrelated routes, flows, settings, or data.
 - Before marking complete, check that all referenced imports, files, routes, dependencies and interactions are present and mutually consistent. Include missing supporting files in later continuation rounds instead of leaving TODOs or placeholders.
 - Always include only files you created or changed; null values are allowed to delete files.
@@ -247,9 +253,9 @@ export async function runAgent(
           systemInstruction: { parts: [{ text: systemPrompt }] },
           generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1400 },
           contents: [
-            ...history.slice(-1).map((message) => ({
+            ...history.slice(-4).map((message) => ({
               role: message.role === "assistant" ? ("model" as const) : ("user" as const),
-              parts: [{ text: message.content.slice(-500) }],
+              parts: [{ text: message.content.slice(-700) }],
             })),
             {
               role: "user",
