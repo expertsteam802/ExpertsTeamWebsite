@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Download, ExternalLink, FileDown, Pencil, Trash2 } from "lucide-react";
-import { useState } from "react";\nimport { BannerUnlockAd } from "@/components/ads/banner-unlock-ad";
+import { useState } from "react";
+import { BannerUnlockAd } from "@/components/ads/banner-unlock-ad";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +28,9 @@ export type CommunityFile = {
   user_id: string;
   title: string;
   description: string | null;
-  storage_path: string | null;\n  source_url?: string | null;\n  thumbnail_url?: string | null;
+  storage_path: string | null;
+  source_url?: string | null;
+  thumbnail_url?: string | null;
   file_name: string;
   size_bytes: number;
   category: string;
@@ -43,7 +46,11 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
   const [editing, setEditing] = useState<CommunityFile | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("0");\n  const [editSourceUrl, setEditSourceUrl] = useState("");\n  const [editThumbnailUrl, setEditThumbnailUrl] = useState("");\n  const [unlocking, setUnlocking] = useState<CommunityFile | null>(null);\n  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [price, setPrice] = useState("0");
+  const [editSourceUrl, setEditSourceUrl] = useState("");
+  const [editThumbnailUrl, setEditThumbnailUrl] = useState("");
+  const [unlocking, setUnlocking] = useState<CommunityFile | null>(null);
+  const [isUnlocked, setIsUnlocked] = useState(false);
 
   const saveEdit = useMutation({
     mutationFn: async () => {
@@ -53,7 +60,9 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
         .update({
           title: title.trim().slice(0, 140) || editing.title,
           description: description.trim().slice(0, 1000) || null,
-          price: Math.max(0, Number(price) || 0),\n          source_url: editSourceUrl.trim() || null,\n          thumbnail_url: editThumbnailUrl.trim() || null,
+          price: Math.max(0, Number(price) || 0),
+          source_url: editSourceUrl.trim() || null,
+          thumbnail_url: editThumbnailUrl.trim() || null,
         })
         .eq("id", editing.id);
       if (error) throw error;
@@ -107,7 +116,10 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
               key={file.id}
               className="animate-rise group flex flex-col gap-3 p-5 transition-transform duration-300 hover:-translate-y-1 hover:glow-panel"
             >
-              {file.thumbnail_url && (\n                <img src={file.thumbnail_url} alt="" loading="lazy" className="max-h-36 w-full rounded-xl border border-border/60 object-cover" />\n              )}\n              <div className="flex items-start gap-3">
+              {file.thumbnail_url && (
+                <img src={file.thumbnail_url} alt="" loading="lazy" className="max-h-36 w-full rounded-xl border border-border/60 object-cover" />
+              )}
+              <div className="flex items-start gap-3">
                 <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-secondary">
                   <Icon className={`h-6 w-6 ${tone}`} />
                 </span>
@@ -147,7 +159,9 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
                         setEditing(file);
                         setTitle(file.title);
                         setDescription(file.description ?? "");
-                        setPrice(String(file.price));\n                        setEditSourceUrl(file.source_url ?? "");\n                        setEditThumbnailUrl(file.thumbnail_url ?? "");
+                        setPrice(String(file.price));
+                        setEditSourceUrl(file.source_url ?? "");
+                        setEditThumbnailUrl(file.thumbnail_url ?? "");
                       }}
                     >
                       <Pencil className="h-4 w-4" />
@@ -185,7 +199,8 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
           )}
         </DialogContent>
       </Dialog>
-\n      <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
+
+      <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit upload</DialogTitle>
