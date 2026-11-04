@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { VideoVastAd } from "@/components/ads/ad-slot";
+import { BannerUnlockAd } from "@/components/ads/banner-unlock-ad";
 
 type YouTubePlayer = { destroy: () => void; getIframe: () => HTMLIFrameElement };
 type YouTubeApi = {
@@ -129,8 +129,8 @@ function playerErrorMessage(code: number) {
     return "YouTube did not receive the required referrer information. Check the site's domain and referrer policy.";
   return `YouTube player error (${code}). Try opening the video on YouTube.`;
 }
-type Props = { videoId: string | null; title: string; onClose: () => void };
-export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
+type Props = { videoId: string | null; title: string; alignment?: "left" | "center" | "right"; onClose: () => void };
+export function VideoPlayerDialog({ videoId, title, alignment = "center", onClose }: Props) {
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YouTubePlayer | null>(null);
   const countedRef = useRef(false);
@@ -237,22 +237,22 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
 
   return (
     <Dialog open={!!videoId} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-5xl">
+      <DialogContent className="max-h-[94vh] w-[min(96vw,1280px)] max-w-[1280px] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="pr-8 text-left">{title}</DialogTitle>
         </DialogHeader>
-        <div className="expertsteam-video-player relative aspect-video w-full overflow-hidden rounded-xl bg-secondary">
+        <div className={`expertsteam-video-player relative aspect-video max-h-[72vh] w-full overflow-hidden rounded-xl bg-secondary ${alignment === "left" ? "mr-auto" : alignment === "right" ? "ml-auto" : "mx-auto"}`}>
           {videoId && !shouldLoadLesson ? (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-4 overflow-y-auto bg-background p-5 text-center">
+            <div className="flex h-full w-full flex-col items-center justify-center gap-4 overflow-y-auto bg-background p-4 text-center sm:p-6">
               <div>
                 <p className="font-display text-lg font-semibold">Support ExpertsTeam</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Watch the sponsored video to support ExpertsTeam, then continue to your lesson.
+                  View this quick sponsor banner to support ExpertsTeam, then continue to your lesson.
                 </p>
               </div>
-              <VideoVastAd onFinished={handleAdFinished} />
+              <BannerUnlockAd onUnlocked={handleAdFinished} compact />
               <p className="text-xs text-muted-foreground">
-                Your lesson unlocks automatically after the sponsored video finishes.
+                Your lesson unlocks automatically after the short sponsor message.
               </p>
             </div>
           ) : (
