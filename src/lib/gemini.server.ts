@@ -261,9 +261,9 @@ export async function generateGeminiContent(
         (provider) => `${provider}: temporarily cooling down after a provider limit or outage`,
       ),
     ];
-    throw new Error(`All configured free AI providers are unavailable. ${details.join(" | ")}`);
+    throw new Error(`All configured ExpertAI services are temporarily unavailable. ${details.join(" | ")}`);
   }
   throw new Error(
-    "No AI provider is configured. Add at least one server-side API key in Vercel Environment Variables.",
+    "ExpertAI is not connected yet. Add at least one server-side service key in the hosting environment.",
   );
 }
