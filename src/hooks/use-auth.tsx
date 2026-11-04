@@ -64,6 +64,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const { data: profile } = useQuery({
     queryKey: ["profile", userId],
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -78,6 +80,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const { data: roles } = useQuery({
     queryKey: ["roles", userId],
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
