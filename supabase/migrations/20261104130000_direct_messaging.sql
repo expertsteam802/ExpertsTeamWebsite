@@ -88,7 +88,7 @@ CREATE POLICY "Members create direct conversations"
 DROP POLICY IF EXISTS "Members see conversation participants" ON public.direct_conversation_members;
 CREATE POLICY "Members see conversation participants"
   ON public.direct_conversation_members FOR SELECT TO authenticated
-  USING (user_id = auth.uid() OR public.is_direct_conversation_member(conversation_id));
+  USING (user_id = auth.uid() OR private.is_direct_conversation_member(conversation_id));
 
 DROP POLICY IF EXISTS "Conversation creators add participants" ON public.direct_conversation_members;
 CREATE POLICY "Conversation creators add participants"
@@ -101,19 +101,19 @@ DROP POLICY IF EXISTS "Members update own read state" ON public.direct_conversat
 CREATE POLICY "Members update own read state"
   ON public.direct_conversation_members FOR UPDATE TO authenticated
   USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid() AND public.is_direct_conversation_member(conversation_id));
+  WITH CHECK (user_id = auth.uid() AND private.is_direct_conversation_member(conversation_id));
 
 DROP POLICY IF EXISTS "Members read direct messages" ON public.direct_messages;
 CREATE POLICY "Members read direct messages"
   ON public.direct_messages FOR SELECT TO authenticated
-  USING (public.is_direct_conversation_member(conversation_id));
+  USING (private.is_direct_conversation_member(conversation_id));
 
 DROP POLICY IF EXISTS "Members send their own direct messages" ON public.direct_messages;
 CREATE POLICY "Members send their own direct messages"
   ON public.direct_messages FOR INSERT TO authenticated
   WITH CHECK (
     sender_id = auth.uid()
-    AND public.is_direct_conversation_member(conversation_id)
+    AND private.is_direct_conversation_member(conversation_id)
   );
 
 DROP POLICY IF EXISTS "Authors delete their direct messages" ON public.direct_messages;
