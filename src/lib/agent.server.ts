@@ -140,7 +140,7 @@ function parseAgentFiles(text: string): {
 export async function runAgent({ prompt, files, history, referenceImage }: AgentInput, apiKey?: string) {
   const cleanPrompt = prompt.trim();
   if (!cleanPrompt) throw new Error("Tell the agent what to build.");
-  if (referenceImage && (referenceImage.data.length > 8_500_000 || !["image/png", "image/jpeg", "image/webp"].includes(referenceImage.mimeType))) throw new Error("The reference image is invalid or too large.");
+  if (referenceImage && (referenceImage.data.length > 4_000_000 || !["image/png", "image/jpeg", "image/webp"].includes(referenceImage.mimeType))) throw new Error("The reference image is invalid or too large.");
   if (cleanPrompt.length > 16000) throw new Error("That request is too long.");
   const entries = Object.entries(files);
   if (entries.length > 80)
