@@ -10,7 +10,7 @@ import { UpgradeDialog } from "@/components/upgrade-dialog";
 export const Route = createFileRoute("/ai")({
   head: () => ({
     meta: [
-      { title: "ExpertsTeam — AI Studio" },
+      { title: "ExpertsTeam — ExpertAI Studio" },
       {
         name: "description",
         content: "Build, edit, preview, and publish applications in the ExpertsTeam workspace.",
@@ -67,7 +67,7 @@ function AiPage() {
             }`}
           >
             <MessageSquare className="h-4 w-4" />
-            <span>AI Chat</span>
+            <span>ExpertAI Chat</span>
           </button>
         </nav>
 
