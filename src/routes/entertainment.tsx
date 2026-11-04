@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { AddVideoDialog } from "@/components/add-video-dialog";
+import { AdSlot } from "@/components/ads/ad-slot";
 import { FileGrid, type CommunityFile } from "@/components/file-grid";
 import { PageShell } from "@/components/layout/page-shell";
 import { UploadDialog } from "@/components/upload-dialog";
@@ -73,6 +74,8 @@ function EntertainmentPage() {
         </div>
       </section>
 
+      <AdSlot slot="entertainment-top" />
+
       <section className="mx-auto max-w-7xl px-4 py-12">
         <Tabs defaultValue="files">
           <TabsList>
@@ -87,6 +90,7 @@ function EntertainmentPage() {
           </TabsContent>
         </Tabs>
       </section>
+      <AdSlot slot="entertainment-bottom" />
     </PageShell>
   );
 }
