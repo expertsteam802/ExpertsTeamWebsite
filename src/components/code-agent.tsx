@@ -523,10 +523,14 @@ export function CodeAgent() {
       void queryClient.invalidateQueries({ queryKey: ["profile"] });
       await persist({ files: updatedFiles, messages: finalMessages });
     } catch (error) {
-      const detail = error instanceof Error ? error.message : "ExpertAI could not complete that change.";
+      const detail =
+        error instanceof Error ? error.message : "ExpertAI could not complete that change.";
       const failedMessages: Message[] = [
         ...nextMessages,
-        { role: "assistant", content: `I couldn't finish that change. Your existing project files were left unchanged.\n\n${detail}` },
+        {
+          role: "assistant",
+          content: `I couldn't finish that change. Your existing project files were left unchanged.\n\n${detail}`,
+        },
       ];
       setMessages(failedMessages);
       toast.error(detail);
