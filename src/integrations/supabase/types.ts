@@ -599,7 +599,9 @@ export type Database = {
           payout_account: string | null;
           price: number;
           size_bytes: number;
-          storage_path: string;
+          source_url: string | null;
+          thumbnail_url: string | null;
+          storage_path: string | null;
           title: string;
           updated_at: string;
           user_id: string;
@@ -615,7 +617,9 @@ export type Database = {
           payout_account?: string | null;
           price?: number;
           size_bytes?: number;
-          storage_path: string;
+          source_url?: string | null;
+          thumbnail_url?: string | null;
+          storage_path?: string | null;
           title: string;
           updated_at?: string;
           user_id: string;
@@ -631,7 +635,9 @@ export type Database = {
           payout_account?: string | null;
           price?: number;
           size_bytes?: number;
-          storage_path?: string;
+          source_url?: string | null;
+          thumbnail_url?: string | null;
+          storage_path?: string | null;
           title?: string;
           updated_at?: string;
           user_id?: string;
@@ -1003,6 +1009,8 @@ export type Database = {
           created_at: string;
           description: string | null;
           id: string;
+          player_alignment: string;
+          thumbnail_url: string | null;
           title: string;
           updated_at: string;
           user_id: string;
@@ -1015,6 +1023,8 @@ export type Database = {
           created_at?: string;
           description?: string | null;
           id?: string;
+          player_alignment?: string;
+          thumbnail_url?: string | null;
           title: string;
           updated_at?: string;
           user_id: string;
@@ -1027,6 +1037,8 @@ export type Database = {
           created_at?: string;
           description?: string | null;
           id?: string;
+          player_alignment?: string;
+          thumbnail_url?: string | null;
           title?: string;
           updated_at?: string;
           user_id?: string;
