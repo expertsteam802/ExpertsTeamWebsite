@@ -31,6 +31,8 @@ import { MAX_UPLOAD_BYTES, uploadWithProgress } from "@/lib/upload";
 
 const CATEGORIES = [
   { value: "game", label: "Game" },
+  { value: "app", label: "App" },
+  { value: "book", label: "Book" },
   { value: "video", label: "Video" },
   { value: "lesson", label: "Lesson / book" },
   { value: "resource", label: "Resource" },
