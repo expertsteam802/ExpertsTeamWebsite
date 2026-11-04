@@ -440,7 +440,7 @@ export function CodeAgent() {
   }
 
   async function saveProjectName() {
-    const nextName = name.trim().slice(0, 80) || "Untitled project";
+    const nextName = name.trim() || "Untitled project";
     const previousName = projects.find((project) => project.id === projectId)?.name ?? name;
     try {
       if (projectId && user) {
@@ -483,7 +483,7 @@ export function CodeAgent() {
 
     const payload = {
       user_id: user.id,
-      name: name.trim().slice(0, 80) || "Untitled project",
+      name: name.trim() || "Untitled project",
       files: (next.files ?? files) as unknown as Json,
       messages: (next.messages ?? messages).slice(-40) as unknown as Json,
       ...next.extra,
