@@ -77,15 +77,17 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
     }
   });
 
-
-const previewRequest = z.object({
-  projectId: z.string().uuid(),
-  files: z.record(z.string().max(512), z.string().max(150000)),
-}).refine(({ files }) =>
-  Object.keys(files).length <= 120 &&
-  Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 1_000_000,
-  "The project is too large to preview.",
-);
+const previewRequest = z
+  .object({
+    projectId: z.string().uuid(),
+    files: z.record(z.string().max(512), z.string().max(150000)),
+  })
+  .refine(
+    ({ files }) =>
+      Object.keys(files).length <= 120 &&
+      Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 1_000_000,
+    "The project is too large to preview.",
+  );
 
 async function assertProjectOwnership(
   supabase: typeof import("@/integrations/supabase/client").supabase,
@@ -113,10 +115,14 @@ export const startAgentPreview = createServerFn({ method: "POST" })
 
 export const runAgentTerminalCommand = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => z.object({
-    projectId: z.string().uuid(),
-    command: z.string().trim().min(1).max(3000),
-  }).parse(input))
+  .validator((input: unknown) =>
+    z
+      .object({
+        projectId: z.string().uuid(),
+        command: z.string().trim().min(1).max(3000),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
     const { runCloudProjectCommand } = await import("./agent-sandbox.server");

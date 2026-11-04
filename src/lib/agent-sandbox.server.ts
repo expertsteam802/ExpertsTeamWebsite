@@ -22,7 +22,8 @@ function validateFiles(files: AgentProjectFiles) {
       path.includes("\\") ||
       path.split("/").some((part) => !part || part === "." || part === "..") ||
       !/^[a-zA-Z0-9_@./-]+$/.test(path)
-    ) throw new Error("The project contains an invalid file path.");
+    )
+      throw new Error("The project contains an invalid file path.");
     if (typeof content !== "string" || content.length > 150_000)
       throw new Error("A project file is too large to preview.");
     total += content.length;
@@ -45,7 +46,9 @@ async function runChecked(
   const stdout = await result.stdout();
   const stderr = await result.stderr();
   if (result.exitCode !== 0) {
-    throw new Error((stderr || stdout || `${cmd} exited with code ${result.exitCode}`).slice(-5000));
+    throw new Error(
+      (stderr || stdout || `${cmd} exited with code ${result.exitCode}`).slice(-5000),
+    );
   }
   return [stdout, stderr].filter(Boolean).join("\n");
 }
@@ -77,14 +80,18 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   }
   const scripts = (packageJson.scripts ?? {}) as Record<string, string>;
   if (!files["package.json"]) {
-    files["package.json"] = JSON.stringify({
-      name: "experts-team-project",
-      private: true,
-      version: "1.0.0",
-      type: "module",
-      scripts: { dev: "vite" },
-      devDependencies: { vite: "latest" },
-    }, null, 2);
+    files["package.json"] = JSON.stringify(
+      {
+        name: "experts-team-project",
+        private: true,
+        version: "1.0.0",
+        type: "module",
+        scripts: { dev: "vite" },
+        devDependencies: { vite: "latest" },
+      },
+      null,
+      2,
+    );
     packageJson = JSON.parse(files["package.json"]) as Record<string, unknown>;
   }
   const activeScripts = (packageJson.scripts ?? {}) as Record<string, string>;
@@ -102,30 +109,45 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
 
   const previous = await readText(sandbox, `${WORKDIR}/${META_FILE}`);
   let previousPaths: string[] = [];
-  try { previousPaths = previous ? JSON.parse(previous) as string[] : []; } catch { previousPaths = []; }
+  try {
+    previousPaths = previous ? (JSON.parse(previous) as string[]) : [];
+  } catch {
+    previousPaths = [];
+  }
   const nextPaths = Object.keys(files);
   const removed = previousPaths.filter((path) => !nextPaths.includes(path));
   if (removed.length) {
     await sandbox.runCommand({ cmd: "rm", args: ["-rf", "--", ...removed], cwd: WORKDIR });
   }
-  await sandbox.writeFiles(nextPaths.map((path) => ({
-    path,
-    content: Buffer.from(files[path], "utf8"),
-  })));
-  await sandbox.writeFiles([{
-    path: META_FILE,
-    content: Buffer.from(JSON.stringify(nextPaths), "utf8"),
-  }]);
+  await sandbox.writeFiles(
+    nextPaths.map((path) => ({
+      path,
+      content: Buffer.from(files[path], "utf8"),
+    })),
+  );
+  await sandbox.writeFiles([
+    {
+      path: META_FILE,
+      content: Buffer.from(JSON.stringify(nextPaths), "utf8"),
+    },
+  ]);
 
   const packageHash = createHash("sha256").update(files["package.json"]).digest("hex");
   const installedHash = await readText(sandbox, `${WORKDIR}/${PACKAGE_HASH_FILE}`);
   let installOutput = "";
   if (installedHash !== packageHash) {
-    installOutput = await runChecked(sandbox, "npm", ["install", "--no-audit", "--no-fund"], 180_000);
-    await sandbox.writeFiles([{
-      path: PACKAGE_HASH_FILE,
-      content: Buffer.from(packageHash, "utf8"),
-    }]);
+    installOutput = await runChecked(
+      sandbox,
+      "npm",
+      ["install", "--no-audit", "--no-fund"],
+      180_000,
+    );
+    await sandbox.writeFiles([
+      {
+        path: PACKAGE_HASH_FILE,
+        content: Buffer.from(packageHash, "utf8"),
+      },
+    ]);
   }
 
   const url = sandbox.domain(port);
@@ -157,7 +179,8 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
 }
 
 export async function runCloudProjectCommand(projectId: string, command: string) {
-  if (!command.trim() || command.length > 3000) throw new Error("Enter a command under 3,000 characters.");
+  if (!command.trim() || command.length > 3000)
+    throw new Error("Enter a command under 3,000 characters.");
   const sandbox = await Sandbox.get({ name: sandboxName(projectId) });
   const result = await sandbox.runCommand({
     cmd: "bash",
