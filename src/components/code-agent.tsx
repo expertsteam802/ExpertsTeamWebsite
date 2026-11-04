@@ -459,8 +459,10 @@ export function CodeAgent() {
         setName(data.name);
         await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
       } else {
-        setName(nextName);
+        // Persist the requested name explicitly. React state updates are asynchronous,
+        // so persist() must not read the previous value of name immediately after setName().
         await persist({ extra: { name: nextName } });
+        setName(nextName);
       }
       setProjectNameEditing(false);
       toast.success("Project name saved");
