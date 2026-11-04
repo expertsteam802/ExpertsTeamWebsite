@@ -48,22 +48,31 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
   const [category, setCategory] = useState(defaultCategory);
   const [price, setPrice] = useState("0");
   const [payoutAccount, setPayoutAccount] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [percent, setPercent] = useState(0);
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Sign in to upload.");
-      if (!file) throw new Error("Choose a file first.");
-      if (file.size > MAX_UPLOAD_BYTES) throw new Error("Files must be 200MB or smaller.");
-      if (profile && file.size > profile.storage_quota_bytes) {
+      const cleanSourceUrl = sourceUrl.trim();
+      if (!file && !cleanSourceUrl) throw new Error("Choose a file or paste a download/source link.");
+      if (file && cleanSourceUrl) throw new Error("Choose either an uploaded file or an external link, not both.");
+      if (cleanSourceUrl) {
+        let parsed: URL;
+        try { parsed = new URL(cleanSourceUrl); } catch { throw new Error("Enter a valid source URL."); }
+        if (parsed.protocol !== "https:") throw new Error("External source links must use HTTPS.");
+      }
+      if (file && file.size > MAX_UPLOAD_BYTES) throw new Error("Files must be 200MB or smaller.");
+      if (file && profile && file.size > profile.storage_quota_bytes) {
         throw new Error("This file is bigger than your remaining space — upgrade for more room.");
       }
       setPercent(0);
-      const path = await uploadWithProgress({ file, userId: user.id, onProgress: setPercent });
+      const path = file ? await uploadWithProgress({ file, userId: user.id, onProgress: setPercent }) : null;\n      const linkedName = cleanSourceUrl ? (new URL(cleanSourceUrl).pathname.split("/").filter(Boolean).pop() || "external-resource") : null;
 
       const { error } = await supabase.from("files").insert({
         user_id: user.id,
-        title: (title.trim() || file.name).slice(0, 140),
+        title: (title.trim() || file?.name || linkedName || "External resource").slice(0, 140),
         description: description.trim().slice(0, 1000) || null,
         storage_path: path,
         file_name: file.name,
@@ -105,7 +114,7 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
         <DialogHeader>
           <DialogTitle>Share something with the community</DialogTitle>
           <DialogDescription>
-            Games, apps, books, videos, lessons or resources — up to 200MB per file.
+            Upload a file or share an HTTPS source link. A copy is not required when you already have a download link.
           </DialogDescription>
         </DialogHeader>
 
@@ -192,8 +201,8 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
         </div>
 
         <DialogFooter>
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !file}>
-            {mutation.isPending ? `Uploading ${percent}%` : "Upload"}
+          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || (!file && !sourceUrl.trim())}>
+            {mutation.isPending ? (file ? `Uploading ${percent}%` : "Saving link…") : file ? "Upload file" : "Share link"}
           </Button>
         </DialogFooter>
       </DialogContent>
