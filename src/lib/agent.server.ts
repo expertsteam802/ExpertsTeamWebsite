@@ -1,3 +1,5 @@
+import { generateGeminiContent } from "./gemini.server";
+
 type AgentInput = {
   prompt: string;
   files: Record<string, string>;
