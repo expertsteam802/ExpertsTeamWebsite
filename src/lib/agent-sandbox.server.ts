@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { Sandbox } from "@vercel/sandbox";
 
+import { repairMissingStylesheetImports } from "./agent.server";
+
 export type AgentProjectFiles = Record<string, string>;
 
 const WORKDIR = "/vercel/sandbox";
@@ -80,8 +82,8 @@ async function waitForPreview(url: string) {
 }
 
 export async function startCloudProjectPreview(projectId: string, sourceFiles: AgentProjectFiles) {
-  validateFiles(sourceFiles);
-  const files = { ...sourceFiles };
+  const files = repairMissingStylesheetImports({ ...sourceFiles });
+  validateFiles(files);
   let packageJson: Record<string, unknown> = {};
   try {
     packageJson = JSON.parse(files["package.json"] ?? "{}") as Record<string, unknown>;
