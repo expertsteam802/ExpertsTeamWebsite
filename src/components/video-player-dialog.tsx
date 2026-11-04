@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { AdSlot } from "@/components/ads/ad-slot";
+import { VideoVastAd } from "@/components/ads/ad-slot";
 
 type YouTubePlayer = { destroy: () => void; getIframe: () => HTMLIFrameElement };
 type YouTubeApi = {
@@ -243,13 +243,13 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
               <div>
                 <p className="font-display text-lg font-semibold">Support ExpertsTeam</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  An advertisement is displayed before this video. Continue when you're ready.
+                  Watch the sponsored video to support ExpertsTeam, then continue to your lesson.
                 </p>
               </div>
-              <AdSlot slot="video-before" />
+              <VideoVastAd />
               <Button onClick={() => setUnlockedVideoId(videoId)}>Continue to video</Button>
               <p className="text-xs text-muted-foreground">
-                The ad may not appear if no advertisement is available or your browser blocks it.
+                If no ad is available, you can continue without waiting.
               </p>
             </div>
           ) : (
