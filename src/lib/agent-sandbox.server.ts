@@ -102,6 +102,8 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   const sandbox = await Sandbox.getOrCreate({
     name,
     runtime: "node24",
+    resources: { vcpus: 1 },
+    timeout: 15 * 60 * 1000,
     ports: [port],
     resume: true,
   });
@@ -185,7 +187,7 @@ export async function runCloudProjectCommand(projectId: string, command: string)
     cmd: "bash",
     args: ["-lc", command],
     cwd: WORKDIR,
-    timeout: 120_000,
+    timeoutMs: 120_000,
   });
   return {
     exitCode: result.exitCode,
