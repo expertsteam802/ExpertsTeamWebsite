@@ -203,7 +203,7 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
       "  return Array.isArray(base) ? base.map((entry) => mergeConfig(entry, hostConfig)) : mergeConfig(base ?? {}, hostConfig);",
       "};",
       "",
-    ].join("\\n");
+    ].join("\n");
     await sandbox.writeFiles([{ path: previewConfigPath, content: Buffer.from(previewConfig, "utf8") }]);
   }
   let alreadyRunning = false;
