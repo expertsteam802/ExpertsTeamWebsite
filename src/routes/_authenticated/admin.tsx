@@ -23,7 +23,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
-import { AdminAdsSettingsPanel, AdminApiUsagePanel } from "@/components/admin-platform-panels";
+import { AdminAdsSettingsPanel, AdminApiUsagePanel } from "@/components/admin-platform-panels";\nimport { FileGrid, type CommunityFile } from "@/components/file-grid";\nimport { UploadDialog } from "@/components/upload-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -130,6 +130,19 @@ function AdminPage() {
       const { data, error } = await supabase.from("files").select("user_id, size_bytes");
       if (error) throw error;
       return data as Array<{ user_id: string; size_bytes: number }>;
+    },
+  });
+
+  const { data: adminFiles = [], isLoading: adminFilesLoading } = useQuery({
+    queryKey: ["admin", "all-files"],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("files")
+        .select("*, profiles(username, display_name)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as CommunityFile[];
     },
   });
 
@@ -484,6 +497,12 @@ function AdminPage() {
                   <LayoutDashboard className="h-4 w-4" /> Overview
                 </TabsTrigger>
                 <TabsTrigger
+                  value="uploads"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
+                  <FileDown className="h-4 w-4" /> Upload library
+                </TabsTrigger>
+                <TabsTrigger
                   value="members"
                   className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
                 >
@@ -675,6 +694,24 @@ function AdminPage() {
                   </Card>
                 </div>
               </TabsContent>
+              <TabsContent value="uploads" className="mt-0 space-y-5">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <h2 className="font-display text-2xl font-semibold">Community upload library</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">Review, edit or remove uploaded files and shared external download links. Add resources directly from the admin workspace.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-secondary px-3 py-1.5 text-xs text-muted-foreground">{adminFiles.length} resources</span>
+                    <UploadDialog />
+                  </div>
+                </div>
+                {adminFilesLoading ? (
+                  <Card className="p-8 text-sm text-muted-foreground">Loading community resources…</Card>
+                ) : (
+                  <FileGrid files={adminFiles} />
+                )}
+              </TabsContent>
+
               <TabsContent value="video-analytics" className="mt-0 space-y-6">
                 <div>
                   <h2 className="font-display text-2xl font-semibold">Video performance</h2>
