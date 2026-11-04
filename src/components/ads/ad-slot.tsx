@@ -133,6 +133,7 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
     "ready" | "loading" | "playing" | "complete" | "unavailable"
   >("ready");
   const [message, setMessage] = useState<string | null>(null);
+  const [sdkReady, setSdkReady] = useState(false);
 
   useEffect(
     () => () => {
@@ -143,21 +144,45 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
     [],
   );
 
-  async function playAd() {
-    if (
-      !videoRef.current ||
-      !adContainerRef.current ||
-      status === "loading" ||
-      status === "playing"
-    )
+  useEffect(() => {
+    if (!isFetched || isError || !settings.myBidVastEnabled) return;
+    let cancelled = false;
+    void loadImaSdk()
+      .then(() => {
+        if (!cancelled) setSdkReady(true);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setStatus("unavailable");
+        setMessage(error instanceof Error ? error.message : "The video ad player could not load.");
+        onFinished?.();
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isFetched, isError, settings.myBidVastEnabled, onFinished]);
+
+  useEffect(() => {
+    if (isFetched && (isError || !settings.myBidVastEnabled)) onFinished?.();
+  }, [isFetched, isError, settings.myBidVastEnabled, onFinished]);
+
+  function playAd() {
+    if (!videoRef.current || !adContainerRef.current || status === "loading" || status === "playing") return;
+    const ima = window.google?.ima;
+    const video = videoRef.current;
+    const container = adContainerRef.current;
+    if (!ima || !video || !container) {
+      setStatus("unavailable");
+      setMessage("The MyBid video ad player is unavailable. You can continue to the video.");
+      onFinished?.();
       return;
+    }
+
+    // IMA requires initialize() to run directly from the user's click gesture.
+    // The SDK is preloaded as soon as the pre-roll screen mounts.
     setStatus("loading");
     setMessage(null);
     try {
-      const ima = await loadImaSdk();
-      const video = videoRef.current;
-      const container = adContainerRef.current;
-      if (!video || !container) return;
       const display = new ima.AdDisplayContainer(container, video);
       display.initialize();
       const loader = new ima.AdsLoader(display);
@@ -165,35 +190,26 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
         const manager = event.getAdsManager(video);
         managerRef.current = manager;
         manager.addEventListener(ima.AdEvent.Type.ALL_ADS_COMPLETED, () => {
-          if (requestTimeoutRef.current !== undefined)
-            window.clearTimeout(requestTimeoutRef.current);
+          if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
           setStatus("complete");
           onFinished?.();
           manager.destroy();
           managerRef.current = null;
         });
-        manager.addEventListener(ima.AdEvent.Type.CONTENT_RESUME_REQUESTED, () =>
-          setStatus("complete"),
-        );
+        manager.addEventListener(ima.AdEvent.Type.CONTENT_RESUME_REQUESTED, () => setStatus("complete"));
         manager.addEventListener(ima.AdEvent.Type.STARTED, () => {
-          if (requestTimeoutRef.current !== undefined)
-            window.clearTimeout(requestTimeoutRef.current);
+          if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
           setStatus("playing");
         });
         manager.addEventListener(ima.AdErrorEvent.Type.AD_ERROR, () => {
-          if (requestTimeoutRef.current !== undefined)
-            window.clearTimeout(requestTimeoutRef.current);
+          if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
           setStatus("unavailable");
           setMessage("The MyBid video ad could not be played. You can continue to the video.");
           onFinished?.();
           manager.destroy();
           managerRef.current = null;
         });
-        manager.init(
-          container.clientWidth || 640,
-          container.clientHeight || 360,
-          ima.ViewMode.NORMAL,
-        );
+        manager.init(container.clientWidth || 640, container.clientHeight || 360, ima.ViewMode.NORMAL);
         manager.start();
       });
       loader.addEventListener(ima.AdErrorEvent.Type.AD_ERROR, () => {
@@ -237,13 +253,17 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
         {status === "ready" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/95 p-5 text-center">
             <p className="text-sm font-medium">Sponsored video</p>
-            <button
-              type="button"
-              onClick={() => void playAd()}
-              className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
-            >
-              Play ad
-            </button>
+            {sdkReady ? (
+              <button
+                type="button"
+                onClick={playAd}
+                className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
+              >
+                Play ad
+              </button>
+            ) : (
+              <p className="text-sm text-muted-foreground">Preparing sponsored video…</p>
+            )}
           </div>
         )}
         {status === "loading" && (
