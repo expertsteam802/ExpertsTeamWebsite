@@ -196,7 +196,8 @@
   from {
     background-position: -200% 0;
   }
-  to {    background-position: 200% 0;
+  to {
+    background-position: 200% 0;
   }
 }
 
@@ -475,8 +476,11 @@
 
   body {
     min-width: 320px;
-    background-image:
-      radial-gradient(ellipse at 50% 0%, color-mix(in oklab, var(--primary) 5%, transparent), transparent 42%);
+    background-image: radial-gradient(
+      ellipse at 50% 0%,
+      color-mix(in oklab, var(--primary) 5%, transparent),
+      transparent 42%
+    );
   }
 
   ::selection {
@@ -512,7 +516,9 @@ header.sticky {
 }
 
 header.sticky img {
-  transition: transform 220ms ease, box-shadow 220ms ease;
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease;
 }
 
 header.sticky a:hover img {
@@ -522,7 +528,10 @@ header.sticky a:hover img {
 
 header.sticky nav a,
 header.sticky nav button {
-  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease;
 }
 
 header.sticky nav a[data-status="active"] {
@@ -556,7 +565,11 @@ main .group.relative.overflow-hidden::after {
   z-index: -1;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(145deg, color-mix(in oklab, var(--primary) 7%, transparent), transparent 58%);
+  background: linear-gradient(
+    145deg,
+    color-mix(in oklab, var(--primary) 7%, transparent),
+    transparent 58%
+  );
   content: "";
   opacity: 0;
   pointer-events: none;
@@ -572,7 +585,10 @@ input,
 textarea,
 select,
 [role="combobox"] {
-  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
 }
 
 input:focus,
