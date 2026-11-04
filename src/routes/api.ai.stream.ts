@@ -118,7 +118,7 @@ export const Route = createFileRoute("/api/ai/stream")({
           let guestServiceClient: ReturnType<typeof createClient> | null = null;
           let guestIpHash = "";
           if (isGuest) {
-            const serviceRoleKey = process.env["SUPABASE_SERVICE_ROLE_KEY"] || process.env["SERVICE_ROLE_KEY"];
+            const serviceRoleKey = process.env["SUPABASE_SECRET_KEY"] || process.env["SUPABASE_SERVICE_ROLE_KEY"] || process.env["SERVICE_ROLE_KEY"];
             if (!serviceRoleKey) {
               return Response.json({ error: "Guest chat is not configured yet. Please sign in to use ExpertAI." }, { status: 503 });
             }
@@ -126,7 +126,7 @@ export const Route = createFileRoute("/api/ai/stream")({
             const ip = forwarded || request.headers.get("x-real-ip") || "unknown";
             const digest = await crypto.subtle.digest(
               "SHA-256",
-              new TextEncoder().encode(`${ip}:${serviceRoleKey}`),
+              new TextEncoder().encode(`${ip}:${guestSessionId}:${serviceRoleKey}`),
             );
             guestIpHash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
             guestServiceClient = createClient(supabaseUrl, serviceRoleKey, {
