@@ -50,10 +50,12 @@ function normalizeAdSettings(value: Json | null | undefined): AdSettings {
           Object.entries(rawPlacements).filter(
             ([slot, unit]) =>
               AD_SLOTS.some(([knownSlot]) => knownSlot === slot) &&
-              (unit === "nativeBanner" || unit === "banner728"),
+              (unit === "nativeBanner" || unit === "banner728") &&
+              !(unit === "nativeBanner" && slot !== "video-before"),
           ),
         ) as Record<string, AdUnit>)
-      : DEFAULT_AD_SETTINGS.placements;
+      : {};
+  placements["video-before"] = "nativeBanner";
   return {
     nativeBannerEnabled:
       typeof raw.nativeBannerEnabled === "boolean"
@@ -207,21 +209,12 @@ export function AdminAdsSettingsPanel() {
             default.
           </p>
         </div>
-        <label className="block space-y-2">
-          <span className="text-sm font-medium">Native Banner location</span>
-          <select
-            value={getUnitSlot("nativeBanner")}
-            onChange={(event) => setUnitPlacement("nativeBanner", event.target.value)}
-            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-          >
-            <option value="">Not placed</option>
-            {AD_SLOTS.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="rounded-xl border border-border/70 p-4">
+          <p className="text-sm font-medium">Native Banner location</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Fixed before every video lesson so the pre-video ad is never accidentally moved.
+          </p>
+        </div>
         <label className="block space-y-2">
           <span className="text-sm font-medium">728 × 90 banner location</span>
           <select
@@ -230,7 +223,7 @@ export function AdminAdsSettingsPanel() {
             className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
           >
             <option value="">Not placed</option>
-            {AD_SLOTS.map(([value, label]) => (
+            {AD_SLOTS.filter(([value]) => value !== "video-before").map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
