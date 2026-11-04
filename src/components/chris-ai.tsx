@@ -174,10 +174,22 @@ export function ChrisAiChat({
   );
   const [streamingReply, setStreamingReply] = useState("");
   const [guestMessages, setGuestMessages] = useState<ChatRow[]>([]);
+  const [guestSessionId] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      const existing = window.localStorage.getItem("experts-team:guest-session");
+      if (existing && /^[0-9a-f-]{36}$/i.test(existing)) return existing;
+      const created = crypto.randomUUID();
+      window.localStorage.setItem("experts-team:guest-session", created);
+      return created;
+    } catch {
+      return crypto.randomUUID();
+    }
+  });
   const [guestCredits, setGuestCredits] = useState(() => {
     if (typeof window === "undefined") return 15;
     try {
-      const saved = window.localStorage.getItem("experts-team:guest-ai-credits");
+      const saved = window.localStorage.getItem(`experts-team:guest-ai-credits:${guestSessionId}`);
       return saved === null ? 15 : Math.max(0, Math.min(15, Number(saved) || 0));
     } catch { return 15; }
   });
@@ -291,6 +303,8 @@ export function ChrisAiChat({
           throw new Error("Your session expired. Please sign in again.");
         }
         headers.Authorization = `Bearer ${sessionData.session.access_token}`;
+      } else {
+        headers["X-Guest-Session"] = guestSessionId;
       }
 
       const response = await fetch("/api/ai/stream", {
@@ -366,7 +380,7 @@ export function ChrisAiChat({
         }]);
         setGuestCredits((current) => {
           const next = Math.max(0, current - 1);
-          try { window.localStorage.setItem("experts-team:guest-ai-credits", String(next)); } catch { /* Server also enforces the guest limit. */ }
+          try { window.localStorage.setItem(`experts-team:guest-ai-credits:${guestSessionId}`, String(next)); } catch { /* Server also enforces the guest limit. */ }
           return next;
         });
       }
