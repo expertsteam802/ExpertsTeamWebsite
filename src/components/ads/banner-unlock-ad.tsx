@@ -29,8 +29,13 @@ export function BannerUnlockAd({
   compact?: boolean;
 }) {
   const onUnlockedRef = useRef(onUnlocked);
+  const completedRef = useRef(false);
   const [remaining, setRemaining] = useState(seconds);
   const [finished, setFinished] = useState(false);
+
+  useEffect(() => {
+    onUnlockedRef.current = onUnlocked;
+  }, [onUnlocked]);
 
   useEffect(() => {
     if (finished || completedRef.current) return;
