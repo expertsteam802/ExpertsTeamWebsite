@@ -117,10 +117,14 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
     name,
     runtime: "node24",
     resources: { vcpus: 1 },
-    timeout: 15 * 60 * 1000,
+    timeout: 45 * 60 * 1000,
     ports: [port],
     resume: true,
   });
+
+  // Existing named sandboxes keep their original configuration, so update the
+  // per-session timeout as well as setting it during creation.
+  await sandbox.update({ timeout: 45 * 60 * 1000 });
 
   const previous = await readText(sandbox, `${WORKDIR}/${META_FILE}`);
   let previousManifest: Record<string, string> = {};
@@ -218,8 +222,10 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
     alreadyRunning = false;
   }
 
-  // Always restart Vite so the per-sandbox config is loaded, including on resumed sandboxes.
-  if (isVite) {
+  // Only kill Vite when it is demonstrably serving a blocked-host response.
+  // A healthy server should stay up; a stopped/resumed sandbox has no live server
+  // and is started by the branch below.
+  if (isVite && blockedByViteHostCheck) {
     await sandbox.runCommand({
       cmd: "pkill",
       args: ["-f", "[v]ite"],
@@ -227,6 +233,7 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
     });
     alreadyRunning = false;
   }
+  const recovered = !alreadyRunning;
 
   if (!alreadyRunning) {
     if (scriptName) {
@@ -255,7 +262,7 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
     }
   }
   await waitForPreview(url);
-  return { url, port, sandboxName: name, installOutput };
+  return { url, port, sandboxName: name, installOutput, recovered };
 }
 
 export async function runCloudProjectCommand(projectId: string, command: string) {
