@@ -96,8 +96,10 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   }
   const activeScripts = (packageJson.scripts ?? {}) as Record<string, string>;
   const scriptName = activeScripts.dev ? "dev" : activeScripts.start ? "start" : null;
-  const isNext = /next\s+dev|next\s+start/.test(activeScripts[scriptName ?? ""] ?? "");
-  const port = isNext ? 3000 : 5173;
+  const devScript = activeScripts[scriptName ?? ""] ?? "";
+  const isNext = /next\\s+dev|next\\s+start/.test(devScript);
+  const isVite = /vite/.test(devScript);
+  const port = isNext || scriptName === "start" || /react-scripts/.test(devScript) ? 3000 : 5173;
   const name = sandboxName(projectId);
   const sandbox = await Sandbox.getOrCreate({
     name,
@@ -109,27 +111,43 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   });
 
   const previous = await readText(sandbox, `${WORKDIR}/${META_FILE}`);
-  let previousPaths: string[] = [];
+  let previousManifest: Record<string, string> = {};
   try {
-    previousPaths = previous ? (JSON.parse(previous) as string[]) : [];
+    const parsed = previous ? (JSON.parse(previous) as unknown) : {};
+    previousManifest = Array.isArray(parsed)
+      ? Object.fromEntries(
+          parsed
+            .filter((path): path is string => typeof path === "string")
+            .map((path) => [path, ""]),
+        )
+      : (parsed as Record<string, string>);
   } catch {
-    previousPaths = [];
+    previousManifest = {};
   }
   const nextPaths = Object.keys(files);
-  const removed = previousPaths.filter((path) => !nextPaths.includes(path));
+  const nextManifest = Object.fromEntries(
+    nextPaths.map((path) => [
+      path,
+      createHash("sha256").update(files[path]).digest("hex"),
+    ]),
+  );
+  const removed = Object.keys(previousManifest).filter((path) => !nextPaths.includes(path));
   if (removed.length) {
     await sandbox.runCommand({ cmd: "rm", args: ["-rf", "--", ...removed], cwd: WORKDIR });
   }
-  await sandbox.writeFiles(
-    nextPaths.map((path) => ({
-      path,
-      content: Buffer.from(files[path], "utf8"),
-    })),
-  );
+  const changed = nextPaths.filter((path) => previousManifest[path] !== nextManifest[path]);
+  if (changed.length) {
+    await sandbox.writeFiles(
+      changed.map((path) => ({
+        path,
+        content: Buffer.from(files[path], "utf8"),
+      })),
+    );
+  }
   await sandbox.writeFiles([
     {
       path: META_FILE,
-      content: Buffer.from(JSON.stringify(nextPaths), "utf8"),
+      content: Buffer.from(JSON.stringify(nextManifest), "utf8"),
     },
   ]);
 
