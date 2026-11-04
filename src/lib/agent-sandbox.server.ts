@@ -126,10 +126,7 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   }
   const nextPaths = Object.keys(files);
   const nextManifest = Object.fromEntries(
-    nextPaths.map((path) => [
-      path,
-      createHash("sha256").update(files[path]).digest("hex"),
-    ]),
+    nextPaths.map((path) => [path, createHash("sha256").update(files[path]).digest("hex")]),
   );
   const removed = Object.keys(previousManifest).filter((path) => !nextPaths.includes(path));
   if (removed.length) {
