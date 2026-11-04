@@ -186,12 +186,12 @@ export async function generateGeminiContent(
       .split(",")
       .map((item) => item.trim().toLowerCase())
       .filter(Boolean);
-  const freeProviders = ["groq", "gemini", "openrouter"];
-  // Ignore old paid-provider entries and always retain the free fallbacks.
+  const availableProviders = ["groq", "gemini", "openrouter", "mistral", "cloudflare"];
+  // Use every configured adapter as a fallback; credentials stay server-side.
   const configuredOrder = [
     ...new Set([
-      ...requestedOrder.filter((item) => freeProviders.includes(item)),
-      ...freeProviders,
+      ...requestedOrder.filter((item) => availableProviders.includes(item)),
+      ...availableProviders,
     ]),
   ];
   const failures: string[] = [];
@@ -224,8 +224,8 @@ export async function generateGeminiContent(
       if (provider === "groq" || provider === "openrouter") {
         return await callOpenAiCompatible(provider, activeRequest);
       }
-      if (provider === "mistral") return await callMistral(request);
-      if (provider === "cloudflare") return await callCloudflare(request);
+      if (provider === "mistral") return await callMistral(activeRequest);
+      if (provider === "cloudflare") return await callCloudflare(activeRequest);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (message === "not_configured") continue;
