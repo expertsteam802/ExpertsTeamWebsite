@@ -32,11 +32,11 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/community")({
   head: () => ({
     meta: [
-      { title: "ExpertsTeam Community — Creators, builders & ideas" },
+      { title: "ExpertsTeam Community — Ask questions, get answers and solutions" },
       {
         name: "description",
         content:
-          "Join the ExpertsTeam live community feed. Share projects, coding ideas, questions, photos and useful links.",
+          "Ask any question and get help, answers and practical solutions from the ExpertsTeam community. Share coding questions, ideas, projects and useful links.",
       },
     ],
   }),
