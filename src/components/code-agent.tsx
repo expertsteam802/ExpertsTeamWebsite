@@ -36,7 +36,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import CodeMirror from "@uiw/react-codemirror";
-import { EditorView } from "@codemirror/view";
+import { EditorView, keymap } from "@codemirror/view";
 import { javascript } from "@codemirror/lang-javascript";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
@@ -45,7 +45,6 @@ import { oneDark } from "@codemirror/theme-one-dark";
 
 
 import { indentWithTab } from "@codemirror/commands";
-import { keymap } from "@codemirror/view";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -217,7 +216,8 @@ export function CodeAgent() {
             : activeFile.endsWith(".json")
               ? json()
               : null;
-    return [keymap.of([indentWithTab]), ...(language ? [language] : [])];  }, [activeFile]);
+    return [keymap.of([indentWithTab]), ...(language ? [language] : [])];
+  }, [activeFile]);
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["agent-projects", user?.id],
