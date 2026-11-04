@@ -68,6 +68,7 @@ function AuthPage() {
       return;
     }
     setBusy(true);
+    signupFlow.current = true;
     try {
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
@@ -81,6 +82,7 @@ function AuthPage() {
       setSignupAdFinished(false);
       setSignupResult({ email: email.trim(), needsConfirmation: !data.session });
     } catch (error) {
+      signupFlow.current = false;
       toast.error(
         error instanceof Error ? error.message : "Could not create your account. Please try again.",
       );
