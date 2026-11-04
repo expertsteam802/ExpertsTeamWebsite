@@ -14,7 +14,7 @@ GRANT ALL ON public.guest_ai_usage TO service_role;
 CREATE OR REPLACE FUNCTION public.consume_guest_ai_credit(p_ip_hash text)
 RETURNS boolean
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = public
 AS $$
 DECLARE
