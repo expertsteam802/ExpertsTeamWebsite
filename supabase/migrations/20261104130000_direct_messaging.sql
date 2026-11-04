@@ -64,12 +64,6 @@ CREATE POLICY "Members create direct conversations"
   ON public.direct_conversations FOR INSERT TO authenticated
   WITH CHECK (created_by = auth.uid());
 
-DROP POLICY IF EXISTS "Members update their conversations" ON public.direct_conversations;
-CREATE POLICY "Members update their conversations"
-  ON public.direct_conversations FOR UPDATE TO authenticated
-  USING (public.is_direct_conversation_member(id))
-  WITH CHECK (public.is_direct_conversation_member(id));
-
 DROP POLICY IF EXISTS "Members see conversation participants" ON public.direct_conversation_members;
 CREATE POLICY "Members see conversation participants"
   ON public.direct_conversation_members FOR SELECT TO authenticated
@@ -79,8 +73,7 @@ DROP POLICY IF EXISTS "Conversation creators add participants" ON public.direct_
 CREATE POLICY "Conversation creators add participants"
   ON public.direct_conversation_members FOR INSERT TO authenticated
   WITH CHECK (
-    user_id = auth.uid()
-    OR EXISTS (
+    EXISTS (
       SELECT 1 FROM public.direct_conversations conversation
       WHERE conversation.id = conversation_id
         AND conversation.created_by = auth.uid()
@@ -91,7 +84,7 @@ DROP POLICY IF EXISTS "Members update own read state" ON public.direct_conversat
 CREATE POLICY "Members update own read state"
   ON public.direct_conversation_members FOR UPDATE TO authenticated
   USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+  WITH CHECK (user_id = auth.uid() AND public.is_direct_conversation_member(conversation_id));
 
 DROP POLICY IF EXISTS "Members read direct messages" ON public.direct_messages;
 CREATE POLICY "Members read direct messages"
@@ -142,7 +135,9 @@ BEGIN
   END IF;
 END $$;
 
-GRANT SELECT, INSERT, UPDATE ON public.direct_conversations TO authenticated;
-GRANT SELECT, INSERT, UPDATE ON public.direct_conversation_members TO authenticated;
+GRANT SELECT, INSERT ON public.direct_conversations TO authenticated;
+REVOKE UPDATE ON public.direct_conversation_members FROM authenticated;
+GRANT SELECT, INSERT ON public.direct_conversation_members TO authenticated;
+GRANT UPDATE (last_read_at) ON public.direct_conversation_members TO authenticated;
 GRANT SELECT, INSERT, DELETE ON public.direct_messages TO authenticated;
 NOTIFY pgrst, 'reload schema';
