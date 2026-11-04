@@ -63,6 +63,11 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
         try { parsed = new URL(cleanSourceUrl); } catch { throw new Error("Enter a valid source URL."); }
         if (parsed.protocol !== "https:") throw new Error("External source links must use HTTPS.");
       }
+      if (thumbnailUrl.trim()) {
+        let parsedThumbnail: URL;
+        try { parsedThumbnail = new URL(thumbnailUrl.trim()); } catch { throw new Error("Enter a valid thumbnail URL."); }
+        if (parsedThumbnail.protocol !== "https:") throw new Error("Thumbnail URLs must use HTTPS.");
+      }
       if (file && file.size > MAX_UPLOAD_BYTES) throw new Error("Files must be 200MB or smaller.");
       if (file && profile && file.size > profile.storage_quota_bytes) {
         throw new Error("This file is bigger than your remaining space — upgrade for more room.");
