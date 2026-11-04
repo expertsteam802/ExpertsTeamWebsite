@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Instagram, LogOut, Menu, Palette, Shield, Youtube } from "lucide-react";
+import { Instagram, LogOut, Menu, MessageCircle, Palette, Shield, Youtube } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ const NAV_GROUPS = [
     items: [
       { to: "/projects", label: "Workspace" },
       { to: "/ai", label: "ExpertAI Studio" },
+      { to: "/messages", label: "Messages" },
     ],
   },
 ] as const;
