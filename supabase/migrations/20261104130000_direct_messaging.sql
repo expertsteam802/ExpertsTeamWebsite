@@ -126,14 +126,14 @@ RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS $
+AS $$
 BEGIN
   UPDATE public.direct_conversations
   SET last_message_at = NEW.created_at
   WHERE id = NEW.conversation_id;
   RETURN NEW;
 END;
-$;
+$$;
 REVOKE ALL ON FUNCTION private.bump_direct_conversation_activity() FROM PUBLIC, anon, authenticated;
 
 DROP TRIGGER IF EXISTS direct_message_bump_activity ON public.direct_messages;
