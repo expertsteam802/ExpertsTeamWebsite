@@ -12,6 +12,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Bot } from "lucide-react";
 
 import { ChrisAiChat } from "@/components/chris-ai";
+import { GlobalAdScripts } from "@/components/ads/ad-slot";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/hooks/use-theme";
@@ -163,6 +164,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
+          <GlobalAdScripts />
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
 
