@@ -42,13 +42,12 @@ export function resolveGeminiApiKey(apiKey?: string): string | undefined {
   return apiKey?.trim() || process.env["GEMINI_API_KEY"]?.trim() || undefined;
 }
 
-function openAiMessages(request: GeminiRequest) {
+function openAiMessages(request: GeminiRequest, maxInputCharacters = 10000) {
   // Smart Processing compacts the request first; this is the final adapter guard.
-  const maxInputCharacters = 10000;
   const system = request.systemInstruction.parts
     .map((part) => part.text)
     .join("\n")
-    .slice(0, 1800);
+    .slice(0, Math.min(1800, Math.floor(maxInputCharacters * 0.3)));
   const recent = request.contents.slice(-4).map((item, index, items) => ({
     role: item.role === "model" ? "assistant" : "user",
     content: item.parts
@@ -86,33 +85,41 @@ async function callOpenAiCompatible(
   const model =
     process.env[isGroq ? "GROQ_MODEL" : "OPENROUTER_MODEL"] ||
     (isGroq ? "openai/gpt-oss-120b" : "openrouter/free");
-  const response = await fetch(
-    isGroq
-      ? "https://api.groq.com/openai/v1/chat/completions"
-      : "https://openrouter.ai/api/v1/chat/completions",
-    {
+  const endpoint = isGroq
+    ? "https://api.groq.com/openai/v1/chat/completions"
+    : "https://openrouter.ai/api/v1/chat/completions";
+  const headers = {
+    Authorization: `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+    ...(isGroq
+      ? {}
+      : {
+          "HTTP-Referer": process.env["APP_URL"] || "https://expertsteam.giize.com",
+          "X-Title": "ExpertsTeam",
+        }),
+  };
+  const send = (inputBudget: number, outputBudget: number) =>
+    fetch(endpoint, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        ...(isGroq
-          ? {}
-          : {
-              "HTTP-Referer": process.env["APP_URL"] || "https://expertsteam.giize.com",
-              "X-Title": "ExpertsTeam",
-            }),
-      },
+      headers,
       body: JSON.stringify({
         model,
-        messages: openAiMessages(request),
-        max_tokens: Math.min(request.generationConfig?.maxOutputTokens ?? 1800, 1800),
+        messages: openAiMessages(request, inputBudget),
+        max_tokens: outputBudget,
         ...(request.generationConfig?.responseMimeType === "application/json"
           ? { response_format: { type: "json_object" } }
           : {}),
       }),
       signal: AbortSignal.timeout(isGroq ? 30000 : 60000),
-    },
-  );
+    });
+  const requestedOutput = request.generationConfig?.maxOutputTokens ?? 1800;
+  let response = await send(isGroq ? 6500 : 10000, Math.min(requestedOutput, isGroq ? 1100 : 1800));
+  // Groq may reject an otherwise valid request when its TPM window is tight.
+  // Retry the same provider once with a materially smaller context/output budget.
+  if (isGroq && response.status === 413) {
+    await response.text();
+    response = await send(4200, Math.min(requestedOutput, 600));
+  }
   if (!response.ok)
     throw new Error(
       `${provider} HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`,
@@ -251,7 +258,7 @@ export async function generateGeminiContent(
               ...activeRequest.generationConfig,
               maxOutputTokens: Math.min(
                 activeRequest.generationConfig?.maxOutputTokens ?? 1400,
-                1400,
+                700,
               ),
             },
           },
