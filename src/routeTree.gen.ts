@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CommunityRouteImport } from './routes/community'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as EntertainmentRouteImport } from './routes/entertainment'
+import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as ProjectsRouteImport } from './routes/projects'
@@ -57,6 +58,11 @@ const ContactRoute = ContactRouteImport.update({
 const EntertainmentRoute = EntertainmentRouteImport.update({
   id: '/entertainment',
   path: '/entertainment',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExploreRoute = ExploreRouteImport.update({
+  id: '/explore',
+  path: '/explore',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MessagesRoute = MessagesRouteImport.update({
@@ -107,6 +113,8 @@ export interface FileRoutesByFullPath {
   '/community': typeof CommunityRoute
   '/contact': typeof ContactRoute
   '/entertainment': typeof EntertainmentRoute
+  '/explore': typeof ExploreRoute
+  '/explore': typeof ExploreRoute
   '/learn': typeof LearnRoute
   '/messages': typeof MessagesRoute
   '/projects': typeof ProjectsRoute
@@ -123,6 +131,7 @@ export interface FileRoutesByTo {
   '/community': typeof CommunityRoute
   '/contact': typeof ContactRoute
   '/entertainment': typeof EntertainmentRoute
+  '/explore': typeof ExploreRoute
   '/learn': typeof LearnRoute
   '/messages': typeof MessagesRoute
   '/projects': typeof ProjectsRoute
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/community'
     | '/contact'
     | '/entertainment'
+    | '/explore'
     | '/learn'
     | '/messages'
     | '/projects'
@@ -210,6 +220,7 @@ export interface RootRouteChildren {
   CommunityRoute: typeof CommunityRoute
   ContactRoute: typeof ContactRoute
   EntertainmentRoute: typeof EntertainmentRoute
+  ExploreRoute: typeof ExploreRoute
   LearnRoute: typeof LearnRoute
   MessagesRoute: typeof MessagesRoute
   ProjectsRoute: typeof ProjectsRoute
@@ -267,6 +278,13 @@ declare module '@tanstack/react-router' {
       path: '/entertainment'
       fullPath: '/entertainment'
       preLoaderRoute: typeof EntertainmentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/explore': {
+      id: '/explore'
+      path: '/explore'
+      fullPath: '/explore'
+      preLoaderRoute: typeof ExploreRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/messages': {
@@ -349,6 +367,7 @@ const rootRouteChildren: RootRouteChildren = {
   CommunityRoute: CommunityRoute,
   ContactRoute: ContactRoute,
   EntertainmentRoute: EntertainmentRoute,
+  ExploreRoute: ExploreRoute,
   LearnRoute: LearnRoute,
   MessagesRoute: MessagesRoute,
   ProjectsRoute: ProjectsRoute,
