@@ -20,6 +20,7 @@ import {
   MoreHorizontal,
   Play,
   Plus,
+  Pencil,
   RefreshCw,
   Save,
   Send,
@@ -33,7 +34,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -147,8 +148,13 @@ export function CodeAgent() {
   const [githubRepo, setGithubRepo] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [assistantOpen, setAssistantOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(248);
+  const [assistantWidth, setAssistantWidth] = useState(360);
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [newFileName, setNewFileName] = useState("");
+  const [renameFileOpen, setRenameFileOpen] = useState(false);
+  const [renameFileFrom, setRenameFileFrom] = useState<string | null>(null);
+  const [renameFileName, setRenameFileName] = useState("");
   const [extensionsOpen, setExtensionsOpen] = useState(false);
   const [completionsOpen, setCompletionsOpen] = useState(false);
   const [enabledEditorPacks, setEnabledEditorPacks] = useState<string[]>(["react", "html", "css"]);
@@ -670,6 +676,30 @@ export function CodeAgent() {
     }
   }
 
+  function beginPanelResize(event: React.PointerEvent<HTMLDivElement>, target: "sidebar" | "assistant") {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = target === "sidebar" ? sidebarWidth : assistantWidth;
+
+    const onMove = (moveEvent: PointerEvent) => {
+      const delta = moveEvent.clientX - startX;
+      if (target === "sidebar") {
+        setSidebarWidth(Math.min(420, Math.max(190, startWidth + delta)));
+      } else {
+        setAssistantWidth(Math.min(560, Math.max(280, startWidth - delta)));
+      }
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  }
+
   function createFile() {
     const path = newFileName.trim().replace(/^\/+/, "");
     if (!path || path.includes("..") || path.startsWith(".")) {
@@ -686,6 +716,27 @@ export function CodeAgent() {
     setNewFileOpen(false);
     setPanel("code");
     setDirty(true);
+  }
+
+  function renameFile() {
+    if (!renameFileFrom) return;
+    const nextPath = renameFileName.trim().replace(/^\\/+/, "");
+    if (!nextPath || nextPath.includes("..") || nextPath.startsWith(".")) {
+      toast.error("Enter a valid file path.");
+      return;
+    }
+    if (nextPath !== renameFileFrom && files[nextPath] !== undefined) {
+      toast.error("A file with that name already exists.");
+      return;
+    }
+    const updated = { ...files, [nextPath]: files[renameFileFrom] };
+    delete updated[renameFileFrom];
+    setFiles(updated);
+    if (activeFile === renameFileFrom) setActiveFile(nextPath);
+    setDirty(true);
+    setRenameFileOpen(false);
+    setRenameFileFrom(null);
+    toast.success("File renamed");
   }
 
   function deleteFile(path: string) {
@@ -809,7 +860,10 @@ export function CodeAgent() {
       </header>
 
       {/* Main workspace */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[220px_minmax(0,1fr)]">
+      <div
+        className={`grid min-h-0 flex-1 grid-cols-1 overflow-hidden ${sidebarOpen ? "lg:grid-cols-[var(--sidebar-width)_5px_minmax(0,1fr)]" : "lg:grid-cols-1"}`}
+        style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
+      >
         {/* Left sidebar */}
         {sidebarOpen && (
           <aside className="flex min-h-0 flex-col overflow-y-auto border-b border-white/[0.08] bg-[#0b1320] lg:border-b-0 lg:border-r">
@@ -922,8 +976,21 @@ export function CodeAgent() {
                         <span className="truncate">{path}</span>
                       </button>
                       <button
+                        type="button"
+                        onClick={() => {
+                          setRenameFileFrom(path);
+                          setRenameFileName(path);
+                          setRenameFileOpen(true);
+                        }}
+                        className="rounded p-1 text-slate-600 opacity-100 transition hover:bg-cyan-400/10 hover:text-cyan-200 sm:opacity-0 sm:group-hover:opacity-100"
+                        aria-label={`Rename ${path}`}
+                        title="Rename file"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
                         onClick={() => deleteFile(path)}
-                        className="mr-1 hidden rounded p-1 text-slate-600 hover:bg-red-500/10 hover:text-red-300 group-hover:block"
+                        className="mr-1 rounded p-1 text-slate-600 opacity-100 transition hover:bg-red-500/10 hover:text-red-300 sm:opacity-0 sm:group-hover:opacity-100"
                         aria-label={`Delete ${path}`}
                       >
                         <Trash2 className="h-3 w-3" />
@@ -945,6 +1012,15 @@ export function CodeAgent() {
               </div>
             </div>
           </aside>
+        )}
+        {sidebarOpen && (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize project sidebar"
+            onPointerDown={(event) => beginPanelResize(event, "sidebar")}
+            className="hidden cursor-col-resize bg-white/[0.04] transition-colors hover:bg-cyan-400/40 lg:block"
+          />
         )}
 
         {/* Centre and assistant area */}
@@ -1089,7 +1165,8 @@ export function CodeAgent() {
 
           {/* Work area */}
           <div
-            className={`grid min-h-0 flex-1 overflow-hidden ${assistantOpen ? "xl:grid-cols-[minmax(0,1fr)_320px]" : "grid-cols-1"}`}
+            className={`grid min-h-0 flex-1 grid-cols-1 overflow-hidden ${assistantOpen ? "xl:grid-cols-[minmax(0,1fr)_5px_var(--assistant-width)]" : "xl:grid-cols-1"}`}
+            style={{ "--assistant-width": `${assistantWidth}px` } as CSSProperties}
           >
             <section className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#080e19]">
               {panel === "preview" && (
@@ -1330,6 +1407,16 @@ export function CodeAgent() {
               )}
             </section>
 
+            {assistantOpen && (
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize ExpertAI panel"
+                onPointerDown={(event) => beginPanelResize(event, "assistant")}
+                className="hidden cursor-col-resize bg-white/[0.04] transition-colors hover:bg-cyan-400/40 xl:block"
+              />
+            )}
+
             {/* AI panel */}
             {assistantOpen && (
               <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-white/[0.08] bg-[#0c1523] xl:border-l xl:border-t-0">
@@ -1502,6 +1589,37 @@ export function CodeAgent() {
             >
               <Plus className="mr-2 h-4 w-4" />
               Create file
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename file dialog */}
+      <Dialog open={renameFileOpen} onOpenChange={setRenameFileOpen}>
+        <DialogContent className="border-slate-700 bg-[#101a29] text-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rename project file</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="rename-file-name">New file path</Label>
+              <Input
+                id="rename-file-name"
+                autoFocus
+                value={renameFileName}
+                onChange={(event) => setRenameFileName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") renameFile();
+                }}
+                placeholder="src/App.tsx"
+                className="border-white/10 bg-white/5"
+              />
+            </div>
+            <Button
+              onClick={renameFile}
+              className="w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+            >
+              Rename file
             </Button>
           </div>
         </DialogContent>
