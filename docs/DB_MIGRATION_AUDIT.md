@@ -104,10 +104,10 @@ alter table public.agent_project_runs validate constraint agent_project_runs_use
 
 The following migrations are applied to the connected ExpertsTeam Supabase project and are tracked in `supabase/migrations/`:
 
-1. `20261104131733_direct_messaging.sql` — one-to-one conversations, participants, messages, realtime publication, membership RLS and private-schema security-definer helpers.
-2. `20261104131800_direct_messaging_hardening.sql` — revokes anonymous/public table access, grants only the required authenticated operations, tightens row policies, and indexes sender/creator foreign keys.
-3. `20261104132025_direct_message_private_media.sql` — renames message media references to storage paths and adds the non-public `direct-messages` bucket. Storage policies limit uploads to the sender's folder and reads to conversation members; the UI uses signed URLs.
-4. `20261104132409_community_stories.sql` — adds 24-hour community stories, active-story RLS, author/admin deletion, indexes and Realtime publication.
+1. `20261104130000_direct_messaging.sql` (ledger version `20261104131733`) — one-to-one conversations, participants, messages, realtime publication, membership RLS and private-schema security-definer helpers.
+2. `20261104133000_direct_messaging_hardening.sql` (ledger version `20261104131800`) — revokes anonymous/public table access, grants only the required authenticated operations, tightens row policies, and indexes sender/creator foreign keys.
+3. `20261104134500_direct_message_private_media.sql` (ledger version `20261104132025`) — renames message media references to storage paths and adds the non-public `direct-messages` bucket. Storage policies limit uploads to the sender's folder and reads to conversation members; the UI uses signed URLs.
+4. `20261104141500_community_stories.sql` (ledger version `20261104132409`) — adds 24-hour community stories, active-story RLS, author/admin deletion, indexes and Realtime publication.
 
 Verification performed against the connected project:
 
