@@ -1564,8 +1564,8 @@ export function CodeAgent() {
                         event.target.value = "";
                         return;
                       }
-                      if (file.size > 6 * 1024 * 1024) {
-                        toast.error("Reference images must be 6 MB or smaller.");
+                      if (file.size > 2.8 * 1024 * 1024) {
+                        toast.error("Reference images must be 2.8 MB or smaller.");
                         event.target.value = "";
                         return;
                       }
