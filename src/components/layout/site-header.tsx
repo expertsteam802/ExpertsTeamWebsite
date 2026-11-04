@@ -16,31 +16,14 @@ import { useSiteSettings } from "@/hooks/use-site-settings";
 import { THEMES, useTheme, type NavAlign } from "@/hooks/use-theme";
 import { cn } from "@/lib/utils";
 
-const NAV_GROUPS = [
-  {
-    label: "Explore",
-    description: "Discover the community",
-    items: [
-      { to: "/", label: "Home" },
-      { to: "/videos", label: "Videos" },
-      { to: "/entertainment", label: "Entertainment" },
-      { to: "/community", label: "Community" },
-    ],
-  },
-  {
-    label: "Learn",
-    description: "Build your skills",
-    items: [{ to: "/learn", label: "Learn to code" }],
-  },
-  {
-    label: "Create",
-    description: "Make something real",
-    items: [
-      { to: "/projects", label: "Workspace" },
-      { to: "/ai", label: "ExpertAI Studio" },
-      { to: "/messages", label: "Messages" },
-    ],
-  },
+const NAV_ITEMS = [
+  { to: "/", label: "Home" },
+  { to: "/explore", label: "Explore" },
+  { to: "/learn", label: "Learn" },
+  { to: "/entertainment", label: "Games, Apps & Files" },
+  { to: "/projects", label: "Workspace" },
+  { to: "/ai", label: "ExpertAI" },
+  { to: "/messages", label: "Messages" },
 ] as const;
 
 const ALIGN: Record<NavAlign, string> = {
@@ -69,31 +52,16 @@ export function SiteHeader() {
           </span>
         </Link>
 
-        <nav className={cn("hidden flex-1 items-center gap-1 md:flex", ALIGN[navAlign])}>
-          {NAV_GROUPS.map((group) => (
-            <DropdownMenu key={group.label}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="gap-2 text-sm">
-                  {group.label} <span className="text-xs text-muted-foreground">⌄</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuLabel>
-                  <span className="block">{group.label}</span>
-                  <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
-                    {group.description}
-                  </span>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {group.items.map((item) => (
-                  <DropdownMenuItem key={item.to} asChild>
-                    <Link to={item.to} activeOptions={{ exact: item.to === "/" }}>
-                      {item.label}
-                    </Link>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+        <nav className={cn("hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto md:flex", ALIGN[navAlign])}>
+          {NAV_ITEMS.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              activeOptions={{ exact: item.to === "/" }}
+              className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:font-semibold data-[status=active]:text-foreground"
+            >
+              {item.label}
+            </Link>
           ))}
           <Link
             to="/contact"
@@ -201,23 +169,16 @@ export function SiteHeader() {
 
       {open && (
         <nav className="animate-rise border-t border-border/70 px-4 pb-4 md:hidden">
-          {NAV_GROUPS.map((group) => (
-            <div key={group.label} className="border-b border-border/60 py-2 last:border-0">
-              <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                {group.label}
-              </p>
-              {group.items.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setOpen(false)}
-                  activeOptions={{ exact: item.to === "/" }}
-                  className="block rounded-md px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:text-foreground"
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
+          {NAV_ITEMS.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              onClick={() => setOpen(false)}
+              activeOptions={{ exact: item.to === "/" }}
+              className="block rounded-xl px-3 py-3 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:font-semibold data-[status=active]:text-foreground"
+            >
+              {item.label}
+            </Link>
           ))}
           <Link
             to="/contact"
