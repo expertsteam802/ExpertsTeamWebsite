@@ -68,7 +68,8 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
         throw new Error("This file is bigger than your remaining space — upgrade for more room.");
       }
       setPercent(0);
-      const path = file ? await uploadWithProgress({ file, userId: user.id, onProgress: setPercent }) : null;\n      const linkedName = cleanSourceUrl ? (new URL(cleanSourceUrl).pathname.split("/").filter(Boolean).pop() || "external-resource") : null;
+      const path = file ? await uploadWithProgress({ file, userId: user.id, onProgress: setPercent }) : null;
+      const linkedName = cleanSourceUrl ? (new URL(cleanSourceUrl).pathname.split("/").filter(Boolean).pop() || "external-resource") : null;
 
       const { error } = await supabase.from("files").insert({
         user_id: user.id,
