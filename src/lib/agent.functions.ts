@@ -31,7 +31,7 @@ export const runCodingAgent = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: profile, error: profileError } = await context.supabase
       .from("profiles")
-      .select("ai_credits,ai_subscribed,ai_subscription_expires_at")
+      .select("ai_credits")
       .eq("id", context.userId)
       .single();
     if (profileError) throw new Error(profileError.message);
@@ -42,7 +42,7 @@ export const runCodingAgent = createServerFn({ method: "POST" })
     if (roleError) throw new Error(roleError.message);
     if (!isAdmin && profile.ai_credits < 1)
       throw new Error(
-        "You have no AI credits remaining. Renew your Studio plan to continue building.",
+        "You have no AI credits remaining on this account. Ask an administrator about your usage allowance.",
       );
     const { runAgent } = await import("./agent.server");
     const result = await runAgent(data, process.env["GEMINI_API_KEY"]);
