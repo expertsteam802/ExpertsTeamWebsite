@@ -70,7 +70,7 @@ export function BannerUnlockAd({
         <iframe
           title="ExpertsTeam sponsored banner"
           srcDoc={AD_DOCUMENT}
-          sandbox="allow-scripts"
+          sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
           referrerPolicy="strict-origin-when-cross-origin"
           className="h-full w-full border-0"
           loading="eager"
