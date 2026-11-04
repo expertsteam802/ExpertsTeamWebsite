@@ -114,7 +114,6 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/entertainment': typeof EntertainmentRoute
   '/explore': typeof ExploreRoute
-  '/explore': typeof ExploreRoute
   '/learn': typeof LearnRoute
   '/messages': typeof MessagesRoute
   '/projects': typeof ProjectsRoute
@@ -150,6 +149,7 @@ export interface FileRoutesById {
   '/community': typeof CommunityRoute
   '/contact': typeof ContactRoute
   '/entertainment': typeof EntertainmentRoute
+  '/explore': typeof ExploreRoute
   '/learn': typeof LearnRoute
   '/messages': typeof MessagesRoute
   '/projects': typeof ProjectsRoute
@@ -185,6 +185,7 @@ export interface FileRouteTypes {
     | '/community'
     | '/contact'
     | '/entertainment'
+    | '/explore'
     | '/learn'
     | '/messages'
     | '/projects'
@@ -202,6 +203,7 @@ export interface FileRouteTypes {
     | '/community'
     | '/contact'
     | '/entertainment'
+    | '/explore'
     | '/learn'
     | '/messages'
     | '/projects'
