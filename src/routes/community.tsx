@@ -4,6 +4,7 @@ import { Lightbulb, Link2, MessageSquare, Send, Trash2, Users } from "lucide-rea
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { AdSlot } from "@/components/ads/ad-slot";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -121,6 +122,7 @@ function CommunityPage() {
 
   return (
     <PageShell>
+      <AdSlot slot="community-top" />
       <section className="mx-auto max-w-5xl px-4 py-10">
         <div className="animate-rise">
           <h1 className="font-display text-3xl font-semibold tracking-tight">Community</h1>
@@ -226,6 +228,7 @@ function CommunityPage() {
           </TabsContent>
         </Tabs>
       </section>
+      <AdSlot slot="community-bottom" />
     </PageShell>
   );
 }
