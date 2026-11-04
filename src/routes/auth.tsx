@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { PageShell } from "@/components/layout/page-shell";
+import { PageShell } from "@/components/layout/page-shell";\nimport { BannerUnlockAd } from "@/components/ads/banner-unlock-ad";\nimport { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -34,10 +34,10 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(false);\n  const signupFlow = useRef(false);\n  const [signupResult, setSignupResult] = useState<{ email: string; needsConfirmation: boolean } | null>(null);\n  const [signupAdFinished, setSignupAdFinished] = useState(false);
 
   useEffect(() => {
-    if (user) void navigate({ to: "/dashboard", replace: true });
+    if (user && !signupFlow.current) void navigate({ to: "/dashboard", replace: true });
   }, [user, navigate]);
 
   async function signIn(): Promise<void> {
@@ -72,13 +72,9 @@ function AuthPage() {
         },
       });
       if (error) throw error;
-      if (!data.session) {
-        toast.error(
-          "Email confirmation is still enabled in Supabase. Disable it under Authentication → Providers → Email to create accounts without verification.",
-        );
-        return;
-      }
-      toast.success("Account created!");
+      if (!data.user) throw new Error("Supabase did not return a new account.");
+      setSignupAdFinished(false);
+      setSignupResult({ email: email.trim(), needsConfirmation: !data.session });
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Could not create your account. Please try again.",
@@ -196,6 +192,41 @@ function AuthPage() {
           </Tabs>
         </Card>
       </div>
+      <Dialog open={!!signupResult} onOpenChange={(open) => {
+        if (!open && signupAdFinished) {
+          const shouldGoToDashboard = !signupResult?.needsConfirmation;
+          setSignupResult(null);
+          setSignupAdFinished(false);
+          signupFlow.current = false;
+          if (shouldGoToDashboard) void navigate({ to: "/dashboard", replace: true });
+        }
+      }}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{signupAdFinished ? (signupResult?.needsConfirmation ? "Check your email" : "Your account is ready!") : "Welcome to ExpertsTeam"}</DialogTitle>
+            <DialogDescription>
+              {signupAdFinished
+                ? signupResult?.needsConfirmation
+                  ? `We created your account. Follow the confirmation link sent to ${signupResult.email} to finish signing in.`
+                  : "Your ExpertsTeam account was created successfully. You can now explore your dashboard."
+                : "Please view this short sponsor banner while we prepare your new account."}
+            </DialogDescription>
+          </DialogHeader>
+          {!signupAdFinished ? (
+            <BannerUnlockAd onUnlocked={() => setSignupAdFinished(true)} />
+          ) : (
+            <Button className="w-full sm:w-auto" onClick={() => {
+              const shouldGoToDashboard = !signupResult?.needsConfirmation;
+              setSignupResult(null);
+              setSignupAdFinished(false);
+              signupFlow.current = false;
+              if (shouldGoToDashboard) void navigate({ to: "/dashboard", replace: true });
+            }}>
+              {signupResult?.needsConfirmation ? "Back to sign in" : "Open my dashboard"}
+            </Button>
+          )}
+        </DialogContent>
+      </Dialog>
     </PageShell>
   );
 }
