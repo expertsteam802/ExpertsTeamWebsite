@@ -109,8 +109,6 @@ export interface FileRoutesByFullPath {
   '/entertainment': typeof EntertainmentRoute
   '/learn': typeof LearnRoute
   '/messages': typeof MessagesRoute
-  '/messages': typeof MessagesRoute
-  '/messages': typeof MessagesRoute
   '/projects': typeof ProjectsRoute
   '/videos': typeof VideosRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -126,6 +124,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/entertainment': typeof EntertainmentRoute
   '/learn': typeof LearnRoute
+  '/messages': typeof MessagesRoute
   '/projects': typeof ProjectsRoute
   '/videos': typeof VideosRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -143,6 +142,7 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/entertainment': typeof EntertainmentRoute
   '/learn': typeof LearnRoute
+  '/messages': typeof MessagesRoute
   '/projects': typeof ProjectsRoute
   '/videos': typeof VideosRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
@@ -176,6 +176,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/entertainment'
     | '/learn'
+    | '/messages'
     | '/projects'
     | '/videos'
     | '/admin'
@@ -348,6 +349,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   EntertainmentRoute: EntertainmentRoute,
   LearnRoute: LearnRoute,
+  MessagesRoute: MessagesRoute,
   ProjectsRoute: ProjectsRoute,
   VideosRoute: VideosRoute,
   AppsSlugRoute: AppsSlugRoute,
