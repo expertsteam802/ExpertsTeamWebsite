@@ -59,8 +59,18 @@ async function waitForPreview(url: string) {
   while (Date.now() < deadline) {
     try {
       const response = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(2500) });
-      if (response.status < 500) return;
-      lastError = `Preview returned HTTP ${response.status}.`;
+      if (response.status === 403) {
+        const body = await response.text();
+        if (body.includes("Blocked request") && body.includes("not allowed")) {
+          lastError = "Vite is still blocking the sandbox preview hostname.";
+        } else if (response.status < 500) {
+          return;
+        }
+      } else if (response.status < 500) {
+        return;
+      } else {
+        lastError = `Preview returned HTTP ${response.status}.`;
+      }
     } catch (error) {
       lastError = error instanceof Error ? error.message : lastError;
     }
