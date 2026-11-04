@@ -55,14 +55,25 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
   const saveEdit = useMutation({
     mutationFn: async () => {
       if (!editing) return;
+      const cleanSource = editSourceUrl.trim();
+      const cleanThumbnail = editThumbnailUrl.trim();
+      if (!cleanSource && !editing.storage_path) {
+        throw new Error("Keep a download/source link for this external resource.");
+      }
+      for (const [label, value] of [["Source link", cleanSource], ["Thumbnail URL", cleanThumbnail]] as const) {
+        if (!value) continue;
+        let parsed: URL;
+        try { parsed = new URL(value); } catch { throw new Error(`${label} must be a valid URL.`); }
+        if (parsed.protocol !== "https:") throw new Error(`${label} must use HTTPS.`);
+      }
       const { error } = await supabase
         .from("files")
         .update({
           title: title.trim().slice(0, 140) || editing.title,
           description: description.trim().slice(0, 1000) || null,
           price: Math.max(0, Number(price) || 0),
-          source_url: editSourceUrl.trim() || null,
-          thumbnail_url: editThumbnailUrl.trim() || null,
+          source_url: cleanSource || null,
+          thumbnail_url: cleanThumbnail || null,
         })
         .eq("id", editing.id);
       if (error) throw error;
