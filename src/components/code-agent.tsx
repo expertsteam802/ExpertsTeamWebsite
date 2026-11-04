@@ -270,12 +270,10 @@ export function CodeAgent() {
     if (terminalReady) return;
     try {
       const activeProjectId = projectId ?? await persist();
-      if (!runtimeUrl) {
-        const result = await startPreview({ data: { projectId: activeProjectId, files } });
-        setRuntimeUrl(result.url);
-        setRuntimeStatus("Running in Vercel Sandbox");
-        runtimeFilesRef.current = { ...files };
-      }
+      const result = await startPreview({ data: { projectId: activeProjectId, files } });
+      setRuntimeUrl(result.url);
+      setRuntimeStatus("Running in Vercel Sandbox");
+      runtimeFilesRef.current = { ...files };
       setTerminalReady(true);
       setTerminalOutput((current) => current || "Cloud terminal connected. Commands run inside your isolated project sandbox.\\r\\n");
     } catch (error) {
@@ -1012,7 +1010,7 @@ export function CodeAgent() {
                   variant="ghost"
                   onClick={() => void stopProject()}
                   className="h-8 px-2 text-slate-400 hover:text-white"
-                  title="Stop the development server"
+                  title="Stop cloud sandbox and save the workspace"
                 >
                   <Square className="mr-1 h-3 w-3" />
                   Stop
