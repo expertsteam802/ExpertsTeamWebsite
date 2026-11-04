@@ -377,7 +377,7 @@ function MessagesPage() {
         </div>
 
         <section className="grid min-h-[min(76vh,780px)] overflow-hidden rounded-3xl border border-border/70 bg-card shadow-2xl shadow-black/5 md:grid-cols-[320px_minmax(0,1fr)]">
-          <aside className={\`flex min-h-[68vh] flex-col border-r border-border/70 bg-background/70 \${mobileChatOpen ? "hidden md:flex" : "flex"}\`}>
+          <aside className={`flex min-h-[68vh] flex-col border-r border-border/70 bg-background/70 ${mobileChatOpen ? "hidden md:flex" : "flex"}`}>
             <div className="border-b border-border/70 p-4">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -419,7 +419,7 @@ function MessagesPage() {
                 const person = member?.profiles;
                 const latest = previewByConversation.get(conversation.id);
                 const unread = latest && latest.sender_id !== user.id && new Date(latest.created_at) > new Date(member?.last_read_at ?? 0);
-                return <button key={conversation.id} onClick={() => { setActiveId(conversation.id); setMobileChatOpen(true); }} className={\`mb-1 flex w-full items-center gap-3 rounded-2xl p-3 text-left transition \${conversation.id === activeConversation?.id ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-secondary/70"}\`}>
+                return <button key={conversation.id} onClick={() => { setActiveId(conversation.id); setMobileChatOpen(true); }} className={`mb-1 flex w-full items-center gap-3 rounded-2xl p-3 text-left transition ${conversation.id === activeConversation?.id ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-secondary/70"}`}>
                   <div className="relative shrink-0"><Avatar className="h-12 w-12"><AvatarImage src={person?.avatar_url ?? undefined} /><AvatarFallback>{initials(personName(person))}</AvatarFallback></Avatar>{onlineIds.includes(person?.id ?? "") && <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-emerald-500" />}</div>
                   <span className="min-w-0 flex-1"><span className="flex items-center justify-between gap-2"><span className="truncate text-sm font-semibold">{personName(person)}</span><span className="shrink-0 text-[10px] text-muted-foreground">{shortTime(conversation.last_message_at)}</span></span><span className="mt-1 block truncate text-xs text-muted-foreground">{latest ? (latest.body || "Photo") : "Start a conversation"}</span></span>
                   {unread && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />}
@@ -428,7 +428,7 @@ function MessagesPage() {
             </div>
           </aside>
 
-          <div className={\`flex min-h-[68vh] min-w-0 flex-col bg-gradient-to-b from-background to-secondary/20 \${mobileChatOpen ? "flex" : "hidden md:flex"}\`}>
+          <div className={`flex min-h-[68vh] min-w-0 flex-col bg-gradient-to-b from-background to-secondary/20 ${mobileChatOpen ? "flex" : "hidden md:flex"}`}>
             {activeConversation && recipient ? <>
               <header className="flex h-[76px] shrink-0 items-center justify-between border-b border-border/70 bg-background/70 px-4 backdrop-blur">
                 <div className="flex min-w-0 items-center gap-3">
@@ -444,11 +444,11 @@ function MessagesPage() {
                 {!messagesLoading && messages.length === 0 && <div className="mx-auto max-w-xs rounded-2xl border border-border/70 bg-card p-5 text-center"><Sparkles className="mx-auto h-6 w-6 text-primary" /><p className="mt-2 text-sm font-semibold">Say hello</p><p className="mt-1 text-xs text-muted-foreground">This is the beginning of your conversation. Send a message or share a photo.</p></div>}
                 {messages.map((message) => {
                   const mine = message.sender_id === user.id;
-                  return <div key={message.id} className={\`flex \${mine ? "justify-end" : "justify-start"}\`}>
-                    <div className={\`max-w-[min(82%,520px)] rounded-3xl px-4 py-3 shadow-sm \${mine ? "rounded-br-md bg-gradient-to-br from-primary to-primary/80 text-primary-foreground" : "rounded-bl-md border border-border/70 bg-card"}\`}>
+                  return <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[min(82%,520px)] rounded-3xl px-4 py-3 shadow-sm ${mine ? "rounded-br-md bg-gradient-to-br from-primary to-primary/80 text-primary-foreground" : "rounded-bl-md border border-border/70 bg-card"}`}>
                       {message.media_url && <a href={message.media_url} target="_blank" rel="noreferrer"><img src={message.media_url} alt="Shared attachment" className="mb-2 max-h-80 rounded-2xl object-cover" /></a>}
                       {message.body && <p className="whitespace-pre-wrap break-words text-sm leading-6">{message.body}</p>}
-                      <p className={\`mt-1 flex items-center justify-end gap-1 text-[10px] \${mine ? "text-primary-foreground/70" : "text-muted-foreground"}\`}>{shortTime(message.created_at)} {mine && <Check className="h-3 w-3" />}</p>
+                      <p className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>{shortTime(message.created_at)} {mine && <Check className="h-3 w-3" />}</p>
                     </div>
                   </div>;
                 })}
