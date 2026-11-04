@@ -53,10 +53,11 @@ export function useSiteSettings() {
       ai_subscription_credits: 500,
       payout_account: null,
       ad_settings: {
-        nativeBannerEnabled: true,
-        popunderEnabled: true,
-        banner728Enabled: true,
-        placements: { "video-before": "nativeBanner" },
+        myBidVastEnabled: true,
+        myBidVastUrl: "https://vast.vstserv.com/vast?spot_id=2030847",
+        myBidAdCodeId: "470834",
+        myBidFormatId: "2030847",
+        myBidAdCodeName: "ExpertsTeam",
       },
       error_dialog_enabled: true,
     }
