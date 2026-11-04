@@ -1,10 +1,14 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { BookOpen, FileText, GraduationCap, Video } from "lucide-react";
 
-import { FileGrid, type CommunityFile } from "@/components/file-grid";
+import { AddVideoDialog } from "@/components/add-video-dialog";
 import { AdSlot } from "@/components/ads/ad-slot";
+import { FileGrid, type CommunityFile } from "@/components/file-grid";
 import { PageShell } from "@/components/layout/page-shell";
 import { UploadDialog } from "@/components/upload-dialog";
+import { VideoGrid, type VideoItem } from "@/components/video-grid";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -15,12 +19,12 @@ export const Route = createFileRoute("/learn")({
       {
         name: "description",
         content:
-          "Coding basics, lesson notes, books and app breakdowns by Chris Expert. Start from variables and build real apps.",
+          "Coding lessons, books, learning files and tutorial videos from Chris Expert and the ExpertsTeam community.",
       },
       { property: "og:title", content: "Learn to code with Chris" },
       {
         property: "og:description",
-        content: "Free coding basics, books and lessons on ExpertsTeam.",
+        content: "Free coding basics, books, videos and lessons on ExpertsTeam.",
       },
     ],
   }),
@@ -54,56 +58,137 @@ const LESSONS = [
   },
 ];
 
+const SECTIONS = [
+  { id: "library", label: "Books & files", icon: BookOpen, hint: "Read and download resources" },
+  { id: "videos", label: "Learning videos", icon: Video, hint: "Watch tutorials and walkthroughs" },
+  { id: "lessons", label: "Coding lessons", icon: GraduationCap, hint: "Learn the foundations step by step" },
+] as const;
+
 function LearnPage() {
-  const { data: files } = useQuery({
-    queryKey: ["files", "lessons"],
+  const [section, setSection] = useState<(typeof SECTIONS)[number]["id"]>("library");
+
+  const { data: files = [], isLoading: filesLoading } = useQuery({
+    queryKey: ["files", "learn-library"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("files")
         .select("*, profiles(username, display_name)")
-        .eq("category", "lesson")
+        .in("category", ["book", "lesson", "resource", "file"])
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as CommunityFile[];
     },
   });
 
+  const { data: videos = [], isLoading: videosLoading } = useQuery({
+    queryKey: ["videos", "learn"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("videos")
+        .select("*, profiles(username, display_name)")
+        .eq("category", "lesson")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as unknown as VideoItem[];
+    },
+  });
+
   return (
     <PageShell>
-      <section className="hero-surface border-b border-border/60 px-4 py-14">
+      <section className="hero-surface border-b border-border/60 px-4 py-10 sm:py-12">
         <div className="mx-auto max-w-7xl">
-          <h1 className="font-display text-3xl font-bold sm:text-5xl">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Your learning space</p>
+          <h1 className="mt-2 font-display text-3xl font-bold sm:text-5xl">
             Learn to code <span className="brand-text">with Chris</span>
           </h1>
           <p className="mt-3 max-w-2xl text-muted-foreground">
-            Start from zero with the basics track, then dig into the books, notes and app files
-            shared by Chris and the community.
+            Books, downloadable files, video tutorials and guided lessons — each in its own space.
           </p>
-          <div className="mt-6">
-            <UploadDialog defaultCategory="lesson" />
-          </div>
         </div>
       </section>
 
       <AdSlot slot="learn-top" />
 
-      <section className="mx-auto max-w-7xl px-4 py-12">
-        <h2 className="font-display text-2xl font-semibold">Basics track</h2>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {LESSONS.map((lesson) => (
-            <Card
-              key={lesson.title}
-              className="animate-rise gap-2 p-6 transition-transform duration-300 hover:-translate-y-1 hover:glow-panel"
-            >
-              <h3 className="font-display text-lg font-semibold">{lesson.title}</h3>
-              <p className="text-sm text-muted-foreground">{lesson.body}</p>
-            </Card>
-          ))}
-        </div>
+      <section className="mx-auto grid max-w-7xl gap-5 px-4 py-8 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <aside className="h-fit rounded-2xl border border-border/70 bg-card p-3 lg:sticky lg:top-24">
+          <p className="px-3 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Learn menu</p>
+          <nav className="flex gap-2 overflow-x-auto lg:flex-col">
+            {SECTIONS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setSection(item.id)}
+                aria-current={section === item.id ? "page" : undefined}
+                className={`flex min-w-max flex-1 items-center gap-3 rounded-xl px-3 py-3 text-left transition lg:w-full lg:flex-none ${section === item.id ? "bg-primary/10 text-primary ring-1 ring-primary/20" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
+              >
+                <item.icon className="h-5 w-5 shrink-0" />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">{item.label}</span>
+                  <span className="hidden text-[11px] opacity-75 sm:block">{item.hint}</span>
+                </span>
+              </button>
+            ))}
+          </nav>
+        </aside>
 
-        <h2 className="mt-14 font-display text-2xl font-semibold">Books, notes & app files</h2>
-        <div className="mt-6">
-          <FileGrid files={files ?? []} />
+        <div className="min-w-0">
+          {section === "library" && (
+            <div>
+              <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Resource library</p>
+                  <h2 className="mt-1 font-display text-2xl font-bold">Books & files</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">Browse the available study material first. Upload is below the library.</p>
+                </div>
+                <span className="rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">{files.length} resources</span>
+              </div>
+              {filesLoading ? (
+                <Card className="p-8 text-sm text-muted-foreground">Loading books and files…</Card>
+              ) : (
+                <FileGrid files={files} />
+              )}
+              <div className="mt-8 rounded-2xl border border-dashed border-border bg-card/60 p-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold">Share a learning resource</h3>
+                </div>
+                <p className="mb-4 text-sm text-muted-foreground">Add a book, notes or a useful file for other learners.</p>
+                <UploadDialog defaultCategory="lesson" />
+              </div>
+            </div>
+          )}
+
+          {section === "videos" && (
+            <div>
+              <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Watch and practise</p>
+                  <h2 className="mt-1 font-display text-2xl font-bold">Learning videos</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">Tutorials and practical walkthroughs shared by the community.</p>
+                </div>
+                <AddVideoDialog category="lesson" triggerLabel="Add learning video" />
+              </div>
+              {videosLoading ? <Card className="p-8 text-sm text-muted-foreground">Loading videos…</Card> : <VideoGrid videos={videos} />}
+            </div>
+          )}
+
+          {section === "lessons" && (
+            <div>
+              <div className="mb-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Start here</p>
+                <h2 className="mt-1 font-display text-2xl font-bold">Coding lessons</h2>
+                <p className="mt-1 text-sm text-muted-foreground">A simple path from the basics to building a real app.</p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {LESSONS.map((lesson) => (
+                  <Card key={lesson.title} className="animate-rise gap-2 p-5 transition-transform duration-300 hover:-translate-y-1 hover:glow-panel">
+                    <h3 className="font-display text-lg font-semibold">{lesson.title}</h3>
+                    <p className="text-sm leading-6 text-muted-foreground">{lesson.body}</p>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
       <AdSlot slot="learn-bottom" />
