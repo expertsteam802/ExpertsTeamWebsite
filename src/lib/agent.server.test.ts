@@ -320,3 +320,44 @@ test("Groq retries a 413 TPM response with smaller context and output budgets", 
     else process.env["GROQ_API_KEY"] = previousGroqKey;
   }
 });
+
+test("AI builder forwards multiple visual references to Gemini vision", async () => {
+  const previousKey = process.env["GEMINI_API_KEY"];
+  delete process.env["GEMINI_API_KEY"];
+  let imageParts = 0;
+  globalThis.fetch = (async (_url, init) => {
+    const body = JSON.parse(String(init?.body ?? "{}")) as {
+      contents?: { parts?: { inlineData?: { mimeType?: string; data?: string } }[] }[];
+    };
+    imageParts = body.contents?.at(-1)?.parts?.filter((part) => Boolean(part.inlineData)).length ?? 0;
+    return Response.json({
+      candidates: [{
+        finishReason: "STOP",
+        content: {
+          parts: [{
+            text: JSON.stringify({
+              message: "Built from both references",
+              files: { "index.html": "<h1>Reference matched</h1>" },
+              complete: true,
+            }),
+          }],
+        },
+      }],
+    });
+  }) as typeof fetch;
+
+  try {
+    const result = await runAgent({
+      ...input,
+      referenceImages: [
+        { name: "feed.png", mimeType: "image/png", data: "a".repeat(120) },
+        { name: "builder.png", mimeType: "image/png", data: "b".repeat(120) },
+      ],
+    }, "test-key");
+    assert.equal(result.files["index.html"], "<h1>Reference matched</h1>");
+    assert.equal(imageParts, 2);
+  } finally {
+    if (previousKey === undefined) delete process.env["GEMINI_API_KEY"];
+    else process.env["GEMINI_API_KEY"] = previousKey;
+  }
+});
