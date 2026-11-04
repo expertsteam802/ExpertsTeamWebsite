@@ -209,7 +209,7 @@ export function CodeAgent() {
       activeFile.endsWith(".ts") ||
       activeFile.endsWith(".jsx") ||
       activeFile.endsWith(".js")
-        ? javascript({ jsx: true, typescript: /\\.tsx?$/.test(activeFile) })
+        ? javascript({ jsx: true, typescript: /\.tsx?$/.test(activeFile) })
         : activeFile.endsWith(".html")
           ? html()
           : activeFile.endsWith(".css")
@@ -217,16 +217,7 @@ export function CodeAgent() {
             : activeFile.endsWith(".json")
               ? json()
               : null;
-    return [
-      foldGutter(),
-      bracketMatching(),
-      indentOnInput(),
-      closeBrackets(),
-      autocompletion(),
-      keymap.of([indentWithTab]),
-      ...(language ? [language] : []),
-    ];
-  }, [activeFile]);
+    return [keymap.of([indentWithTab]), ...(language ? [language] : [])];  }, [activeFile]);
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["agent-projects", user?.id],
