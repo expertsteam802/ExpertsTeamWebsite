@@ -42,7 +42,7 @@ async function runChecked(
   args: string[],
   timeout = 120_000,
 ) {
-  const result = await sandbox.runCommand({ cmd, args, cwd: WORKDIR, timeout });
+  const result = await sandbox.runCommand({ cmd, args, cwd: WORKDIR, timeoutMs: timeout });
   const stdout = await result.stdout();
   const stderr = await result.stderr();
   if (result.exitCode !== 0) {
@@ -104,7 +104,6 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
     runtime: "node24",
     ports: [port],
     resume: true,
-    keepLastSnapshots: { count: 2, expiration: 60 * 60 * 24 * 7 },
   });
 
   const previous = await readText(sandbox, `${WORKDIR}/${META_FILE}`);
