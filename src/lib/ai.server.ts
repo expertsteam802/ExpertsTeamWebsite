@@ -74,7 +74,7 @@ export async function askChrisAi(
 
   const candidate = json.candidates?.[0];
   if (candidate?.finishReason === "MAX_TOKENS") {
-    throw new Error("Expert AI's answer was too long. Please try a shorter request.");
+    throw new Error("ExpertAI's answer was too long. Please try a shorter request.");
   }
 
   const reply =
@@ -87,8 +87,8 @@ export async function askChrisAi(
   if (!reply) {
     throw new Error(
       json.promptFeedback?.blockReason
-        ? "Expert AI couldn't answer that request. Please rephrase it and try again."
-        : "Expert AI returned an empty answer. Please try again.",
+        ? "ExpertAI couldn't answer that request. Please rephrase it and try again."
+        : "ExpertAI returned an empty answer. Please try again.",
     );
   }
 
@@ -105,7 +105,7 @@ export async function generateExpertImage(
   const resolvedKey = apiKey || process.env["GEMINI_API_KEY"] || process.env["VITE_GEMINI_API_KEY"];
   if (!resolvedKey) {
     throw new Error(
-      "Expert AI image generation is not configured. Add GEMINI_API_KEY to the server environment.",
+      "ExpertAI image generation is not configured. Add GEMINI_API_KEY to the server environment.",
     );
   }
 
