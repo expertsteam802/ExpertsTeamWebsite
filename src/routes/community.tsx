@@ -344,10 +344,10 @@ function CommunityPage() {
             <Card className="gap-2 p-4">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <Sparkles className="h-4 w-4 text-primary" />
-                Build together
+                Get your question solved
               </div>
               <p className="text-xs leading-5 text-muted-foreground">
-                Share what you're creating, ask for help and discover other builders.
+                Ask a question, get practical help and grow with other creators and coders.
               </p>
               <Link to="/projects" className="text-xs font-semibold text-primary hover:underline">
                 Explore projects →
@@ -362,9 +362,9 @@ function CommunityPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
                 ExpertsTeam social
               </p>
-              <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">Community</h1>
+              <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">Ask anything. Get answers.</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                What builders are sharing right now.
+                Get help with any question, share what you're building and learn from the community.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 lg:hidden">
