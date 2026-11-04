@@ -38,7 +38,9 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
   const [playing, setPlaying] = useState<VideoItem | null>(null);
   const [editing, setEditing] = useState<VideoItem | null>(null);
   const [title, setTitle] = useState("");
-  const [link, setLink] = useState("");\n  const [thumbnailUrl, setThumbnailUrl] = useState("");\n  const [alignment, setAlignment] = useState<"left" | "center" | "right">("center");
+  const [link, setLink] = useState("");
+  const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [alignment, setAlignment] = useState<"left" | "center" | "right">("center");
 
   const saveEdit = useMutation({
     mutationFn: async () => {
@@ -50,7 +52,9 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
         .update({
           title: title.trim().slice(0, 140) || editing.title,
           youtube_url: link.trim(),
-          youtube_id: youtubeId,\n          thumbnail_url: thumbnailUrl.trim() || null,\n          player_alignment: alignment,
+          youtube_id: youtubeId,
+          thumbnail_url: thumbnailUrl.trim() || null,
+          player_alignment: alignment,
         })
         .eq("id", editing.id);
       if (error) throw error;
@@ -131,7 +135,9 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
                         onClick={() => {
                           setEditing(video);
                           setTitle(video.title);
-                          setLink(video.youtube_url);\n                          setThumbnailUrl(video.thumbnail_url ?? "");\n                          setAlignment(video.player_alignment ?? "center");
+                          setLink(video.youtube_url);
+                          setThumbnailUrl(video.thumbnail_url ?? "");
+                          setAlignment(video.player_alignment ?? "center");
                         }}
                       >
                         <Pencil className="h-4 w-4" />
