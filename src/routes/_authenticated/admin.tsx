@@ -23,7 +23,9 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
-import { AdminAdsSettingsPanel, AdminApiUsagePanel } from "@/components/admin-platform-panels";\nimport { FileGrid, type CommunityFile } from "@/components/file-grid";\nimport { UploadDialog } from "@/components/upload-dialog";
+import { AdminAdsSettingsPanel, AdminApiUsagePanel } from "@/components/admin-platform-panels";
+import { FileGrid, type CommunityFile } from "@/components/file-grid";
+import { UploadDialog } from "@/components/upload-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
