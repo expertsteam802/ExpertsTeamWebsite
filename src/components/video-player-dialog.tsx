@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -137,9 +137,12 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [unlockedVideoId, setUnlockedVideoId] = useState<string | null>(null);
+  const [adFinished, setAdFinished] = useState(false);
+  const handleAdFinished = useCallback(() => setAdFinished(true), []);
 
   useEffect(() => {
     setUnlockedVideoId(null);
+    setAdFinished(false);
     setPlaybackError(null);
     setLoading(false);
   }, [videoId]);
@@ -246,8 +249,8 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
                   Watch the sponsored video to support ExpertsTeam, then continue to your lesson.
                 </p>
               </div>
-              <VideoVastAd />
-              <Button onClick={() => setUnlockedVideoId(videoId)}>Continue to video</Button>
+              <VideoVastAd onFinished={handleAdFinished} />
+              {adFinished && <Button onClick={() => setUnlockedVideoId(videoId)}>Continue to video</Button>}
               <p className="text-xs text-muted-foreground">
                 If no ad is available, you can continue without waiting.
               </p>
