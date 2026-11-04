@@ -145,8 +145,8 @@ export function AdminAdsSettingsPanel() {
       <div>
         <h2 className="font-display text-xl font-semibold">Video advertising</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Choose which MyBid video format runs on lesson videos. You can switch between the
-          existing VAST pre-roll and the new Video Overlay at any time.
+          Choose which MyBid video format runs on lesson videos. You can switch between the existing
+          VAST pre-roll and the new Video Overlay at any time.
         </p>
       </div>
 

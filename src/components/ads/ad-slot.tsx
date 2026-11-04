@@ -307,12 +307,7 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
     playAd(false);
   }, [sdkReady]);
 
-  if (
-    !isFetched ||
-    isError ||
-    settings.myBidActiveFormat !== "vast" ||
-    !settings.myBidVastEnabled
-  )
+  if (!isFetched || isError || settings.myBidActiveFormat !== "vast" || !settings.myBidVastEnabled)
     return null;
 
   return (
