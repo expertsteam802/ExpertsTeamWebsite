@@ -26,10 +26,13 @@ function parseAdSettings(value: Json | null | undefined): AdSettings {
     rawPlacements && typeof rawPlacements === "object" && !Array.isArray(rawPlacements)
       ? (Object.fromEntries(
           Object.entries(rawPlacements).filter(
-            ([, unit]) => unit === "nativeBanner" || unit === "banner728",
+            ([slot, unit]) =>
+              (unit === "nativeBanner" || unit === "banner728") &&
+              !(unit === "nativeBanner" && slot !== "video-before"),
           ),
         ) as Record<string, AdUnit>)
-      : DEFAULT_SETTINGS.placements;
+      : {};
+  placements["video-before"] = "nativeBanner";
   return {
     nativeBannerEnabled:
       typeof raw.nativeBannerEnabled === "boolean"
