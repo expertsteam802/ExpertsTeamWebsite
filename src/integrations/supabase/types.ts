@@ -8,6 +8,15 @@ export type Database = {
   };
   public: {
     Tables: {
+      agent_project_checkpoints: {
+        Row: { created_at: string; files: Json; id: string; name: string; project_id: string; user_id: string };
+        Insert: { created_at?: string; files: Json; id?: string; name?: string; project_id: string; user_id: string };
+        Update: { created_at?: string; files?: Json; id?: string; name?: string; project_id?: string; user_id?: string };
+        Relationships: [
+          { foreignKeyName: "agent_project_checkpoints_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "agent_projects"; referencedColumns: ["id"] },
+          { foreignKeyName: "agent_project_checkpoints_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }
+        ];
+      };
       agent_project_runs: {
         Row: {
           created_at: string;
