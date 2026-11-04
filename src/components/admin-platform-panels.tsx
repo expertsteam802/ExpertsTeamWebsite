@@ -156,8 +156,8 @@ export function AdminAdsSettingsPanel() {
         <div className="rounded-lg border border-border/70 bg-muted/40 p-3">
           <p className="text-sm font-medium">Active format: MyBid VAST pre-roll</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            VAST provides reliable playback and no-fill events. The legacy overlay values below
-            are retained for reference but are not loaded by the video player.
+            VAST provides reliable playback and no-fill events. The legacy overlay values below are
+            retained for reference but are not loaded by the video player.
           </p>
         </div>
         <div className="flex items-center justify-between gap-4">
