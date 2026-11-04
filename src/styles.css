@@ -249,3 +249,179 @@
     letter-spacing: -0.02em;
   }
 }
+
+
+/* Expert Agent — full-bleed Bolt-inspired builder workspace */
+.expert-agent-shell {
+  --agent-bg: #080d17;
+  --agent-panel: #0d1522;
+  --agent-panel-raised: #111c2c;
+  --agent-line: rgba(148, 163, 184, .14);
+  --agent-muted: #8794a8;
+  --agent-accent: #8b5cf6;
+  --agent-accent-bright: #a78bfa;
+  background:
+    radial-gradient(ellipse at 50% -18%, rgba(109, 40, 217, .14), transparent 42%),
+    var(--agent-bg) !important;
+  color: #e8edf7 !important;
+  min-height: 640px;
+  isolation: isolate;
+}
+.expert-agent-shell ::selection { background: rgba(139, 92, 246, .35); }
+.expert-agent-topbar {
+  min-height: 66px;
+  padding-inline: clamp(14px, 2vw, 28px) !important;
+  background: rgba(10, 15, 26, .94) !important;
+  border-bottom: 1px solid var(--agent-line) !important;
+  box-shadow: 0 8px 30px rgba(0,0,0,.12);
+  backdrop-filter: blur(18px);
+}
+.expert-agent-topbar > div:first-child > div:first-child > div:first-child > span:first-child {
+  color: #c4b5fd !important;
+  letter-spacing: .16em !important;
+}
+.expert-agent-topbar > div:first-child > div:first-child > div:first-child > span:last-child {
+  border-color: rgba(167,139,250,.26) !important;
+  background: rgba(139,92,246,.12) !important;
+  color: #c4b5fd !important;
+}
+.expert-agent-sidebar {
+  background: linear-gradient(180deg, #0d1421 0%, #0a111d 100%) !important;
+  border-color: var(--agent-line) !important;
+  padding-bottom: 12px;
+}
+.expert-agent-sidebar > div:first-child {
+  min-height: 48px;
+  align-items: center;
+}
+.expert-agent-sidebar > div:nth-child(2),
+.expert-agent-sidebar > div:nth-child(4) { padding-inline: 14px !important; }
+.expert-agent-sidebar button { transition: background .16s ease, color .16s ease, border-color .16s ease; }
+.expert-agent-sidebar button:hover { color: #f5f3ff !important; }
+.expert-agent-sidebar [class*="bg-cyan-400/10"] {
+  background: rgba(139,92,246,.16) !important;
+  box-shadow: inset 2px 0 #a78bfa;
+  color: #ddd6fe !important;
+}
+.expert-agent-sidebar > div:last-child > div {
+  border: 1px solid rgba(167,139,250,.18) !important;
+  background: linear-gradient(135deg, rgba(139,92,246,.11), rgba(17,28,44,.85)) !important;
+  border-radius: 14px !important;
+}
+.expert-agent-stage { background: var(--agent-bg); }
+.expert-agent-toolbar {
+  min-height: 58px;
+  padding: 9px 14px !important;
+  background: #0d1522 !important;
+  border-color: var(--agent-line) !important;
+  gap: 12px;
+}
+.expert-agent-toolbar > div:nth-child(2) {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(148,163,184,.12);
+  border-radius: 12px;
+  background: rgba(3,7,18,.55);
+}
+.expert-agent-toolbar > div:nth-child(2) button {
+  min-height: 34px;
+  padding: 7px 13px !important;
+  border-radius: 8px !important;
+  color: #91a0b5 !important;
+  transition: all .16s ease;
+}
+.expert-agent-toolbar > div:nth-child(2) button:hover {
+  background: rgba(148,163,184,.09) !important;
+  color: #f1f5f9 !important;
+}
+.expert-agent-toolbar > div:nth-child(2) button[class*="bg-cyan-400/10"] {
+  color: #ede9fe !important;
+  background: linear-gradient(135deg, rgba(124,58,237,.32), rgba(99,102,241,.2)) !important;
+  box-shadow: inset 0 0 0 1px rgba(167,139,250,.22), 0 4px 16px rgba(91,33,182,.12);
+}
+.expert-agent-toolbar button[class*="bg-cyan-400"] {
+  background: linear-gradient(135deg, #8b5cf6, #6366f1) !important;
+  border-color: transparent !important;
+  color: white !important;
+  box-shadow: 0 5px 18px rgba(109,40,217,.22);
+}
+.expert-agent-toolbar button[class*="bg-cyan-400"]:hover { filter: brightness(1.12); }
+.expert-agent-canvas { background: #080d17 !important; }
+.expert-agent-canvas > div:first-child {
+  background: #0c1421 !important;
+  border-color: var(--agent-line) !important;
+  min-height: 42px;
+}
+.expert-agent-canvas iframe {
+  border: 1px solid rgba(148,163,184,.2) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 22px 70px rgba(0,0,0,.4) !important;
+}
+.expert-agent-assistant {
+  background: linear-gradient(180deg, #101827 0%, #0c1420 100%) !important;
+  border-color: var(--agent-line) !important;
+}
+.expert-agent-assistant > div:first-child {
+  min-height: 54px;
+  background: rgba(17,28,44,.72);
+  border-color: var(--agent-line) !important;
+}
+.expert-agent-assistant > div:last-child {
+  background: rgba(7,12,21,.72);
+  border-color: var(--agent-line) !important;
+}
+.expert-agent-assistant textarea {
+  color: #f8fafc !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+}
+.expert-agent-assistant [class*="bg-cyan-400"] {
+  background: linear-gradient(135deg, #8b5cf6, #6366f1) !important;
+  color: white !important;
+}
+.expert-agent-statusbar {
+  min-height: 34px;
+  background: #090f1a !important;
+  border-color: var(--agent-line) !important;
+  padding: 7px 16px !important;
+}
+.expert-agent-shell .cm-editor {
+  height: 100%;
+  background: #080d17 !important;
+  color: #dbe4f0 !important;
+  font-size: 13px;
+}
+.expert-agent-shell .cm-editor .cm-gutters {
+  background: #0b1220 !important;
+  border-right: 1px solid rgba(148,163,184,.12) !important;
+}
+.expert-agent-shell .cm-editor .cm-activeLine,
+.expert-agent-shell .cm-editor .cm-activeLineGutter { background: rgba(139,92,246,.08) !important; }
+.expert-agent-shell .cm-editor.cm-focused { outline: none !important; }
+.expert-agent-shell .cm-scroller { font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace; }
+.expert-agent-shell button:focus-visible,
+.expert-agent-shell input:focus-visible,
+.expert-agent-shell textarea:focus-visible {
+  outline: 2px solid rgba(167,139,250,.75);
+  outline-offset: 2px;
+}
+@media (max-width: 1279px) {
+  .expert-agent-assistant { min-height: 340px; }
+}
+@media (max-width: 767px) {
+  .expert-agent-shell { min-height: 0; }
+  .expert-agent-topbar { gap: 10px; padding: 10px 12px !important; }
+  .expert-agent-toolbar { align-items: stretch; }
+  .expert-agent-toolbar > div:nth-child(2) {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+  .expert-agent-toolbar > div:nth-child(2) button { flex: 1 0 auto; }
+  .expert-agent-sidebar { max-height: 260px; }
+  .expert-agent-assistant { min-height: 360px; }
+  .expert-agent-statusbar { gap: 6px; }
+}
