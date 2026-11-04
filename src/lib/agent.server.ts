@@ -17,7 +17,7 @@ You build complete, production-quality browser apps and front-end products for E
 Priority: generate complete, working project code that can be published live and branded as ExpertsTeam.
 
 Your output must be a valid JSON object with this exact shape:
-{"message":"short summary of what you did","files":{"path":"full file content",...}}
+{"message":"short summary of what you did","files":{"path":"full file content",...},"complete":true}
 
 Rules:
 - Prefer modern, real-world app structure over tiny single-file demos when the request needs it.
@@ -138,7 +138,7 @@ function parseAgentFiles(text: string): {
     return {
       message: typeof parsed.message === "string" ? parsed.message : undefined,
       files,
-      complete: parsed.complete !== false,
+      complete: parsed.complete === true,
     };
   } catch (error) {
     if (error instanceof Error && /Invalid file path|Invalid content/.test(error.message))
@@ -211,7 +211,7 @@ export async function runAgent(
   const completedFiles: Record<string, string | null> = {};
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
-  const maxRounds = 7;
+  const maxRounds = 12;
 
   for (let round = 0; round < maxRounds; round++) {
     const existingNames = Object.keys(completedFiles);
@@ -317,12 +317,11 @@ export async function runAgent(
   }
 
   if (Object.keys(completedFiles).length > 0) {
-    return {
-      message:
-        latestMessage +
-        " Some files are complete; the remaining files need another continuation pass.",
-      files: completedFiles,
-    };
+    throw new Error(
+      "The agent reached its continuation limit before the full request was complete. " +
+        "It prepared " + Object.keys(completedFiles).length + " complete file(s), but did not apply a partial project update. " +
+        "Retry with a narrower request or ask the agent to continue in smaller steps.",
+    );
   }
   throw new Error(
     lastFailure
