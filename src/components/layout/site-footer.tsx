@@ -29,7 +29,7 @@ export function SiteFooter() {
             Video archive
           </Link>
           <Link to="/entertainment" className="block text-muted-foreground hover:text-foreground">
-            Entertainment
+            Games, Apps & Files
           </Link>
           <Link to="/learn" className="block text-muted-foreground hover:text-foreground">
             Learn to code
