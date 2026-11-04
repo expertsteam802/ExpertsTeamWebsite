@@ -783,6 +783,12 @@ function AdminPage() {
                           <Input
                             id={key}
                             value={form[key]}
+                            placeholder={
+                              key === "owner_email" ? "hello@yourwebsite.com" :
+                              key === "instagram_url" ? "https://instagram.com/yourhandle" :
+                              key === "youtube_url" ? "https://youtube.com/@yourchannel" :
+                              key === "logo_url" ? "https://example.com/logo.png" : ""
+                            }
                             onChange={(event) => setForm({ ...form, [key]: event.target.value })}
                           />
                         </div>
