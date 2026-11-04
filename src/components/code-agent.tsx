@@ -117,6 +117,27 @@ const suggestions = [
   "Make this project look more professional",
 ];
 
+function TypewriterText({ text, animate }: { text: string; animate: boolean }) {
+  const [visibleLength, setVisibleLength] = useState(animate ? 0 : text.length);
+
+  useEffect(() => {
+    if (!animate) {
+      setVisibleLength(text.length);
+      return;
+    }
+    setVisibleLength(0);
+    let index = 0;
+    const timer = window.setInterval(() => {
+      index += 1;
+      setVisibleLength(Math.min(index, text.length));
+      if (index >= text.length) window.clearInterval(timer);
+    }, 5);
+    return () => window.clearInterval(timer);
+  }, [text, animate]);
+
+  return <>{text.slice(0, visibleLength)}</>;
+}
+
 const fileIcon = (name: string) => {
   if (name.endsWith(".css")) return "text-sky-400";
   if (name.endsWith(".html")) return "text-orange-400";
@@ -137,6 +158,7 @@ export function CodeAgent() {
   const [files, setFiles] = useState<ProjectFiles>(STARTER_FILES);
   const [activeFile, setActiveFile] = useState("index.html");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [typingMessageIndex, setTypingMessageIndex] = useState<number | null>(null);
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<Panel>("preview");
@@ -516,6 +538,7 @@ export function CodeAgent() {
 
       setFiles(updatedFiles);
       setMessages(finalMessages);
+      setTypingMessageIndex(finalMessages.length - 1);
       if (changed.length) {
         setDirty(true);
         const firstExistingFile = changed.find((path) => updatedFiles[path] !== undefined);
@@ -538,6 +561,7 @@ export function CodeAgent() {
         },
       ];
       setMessages(failedMessages);
+      setTypingMessageIndex(failedMessages.length - 1);
       toast.error(detail);
       await persist({ messages: failedMessages });
     } finally {
@@ -1490,7 +1514,7 @@ export function CodeAgent() {
                             : "border border-white/[0.07] bg-white/[0.035] text-slate-200"
                         }`}
                       >
-                        {message.content}
+                        <TypewriterText text={message.content} animate={index === typingMessageIndex} />
                       </div>
                     </div>
                   ))}
