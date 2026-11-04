@@ -227,7 +227,7 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   // Only kill Vite when it is demonstrably serving a blocked-host response.
   // A healthy server should stay up; a stopped/resumed sandbox has no live server
   // and is started by the branch below.
-  if (isVite && blockedByViteHostCheck) {
+  if (isVite && !alreadyRunning) {
     await sandbox.runCommand({
       cmd: "pkill",
       args: ["-f", "[v]ite"],
