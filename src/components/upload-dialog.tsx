@@ -76,9 +76,11 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
         title: (title.trim() || file?.name || linkedName || "External resource").slice(0, 140),
         description: description.trim().slice(0, 1000) || null,
         storage_path: path,
-        file_name: file.name,
-        mime_type: file.type || null,
-        size_bytes: file.size,
+        source_url: cleanSourceUrl || null,
+        thumbnail_url: thumbnailUrl.trim() || null,
+        file_name: file?.name || linkedName || "external-resource",
+        mime_type: file?.type || null,
+        size_bytes: file?.size ?? 0,
         category,
         price: Math.max(0, Number(price) || 0),
         payout_account: payoutAccount.trim() || null,
@@ -92,6 +94,8 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
       setDescription("");
       setPrice("0");
       setPayoutAccount("");
+      setSourceUrl("");
+      setThumbnailUrl("");
       setPercent(0);
       setOpen(false);
       void queryClient.invalidateQueries({ queryKey: ["files"] });
