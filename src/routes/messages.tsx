@@ -167,9 +167,35 @@ function MessagesPage() {
   }, [previews]);
 
   useEffect(() => {
+    if (!user) return;
+    const presenceChannel = supabase.channel("expertsteam-live-presence", {
+      config: { presence: { key: user.id } },
+    });
+    presenceChannel
+      .on("presence", { event: "sync" }, () => {
+        const state = presenceChannel.presenceState() as Record<string, { user_id?: string }[]>;
+        setOnlineIds(
+          Object.values(state)
+            .flat()
+            .map((entry) => entry.user_id ?? "")
+            .filter((id) => id && id !== user.id),
+        );
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await presenceChannel.track({ user_id: user.id, online_at: new Date().toISOString() });
+        }
+      });
+    return () => {
+      setOnlineIds([]);
+      void supabase.removeChannel(presenceChannel);
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
     if (!activeConversation?.id || !user) return;
     const channel = supabase.channel("direct-chat-" + activeConversation.id, {
-      config: { presence: { key: user.id }, broadcast: { self: false } },
+      config: { broadcast: { self: false } },
     });
     channel
       .on("postgres_changes", {
@@ -182,20 +208,11 @@ function MessagesPage() {
       .on("broadcast", { event: "typing" }, ({ payload }) => {
         if (payload?.user_id !== user.id) setTyping(Boolean(payload?.typing));
       })
-      .on("presence", { event: "sync" }, () => {
-        const state = channel.presenceState() as Record<string, { user_id?: string }[]>;
-        setOnlineIds(Object.values(state).flat().map((entry) => entry.user_id ?? "").filter((id) => id && id !== user.id));
-      })
-      .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
-          await channel.track({ user_id: user.id, online_at: new Date().toISOString() });
-        }
-      });
+      .subscribe();
     channelRef.current = channel;
     return () => {
       channelRef.current = null;
       setTyping(false);
-      setOnlineIds([]);
       void supabase.removeChannel(channel);
     };
   }, [activeConversation?.id, user?.id, queryClient]);
