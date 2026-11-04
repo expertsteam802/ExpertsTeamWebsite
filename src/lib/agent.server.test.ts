@@ -43,6 +43,7 @@ test("coding agent uses Gemini and returns complete files", async () => {
                 text: JSON.stringify({
                   message: "Built",
                   files: { "index.html": "<h1>Game</h1>" },
+                  complete: true,
                 }),
               },
             ],
@@ -78,6 +79,7 @@ test("coding agent falls back to Groq when Gemini is rate limited", async () => 
             content: JSON.stringify({
               message: "Recovered through the fallback provider",
               files: { "index.html": "<h1>Fallback worked</h1>" },
+              complete: true,
             }),
           },
         },
@@ -174,6 +176,7 @@ test("coding agent continues to Groq when Gemini rejects an oversized request", 
             content: JSON.stringify({
               message: "Recovered after Gemini rejected the request",
               files: { "index.html": "<h1>Fallback</h1>" },
+              complete: true,
             }),
           },
         },
@@ -270,9 +273,7 @@ test("agent returns completed files if continuation providers are exhausted", as
     })) as typeof fetch;
 
   try {
-    const result = await runAgent(input, "test-key");
-    assert.equal(result.files["index.html"], "<h1>Finished file</h1>");
-    assert.match(result.message, /remaining files need another continuation pass/i);
+    await assert.rejects(runAgent(input, "test-key"), /continuation limit.*did not apply a partial project update/i);
   } finally {
     if (previousOrder === undefined) delete process.env["AI_PROVIDER_ORDER"];
     else process.env["AI_PROVIDER_ORDER"] = previousOrder;
