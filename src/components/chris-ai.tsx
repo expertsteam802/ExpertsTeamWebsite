@@ -673,7 +673,7 @@ export function ChrisAiChat({
             rows={1}
             placeholder="Ask ExpertAI anything…"
             onChange={(event) => setInput(event.target.value)}
-            disabled={chatIsFull}
+            disabled={chatIsFull || guestCreditsExhausted}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
