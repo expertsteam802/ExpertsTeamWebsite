@@ -24,11 +24,11 @@ function parseAdSettings(value: Json | null | undefined): AdSettings {
   const rawPlacements = raw.placements;
   const placements =
     rawPlacements && typeof rawPlacements === "object" && !Array.isArray(rawPlacements)
-      ? Object.fromEntries(
+      ? (Object.fromEntries(
           Object.entries(rawPlacements).filter(
             ([, unit]) => unit === "nativeBanner" || unit === "banner728",
           ),
-        ) as Record<string, AdUnit>
+        ) as Record<string, AdUnit>)
       : DEFAULT_SETTINGS.placements;
   return {
     nativeBannerEnabled:
@@ -88,15 +88,17 @@ function Banner728() {
     if (!host) return;
     host.replaceChildren();
 
-    (window as Window & {
-      atOptions?: {
-        key: string;
-        format: string;
-        height: number;
-        width: number;
-        params: Record<string, never>;
-      };
-    }).atOptions = {
+    (
+      window as Window & {
+        atOptions?: {
+          key: string;
+          format: string;
+          height: number;
+          width: number;
+          params: Record<string, never>;
+        };
+      }
+    ).atOptions = {
       key: "502debf88d7d96769c683f2ec09cb70b",
       format: "iframe",
       height: 90,

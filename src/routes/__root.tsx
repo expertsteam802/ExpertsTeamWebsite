@@ -12,7 +12,13 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Bot } from "lucide-react";
 
 import { ChrisAiChat } from "@/components/chris-ai";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { GlobalAdScripts } from "@/components/ads/ad-slot";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -57,10 +63,17 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 
   return dialogEnabled ? (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div role="dialog" aria-modal="true" className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">This page didn't load</h1>
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl"
+      >
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          This page didn't load
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong. The error has been recorded for the site owner. You can retry or return home.
+          Something went wrong. The error has been recorded for the site owner. You can retry or
+          return home.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -84,8 +97,13 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   ) : (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <p className="text-sm text-muted-foreground">This section couldn't load. Please refresh the page.</p>
-        <button onClick={() => window.location.reload()} className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+        <p className="text-sm text-muted-foreground">
+          This section couldn't load. Please refresh the page.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+        >
           Refresh page
         </button>
       </div>
@@ -199,11 +217,16 @@ function RootContent() {
     const reportRuntimeError = (error: Error, boundary: string) => {
       reportLovableError(error, { boundary });
       if (settings.error_dialog_enabled !== false) {
-        setRuntimeError("Something unexpected happened. The error has been recorded; you can safely retry.");
+        setRuntimeError(
+          "Something unexpected happened. The error has been recorded; you can safely retry.",
+        );
       }
     };
     const onError = (event: ErrorEvent) => {
-      reportRuntimeError(event.error instanceof Error ? event.error : new Error(event.message), "window_error");
+      reportRuntimeError(
+        event.error instanceof Error ? event.error : new Error(event.message),
+        "window_error",
+      );
     };
     const onRejection = (event: PromiseRejectionEvent) => {
       reportRuntimeError(

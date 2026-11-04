@@ -46,13 +46,13 @@ function normalizeAdSettings(value: Json | null | undefined): AdSettings {
   const rawPlacements = raw.placements;
   const placements =
     rawPlacements && typeof rawPlacements === "object" && !Array.isArray(rawPlacements)
-      ? Object.fromEntries(
+      ? (Object.fromEntries(
           Object.entries(rawPlacements).filter(
             ([slot, unit]) =>
               AD_SLOTS.some(([knownSlot]) => knownSlot === slot) &&
               (unit === "nativeBanner" || unit === "banner728"),
           ),
-        ) as Record<string, AdUnit>
+        ) as Record<string, AdUnit>)
       : DEFAULT_AD_SETTINGS.placements;
   return {
     nativeBannerEnabled:
@@ -181,7 +181,9 @@ export function AdminAdsSettingsPanel() {
           title="Native Banner"
           description="Your 4:1 Native Banner. It is assigned to the pre-video lesson screen by default."
           checked={draft.nativeBannerEnabled}
-          onChange={(checked) => setDraft((current) => ({ ...current, nativeBannerEnabled: checked }))}
+          onChange={(checked) =>
+            setDraft((current) => ({ ...current, nativeBannerEnabled: checked }))
+          }
         />
         <ToggleRow
           title="Popunder"
@@ -201,7 +203,8 @@ export function AdminAdsSettingsPanel() {
         <div>
           <h3 className="font-semibold">Ad placement</h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Choose one location per display unit. The pre-video Native Banner placement is the default.
+            Choose one location per display unit. The pre-video Native Banner placement is the
+            default.
           </p>
         </div>
         <label className="block space-y-2">
@@ -275,7 +278,13 @@ export function AdminApiUsagePanel() {
     () => new Date(Date.now() - Number(range) * 24 * 60 * 60 * 1000).toISOString(),
     [range],
   );
-  const { data = [], isLoading, isError, refetch, dataUpdatedAt } = useQuery({
+  const {
+    data = [],
+    isLoading,
+    isError,
+    refetch,
+    dataUpdatedAt,
+  } = useQuery({
     queryKey: ["admin", "api-usage", range],
     refetchInterval: 60000,
     queryFn: async () => {
@@ -301,8 +310,8 @@ export function AdminApiUsagePanel() {
         <div>
           <h2 className="font-display text-xl font-semibold">Supabase API activity</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Observed requests made by signed-in ExpertsTeam sessions. This is request telemetry,
-            not your exact Supabase billing or monthly quota meter.
+            Observed requests made by signed-in ExpertsTeam sessions. This is request telemetry, not
+            your exact Supabase billing or monthly quota meter.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -370,13 +379,24 @@ export function AdminApiUsagePanel() {
               </thead>
               <tbody>
                 {data.map((row) => (
-                  <tr key={`${row.service}:${row.endpoint}:${row.method}`} className="border-t border-border/60">
+                  <tr
+                    key={`${row.service}:${row.endpoint}:${row.method}`}
+                    className="border-t border-border/60"
+                  >
                     <td className="px-4 py-3 capitalize">{row.service}</td>
-                    <td className="max-w-[360px] truncate px-4 py-3 font-mono text-xs">{row.endpoint}</td>
+                    <td className="max-w-[360px] truncate px-4 py-3 font-mono text-xs">
+                      {row.endpoint}
+                    </td>
                     <td className="px-4 py-3">{row.method}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{Number(row.request_count).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{Number(row.error_count).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{Math.round(Number(row.average_duration_ms))}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {Number(row.request_count).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {Number(row.error_count).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {Math.round(Number(row.average_duration_ms))}
+                    </td>
                   </tr>
                 ))}
               </tbody>
