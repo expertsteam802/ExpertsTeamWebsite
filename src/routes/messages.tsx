@@ -47,7 +47,16 @@ type DirectMessage = {
   conversation_id: string;
   sender_id: string;
   body: string;
+  media_path: string | null;
   media_url: string | null;
+  created_at: string;
+};
+type DirectMessagePreview = {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  body: string;
+  media_path: string | null;
   created_at: string;
 };
 
@@ -86,7 +95,7 @@ function MessagesPage() {
     queryKey: ["direct-conversations", user?.id],
     enabled: Boolean(user),
     queryFn: async () => {
-      const { data, error } = await db
+      const { data, error } = await supabase
         .from("direct_conversations")
         .select("id,pair_key,last_message_at,direct_conversation_members(user_id,last_read_at,profiles:profiles!direct_conversation_members_user_id_fkey(id,username,display_name,avatar_url))")
         .order("last_message_at", { ascending: false });
@@ -103,14 +112,22 @@ function MessagesPage() {
     queryKey: ["direct-messages", activeConversation?.id],
     enabled: Boolean(activeConversation?.id),
     queryFn: async () => {
-      const { data, error } = await db
+      const { data, error } = await supabase
         .from("direct_messages")
-        .select("id,conversation_id,sender_id,body,media_url,created_at")
+        .select("id,conversation_id,sender_id,body,media_path,created_at")
         .eq("conversation_id", activeConversation!.id)
         .order("created_at", { ascending: false })
         .limit(300);
       if (error) throw error;
-      return ((data ?? []) as DirectMessage[]).reverse();
+      const newestFirst = (data ?? []) as Omit<DirectMessage, "media_url">[];
+      const withSignedMedia = await Promise.all(newestFirst.map(async (message) => {
+        if (!message.media_path) return { ...message, media_url: null };
+        const { data: signed, error: signedError } = await supabase.storage
+          .from("direct-messages")
+          .createSignedUrl(message.media_path, 60 * 60);
+        return { ...message, media_url: signedError ? null : signed?.signedUrl ?? null };
+      }));
+      return withSignedMedia.reverse() as DirectMessage[];
     },
   });
 
@@ -119,7 +136,7 @@ function MessagesPage() {
     enabled: Boolean(user && peopleOpen && search.trim().length >= 2),
     queryFn: async () => {
       const term = search.trim().replace(/[%,()]/g, " ").slice(0, 50);
-      const { data, error } = await db
+      const { data, error } = await supabase
         .from("profiles")
         .select("id,username,display_name,avatar_url")
         .neq("id", user!.id)
@@ -152,16 +169,16 @@ function MessagesPage() {
     enabled: conversationIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase.from("direct_messages")
-        .select("id,conversation_id,sender_id,body,media_url,created_at")
+        .select("id,conversation_id,sender_id,body,media_path,created_at")
         .in("conversation_id", conversationIds)
         .order("created_at", { ascending: false })
         .limit(Math.min(500, conversationIds.length * 20));
       if (error) throw error;
-      return (data ?? []) as DirectMessage[];
+      return (data ?? []) as DirectMessagePreview[];
     },
   });
   const previewByConversation = useMemo(() => {
-    const map = new Map<string, DirectMessage>();
+    const map = new Map<string, DirectMessagePreview>();
     for (const message of previews) if (!map.has(message.conversation_id)) map.set(message.conversation_id, message);
     return map;
   }, [previews]);
@@ -239,19 +256,19 @@ function MessagesPage() {
   const sendMessage = useMutation({
     mutationFn: async () => {
       if (!user || !activeConversation) throw new Error("Choose a conversation first.");
-      let media_url: string | null = null;
+      let media_path: string | null = null;
       if (attachment) {
-        const path = user.id + "/messages/" + crypto.randomUUID() + "-" + attachment.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-70);
-        const { error: uploadError } = await supabase.storage.from("uploads").upload(path, attachment, {
+        const path = activeConversation.id + "/" + user.id + "/" + crypto.randomUUID() + "-" + attachment.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-70);
+        const { error: uploadError } = await supabase.storage.from("direct-messages").upload(path, attachment, {
           cacheControl: "3600", upsert: false, contentType: attachment.type,
         });
         if (uploadError) throw uploadError;
-        media_url = supabase.storage.from("uploads").getPublicUrl(path).data.publicUrl;
+        media_path = path;
       }
       const body = draft.trim();
-      if (!body && !media_url) throw new Error("Write a message or attach a photo.");
+      if (!body && !media_path) throw new Error("Write a message or attach a photo.");
       const { error } = await supabase.from("direct_messages").insert({
-        conversation_id: activeConversation.id, sender_id: user.id, body, media_url,
+        conversation_id: activeConversation.id, sender_id: user.id, body, media_path,
       });
       if (error) throw error;
     },
@@ -270,7 +287,7 @@ function MessagesPage() {
     if (!user) return;
     const pairKey = [user.id, person.id].sort().join(":");
     try {
-      let { data: conversation, error } = await db
+      let { data: conversation, error } = await supabase
         .from("direct_conversations")
         .select("id")
         .eq("pair_key", pairKey)
