@@ -4,7 +4,11 @@ type AgentInput = {
   prompt: string;
   files: Record<string, string>;
   history: { role: "user" | "assistant"; content: string }[];
-  referenceImage?: { name: string; mimeType: "image/png" | "image/jpeg" | "image/webp"; data: string };
+  referenceImage?: {
+    name: string;
+    mimeType: "image/png" | "image/jpeg" | "image/webp";
+    data: string;
+  };
 };
 
 const AGENT_PROMPT = `You are the ExpertsTeam coding agent.
@@ -137,10 +141,18 @@ function parseAgentFiles(text: string): {
   }
 }
 
-export async function runAgent({ prompt, files, history, referenceImage }: AgentInput, apiKey?: string) {
+export async function runAgent(
+  { prompt, files, history, referenceImage }: AgentInput,
+  apiKey?: string,
+) {
   const cleanPrompt = prompt.trim();
   if (!cleanPrompt) throw new Error("Tell the agent what to build.");
-  if (referenceImage && (referenceImage.data.length > 4_000_000 || !["image/png", "image/jpeg", "image/webp"].includes(referenceImage.mimeType))) throw new Error("The reference image is invalid or too large.");
+  if (
+    referenceImage &&
+    (referenceImage.data.length > 4_000_000 ||
+      !["image/png", "image/jpeg", "image/webp"].includes(referenceImage.mimeType))
+  )
+    throw new Error("The reference image is invalid or too large.");
   if (cleanPrompt.length > 16000) throw new Error("That request is too long.");
   const entries = Object.entries(files);
   if (entries.length > 80)
@@ -239,10 +251,28 @@ export async function runAgent({ prompt, files, history, referenceImage }: Agent
               role: message.role === "assistant" ? ("model" as const) : ("user" as const),
               parts: [{ text: message.content.slice(-500) }],
             })),
-            { role: "user", parts: [
-              { text: continuation + (referenceImage ? "\\n\\nVISUAL REFERENCE: Inspect the attached screenshot/photo and reproduce its visible layout, spacing, typography, colors, responsive behavior and all visible controls as working app code. Treat the image as a design specification, not as an image to merely display." : "") },
-              ...(referenceImage ? [{ inlineData: { mimeType: referenceImage.mimeType, data: referenceImage.data } }] : []),
-            ] },
+            {
+              role: "user",
+              parts: [
+                {
+                  text:
+                    continuation +
+                    (referenceImage
+                      ? "\\n\\nVISUAL REFERENCE: Inspect the attached screenshot/photo and reproduce its visible layout, spacing, typography, colors, responsive behavior and all visible controls as working app code. Treat the image as a design specification, not as an image to merely display."
+                      : ""),
+                },
+                ...(referenceImage
+                  ? [
+                      {
+                        inlineData: {
+                          mimeType: referenceImage.mimeType,
+                          data: referenceImage.data,
+                        },
+                      },
+                    ]
+                  : []),
+              ],
+            },
           ],
         },
         apiKey,

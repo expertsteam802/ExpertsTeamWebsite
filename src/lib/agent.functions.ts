@@ -10,11 +10,13 @@ const codingRequest = z
     history: z
       .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(3000) }))
       .max(8),
-    referenceImage: z.object({
-      name: z.string().max(180),
-      mimeType: z.enum(["image/png", "image/jpeg", "image/webp"]),
-      data: z.string().min(100).max(4_000_000),
-    }).optional(),
+    referenceImage: z
+      .object({
+        name: z.string().max(180),
+        mimeType: z.enum(["image/png", "image/jpeg", "image/webp"]),
+        data: z.string().min(100).max(4_000_000),
+      })
+      .optional(),
   })
   .refine(
     ({ files }) =>

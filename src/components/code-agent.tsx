@@ -64,7 +64,11 @@ import {
 } from "@/lib/agent.functions";
 import { buildSrcDocWithConsole, STARTER_FILES, type ProjectFiles } from "@/lib/sandbox";
 type Message = { role: "user" | "assistant"; content: string };
-type ReferenceImage = { name: string; mimeType: "image/png" | "image/jpeg" | "image/webp"; data: string };
+type ReferenceImage = {
+  name: string;
+  mimeType: "image/png" | "image/jpeg" | "image/webp";
+  data: string;
+};
 
 type CheckpointRow = { id: string; name: string; files: ProjectFiles; created_at: string };
 
@@ -243,9 +247,12 @@ export function CodeAgent() {
     queryKey: ["agent-project-checkpoints", projectId],
     enabled: Boolean(user && projectId),
     queryFn: async () => {
-      const { data, error } = await supabase.from("agent_project_checkpoints")
-        .select("id,name,files,created_at").eq("project_id", projectId!)
-        .order("created_at", { ascending: false }).limit(20);
+      const { data, error } = await supabase
+        .from("agent_project_checkpoints")
+        .select("id,name,files,created_at")
+        .eq("project_id", projectId!)
+        .order("created_at", { ascending: false })
+        .limit(20);
       if (error) throw error;
       return (data ?? []) as unknown as CheckpointRow[];
     },
@@ -476,7 +483,9 @@ export function CodeAgent() {
       files: files as unknown as Json,
     });
     if (error) throw error;
-    await queryClient.invalidateQueries({ queryKey: ["agent-project-checkpoints", activeProjectId] });
+    await queryClient.invalidateQueries({
+      queryKey: ["agent-project-checkpoints", activeProjectId],
+    });
   }
 
   async function restoreLastCheckpoint() {
@@ -484,21 +493,33 @@ export function CodeAgent() {
       toast.info("Save this project first to create rollback checkpoints.");
       return;
     }
-    const { data, error } = await supabase.from("agent_project_checkpoints")
-      .select("id,name,files,created_at").eq("project_id", projectId)
-      .order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (error) { toast.error(error.message); return; }
-    if (!data) { toast.info("There is no checkpoint to restore yet."); return; }
+    const { data, error } = await supabase
+      .from("agent_project_checkpoints")
+      .select("id,name,files,created_at")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    if (!data) {
+      toast.info("There is no checkpoint to restore yet.");
+      return;
+    }
     const restored = data.files as unknown as ProjectFiles;
     setFiles(restored);
     setActiveFile(Object.keys(restored)[0] ?? "index.html");
     setDirty(true);
-    setPreviewKey(value => value + 1);
+    setPreviewKey((value) => value + 1);
     try {
       await persist({ files: restored });
       toast.success("Restored checkpoint: " + data.name);
     } catch (restoreError) {
-      toast.error(restoreError instanceof Error ? restoreError.message : "Could not restore checkpoint.");
+      toast.error(
+        restoreError instanceof Error ? restoreError.message : "Could not restore checkpoint.",
+      );
     }
   }
 
@@ -534,7 +555,9 @@ export function CodeAgent() {
     const text = prompt.trim();
     if (!text || busy) return;
 
-    const userText = referenceImage ? `${text}\n[Attached visual reference: ${referenceImage.name}]` : text;
+    const userText = referenceImage
+      ? `${text}\n[Attached visual reference: ${referenceImage.name}]`
+      : text;
     const nextMessages: Message[] = [...messages, { role: "user", content: userText }];
     setMessages(nextMessages);
     setPrompt("");
@@ -543,7 +566,12 @@ export function CodeAgent() {
     try {
       await saveCheckpoint(`Before: ${text.slice(0, 96)}`);
       const result = await run({
-        data: { prompt: text, files, history: messages.slice(-8), referenceImage: referenceImage ?? undefined },
+        data: {
+          prompt: text,
+          files,
+          history: messages.slice(-8),
+          referenceImage: referenceImage ?? undefined,
+        },
       });
       setReferenceImage(null);
       if (referenceInputRef.current) referenceInputRef.current.value = "";
@@ -1547,8 +1575,22 @@ export function CodeAgent() {
                 <div className="border-t border-white/[0.08] p-3">
                   {referenceImage && (
                     <div className="mb-2 flex items-center justify-between rounded-lg border border-cyan-400/20 bg-cyan-400/[0.06] px-3 py-2">
-                      <span className="flex min-w-0 items-center gap-2 text-[11px] text-cyan-100"><ImagePlus className="h-4 w-4 shrink-0" /><span className="truncate">{referenceImage.name}</span><span className="text-cyan-300/70">Visual reference attached</span></span>
-                      <button type="button" onClick={() => { setReferenceImage(null); if (referenceInputRef.current) referenceInputRef.current.value = ""; }} className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Remove reference image"><X className="h-4 w-4" /></button>
+                      <span className="flex min-w-0 items-center gap-2 text-[11px] text-cyan-100">
+                        <ImagePlus className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{referenceImage.name}</span>
+                        <span className="text-cyan-300/70">Visual reference attached</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReferenceImage(null);
+                          if (referenceInputRef.current) referenceInputRef.current.value = "";
+                        }}
+                        className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white"
+                        aria-label="Remove reference image"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
                     </div>
                   )}
                   <input
@@ -1573,8 +1615,15 @@ export function CodeAgent() {
                       reader.onload = () => {
                         const dataUrl = String(reader.result ?? "");
                         const data = dataUrl.split(",")[1];
-                        if (!data) { toast.error("Could not read that image."); return; }
-                        setReferenceImage({ name: file.name, mimeType: file.type as ReferenceImage["mimeType"], data });
+                        if (!data) {
+                          toast.error("Could not read that image.");
+                          return;
+                        }
+                        setReferenceImage({
+                          name: file.name,
+                          mimeType: file.type as ReferenceImage["mimeType"],
+                          data,
+                        });
                       };
                       reader.onerror = () => toast.error("Could not read that image.");
                       reader.readAsDataURL(file);
@@ -1597,8 +1646,18 @@ export function CodeAgent() {
                     />
                     <div className="flex items-center justify-between px-1 pt-2">
                       <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => referenceInputRef.current?.click()} disabled={busy} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] text-slate-400 transition hover:bg-white/5 hover:text-cyan-200" title="Attach a screenshot or design reference"><ImagePlus className="h-4 w-4" /> Reference image</button>
-                        <span className="hidden text-[9px] text-slate-600 sm:inline">Enter to send · Shift + Enter for new line</span>
+                        <button
+                          type="button"
+                          onClick={() => referenceInputRef.current?.click()}
+                          disabled={busy}
+                          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] text-slate-400 transition hover:bg-white/5 hover:text-cyan-200"
+                          title="Attach a screenshot or design reference"
+                        >
+                          <ImagePlus className="h-4 w-4" /> Reference image
+                        </button>
+                        <span className="hidden text-[9px] text-slate-600 sm:inline">
+                          Enter to send · Shift + Enter for new line
+                        </span>
                       </div>
                       <Button
                         size="icon"

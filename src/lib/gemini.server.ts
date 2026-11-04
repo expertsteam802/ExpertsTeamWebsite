@@ -180,9 +180,13 @@ export async function generateGeminiContent(
   providerOrder?: string[],
 ): Promise<GeminiResponse> {
   let activeRequest = compactSmartRequest(request);
-  const hasImageReference = activeRequest.contents.some((item) => item.parts.some((part) => Boolean(part.inlineData?.data)));
+  const hasImageReference = activeRequest.contents.some((item) =>
+    item.parts.some((part) => Boolean(part.inlineData?.data)),
+  );
   if (hasImageReference && !resolveGeminiApiKey(apiKey)) {
-    throw new Error("Screenshot-to-app generation needs the Gemini vision connection. Add GEMINI_API_KEY in the deployment environment.");
+    throw new Error(
+      "Screenshot-to-app generation needs the Gemini vision connection. Add GEMINI_API_KEY in the deployment environment.",
+    );
   }
   const requestedOrder =
     providerOrder ??
