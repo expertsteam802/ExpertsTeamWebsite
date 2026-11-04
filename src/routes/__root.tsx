@@ -12,10 +12,12 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Bot } from "lucide-react";
 
 import { ChrisAiChat } from "@/components/chris-ai";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { GlobalAdScripts } from "@/components/ads/ad-slot";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/hooks/use-theme";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
@@ -49,14 +51,16 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
-  return (
+  const dialogEnabled =
+    typeof window === "undefined" ||
+    window.localStorage.getItem("expertsteam.error-dialog-enabled") !== "false";
+
+  return dialogEnabled ? (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
-        </h1>
+      <div role="dialog" aria-modal="true" className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">This page didn't load</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+          Something went wrong. The error has been recorded for the site owner. You can retry or return home.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -75,6 +79,15 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
             Go home
           </a>
         </div>
+      </div>
+    </div>
+  ) : (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="max-w-md text-center">
+        <p className="text-sm text-muted-foreground">This section couldn't load. Please refresh the page.</p>
+        <button onClick={() => window.location.reload()} className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+          Refresh page
+        </button>
       </div>
     </div>
   );
@@ -158,36 +171,92 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const [aiChatOpen, setAiChatOpen] = useState(false);
 
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          <GlobalAdScripts />
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-
-          <Toaster richColors position="top-center" />
-
-          {/* Global Expert AI floating window */}
-          {aiChatOpen ? (
-            <div className="fixed bottom-4 right-4 z-[100] h-[min(680px,calc(100dvh-2rem))] w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
-              <ChrisAiChat onMinimize={() => setAiChatOpen(false)} />
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setAiChatOpen(true)}
-              aria-label="Open Expert AI"
-              title="Open Expert AI"
-              className="fixed bottom-5 right-5 z-[100] flex h-14 w-14 items-center justify-center rounded-full border border-primary/40 bg-primary text-primary-foreground shadow-2xl transition-all hover:scale-105 hover:bg-primary/90"
-            >
-              <Bot className="h-7 w-7" />
-            </button>
-          )}
+          <RootContent />
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
+  );
+}
+
+function RootContent() {
+  const settings = useSiteSettings();
+  const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [runtimeError, setRuntimeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      "expertsteam.error-dialog-enabled",
+      settings.error_dialog_enabled === false ? "false" : "true",
+    );
+  }, [settings.error_dialog_enabled]);
+
+  useEffect(() => {
+    const reportRuntimeError = (error: Error, boundary: string) => {
+      reportLovableError(error, { boundary });
+      if (settings.error_dialog_enabled !== false) {
+        setRuntimeError("Something unexpected happened. The error has been recorded; you can safely retry.");
+      }
+    };
+    const onError = (event: ErrorEvent) => {
+      reportRuntimeError(event.error instanceof Error ? event.error : new Error(event.message), "window_error");
+    };
+    const onRejection = (event: PromiseRejectionEvent) => {
+      reportRuntimeError(
+        event.reason instanceof Error ? event.reason : new Error(String(event.reason)),
+        "unhandled_rejection",
+      );
+    };
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+    };
+  }, [settings.error_dialog_enabled]);
+
+  return (
+    <>
+      <GlobalAdScripts />
+      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <Outlet />
+      <Toaster richColors position="top-center" />
+
+      <Dialog open={Boolean(runtimeError)} onOpenChange={(open) => !open && setRuntimeError(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Something went wrong</DialogTitle>
+            <DialogDescription>{runtimeError}</DialogDescription>
+          </DialogHeader>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-3 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          >
+            Reload page
+          </button>
+        </DialogContent>
+      </Dialog>
+
+      {aiChatOpen ? (
+        <div className="fixed bottom-4 right-4 z-[100] h-[min(680px,calc(100dvh-2rem))] w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
+          <ChrisAiChat onMinimize={() => setAiChatOpen(false)} />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAiChatOpen(true)}
+          aria-label="Open ExpertAI"
+          title="Open ExpertAI"
+          className="fixed bottom-5 right-5 z-[100] flex h-14 w-14 items-center justify-center rounded-full border border-primary/40 bg-primary text-primary-foreground shadow-2xl transition-all hover:scale-105 hover:bg-primary/90"
+        >
+          <Bot className="h-7 w-7" />
+        </button>
+      )}
+    </>
   );
 }
