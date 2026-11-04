@@ -17,6 +17,7 @@ import { Route as CommunityRouteImport } from './routes/community'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as EntertainmentRouteImport } from './routes/entertainment'
 import { Route as LearnRouteImport } from './routes/learn'
+import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as VideosRouteImport } from './routes/videos'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
@@ -56,6 +57,11 @@ const ContactRoute = ContactRouteImport.update({
 const EntertainmentRoute = EntertainmentRouteImport.update({
   id: '/entertainment',
   path: '/entertainment',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MessagesRoute = MessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LearnRoute = LearnRouteImport.update({
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/entertainment': typeof EntertainmentRoute
   '/learn': typeof LearnRoute
+  '/messages': typeof MessagesRoute
   '/projects': typeof ProjectsRoute
   '/videos': typeof VideosRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/entertainment': typeof EntertainmentRoute
   '/learn': typeof LearnRoute
+  '/messages': typeof MessagesRoute
   '/projects': typeof ProjectsRoute
   '/videos': typeof VideosRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/entertainment': typeof EntertainmentRoute
   '/learn': typeof LearnRoute
+  '/messages': typeof MessagesRoute
   '/projects': typeof ProjectsRoute
   '/videos': typeof VideosRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/entertainment'
     | '/learn'
+    | '/messages'
     | '/projects'
     | '/videos'
     | '/admin'
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/entertainment'
     | '/learn'
+    | '/messages'
     | '/projects'
     | '/videos'
     | '/admin'
@@ -182,6 +193,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/entertainment'
     | '/learn'
+    | '/messages'
     | '/projects'
     | '/videos'
     | '/_authenticated/admin'
@@ -199,6 +211,7 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   EntertainmentRoute: typeof EntertainmentRoute
   LearnRoute: typeof LearnRoute
+  MessagesRoute: typeof MessagesRoute
   ProjectsRoute: typeof ProjectsRoute
   VideosRoute: typeof VideosRoute
   AppsSlugRoute: typeof AppsSlugRoute
@@ -254,6 +267,13 @@ declare module '@tanstack/react-router' {
       path: '/entertainment'
       fullPath: '/entertainment'
       preLoaderRoute: typeof EntertainmentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/messages': {
+      id: '/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof MessagesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/learn': {
@@ -330,6 +350,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   EntertainmentRoute: EntertainmentRoute,
   LearnRoute: LearnRoute,
+  MessagesRoute: MessagesRoute,
   ProjectsRoute: ProjectsRoute,
   VideosRoute: VideosRoute,
   AppsSlugRoute: AppsSlugRoute,

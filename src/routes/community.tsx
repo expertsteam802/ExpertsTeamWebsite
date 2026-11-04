@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
@@ -51,6 +51,16 @@ const FILTERS = [
   { id: "link", label: "Links", icon: Link2 },
 ] as const;
 
+type Story = {
+  id: string;
+  user_id: string;
+  media_url: string;
+  caption: string | null;
+  created_at: string;
+  expires_at: string;
+  profiles: { username: string; display_name: string | null; avatar_url: string | null } | null;
+};
+
 type Post = {
   id: string;
   user_id: string;
@@ -74,6 +84,12 @@ function CommunityPage() {
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState("");
   const [search, setSearch] = useState("");
+  const [storyImage, setStoryImage] = useState<File | null>(null);
+  const [storyPreview, setStoryPreview] = useState("");
+  const [storyCaption, setStoryCaption] = useState("");
+  const [storyComposerOpen, setStoryComposerOpen] = useState(false);
+  const [storyViewer, setStoryViewer] = useState<{ userId: string; index: number } | null>(null);
+  const storyInputRef = useRef<HTMLInputElement>(null);
 
   const {
     data: posts = [],
@@ -96,6 +112,61 @@ function CommunityPage() {
     refetchInterval: 60_000,
   });
 
+  const { data: stories = [] } = useQuery({
+    queryKey: ["community-stories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("community_stories")
+        .select("id,user_id,media_url,caption,created_at,expires_at,profiles:profiles!community_stories_user_id_fkey(username,display_name,avatar_url)")
+        .gt("expires_at", new Date().toISOString())
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data ?? []) as unknown as Story[];
+    },
+    refetchInterval: 60_000,
+  });
+
+  const storyGroups = stories.reduce<{ userId: string; profile: Story["profiles"]; items: Story[] }[]>(
+    (groups, story) => {
+      let group = groups.find((item) => item.userId === story.user_id);
+      if (!group) {
+        group = { userId: story.user_id, profile: story.profiles, items: [] };
+        groups.push(group);
+      }
+      group.items.push(story);
+      return groups;
+    },
+    [],
+  );
+  storyGroups.forEach((group) => group.items.reverse());
+  const activeStoryGroup = storyGroups.find((group) => group.userId === storyViewer?.userId);
+  const activeStory = activeStoryGroup?.items[storyViewer?.index ?? 0] ?? null;
+
+  useEffect(() => {
+    return () => {
+      if (storyPreview) URL.revokeObjectURL(storyPreview);
+    };
+  }, [storyPreview]);
+
+  function moveStory(direction: -1 | 1) {
+    if (!storyViewer) return;
+    const groupIndex = storyGroups.findIndex((group) => group.userId === storyViewer.userId);
+    const group = storyGroups[groupIndex];
+    if (!group) return;
+    const nextIndex = storyViewer.index + direction;
+    if (nextIndex >= 0 && nextIndex < group.items.length) {
+      setStoryViewer({ userId: group.userId, index: nextIndex });
+      return;
+    }
+    const nextGroup = storyGroups[groupIndex + direction];
+    if (!nextGroup) {
+      setStoryViewer(null);
+      return;
+    }
+    setStoryViewer({ userId: nextGroup.userId, index: direction > 0 ? 0 : nextGroup.items.length - 1 });
+  }
+
   useEffect(() => {
     const channel = supabase
       .channel("community-live-feed")
@@ -113,6 +184,11 @@ function CommunityPage() {
         "postgres_changes",
         { event: "*", schema: "public", table: "community_comments" },
         () => void queryClient.invalidateQueries({ queryKey: ["community-comments"] }),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "community_stories" },
+        () => void queryClient.invalidateQueries({ queryKey: ["community-stories"] }),
       )
       .subscribe();
     return () => {
@@ -133,6 +209,51 @@ function CommunityPage() {
     setImage(file);
     setImagePreview(URL.createObjectURL(file));
   }
+
+  function chooseStoryImage(file?: File) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Choose an image for your story.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Story images must be 8 MB or smaller.");
+      return;
+    }
+    if (storyPreview) URL.revokeObjectURL(storyPreview);
+    setStoryImage(file);
+    setStoryPreview(URL.createObjectURL(file));
+    setStoryCaption("");
+    setStoryComposerOpen(true);
+  }
+
+  const createStory = useMutation({
+    mutationFn: async () => {
+      if (!user || !storyImage) throw new Error("Choose a photo for your story.");
+      const safeName = storyImage.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-80);
+      const path = `${user.id}/stories/${crypto.randomUUID()}-${safeName}`;
+      const { error: uploadError } = await supabase.storage.from("uploads").upload(path, storyImage, {
+        cacheControl: "3600", upsert: false, contentType: storyImage.type,
+      });
+      if (uploadError) throw uploadError;
+      const media_url = supabase.storage.from("uploads").getPublicUrl(path).data.publicUrl;
+      const { error } = await supabase.from("community_stories").insert({
+        user_id: user.id,
+        media_url,
+        caption: storyCaption.trim() || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setStoryImage(null);
+      setStoryPreview("");
+      setStoryCaption("");
+      setStoryComposerOpen(false);
+      toast.success("Your story is live for 24 hours");
+      void queryClient.invalidateQueries({ queryKey: ["community-stories"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   const createPost = useMutation({
     mutationFn: async () => {
@@ -251,6 +372,66 @@ function CommunityPage() {
               ))}
             </div>
           </div>
+          <section className="mb-5 rounded-2xl border border-border/70 bg-card/80 p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold">Stories</h2>
+                <p className="text-[11px] text-muted-foreground">Quick moments from the community · 24 hours</p>
+              </div>
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">
+                {stories.length} live
+              </span>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-1">
+              {user && (
+                <button
+                  type="button"
+                  onClick={() => storyInputRef.current?.click()}
+                  className="flex w-16 shrink-0 flex-col items-center gap-2 text-center"
+                >
+                  <span className="relative grid h-[68px] w-[68px] place-items-center rounded-full border-2 border-dashed border-primary/50 bg-primary/5">
+                    <Avatar className="h-14 w-14">
+                      <AvatarImage src={profile?.avatar_url ?? undefined} />
+                      <AvatarFallback>{(profile?.display_name || profile?.username || "Y").slice(0, 1).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <span className="absolute bottom-0 right-0 grid h-6 w-6 place-items-center rounded-full border-2 border-card bg-primary text-primary-foreground">
+                      <Plus className="h-3.5 w-3.5" />
+                    </span>
+                  </span>
+                  <span className="w-full truncate text-[11px] font-medium">Add story</span>
+                </button>
+              )}
+              {storyGroups.map((group) => {
+                const name = group.profile?.display_name || group.profile?.username || "Member";
+                return (
+                  <button
+                    key={group.userId}
+                    type="button"
+                    onClick={() => setStoryViewer({ userId: group.userId, index: 0 })}
+                    className="flex w-16 shrink-0 flex-col items-center gap-2 text-center"
+                  >
+                    <span className="rounded-full bg-gradient-to-tr from-amber-400 via-pink-500 to-violet-600 p-[3px]">
+                      <Avatar className="h-[62px] w-[62px] border-2 border-card">
+                        <AvatarImage src={group.profile?.avatar_url ?? undefined} />
+                        <AvatarFallback>{name.slice(0, 1).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                    </span>
+                    <span className="w-full truncate text-[11px] font-medium">{group.userId === user?.id ? "Your story" : name}</span>
+                  </button>
+                );
+              })}
+              {!user && stories.length === 0 && (
+                <p className="py-5 text-xs text-muted-foreground">No stories yet. Check back for fresh community moments.</p>
+              )}
+            </div>
+            <input
+              ref={storyInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="sr-only"
+              onChange={(event) => chooseStoryImage(event.target.files?.[0])}
+            />
+          </section>
           <div className="mb-4 flex items-center gap-3">
             <Input
               value={search}
@@ -354,6 +535,77 @@ function CommunityPage() {
           </div>
         </aside>
       </section>
+
+      <Dialog
+        open={storyComposerOpen}
+        onOpenChange={(open) => {
+          setStoryComposerOpen(open);
+          if (!open) {
+            setStoryImage(null);
+            setStoryPreview("");
+            setStoryCaption("");
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Share a story</DialogTitle>
+          </DialogHeader>
+          {storyPreview && (
+            <div className="overflow-hidden rounded-2xl bg-black">
+              <img src={storyPreview} alt="Story preview" className="max-h-[52vh] w-full object-contain" />
+            </div>
+          )}
+          <Textarea
+            value={storyCaption}
+            onChange={(event) => setStoryCaption(event.target.value)}
+            rows={3}
+            maxLength={500}
+            placeholder="Add a short caption (optional)…"
+          />
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">Visible to the community for 24 hours.</p>
+            <Button onClick={() => createStory.mutate()} disabled={!storyImage || createStory.isPending}>
+              {createStory.isPending ? "Publishing…" : "Share story"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(activeStory)} onOpenChange={(open) => { if (!open) setStoryViewer(null); }}>
+        <DialogContent className="max-h-[94dvh] max-w-lg overflow-hidden border-border/70 bg-background p-0">
+          {activeStory && activeStoryGroup && (
+            <div className="flex max-h-[94dvh] flex-col">
+              <DialogHeader className="sr-only"><DialogTitle>Community story</DialogTitle></DialogHeader>
+              <div className="flex gap-1 px-4 pt-3">
+                {activeStoryGroup.items.map((item, index) => (
+                  <span key={item.id} className={`h-1 flex-1 rounded-full ${index <= (storyViewer?.index ?? 0) ? "bg-primary" : "bg-muted"}`} />
+                ))}
+              </div>
+              <div className="flex items-center gap-3 p-4">
+                <Avatar className="h-9 w-9">
+                  <AvatarImage src={activeStoryGroup.profile?.avatar_url ?? undefined} />
+                  <AvatarFallback>{(activeStoryGroup.profile?.display_name || activeStoryGroup.profile?.username || "M").slice(0, 1).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{activeStoryGroup.profile?.display_name || activeStoryGroup.profile?.username || "Community member"}</p>
+                  <p className="text-[11px] text-muted-foreground">{new Date(activeStory.created_at).toLocaleString()}</p>
+                </div>
+                <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">24h story</span>
+              </div>
+              <div className="relative flex min-h-0 flex-1 items-center justify-center bg-black">
+                <img src={activeStory.media_url} alt={activeStory.caption || "Community story"} className="max-h-[68vh] w-full object-contain" />
+                <button type="button" onClick={() => moveStory(-1)} className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 px-3 py-2 text-xs font-semibold text-white">Previous</button>
+                <button type="button" onClick={() => moveStory(1)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 px-3 py-2 text-xs font-semibold text-white">Next</button>
+              </div>
+              {activeStory.caption && <p className="px-4 py-3 text-sm">{activeStory.caption}</p>}
+              <div className="flex items-center justify-center gap-2 border-t border-border/70 p-3 text-[11px] text-muted-foreground">
+                Story {storyViewer ? storyViewer.index + 1 : 1} of {activeStoryGroup.items.length}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={composerOpen} onOpenChange={setComposerOpen}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">

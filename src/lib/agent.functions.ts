@@ -3,6 +3,12 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const referenceImageSchema = z.object({
+  name: z.string().max(180),
+  mimeType: z.enum(["image/png", "image/jpeg", "image/webp"]),
+  data: z.string().min(100).max(3_000_000),
+});
+
 const codingRequest = z
   .object({
     prompt: z.string().trim().min(1).max(16000),
@@ -10,19 +16,22 @@ const codingRequest = z
     history: z
       .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(3000) }))
       .max(8),
-    referenceImage: z
-      .object({
-        name: z.string().max(180),
-        mimeType: z.enum(["image/png", "image/jpeg", "image/webp"]),
-        data: z.string().min(100).max(4_000_000),
-      })
-      .optional(),
+    referenceImage: referenceImageSchema.optional(),
+    referenceImages: z.array(referenceImageSchema).max(3).optional(),
   })
   .refine(
     ({ files }) =>
       Object.keys(files).length <= 80 &&
       Object.values(files).reduce((total, content) => total + content.length, 0) <= 200000,
     "The project is too large to send to the agent.",
+  )
+  .refine(
+    ({ referenceImage, referenceImages }) => {
+      const references = referenceImages?.length ? referenceImages : referenceImage ? [referenceImage] : [];
+      return references.length <= 3 &&
+        references.reduce((total, image) => total + image.data.length, 0) <= 8_000_000;
+    },
+    "Attach up to three visual references with a combined size under 8 MB.",
   );
 
 export const runCodingAgent = createServerFn({ method: "POST" })

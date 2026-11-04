@@ -38,6 +38,7 @@ const NAV_GROUPS = [
     items: [
       { to: "/projects", label: "Workspace" },
       { to: "/ai", label: "ExpertAI Studio" },
+      { to: "/messages", label: "Messages" },
     ],
   },
 ] as const;

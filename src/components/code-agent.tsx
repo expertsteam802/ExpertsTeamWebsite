@@ -174,7 +174,7 @@ export function CodeAgent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [typingMessageIndex, setTypingMessageIndex] = useState<number | null>(null);
   const [prompt, setPrompt] = useState("");
-  const [referenceImage, setReferenceImage] = useState<ReferenceImage | null>(null);
+  const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
   const referenceInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<Panel>("preview");
@@ -555,8 +555,8 @@ export function CodeAgent() {
     const text = prompt.trim();
     if (!text || busy) return;
 
-    const userText = referenceImage
-      ? `${text}\n[Attached visual reference: ${referenceImage.name}]`
+    const userText = referenceImages.length
+      ? `${text}\n[Attached visual references: ${referenceImages.map((image) => image.name).join(", ")}]`
       : text;
     const nextMessages: Message[] = [...messages, { role: "user", content: userText }];
     setMessages(nextMessages);
@@ -570,10 +570,10 @@ export function CodeAgent() {
           prompt: text,
           files,
           history: messages.slice(-8),
-          referenceImage: referenceImage ?? undefined,
+          referenceImages: referenceImages.length ? referenceImages : undefined,
         },
       });
-      setReferenceImage(null);
+      setReferenceImages([]);
       if (referenceInputRef.current) referenceInputRef.current.value = "";
       const updatedFiles: ProjectFiles = { ...files };
       const changed: string[] = [];
@@ -1573,60 +1573,74 @@ export function CodeAgent() {
                 </div>
 
                 <div className="border-t border-white/[0.08] p-3">
-                  {referenceImage && (
-                    <div className="mb-2 flex items-center justify-between rounded-lg border border-cyan-400/20 bg-cyan-400/[0.06] px-3 py-2">
-                      <span className="flex min-w-0 items-center gap-2 text-[11px] text-cyan-100">
-                        <ImagePlus className="h-4 w-4 shrink-0" />
-                        <span className="truncate">{referenceImage.name}</span>
-                        <span className="text-cyan-300/70">Visual reference attached</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setReferenceImage(null);
-                          if (referenceInputRef.current) referenceInputRef.current.value = "";
-                        }}
-                        className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white"
-                        aria-label="Remove reference image"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
+                  {referenceImages.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      {referenceImages.map((image, index) => (
+                        <div
+                          key={image.name + "-" + index}
+                          className="flex max-w-full items-center gap-2 rounded-lg border border-cyan-400/20 bg-cyan-400/[0.06] px-3 py-2 text-[11px] text-cyan-100"
+                        >
+                          <ImagePlus className="h-4 w-4 shrink-0" />
+                          <span className="max-w-48 truncate">{image.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReferenceImages((current) => current.filter((_, itemIndex) => itemIndex !== index));
+                              if (referenceInputRef.current) referenceInputRef.current.value = "";
+                            }}
+                            className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white"
+                            aria-label={"Remove " + image.name}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   )}
                   <input
                     ref={referenceInputRef}
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
+                    multiple
                     className="hidden"
                     onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (!file) return;
-                      if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-                        toast.error("Use a PNG, JPG or WebP reference image.");
-                        event.target.value = "";
-                        return;
+                      const selected = Array.from(event.target.files ?? []);
+                      const remaining = Math.max(0, 3 - referenceImages.length);
+                      if (!selected.length) return;
+                      if (selected.length > remaining) {
+                        toast.error("Attach up to three reference images per request.");
                       }
-                      if (file.size > 2.8 * 1024 * 1024) {
-                        toast.error("Reference images must be 2.8 MB or smaller.");
-                        event.target.value = "";
-                        return;
-                      }
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        const dataUrl = String(reader.result ?? "");
-                        const data = dataUrl.split(",")[1];
-                        if (!data) {
-                          toast.error("Could not read that image.");
-                          return;
+                      const candidates = selected.slice(0, remaining);
+                      const valid = candidates.filter((file) => {
+                        if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+                          toast.error(file.name + ": use PNG, JPG or WebP.");
+                          return false;
                         }
-                        setReferenceImage({
-                          name: file.name,
-                          mimeType: file.type as ReferenceImage["mimeType"],
-                          data,
-                        });
-                      };
-                      reader.onerror = () => toast.error("Could not read that image.");
-                      reader.readAsDataURL(file);
+                        if (file.size > 1.8 * 1024 * 1024) {
+                          toast.error(file.name + ": reference images must be 1.8 MB or smaller.");
+                          return false;
+                        }
+                        return true;
+                      });
+                      event.target.value = "";
+                      void Promise.all(valid.map((file) => new Promise<ReferenceImage | null>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          const data = String(reader.result ?? "").split(",")[1];
+                          resolve(data ? {
+                            name: file.name,
+                            mimeType: file.type as ReferenceImage["mimeType"],
+                            data,
+                          } : null);
+                        };
+                        reader.onerror = () => {
+                          toast.error("Could not read " + file.name + ".");
+                          resolve(null);
+                        };
+                        reader.readAsDataURL(file);
+                      }))).then((images) => {
+                        setReferenceImages((current) => [...current, ...images.filter((image): image is ReferenceImage => Boolean(image))].slice(0, 3));
+                      });
                     }}
                   />
                   <div className="rounded-xl border border-white/[0.12] bg-[#101c2d] p-2 focus-within:border-cyan-400/40">
@@ -1651,9 +1665,9 @@ export function CodeAgent() {
                           onClick={() => referenceInputRef.current?.click()}
                           disabled={busy}
                           className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] text-slate-400 transition hover:bg-white/5 hover:text-cyan-200"
-                          title="Attach a screenshot or design reference"
+                          title="Attach up to three screenshots or design references"
                         >
-                          <ImagePlus className="h-4 w-4" /> Reference image
+                          <ImagePlus className="h-4 w-4" /> Reference images
                         </button>
                         <span className="hidden text-[9px] text-slate-600 sm:inline">
                           Enter to send · Shift + Enter for new line

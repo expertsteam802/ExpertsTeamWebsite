@@ -9,6 +9,11 @@ type AgentInput = {
     mimeType: "image/png" | "image/jpeg" | "image/webp";
     data: string;
   };
+  referenceImages?: {
+    name: string;
+    mimeType: "image/png" | "image/jpeg" | "image/webp";
+    data: string;
+  }[];
 };
 
 const AGENT_PROMPT = `You are the ExpertsTeam coding agent.
@@ -17,7 +22,7 @@ You build complete, production-quality browser apps and front-end products for E
 Priority: generate complete, working project code that can be published live and branded as ExpertsTeam.
 
 Your output must be a valid JSON object with this exact shape:
-{"message":"short summary of what you did","files":{"path":"full file content",...}}
+{"message":"short summary of what you did","files":{"path":"full file content",...},"complete":true}
 
 Rules:
 - Prefer modern, real-world app structure over tiny single-file demos when the request needs it.
@@ -26,6 +31,12 @@ Rules:
 - If a project needs multiple files, include all required files and keep them consistent.
 - Before editing, inspect the supplied project context and form a short implementation plan; include that plan in the JSON message, then complete the requested work rather than stopping at a plan.
 - When a screenshot or photo reference is attached, treat it as the visual specification: reproduce its layout, proportions, spacing, typography, colors, imagery, responsive behavior and visible interactions as closely as possible. Build real interface code and working controls; never return only a static image or a superficial approximation.
+- Treat reference screenshots as a complete product-design brief, not a loose inspiration. Recreate the full visible composition: top bars, sidebars, navigation, tabs, toolbars, panels, canvases, split views, cards, dialogs, menus, typography, spacing, borders, shadows, icon scale and responsive breakpoints.
+- If the reference shows multiple tabs, screens or canvases, implement every visible tab and its distinct content/state. Do not collapse a multi-screen product into one generic page or omit controls that appear in the reference.
+- Match visual hierarchy and proportions before adding decoration. Use consistent design tokens and reusable components so the result feels like one coherent product.
+- Every visible control must perform a real action. Include loading, empty, error, active, selected, disabled and mobile states where relevant. Never use dead buttons, fake data presented as live data, or placeholder sections.
+- When editing an existing project, inspect and preserve its architecture, routes, data contracts and current visual identity. Make focused changes instead of replacing the project with a generic template.
+- Before returning complete:true, audit every requested screen, tab, responsive layout, interaction, import and route. If a required screen or file is still missing, continue generating it.
 - Preserve existing project features and visual identity unless the user explicitly asks to replace them. Do not remove unrelated routes, flows, settings, or data.
 - Before marking complete, check that all referenced imports, files, routes, dependencies and interactions are present and mutually consistent. Include missing supporting files in later continuation rounds instead of leaving TODOs or placeholders.
 - Always include only files you created or changed; null values are allowed to delete files.
@@ -132,7 +143,7 @@ function parseAgentFiles(text: string): {
     return {
       message: typeof parsed.message === "string" ? parsed.message : undefined,
       files,
-      complete: parsed.complete !== false,
+      complete: parsed.complete === true,
     };
   } catch (error) {
     if (error instanceof Error && /Invalid file path|Invalid content/.test(error.message))
@@ -142,17 +153,26 @@ function parseAgentFiles(text: string): {
 }
 
 export async function runAgent(
-  { prompt, files, history, referenceImage }: AgentInput,
+  { prompt, files, history, referenceImage, referenceImages: suppliedReferenceImages }: AgentInput,
   apiKey?: string,
 ) {
   const cleanPrompt = prompt.trim();
   if (!cleanPrompt) throw new Error("Tell the agent what to build.");
+  const visualReferences = suppliedReferenceImages?.length
+    ? suppliedReferenceImages
+    : referenceImage
+      ? [referenceImage]
+      : [];
   if (
-    referenceImage &&
-    (referenceImage.data.length > 4_000_000 ||
-      !["image/png", "image/jpeg", "image/webp"].includes(referenceImage.mimeType))
+    visualReferences.length > 3 ||
+    visualReferences.some(
+      (image) =>
+        image.data.length > 3_000_000 ||
+        !["image/png", "image/jpeg", "image/webp"].includes(image.mimeType),
+    ) ||
+    visualReferences.reduce((total, image) => total + image.data.length, 0) > 8_000_000
   )
-    throw new Error("The reference image is invalid or too large.");
+    throw new Error("Use up to three PNG, JPG or WebP references, with a combined size under 8 MB.");
   if (cleanPrompt.length > 16000) throw new Error("That request is too long.");
   const entries = Object.entries(files);
   if (entries.length > 80)
@@ -205,7 +225,7 @@ export async function runAgent(
   const completedFiles: Record<string, string | null> = {};
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
-  const maxRounds = 7;
+  const maxRounds = 12;
 
   for (let round = 0; round < maxRounds; round++) {
     const existingNames = Object.keys(completedFiles);
@@ -247,9 +267,9 @@ export async function runAgent(
           systemInstruction: { parts: [{ text: systemPrompt }] },
           generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1400 },
           contents: [
-            ...history.slice(-1).map((message) => ({
+            ...history.slice(-4).map((message) => ({
               role: message.role === "assistant" ? ("model" as const) : ("user" as const),
-              parts: [{ text: message.content.slice(-500) }],
+              parts: [{ text: message.content.slice(-700) }],
             })),
             {
               role: "user",
@@ -257,26 +277,23 @@ export async function runAgent(
                 {
                   text:
                     continuation +
-                    (referenceImage
-                      ? "\\n\\nVISUAL REFERENCE: Inspect the attached screenshot/photo and reproduce its visible layout, spacing, typography, colors, responsive behavior and all visible controls as working app code. Treat the image as a design specification, not as an image to merely display."
+                    (visualReferences.length
+                      ? "\\n\\nVISUAL REFERENCES: Inspect every attached screenshot/photo. Use them together as a complete visual specification for the requested screens, tabs, panels and canvases. Reproduce the layouts and working interactions, not just the images. Reference files: " +
+                        visualReferences.map((image) => image.name).join(", ")
                       : ""),
                 },
-                ...(referenceImage
-                  ? [
-                      {
-                        inlineData: {
-                          mimeType: referenceImage.mimeType,
-                          data: referenceImage.data,
-                        },
-                      },
-                    ]
-                  : []),
+                ...visualReferences.map((image) => ({
+                  inlineData: {
+                    mimeType: image.mimeType,
+                    data: image.data,
+                  },
+                })),
               ],
             },
           ],
         },
         apiKey,
-        referenceImage ? ["gemini"] : rotatedProviders,
+        visualReferences.length ? ["gemini"] : rotatedProviders,
       );
 
       const candidate = response.candidates?.[0];
@@ -311,12 +328,11 @@ export async function runAgent(
   }
 
   if (Object.keys(completedFiles).length > 0) {
-    return {
-      message:
-        latestMessage +
-        " Some files are complete; the remaining files need another continuation pass.",
-      files: completedFiles,
-    };
+    throw new Error(
+      "The agent reached its continuation limit before the full request was complete. " +
+        "It prepared " + Object.keys(completedFiles).length + " complete file(s), but did not apply a partial project update. " +
+        "Retry with a narrower request or ask the agent to continue in smaller steps.",
+    );
   }
   throw new Error(
     lastFailure
