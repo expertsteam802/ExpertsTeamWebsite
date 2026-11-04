@@ -441,7 +441,8 @@ export function ChrisAiChat({
     if (guestCreditsExhausted) {
       toast.error("You have used your 15 free guest credits. Create an account to keep chatting.");
       return;
-    }\n    if (chatIsFull) {
+    }
+    if (chatIsFull) {
       toast.error("This chat is full. Start a new chat to continue; this conversation remains saved.");
       return;
     }
@@ -453,9 +454,13 @@ export function ChrisAiChat({
   }
 
   function newChat() {
-    setThreadId(crypto.randomUUID());
     setAttachments([]);
-    void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
+    if (user) {
+      setThreadId(crypto.randomUUID());
+      void queryClient.invalidateQueries({ queryKey: ["ai-chats", user.id] });
+    } else {
+      setGuestMessages([]);
+    }
   }
 
   return (
@@ -610,7 +615,7 @@ export function ChrisAiChat({
 
       <div className="border-t border-border/70 p-3">
         {guestCreditsExhausted && (
-          <div role="status" className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">Your 15 free guest credits are used. Create an account to continue chatting with ExpertAI.</div>
+          <div role="status" className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">Your 15 free guest credits are used. Create an account to continue chatting with ExpertAI. <button type="button" className="ml-2 font-semibold text-primary underline" onClick={() => window.location.assign("/auth")}>Create account</button></div>
         )}\n        {chatIsFull && (
           <div role="status" className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
             <span>This chat is full. Your conversation is saved. Start a new chat to continue.</span>
@@ -676,19 +681,21 @@ export function ChrisAiChat({
             }}
             className="min-h-10 resize-none"
           />
-          <Button
-            variant="secondary"
-            size="icon"
-            aria-label="Generate image"
-            onClick={() => void generateImageMutation.mutateAsync()}
-            disabled={generateImageMutation.isPending}
-          >
-            {generateImageMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <ImagePlus className="h-4 w-4" />
-            )}
-          </Button>
+          {user && (
+            <Button
+              variant="secondary"
+              size="icon"
+              aria-label="Generate image"
+              onClick={() => void generateImageMutation.mutateAsync()}
+              disabled={generateImageMutation.isPending}
+            >
+              {generateImageMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ImagePlus className="h-4 w-4" />
+              )}
+            </Button>
+          )}
           <Button onClick={submit} disabled={send.isPending || chatIsFull || guestCreditsExhausted} aria-label="Send message">
             <Send className="h-4 w-4" />
           </Button>
