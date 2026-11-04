@@ -28,12 +28,18 @@ function normalizeAdSettings(value: Json | null | undefined): AdSettings {
   const raw = value as Record<string, Json | undefined>;
   return {
     myBidVastEnabled: typeof raw.myBidVastEnabled === "boolean" ? raw.myBidVastEnabled : true,
-    myBidVastUrl: typeof raw.myBidVastUrl === "string" && raw.myBidVastUrl.trim()
-      ? raw.myBidVastUrl
-      : DEFAULT_AD_SETTINGS.myBidVastUrl,
-    myBidAdCodeId: typeof raw.myBidAdCodeId === "string" ? raw.myBidAdCodeId : DEFAULT_AD_SETTINGS.myBidAdCodeId,
-    myBidFormatId: typeof raw.myBidFormatId === "string" ? raw.myBidFormatId : DEFAULT_AD_SETTINGS.myBidFormatId,
-    myBidAdCodeName: typeof raw.myBidAdCodeName === "string" ? raw.myBidAdCodeName : DEFAULT_AD_SETTINGS.myBidAdCodeName,
+    myBidVastUrl:
+      typeof raw.myBidVastUrl === "string" && raw.myBidVastUrl.trim()
+        ? raw.myBidVastUrl
+        : DEFAULT_AD_SETTINGS.myBidVastUrl,
+    myBidAdCodeId:
+      typeof raw.myBidAdCodeId === "string" ? raw.myBidAdCodeId : DEFAULT_AD_SETTINGS.myBidAdCodeId,
+    myBidFormatId:
+      typeof raw.myBidFormatId === "string" ? raw.myBidFormatId : DEFAULT_AD_SETTINGS.myBidFormatId,
+    myBidAdCodeName:
+      typeof raw.myBidAdCodeName === "string"
+        ? raw.myBidAdCodeName
+        : DEFAULT_AD_SETTINGS.myBidAdCodeName,
   };
 }
 
@@ -121,7 +127,8 @@ export function AdminAdsSettingsPanel() {
       <div>
         <h2 className="font-display text-xl font-semibold">Video advertising</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Manage the MyBid VAST pre-roll shown before ExpertsTeam videos. Adsterra display and popunder scripts have been retired.
+          Manage the MyBid VAST pre-roll shown before ExpertsTeam videos. Adsterra display and
+          popunder scripts have been retired.
         </p>
       </div>
 
@@ -129,9 +136,13 @@ export function AdminAdsSettingsPanel() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h3 className="font-semibold">MyBid Video VAST</h3>
-            <p className="mt-1 text-xs text-muted-foreground">Publisher ad code #{draft.myBidAdCodeId} · Format ID {draft.myBidFormatId}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Publisher ad code #{draft.myBidAdCodeId} · Format ID {draft.myBidFormatId}
+            </p>
           </div>
-          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600">Configured</span>
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600">
+            Configured
+          </span>
         </div>
         <ToggleRow
           title="Enable pre-roll video ads"
@@ -143,7 +154,9 @@ export function AdminAdsSettingsPanel() {
           <span className="text-sm font-medium">Ad code name</span>
           <input
             value={draft.myBidAdCodeName}
-            onChange={(event) => setDraft((current) => ({ ...current, myBidAdCodeName: event.target.value }))}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, myBidAdCodeName: event.target.value }))
+            }
             className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
           />
         </label>
@@ -152,7 +165,9 @@ export function AdminAdsSettingsPanel() {
           <input
             type="url"
             value={draft.myBidVastUrl}
-            onChange={(event) => setDraft((current) => ({ ...current, myBidVastUrl: event.target.value }))}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, myBidVastUrl: event.target.value }))
+            }
             className="h-10 w-full rounded-md border border-input bg-background px-3 font-mono text-xs"
             spellCheck={false}
           />
@@ -160,15 +175,24 @@ export function AdminAdsSettingsPanel() {
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block space-y-2">
             <span className="text-sm font-medium">MyBid ad code ID</span>
-            <input value={draft.myBidAdCodeId} readOnly className="h-10 w-full rounded-md border border-input bg-muted px-3 text-sm" />
+            <input
+              value={draft.myBidAdCodeId}
+              readOnly
+              className="h-10 w-full rounded-md border border-input bg-muted px-3 text-sm"
+            />
           </label>
           <label className="block space-y-2">
             <span className="text-sm font-medium">Video VAST format ID</span>
-            <input value={draft.myBidFormatId} readOnly className="h-10 w-full rounded-md border border-input bg-muted px-3 text-sm" />
+            <input
+              value={draft.myBidFormatId}
+              readOnly
+              className="h-10 w-full rounded-md border border-input bg-muted px-3 text-sm"
+            />
           </label>
         </div>
         <p className="text-xs text-muted-foreground">
-          The VAST tag is requested through the Google IMA SDK. The original YouTube video starts only after the ad completes or MyBid reports no fill.
+          The VAST tag is requested through the Google IMA SDK. The original YouTube video starts
+          only after the ad completes or MyBid reports no fill.
         </p>
       </Card>
 
