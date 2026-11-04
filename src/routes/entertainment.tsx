@@ -68,7 +68,7 @@ function EntertainmentPage() {
         <div className="min-w-0">
           <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
             <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Community library</p><h2 className="mt-1 font-display text-2xl font-bold">{active.label}</h2><p className="mt-1 text-sm text-muted-foreground">{active.description}</p></div>
-            <UploadDialog defaultCategory={section === "games" ? "game" : "app"} />
+            <UploadDialog key={section} defaultCategory={section === "games" ? "game" : "app"} />
           </div>
           {isLoading ? <Card className="p-8 text-sm text-muted-foreground">Loading community files…</Card> : section === "games" ? <FileGrid files={games} /> : <FileGrid files={appsAndFiles} />}
           <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground"><FolderOpen className="h-4 w-4" /> Members can share their own games, apps and useful files.</div>
