@@ -111,7 +111,6 @@ function Banner728() {
     };
 
     const script = document.createElement("script");
-    script.async = true;
     script.src = "https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b";
     script.dataset.expertsteamAd = "banner-728";
     host.appendChild(script);
@@ -159,7 +158,6 @@ export function GlobalAdScripts() {
     if (existing) return;
 
     const script = document.createElement("script");
-    script.async = true;
     script.setAttribute("data-cfasync", "false");
     script.src = source;
     script.dataset.expertsteamAd = "popunder";
