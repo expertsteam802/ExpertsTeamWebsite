@@ -149,6 +149,45 @@ function TypewriterText({ text, animate }: { text: string; animate: boolean }) {
   return <>{text.slice(0, visibleLength)}</>;
 }
 
+async function compressReferenceImage(file: File): Promise<ReferenceImage> {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error("Could not decode " + file.name + "."));
+      element.src = objectUrl;
+    });
+    const scale = Math.min(1, 1440 / Math.max(image.width, image.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Image compression is unavailable in this browser.");
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    let quality = 0.78;
+    let blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not compress image.")), "image/jpeg", quality),
+    );
+    while (blob.size > 520_000 && quality > 0.48) {
+      quality -= 0.08;
+      blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not compress image.")), "image/jpeg", quality),
+      );
+    }
+    if (blob.size > 650_000) throw new Error(file.name + " is too large after compression.");
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(new Error("Could not read compressed " + file.name + "."));
+      reader.readAsDataURL(blob);
+    });
+    return { name: file.name.replace(/\.[^.]+$/, "") + ".jpg", mimeType: "image/jpeg", data: dataUrl.split(",")[1] ?? "" };
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 const fileIcon = (name: string) => {
   if (name.endsWith(".css")) return "text-sky-400";
   if (name.endsWith(".html")) return "text-orange-400";
@@ -1618,37 +1657,22 @@ export function CodeAgent() {
                           toast.error(file.name + ": use PNG, JPG or WebP.");
                           return false;
                         }
-                        if (file.size > 1.8 * 1024 * 1024) {
-                          toast.error(file.name + ": reference images must be 1.8 MB or smaller.");
+                        if (file.size > 12 * 1024 * 1024) {
+                          toast.error(file.name + ": choose an image under 12 MB before compression.");
                           return false;
                         }
                         return true;
                       });
                       event.target.value = "";
                       void Promise.all(
-                        valid.map(
-                          (file) =>
-                            new Promise<ReferenceImage | null>((resolve) => {
-                              const reader = new FileReader();
-                              reader.onload = () => {
-                                const data = String(reader.result ?? "").split(",")[1];
-                                resolve(
-                                  data
-                                    ? {
-                                        name: file.name,
-                                        mimeType: file.type as ReferenceImage["mimeType"],
-                                        data,
-                                      }
-                                    : null,
-                                );
-                              };
-                              reader.onerror = () => {
-                                toast.error("Could not read " + file.name + ".");
-                                resolve(null);
-                              };
-                              reader.readAsDataURL(file);
-                            }),
-                        ),
+                        valid.map(async (file) => {
+                          try {
+                            return await compressReferenceImage(file);
+                          } catch (error) {
+                            toast.error(error instanceof Error ? error.message : "Could not compress " + file.name + ".");
+                            return null;
+                          }
+                        }),
                       ).then((images) => {
                         setReferenceImages((current) =>
                           [

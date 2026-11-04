@@ -127,7 +127,7 @@ async function compressImageForAi(file: File): Promise<UploadedFile> {
       reader.onerror = () => reject(new Error(`Could not read compressed ${file.name}.`));
       reader.readAsDataURL(blob);
     });
-    return { name: file.name.replace(/\\.[^.]+$/, "") + ".jpg", mimeType: "image/jpeg", dataUrl, size: blob.size };
+    return { name: file.name.replace(/\.[^.]+$/, "") + ".jpg", mimeType: "image/jpeg", dataUrl, size: blob.size };
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
