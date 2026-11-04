@@ -85,7 +85,7 @@ function AdminPage() {
   const { data: videoStats = [], isLoading: videoStatsLoading } = useQuery({
     queryKey: ["admin", "video-analytics"],
     enabled: isAdmin,
-    refetchInterval: 30000,
+    refetchInterval: 5 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("videos")
@@ -140,7 +140,7 @@ function AdminPage() {
   } = useQuery({
     queryKey: ["admin", "system-status"],
     enabled: isAdmin,
-    refetchInterval: 30000,
+    refetchInterval: 5 * 60 * 1000,
     queryFn: async () => {
       const profileResult = await supabase
         .from("profiles")
@@ -165,7 +165,7 @@ function AdminPage() {
   } = useQuery({
     queryKey: ["admin", "contact-messages"],
     enabled: isAdmin,
-    refetchInterval: 30000,
+    refetchInterval: 5 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contact_messages")
