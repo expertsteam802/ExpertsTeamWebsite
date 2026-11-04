@@ -114,7 +114,7 @@ export function AdminAdsSettingsPanel() {
           throw new Error("Use the secure MyBid VAST URL supplied for this placement.");
         }
       }
-      if (draft.myBidActiveFormat === "overlay" && !/^\\d+$/.test(draft.myBidOverlayAdCodeId)) {
+      if (draft.myBidActiveFormat === "overlay" && !/^\d+$/.test(draft.myBidOverlayAdCodeId)) {
         throw new Error("Enter a valid MyBid Video Overlay ad code ID.");
       }
       const { error } = await supabase
