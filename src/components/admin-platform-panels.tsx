@@ -267,10 +267,6 @@ export function AdminAdsSettingsPanel() {
         </p>
       </Card>
 
-      {/* Existing VAST configuration remains saved even when Overlay is selected. */}
-      {false && (
-        <ToggleRow
-          title="Enable pre-roll video ads"
       <Card className="space-y-3 p-5">
         <h3 className="font-semibold">Application errors</h3>
         <ToggleRow
