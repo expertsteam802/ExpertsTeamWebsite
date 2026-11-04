@@ -68,6 +68,14 @@ export const Route = createFileRoute("/api/ai/stream")({
             }
           }
 
+          let guestSessionId = "";
+          if (isGuest) {
+            guestSessionId = request.headers.get("x-guest-session") || "";
+            if (!/^[0-9a-f-]{36}$/i.test(guestSessionId)) {
+              return Response.json({ error: "A valid guest session is required." }, { status: 400 });
+            }
+          }
+
           const supabaseUrl = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
           const supabaseKey =
             process.env["SUPABASE_PUBLISHABLE_KEY"] || process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
