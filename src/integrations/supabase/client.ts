@@ -119,10 +119,13 @@ function createSupabaseFetch(supabaseKey: string, supabaseUrl: string): typeof f
     }
 
     headers.set("apikey", supabaseKey);
-    const requestUrl = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    const requestUrl =
+      typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
     const usageTarget =
       typeof window !== "undefined" ? getUsageTarget(requestUrl, supabaseUrl) : null;
-    const method = (init?.method || (input instanceof Request ? input.method : "GET")).toUpperCase();
+    const method = (
+      init?.method || (input instanceof Request ? input.method : "GET")
+    ).toUpperCase();
     const requestBytes = getRequestBytes(init?.body);
     const startedAt = typeof performance !== "undefined" ? performance.now() : 0;
 
@@ -135,7 +138,9 @@ function createSupabaseFetch(supabaseKey: string, supabaseUrl: string): typeof f
           status_code: response.status,
           duration_ms: Math.max(
             0,
-            Math.round((typeof performance !== "undefined" ? performance.now() : startedAt) - startedAt),
+            Math.round(
+              (typeof performance !== "undefined" ? performance.now() : startedAt) - startedAt,
+            ),
           ),
           request_bytes: requestBytes,
           response_bytes: Number(response.headers.get("content-length") || 0),
@@ -150,7 +155,9 @@ function createSupabaseFetch(supabaseKey: string, supabaseUrl: string): typeof f
           status_code: 0,
           duration_ms: Math.max(
             0,
-            Math.round((typeof performance !== "undefined" ? performance.now() : startedAt) - startedAt),
+            Math.round(
+              (typeof performance !== "undefined" ? performance.now() : startedAt) - startedAt,
+            ),
           ),
           request_bytes: requestBytes,
           response_bytes: 0,
