@@ -42,8 +42,8 @@ import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 import { json } from "@codemirror/lang-json";
 import { oneDark } from "@codemirror/theme-one-dark";
-import { bracketMatching, foldGutter, indentOnInput } from "@codemirror/language";
-import { autocompletion, closeBrackets } from "@codemirror/autocomplete";
+
+
 import { indentWithTab } from "@codemirror/commands";
 import { keymap } from "@codemirror/view";
 import { toast } from "sonner";
