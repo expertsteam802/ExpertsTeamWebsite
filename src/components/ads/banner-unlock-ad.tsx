@@ -30,6 +30,7 @@ export function BannerUnlockAd({
 }) {
   const onUnlockedRef = useRef(onUnlocked);
   const completedRef = useRef(false);
+  const [adReady, setAdReady] = useState(false);
   const [remaining, setRemaining] = useState(seconds);
   const [finished, setFinished] = useState(false);
 
@@ -38,7 +39,12 @@ export function BannerUnlockAd({
   }, [onUnlocked]);
 
   useEffect(() => {
-    if (finished || completedRef.current) return;
+    const fallback = window.setTimeout(() => setAdReady(true), 12000);
+    return () => window.clearTimeout(fallback);
+  }, []);
+
+  useEffect(() => {
+    if (!adReady || finished || completedRef.current) return;
     if (remaining <= 0) {
       completedRef.current = true;
       setFinished(true);
@@ -47,7 +53,7 @@ export function BannerUnlockAd({
     }
     const timer = window.setTimeout(() => setRemaining((current) => current - 1), 1000);
     return () => window.clearTimeout(timer);
-  }, [finished, remaining]);
+  }, [adReady, finished, remaining]);
 
   return (
     <section className={`w-full rounded-2xl border border-border/70 bg-card p-4 ${compact ? "max-w-3xl" : "max-w-4xl"}`}>
@@ -68,11 +74,12 @@ export function BannerUnlockAd({
           referrerPolicy="strict-origin-when-cross-origin"
           className="h-full w-full border-0"
           loading="eager"
+          onLoad={() => setAdReady(true)}
         />
       </div>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          {finished ? "You're all set. Your content is ready." : "Stay here for a few seconds to unlock this content."}
+          {finished ? "You're all set. Your content is ready." : adReady ? "Stay here for a few seconds to unlock this content." : "Loading sponsor banner…"}
         </p>
         {finished ? (
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
@@ -80,7 +87,7 @@ export function BannerUnlockAd({
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold tabular-nums text-primary">
-            <Clock3 className="h-4 w-4" /> {remaining}s
+            <Clock3 className="h-4 w-4" /> {adReady ? `${remaining}s` : "Loading"}
           </span>
         )}
       </div>
