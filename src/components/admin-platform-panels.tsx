@@ -140,19 +140,19 @@ export function AdminAdsSettingsPanel() {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="font-display text-xl font-semibold">Video advertising</h2>
+        <h2 className="font-display text-xl font-semibold">Content unlock advertising</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Lesson videos use the MyBid VAST pre-roll. It reports ad-start, completion, and no-fill
-          events, so visitors can continue safely when MyBid has no available ad.
+          Lessons, file downloads and new-account confirmations use the in-page 728 × 90 sponsor banner.
+          Visitors stay on ExpertsTeam, see an eight-second countdown, and unlock the requested content here.
         </p>
       </div>
 
       <Card className="space-y-4 p-5">
         <div className="rounded-lg border border-border/70 bg-muted/40 p-3">
-          <p className="text-sm font-medium">Active format: MyBid VAST pre-roll</p>
+          <p className="text-sm font-medium">Active format: 728 × 90 in-page banner</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            VAST provides reliable playback and no-fill events. The legacy overlay values below are
-            retained for reference but are not loaded by the video player.
+            The banner is rendered inside a sandboxed frame, so the ad cannot navigate the main ExpertsTeam page.
+            MyBid VAST controls below are retained for legacy placements and do not control this unlock banner.
           </p>
         </div>
         <div className="flex items-center justify-between gap-4">
