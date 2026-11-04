@@ -66,6 +66,8 @@ import { buildSrcDocWithConsole, STARTER_FILES, type ProjectFiles } from "@/lib/
 type Message = { role: "user" | "assistant"; content: string };
 type ReferenceImage = { name: string; mimeType: "image/png" | "image/jpeg" | "image/webp"; data: string };
 
+type CheckpointRow = { id: string; name: string; files: ProjectFiles; created_at: string };
+
 type ProjectRow = {
   id: string;
   name: string;
@@ -234,6 +236,18 @@ export function CodeAgent() {
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as ProjectRow[];
+    },
+  });
+
+  const { data: checkpoints = [] } = useQuery({
+    queryKey: ["agent-project-checkpoints", projectId],
+    enabled: Boolean(user && projectId),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("agent_project_checkpoints")
+        .select("id,name,files,created_at").eq("project_id", projectId!)
+        .order("created_at", { ascending: false }).limit(20);
+      if (error) throw error;
+      return (data ?? []) as unknown as CheckpointRow[];
     },
   });
 
@@ -452,6 +466,42 @@ export function CodeAgent() {
     return data.id;
   }
 
+  async function saveCheckpoint(label: string) {
+    if (!user) throw new Error("Sign in to create a checkpoint.");
+    const activeProjectId = projectId ?? (await persist());
+    const { error } = await supabase.from("agent_project_checkpoints").insert({
+      project_id: activeProjectId,
+      user_id: user.id,
+      name: label.slice(0, 120),
+      files: files as unknown as Json,
+    });
+    if (error) throw error;
+    await queryClient.invalidateQueries({ queryKey: ["agent-project-checkpoints", activeProjectId] });
+  }
+
+  async function restoreLastCheckpoint() {
+    if (!user || !projectId) {
+      toast.info("Save this project first to create rollback checkpoints.");
+      return;
+    }
+    const { data, error } = await supabase.from("agent_project_checkpoints")
+      .select("id,name,files,created_at").eq("project_id", projectId)
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (error) { toast.error(error.message); return; }
+    if (!data) { toast.info("There is no checkpoint to restore yet."); return; }
+    const restored = data.files as unknown as ProjectFiles;
+    setFiles(restored);
+    setActiveFile(Object.keys(restored)[0] ?? "index.html");
+    setDirty(true);
+    setPreviewKey(value => value + 1);
+    try {
+      await persist({ files: restored });
+      toast.success("Restored checkpoint: " + data.name);
+    } catch (restoreError) {
+      toast.error(restoreError instanceof Error ? restoreError.message : "Could not restore checkpoint.");
+    }
+  }
+
   const saveMutation = useMutation({
     mutationFn: () => persist(),
     onSuccess: () => toast.success("Project saved successfully"),
@@ -491,6 +541,7 @@ export function CodeAgent() {
     setBusy(true);
 
     try {
+      await saveCheckpoint(`Before: ${text.slice(0, 96)}`);
       const result = await run({
         data: { prompt: text, files, history: messages.slice(-8), referenceImage: referenceImage ?? undefined },
       });
@@ -794,6 +845,17 @@ export function CodeAgent() {
               <Save className="mr-1.5 h-3.5 w-3.5" />
             )}
             Save
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void restoreLastCheckpoint()}
+            disabled={!checkpoints.length}
+            className="h-8 border-amber-400/20 bg-amber-400/[0.06] text-amber-100 hover:bg-amber-400/10"
+            title={checkpoints[0] ? `Restore: ${checkpoints[0].name}` : "No saved checkpoints"}
+          >
+            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+            Undo AI change
           </Button>
           <Button
             size="sm"
