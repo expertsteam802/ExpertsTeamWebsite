@@ -286,7 +286,7 @@ export function AdminApiUsagePanel() {
     dataUpdatedAt,
   } = useQuery({
     queryKey: ["admin", "api-usage", range],
-    refetchInterval: 60000,
+    refetchInterval: 2 * 60 * 1000,
     queryFn: async () => {
       const { data: rows, error } = await supabase.rpc("admin_api_usage_summary", {
         p_since: since,
