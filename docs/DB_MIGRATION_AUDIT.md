@@ -99,3 +99,27 @@ alter table public.agent_project_runs validate constraint agent_project_runs_use
 - `20261103195458_admin_delete_subscription_requests.sql`: permits admins to delete subscription payment requests, with RLS limited to the admin role.
 - `20261103200100_configurable_free_ai_credit_allowance.sql`: adds `site_settings.ai_free_credits` and uses it as the initial credit balance for newly registered accounts.
 - `20261103200536_workspace_messages_realtime_publication.sql`: adds `workspace_messages` to the Supabase Realtime publication for live workspace chat updates.
+
+## Social community, Stories and private messaging (2026-11-04)
+
+The following migrations are applied to the connected ExpertsTeam Supabase project and are tracked in `supabase/migrations/`:
+
+1. `20261104131733_direct_messaging.sql` — one-to-one conversations, participants, messages, realtime publication, membership RLS and private-schema security-definer helpers.
+2. `20261104131800_direct_messaging_hardening.sql` — revokes anonymous/public table access, grants only the required authenticated operations, tightens row policies, and indexes sender/creator foreign keys.
+3. `20261104132025_direct_message_private_media.sql` — renames message media references to storage paths and adds the non-public `direct-messages` bucket. Storage policies limit uploads to the sender's folder and reads to conversation members; the UI uses signed URLs.
+4. `20261104132409_community_stories.sql` — adds 24-hour community stories, active-story RLS, author/admin deletion, indexes and Realtime publication.
+
+Verification performed against the connected project:
+
+- All three direct-message tables have RLS enabled and `direct_messages` is in `supabase_realtime`.
+- Anonymous users cannot read direct messages or execute the private membership helpers.
+- Transactional tests verified that sender and recipient can read a direct message and its private media, while an unrelated authenticated user cannot. The test transaction was rolled back.
+- The Stories table has RLS and Realtime enabled. A transactional test verified an authenticated author can publish and an anonymous visitor can read an active story. The test transaction was rolled back.
+- The test transactions left no temporary conversations, messages, stories or storage objects behind.
+- Generated TypeScript definitions were refreshed for the new tables.
+
+## Deployment status after social platform merge
+
+The social platform changes were merged to `main` in commit `855688d`. GitHub CI passed formatting, unit tests, lint and the production build. The subsequent CI synchronization commit is `5af166c`.
+
+Production deployment is not yet verified. The GitHub Actions Vercel workflow currently stops before build because these repository secrets are missing: `VERCEL_TOKEN`, `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`. The separate Vercel status also reports an account build-rate limit. A Netlify deploy-preview check passed for the pull request, but that is not confirmation of a production deployment.
