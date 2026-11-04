@@ -34,7 +34,7 @@ const CATEGORIES = [
   { value: "app", label: "App" },
   { value: "book", label: "Book" },
   { value: "video", label: "Video" },
-  { value: "lesson", label: "Lesson / book" },
+  { value: "lesson", label: "Lesson" },
   { value: "resource", label: "Resource" },
 ];
 
@@ -105,7 +105,7 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
         <DialogHeader>
           <DialogTitle>Share something with the community</DialogTitle>
           <DialogDescription>
-            Games, videos, lessons or resources — up to 200MB per file.
+            Games, apps, books, videos, lessons or resources — up to 200MB per file.
           </DialogDescription>
         </DialogHeader>
 
