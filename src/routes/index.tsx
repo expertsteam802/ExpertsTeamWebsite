@@ -29,17 +29,17 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ExpertsTeam — Turn ideas into real apps" },
+      { title: "Expertsteam802 | ExpertsTeam Coding & AI Studio" },
       {
         name: "description",
         content:
-          "Meet ExpertsTeam: an AI-powered workspace to plan, build and edit apps, explore code, learn new skills and create alongside a growing community.",
+          "Expertsteam802 is the official ExpertsTeam website for AI app building, coding tutorials, creator videos, developer projects and community learning.",
       },
-      { property: "og:title", content: "ExpertsTeam — Turn ideas into real apps" },
+      { property: "og:title", content: "Expertsteam802 | ExpertsTeam Coding & AI Studio" },
       {
         property: "og:description",
         content:
-          "From your first idea to a working app. Build with AI, explore the code and keep creating with ExpertsTeam.",
+          "Visit Expertsteam802, the ExpertsTeam home for Chris Expert, coding lessons, AI-assisted app creation and developer resources.",
       },
     ],
   }),
@@ -400,6 +400,27 @@ function Index() {
       )}
 
       <AdSlot slot="home-bottom" />
+
+      <section className="border-y border-border/60 bg-surface/40 px-4 py-14 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl">
+          <p className="text-xs font-semibold tracking-[0.22em] text-primary">OFFICIAL BRAND & CREATOR HOME</p>
+          <h2 className="mt-3 font-display text-2xl font-bold sm:text-3xl">
+            Expertsteam802 — the official ExpertsTeam website
+          </h2>
+          <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-base">
+            Expertsteam802 is the online home of ExpertsTeam, a creative technology platform by
+            Chris Expert. Explore AI-assisted app building, practical programming resources,
+            creator videos, community projects and beginner-friendly coding lessons.
+          </p>
+          <p className="mt-3 text-sm leading-7 text-muted-foreground sm:text-base">
+            Find the platform through searches for Expertsteam802, ExpertsTeam, Chris Expert,
+            ChrisPrograms, AngeloCodes, Dismas, ExpertsTeamCoders, CodeWithExperts and
+            LearnCodingWithChris. Start with the <Link to="/learn" className="font-medium text-primary hover:underline">coding lessons</Link>,
+            explore the <Link to="/videos" className="font-medium text-primary hover:underline">creator video library</Link>,
+            or try the <Link to="/ai" className="font-medium text-primary hover:underline">ExpertAI app-building workspace</Link>.
+          </p>
+        </div>
+      </section>
 
       <section className="px-4 pb-20 sm:px-6 lg:px-8">
         <div className="relative mx-auto max-w-7xl overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 via-card to-accent/10 p-8 sm:p-12 lg:p-14">
