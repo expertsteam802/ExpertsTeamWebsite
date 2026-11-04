@@ -71,8 +71,8 @@ const CAPABILITIES = [
   {
     icon: Users,
     number: "04",
-    title: "Learn and share together.",
-    body: "Explore creator videos, useful resources and community conversations in one place.",
+    title: "Ask anything. Get answers.",
+    body: "Get help with any question, find practical solutions and grow with creators, learners and developers in the ExpertsTeam community.",
     tag: "CREATOR COMMUNITY",
   },
 ];
