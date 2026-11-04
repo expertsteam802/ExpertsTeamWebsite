@@ -167,7 +167,13 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
   }, [isFetched, isError, settings.myBidVastEnabled, onFinished]);
 
   function playAd() {
-    if (!videoRef.current || !adContainerRef.current || status === "loading" || status === "playing") return;
+    if (
+      !videoRef.current ||
+      !adContainerRef.current ||
+      status === "loading" ||
+      status === "playing"
+    )
+      return;
     const ima = window.google?.ima;
     const video = videoRef.current;
     const container = adContainerRef.current;
@@ -190,26 +196,35 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
         const manager = event.getAdsManager(video);
         managerRef.current = manager;
         manager.addEventListener(ima.AdEvent.Type.ALL_ADS_COMPLETED, () => {
-          if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
+          if (requestTimeoutRef.current !== undefined)
+            window.clearTimeout(requestTimeoutRef.current);
           setStatus("complete");
           onFinished?.();
           manager.destroy();
           managerRef.current = null;
         });
-        manager.addEventListener(ima.AdEvent.Type.CONTENT_RESUME_REQUESTED, () => setStatus("complete"));
+        manager.addEventListener(ima.AdEvent.Type.CONTENT_RESUME_REQUESTED, () =>
+          setStatus("complete"),
+        );
         manager.addEventListener(ima.AdEvent.Type.STARTED, () => {
-          if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
+          if (requestTimeoutRef.current !== undefined)
+            window.clearTimeout(requestTimeoutRef.current);
           setStatus("playing");
         });
         manager.addEventListener(ima.AdErrorEvent.Type.AD_ERROR, () => {
-          if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
+          if (requestTimeoutRef.current !== undefined)
+            window.clearTimeout(requestTimeoutRef.current);
           setStatus("unavailable");
           setMessage("The MyBid video ad could not be played. You can continue to the video.");
           onFinished?.();
           manager.destroy();
           managerRef.current = null;
         });
-        manager.init(container.clientWidth || 640, container.clientHeight || 360, ima.ViewMode.NORMAL);
+        manager.init(
+          container.clientWidth || 640,
+          container.clientHeight || 360,
+          ima.ViewMode.NORMAL,
+        );
         manager.start();
       });
       loader.addEventListener(ima.AdErrorEvent.Type.AD_ERROR, () => {
