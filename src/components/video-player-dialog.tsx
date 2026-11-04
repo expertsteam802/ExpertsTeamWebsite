@@ -134,7 +134,7 @@ function playerErrorMessage(code: number) {
 type Props = { videoId: string | null; title: string; onClose: () => void };
 export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
   const { data: siteSettings } = useQuery(siteSettingsQuery);
-  const savedAdSettings = (siteSettings?.ad_settings ?? {}) as Record<string, unknown>;
+  const savedAdSettings = (siteSettings?.ad_settings ?? {}) as unknown as Record<string, unknown>;
   const overlayActive =
     savedAdSettings.myBidActiveFormat === "overlay" &&
     savedAdSettings.myBidOverlayEnabled !== false;
@@ -142,13 +142,13 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
     typeof savedAdSettings.myBidOverlayAdCodeId === "string"
       ? savedAdSettings.myBidOverlayAdCodeId
       : "470837";
-  const shouldLoadLesson = unlockedVideoId === videoId || overlayActive;
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YouTubePlayer | null>(null);
   const countedRef = useRef(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [unlockedVideoId, setUnlockedVideoId] = useState<string | null>(null);
+  const shouldLoadLesson = unlockedVideoId === videoId || overlayActive;
   const handleAdFinished = useCallback(() => {
     if (videoId) setUnlockedVideoId(videoId);
   }, [videoId]);
