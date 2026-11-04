@@ -304,6 +304,43 @@ export function CodeAgent() {
     };
   }, []);
 
+  // Keep the preview session warm and recover it after Vercel stops an idle sandbox.
+  // The server checks whether the dev server is already healthy, so this does not
+  // restart a working preview on every heartbeat.
+  useEffect(() => {
+    if (!runtimeUrl || !projectId) return;
+    let active = true;
+    let checking = false;
+    const heartbeat = window.setInterval(async () => {
+      if (checking || !active) return;
+      checking = true;
+      try {
+        const result = await startPreview({ data: { projectId, files } });
+        if (!active) return;
+        setRuntimeStatus("Running in Vercel Sandbox");
+        if (result.recovered) {
+          setRuntimeUrl(result.url);
+          setPreviewKey((value) => value + 1);
+          setLogs((current) => [
+            ...current.slice(-199),
+            { type: "runtime", message: "Preview automatically recovered after the sandbox stopped." },
+          ]);
+        }
+      } catch (error) {
+        if (!active) return;
+        const message = error instanceof Error ? error.message : "Preview health check failed.";
+        setRuntimeStatus("Preview reconnecting");
+        setLogs((current) => [...current.slice(-199), { type: "warn", message }]);
+      } finally {
+        checking = false;
+      }
+    }, 10 * 60 * 1000);
+    return () => {
+      active = false;
+      window.clearInterval(heartbeat);
+    };
+  }, [runtimeUrl, projectId, files, startPreview]);
+
   useEffect(() => {
     if (!runtimeUrl || !projectId) return;
     if (JSON.stringify(runtimeFilesRef.current) === JSON.stringify(files)) return;
