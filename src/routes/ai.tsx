@@ -5,7 +5,6 @@ import { Bot, Code2, MessageSquare, Sparkles } from "lucide-react";
 import { AdSlot } from "@/components/ads/ad-slot";
 import { ChrisAiChat } from "@/components/chris-ai";
 import { CodeAgent } from "@/components/code-agent";
-import { UpgradeDialog } from "@/components/upgrade-dialog";
 
 export const Route = createFileRoute("/ai")({
   head: () => ({
@@ -70,10 +69,6 @@ function AiPage() {
             <span>ExpertAI Chat</span>
           </button>
         </nav>
-
-        <div className="flex items-center gap-2">
-          <UpgradeDialog />
-        </div>
 
         <div className="hidden items-center gap-2 text-xs text-emerald-300 sm:flex">
           <span className="h-2 w-2 rounded-full bg-emerald-400" />

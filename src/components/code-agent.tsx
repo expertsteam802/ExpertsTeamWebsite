@@ -14,6 +14,7 @@ import {
   FilePlus2,
   Folder,
   Github,
+  ImagePlus,
   Loader2,
   Maximize2,
   Monitor,
@@ -63,6 +64,7 @@ import {
 } from "@/lib/agent.functions";
 import { buildSrcDocWithConsole, STARTER_FILES, type ProjectFiles } from "@/lib/sandbox";
 type Message = { role: "user" | "assistant"; content: string };
+type ReferenceImage = { name: string; mimeType: "image/png" | "image/jpeg" | "image/webp"; data: string };
 
 type ProjectRow = {
   id: string;
@@ -166,6 +168,8 @@ export function CodeAgent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [typingMessageIndex, setTypingMessageIndex] = useState<number | null>(null);
   const [prompt, setPrompt] = useState("");
+  const [referenceImage, setReferenceImage] = useState<ReferenceImage | null>(null);
+  const referenceInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<Panel>("preview");
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
@@ -480,15 +484,18 @@ export function CodeAgent() {
     const text = prompt.trim();
     if (!text || busy) return;
 
-    const nextMessages: Message[] = [...messages, { role: "user", content: text }];
+    const userText = referenceImage ? `${text}\n[Attached visual reference: ${referenceImage.name}]` : text;
+    const nextMessages: Message[] = [...messages, { role: "user", content: userText }];
     setMessages(nextMessages);
     setPrompt("");
     setBusy(true);
 
     try {
       const result = await run({
-        data: { prompt: text, files, history: messages.slice(-8) },
+        data: { prompt: text, files, history: messages.slice(-8), referenceImage: referenceImage ?? undefined },
       });
+      setReferenceImage(null);
+      if (referenceInputRef.current) referenceInputRef.current.value = "";
       const updatedFiles: ProjectFiles = { ...files };
       const changed: string[] = [];
 
@@ -1476,6 +1483,41 @@ export function CodeAgent() {
                 </div>
 
                 <div className="border-t border-white/[0.08] p-3">
+                  {referenceImage && (
+                    <div className="mb-2 flex items-center justify-between rounded-lg border border-cyan-400/20 bg-cyan-400/[0.06] px-3 py-2">
+                      <span className="flex min-w-0 items-center gap-2 text-[11px] text-cyan-100"><ImagePlus className="h-4 w-4 shrink-0" /><span className="truncate">{referenceImage.name}</span><span className="text-cyan-300/70">Visual reference attached</span></span>
+                      <button type="button" onClick={() => { setReferenceImage(null); if (referenceInputRef.current) referenceInputRef.current.value = ""; }} className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Remove reference image"><X className="h-4 w-4" /></button>
+                    </div>
+                  )}
+                  <input
+                    ref={referenceInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+                      if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+                        toast.error("Use a PNG, JPG or WebP reference image.");
+                        event.target.value = "";
+                        return;
+                      }
+                      if (file.size > 6 * 1024 * 1024) {
+                        toast.error("Reference images must be 6 MB or smaller.");
+                        event.target.value = "";
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const dataUrl = String(reader.result ?? "");
+                        const data = dataUrl.split(",")[1];
+                        if (!data) { toast.error("Could not read that image."); return; }
+                        setReferenceImage({ name: file.name, mimeType: file.type as ReferenceImage["mimeType"], data });
+                      };
+                      reader.onerror = () => toast.error("Could not read that image.");
+                      reader.readAsDataURL(file);
+                    }}
+                  />
                   <div className="rounded-xl border border-white/[0.12] bg-[#101c2d] p-2 focus-within:border-cyan-400/40">
                     <Textarea
                       ref={promptRef}
@@ -1492,9 +1534,10 @@ export function CodeAgent() {
                       className="min-h-[76px] resize-none border-0 bg-transparent px-1 text-xs text-white shadow-none placeholder:text-slate-500 focus-visible:ring-0"
                     />
                     <div className="flex items-center justify-between px-1 pt-2">
-                      <span className="text-[9px] text-slate-600">
-                        Enter to send · Shift + Enter for new line
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => referenceInputRef.current?.click()} disabled={busy} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] text-slate-400 transition hover:bg-white/5 hover:text-cyan-200" title="Attach a screenshot or design reference"><ImagePlus className="h-4 w-4" /> Reference image</button>
+                        <span className="hidden text-[9px] text-slate-600 sm:inline">Enter to send · Shift + Enter for new line</span>
+                      </div>
                       <Button
                         size="icon"
                         onClick={() => void sendPrompt()}

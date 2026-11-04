@@ -10,6 +10,11 @@ const codingRequest = z
     history: z
       .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(3000) }))
       .max(8),
+    referenceImage: z.object({
+      name: z.string().max(180),
+      mimeType: z.enum(["image/png", "image/jpeg", "image/webp"]),
+      data: z.string().min(100).max(8_500_000),
+    }).optional(),
   })
   .refine(
     ({ files }) =>
@@ -33,15 +38,6 @@ export const runCodingAgent = createServerFn({ method: "POST" })
       _role: "admin",
     });
     if (roleError) throw new Error(roleError.message);
-    const studioActive =
-      Boolean(isAdmin) ||
-      (profile.ai_subscribed &&
-        (!profile.ai_subscription_expires_at ||
-          new Date(profile.ai_subscription_expires_at).getTime() > Date.now()));
-    if (!studioActive)
-      throw new Error(
-        "Studio app creation requires an active $1 / 30-day plan. Use the Upgrade button in AI Studio to subscribe.",
-      );
     if (!isAdmin && profile.ai_credits < 1)
       throw new Error(
         "You have no AI credits remaining. Renew your Studio plan to continue building.",

@@ -180,6 +180,10 @@ export async function generateGeminiContent(
   providerOrder?: string[],
 ): Promise<GeminiResponse> {
   let activeRequest = compactSmartRequest(request);
+  const hasImageReference = activeRequest.contents.some((item) => item.parts.some((part) => Boolean(part.inlineData?.data)));
+  if (hasImageReference && !resolveGeminiApiKey(apiKey)) {
+    throw new Error("Screenshot-to-app generation needs the Gemini vision connection. Add GEMINI_API_KEY in the deployment environment.");
+  }
   const requestedOrder =
     providerOrder ??
     (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
@@ -188,12 +192,14 @@ export async function generateGeminiContent(
       .filter(Boolean);
   const availableProviders = ["groq", "gemini", "openrouter", "mistral", "cloudflare"];
   // Use every configured adapter as a fallback; credentials stay server-side.
-  const configuredOrder = [
-    ...new Set([
-      ...requestedOrder.filter((item) => availableProviders.includes(item)),
-      ...availableProviders,
-    ]),
-  ];
+  const configuredOrder = hasImageReference
+    ? ["gemini"]
+    : [
+        ...new Set([
+          ...requestedOrder.filter((item) => availableProviders.includes(item)),
+          ...availableProviders,
+        ]),
+      ];
   const failures: string[] = [];
   const coolingDown: string[] = [];
 
