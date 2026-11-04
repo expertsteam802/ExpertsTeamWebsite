@@ -130,6 +130,23 @@ function MessagesPage() {
     },
   });
 
+  useEffect(() => {
+    if (!user) return;
+    const inboxChannel = supabase
+      .channel("direct-inbox-" + user.id)
+      .on("postgres_changes", { event: "*", schema: "public", table: "direct_messages" }, (payload) => {
+        const row = (payload.new ?? payload.old) as { conversation_id?: string } | undefined;
+        void queryClient.invalidateQueries({ queryKey: ["direct-conversations", user.id] });
+        void queryClient.invalidateQueries({ queryKey: ["direct-message-previews", user.id] });
+        void queryClient.invalidateQueries({ queryKey: ["direct-message-previews", user.id] });
+        if (row?.conversation_id) {
+          void queryClient.invalidateQueries({ queryKey: ["direct-messages", row.conversation_id] });
+        }
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(inboxChannel); };
+  }, [user?.id, queryClient]);
+
   const conversationIds = conversations.map((conversation) => conversation.id);
   const { data: previews = [] } = useQuery({
     queryKey: ["direct-message-previews", user?.id, conversationIds.join(",")],
@@ -228,6 +245,7 @@ function MessagesPage() {
       setAttachmentPreview("");
       void queryClient.invalidateQueries({ queryKey: ["direct-messages", activeConversation?.id] });
       void queryClient.invalidateQueries({ queryKey: ["direct-conversations", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["direct-message-previews", user?.id] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
