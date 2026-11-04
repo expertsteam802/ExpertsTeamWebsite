@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
@@ -51,6 +51,16 @@ const FILTERS = [
   { id: "link", label: "Links", icon: Link2 },
 ] as const;
 
+type Story = {
+  id: string;
+  user_id: string;
+  media_url: string;
+  caption: string | null;
+  created_at: string;
+  expires_at: string;
+  profiles: { username: string; display_name: string | null; avatar_url: string | null } | null;
+};
+
 type Post = {
   id: string;
   user_id: string;
@@ -74,6 +84,12 @@ function CommunityPage() {
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState("");
   const [search, setSearch] = useState("");
+  const [storyImage, setStoryImage] = useState<File | null>(null);
+  const [storyPreview, setStoryPreview] = useState("");
+  const [storyCaption, setStoryCaption] = useState("");
+  const [storyComposerOpen, setStoryComposerOpen] = useState(false);
+  const [storyViewer, setStoryViewer] = useState<{ userId: string; index: number } | null>(null);
+  const storyInputRef = useRef<HTMLInputElement>(null);
 
   const {
     data: posts = [],
@@ -96,6 +112,42 @@ function CommunityPage() {
     refetchInterval: 60_000,
   });
 
+  const { data: stories = [] } = useQuery({
+    queryKey: ["community-stories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("community_stories")
+        .select("id,user_id,media_url,caption,created_at,expires_at,profiles:profiles!community_stories_user_id_fkey(username,display_name,avatar_url)")
+        .gt("expires_at", new Date().toISOString())
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data ?? []) as unknown as Story[];
+    },
+    refetchInterval: 60_000,
+  });
+
+  const storyGroups = stories.reduce<{ userId: string; profile: Story["profiles"]; items: Story[] }[]>(
+    (groups, story) => {
+      let group = groups.find((item) => item.userId === story.user_id);
+      if (!group) {
+        group = { userId: story.user_id, profile: story.profiles, items: [] };
+        groups.push(group);
+      }
+      group.items.push(story);
+      return groups;
+    },
+    [],
+  );
+  const activeStoryGroup = storyGroups.find((group) => group.userId === storyViewer?.userId);
+  const activeStory = activeStoryGroup?.items[storyViewer?.index ?? 0] ?? null;
+
+  useEffect(() => {
+    return () => {
+      if (storyPreview) URL.revokeObjectURL(storyPreview);
+    };
+  }, [storyPreview]);
+
   useEffect(() => {
     const channel = supabase
       .channel("community-live-feed")
@@ -113,6 +165,11 @@ function CommunityPage() {
         "postgres_changes",
         { event: "*", schema: "public", table: "community_comments" },
         () => void queryClient.invalidateQueries({ queryKey: ["community-comments"] }),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "community_stories" },
+        () => void queryClient.invalidateQueries({ queryKey: ["community-stories"] }),
       )
       .subscribe();
     return () => {
@@ -133,6 +190,51 @@ function CommunityPage() {
     setImage(file);
     setImagePreview(URL.createObjectURL(file));
   }
+
+  function chooseStoryImage(file?: File) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Choose an image for your story.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Story images must be 8 MB or smaller.");
+      return;
+    }
+    if (storyPreview) URL.revokeObjectURL(storyPreview);
+    setStoryImage(file);
+    setStoryPreview(URL.createObjectURL(file));
+    setStoryCaption("");
+    setStoryComposerOpen(true);
+  }
+
+  const createStory = useMutation({
+    mutationFn: async () => {
+      if (!user || !storyImage) throw new Error("Choose a photo for your story.");
+      const safeName = storyImage.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-80);
+      const path = `${user.id}/stories/${crypto.randomUUID()}-${safeName}`;
+      const { error: uploadError } = await supabase.storage.from("uploads").upload(path, storyImage, {
+        cacheControl: "3600", upsert: false, contentType: storyImage.type,
+      });
+      if (uploadError) throw uploadError;
+      const media_url = supabase.storage.from("uploads").getPublicUrl(path).data.publicUrl;
+      const { error } = await supabase.from("community_stories").insert({
+        user_id: user.id,
+        media_url,
+        caption: storyCaption.trim() || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setStoryImage(null);
+      setStoryPreview("");
+      setStoryCaption("");
+      setStoryComposerOpen(false);
+      toast.success("Your story is live for 24 hours");
+      void queryClient.invalidateQueries({ queryKey: ["community-stories"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   const createPost = useMutation({
     mutationFn: async () => {
