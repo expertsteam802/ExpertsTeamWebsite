@@ -203,9 +203,10 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
           manager.destroy();
           managerRef.current = null;
         });
-        manager.addEventListener(ima.AdEvent.Type.CONTENT_RESUME_REQUESTED, () =>
-          setStatus("complete"),
-        );
+        manager.addEventListener(ima.AdEvent.Type.CONTENT_RESUME_REQUESTED, () => {
+          setStatus("complete");
+          onFinished?.();
+        });
         manager.addEventListener(ima.AdEvent.Type.STARTED, () => {
           if (requestTimeoutRef.current !== undefined)
             window.clearTimeout(requestTimeoutRef.current);
