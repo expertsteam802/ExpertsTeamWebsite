@@ -145,34 +145,6 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
   }, [videoId]);
 
   useEffect(() => {
-    if (!videoId || unlockedVideoId === videoId) return;
-    const container = adContainerRef.current;
-    if (!container) return;
-    container.replaceChildren();
-
-    // Remove a previous instance before creating a fresh Native Banner slot.
-    document
-      .querySelectorAll<HTMLScriptElement>(
-        'script[src="https://bauval.org/21/e6d8442231a964256120f8359c3b588e"]',
-      )
-      .forEach((oldScript) => oldScript.remove());
-
-    // Keep the script immediately before its matching container, as supplied
-    // by Adsterra. Do not remove it when the user presses Continue.
-    const script = document.createElement("script");
-    script.async = true;
-    script.setAttribute("data-cfasync", "false");
-    script.src = "https://bauval.org/21/e6d8442231a964256120f8359c3b588e";
-    script.onerror = () => {
-      if (container.isConnected) {
-        container.textContent =
-          "Advertisement could not load. Check your connection or ad-blocking settings.";
-      }
-    };
-    container.parentElement?.insertBefore(script, container);
-  }, [videoId, unlockedVideoId]);
-
-  useEffect(() => {
     if (!videoId || unlockedVideoId !== videoId || !playerContainerRef.current) return;
     let cancelled = false;
     let readyTimedOut = false;
