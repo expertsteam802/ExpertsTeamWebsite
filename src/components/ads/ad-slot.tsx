@@ -81,6 +81,7 @@ type ImaNamespace = {
       CONTENT_PAUSE_REQUESTED: string;
       CONTENT_RESUME_REQUESTED: string;
       STARTED: string;
+      SKIPPED: string;
     };
   };
 };
@@ -193,17 +194,20 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
       loader.addEventListener(ima.AdsManagerLoadedEvent.Type.ADS_MANAGER_LOADED, (event) => {
         const manager = event.getAdsManager(video);
         managerRef.current = manager;
+        let wasSkipped = false;
+        manager.addEventListener(ima.AdEvent.Type.SKIPPED, () => {
+          wasSkipped = true;
+          setStatus("unavailable");
+          setMessage("The sponsored video was skipped. The lesson remains locked; play the ad to completion.");
+        });
         manager.addEventListener(ima.AdEvent.Type.ALL_ADS_COMPLETED, () => {
           if (requestTimeoutRef.current !== undefined)
             window.clearTimeout(requestTimeoutRef.current);
+          if (wasSkipped) return;
           setStatus("complete");
           onFinished?.();
           manager.destroy();
           managerRef.current = null;
-        });
-        manager.addEventListener(ima.AdEvent.Type.CONTENT_RESUME_REQUESTED, () => {
-          setStatus("complete");
-          onFinished?.();
         });
         manager.addEventListener(ima.AdEvent.Type.STARTED, () => {
           if (requestTimeoutRef.current !== undefined)
@@ -225,6 +229,8 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
           container.clientHeight || 360,
           ima.ViewMode.NORMAL,
         );
+        // Muted autoplay is permitted by more browsers; sound can be enabled using player controls.
+        video.muted = true;
         try {
           manager.start();
         } catch {
