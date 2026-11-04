@@ -117,27 +117,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       // YouTube requires a Referer header for embedded playback (error 153).
       { name: "referrer", content: "strict-origin-when-cross-origin" },
-      { title: "ExpertsTeam — Turn ideas into real apps" },
+      { title: "Expertsteam802 | ExpertsTeam Coding & AI Studio" },
       {
         name: "description",
         content:
-          "ExpertsTeam is an AI-powered creative workspace to plan, build and edit apps, explore code, learn new skills and create alongside a community.",
+          "Expertsteam802 is the official ExpertsTeam website for AI app building, coding tutorials, creator videos, developer projects and community learning.",
       },
       { name: "author", content: "Chris Expert" },
       {
         name: "google-site-verification",
         content: "YdY2ygzprZLok7-Cvwg_j29cI4ycK480HDQmh0d-JIg",
       },
-      {
-        name: "keywords",
-        content:
-          "expertsteam, experts team, expert ai, ai studio, app builder, coding lessons, developer community",
-      },
-      { property: "og:site_name", content: "ExpertsTeam" },
+      { property: "og:site_name", content: "Expertsteam802 | ExpertsTeam" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:title", content: "ExpertsTeam — Watch, Learn & Share Code" },
-      { name: "twitter:title", content: "ExpertsTeam — Watch, Learn & Share Code" },
+      { property: "og:title", content: "Expertsteam802 | ExpertsTeam Coding & AI Studio" },
+      { name: "twitter:title", content: "Expertsteam802 | ExpertsTeam Coding & AI Studio" },
       {
         property: "og:description",
         content:
@@ -177,6 +172,21 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en" className="theme-neon dark">
       <head>
         <HeadContent />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "ExpertsTeam",
+              alternateName: ["Expertsteam802", "ExpertsTeam Coders"],
+              url: "https://expertsteam.giize.com/",
+              description:
+                "ExpertsTeam is a creative technology platform for AI-assisted app building, coding education, creator videos and developer community projects.",
+              founder: { "@type": "Person", name: "Chris Expert" },
+            }),
+          }}
+        />
       </head>
       <body>
         {children}
