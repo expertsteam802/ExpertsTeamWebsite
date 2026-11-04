@@ -23,6 +23,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { AdminAdsSettingsPanel, AdminApiUsagePanel } from "@/components/admin-platform-panels";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -516,6 +517,18 @@ function AdminPage() {
                   className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
                 >
                   <Video className="h-4 w-4" /> Video analytics
+                </TabsTrigger>
+                <TabsTrigger
+                  value="ads"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
+                  <Video className="h-4 w-4" /> Ads & display
+                </TabsTrigger>
+                <TabsTrigger
+                  value="api-usage"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
+                  <Database className="h-4 w-4" /> Supabase API usage
                 </TabsTrigger>
                 <TabsTrigger
                   value="sessions"
@@ -1190,6 +1203,14 @@ function AdminPage() {
                       </Card>
                     ))}
                 </div>
+              </TabsContent>
+
+              <TabsContent value="ads" className="mt-0 space-y-4">
+                <AdminAdsSettingsPanel />
+              </TabsContent>
+
+              <TabsContent value="api-usage" className="mt-0 space-y-4">
+                <AdminApiUsagePanel />
               </TabsContent>
 
               <TabsContent value="system" className="mt-0 space-y-4">
