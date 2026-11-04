@@ -50,15 +50,19 @@ export const askChrisAi = createServerFn({ method: "POST" })
   .validator((input: unknown) => aiRequest.parse(input))
   .handler(async ({ data }) => {
     const { askChrisAi: generate } = await import("./ai.server");
-
-    return generate(
-      {
-        ...data,
-        history: data.history ?? [],
-        attachments: data.attachments ?? [],
-      },
-      process.env["GEMINI_API_KEY"],
-    );
+    try {
+      return await generate(
+        {
+          ...data,
+          history: data.history ?? [],
+          attachments: data.attachments ?? [],
+        },
+        process.env["GEMINI_API_KEY"],
+      );
+    } catch (error) {
+      console.error("[ExpertAI] Request failed:", error);
+      throw new Error("ExpertAI is temporarily unavailable. Please try again in a moment.");
+    }
   });
 
 export const generateExpertImage = createServerFn({ method: "POST" })
@@ -66,6 +70,10 @@ export const generateExpertImage = createServerFn({ method: "POST" })
   .validator((input: unknown) => imageRequest.parse(input))
   .handler(async ({ data }) => {
     const { generateExpertImage: generate } = await import("./ai.server");
-
-    return generate({ prompt: data.prompt }, process.env["GEMINI_API_KEY"]);
+    try {
+      return await generate({ prompt: data.prompt }, process.env["GEMINI_API_KEY"]);
+    } catch (error) {
+      console.error("[ExpertAI image] Generation failed:", error);
+      throw new Error("ExpertAI image generation is temporarily unavailable. Please try again later.");
+    }
   });
