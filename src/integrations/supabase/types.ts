@@ -298,6 +298,7 @@ export type Database = {
           id: string;
           kind: string;
           link_url: string | null;
+          media_url: string | null;
           title: string;
           updated_at: string;
           user_id: string;
@@ -308,6 +309,7 @@ export type Database = {
           id?: string;
           kind?: string;
           link_url?: string | null;
+          media_url?: string | null;
           title: string;
           updated_at?: string;
           user_id: string;
@@ -318,6 +320,7 @@ export type Database = {
           id?: string;
           kind?: string;
           link_url?: string | null;
+          media_url?: string | null;
           title?: string;
           updated_at?: string;
           user_id?: string;
@@ -330,6 +333,15 @@ export type Database = {
             referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
+        ];
+      };
+      community_likes: {
+        Row: { created_at: string; id: string; post_id: string; user_id: string };
+        Insert: { created_at?: string; id?: string; post_id: string; user_id: string };
+        Update: { created_at?: string; id?: string; post_id?: string; user_id?: string };
+        Relationships: [
+          { foreignKeyName: "community_likes_post_id_fkey"; columns: ["post_id"]; isOneToOne: false; referencedRelation: "community_posts"; referencedColumns: ["id"] },
+          { foreignKeyName: "community_likes_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }
         ];
       };
       contact_messages: {
