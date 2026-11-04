@@ -33,20 +33,16 @@ export function BannerUnlockAd({
   const [finished, setFinished] = useState(false);
 
   useEffect(() => {
-    if (finished) return;
-    const timer = window.setInterval(() => {
-      setRemaining((current) => {
-        if (current <= 1) {
-          window.clearInterval(timer);
-          setFinished(true);
-          onUnlockedRef.current();
-          return 0;
-        }
-        return current - 1;
-      });
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [finished, seconds]);
+    if (finished || completedRef.current) return;
+    if (remaining <= 0) {
+      completedRef.current = true;
+      setFinished(true);
+      onUnlockedRef.current();
+      return;
+    }
+    const timer = window.setTimeout(() => setRemaining((current) => current - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [finished, remaining]);
 
   return (
     <section className={`w-full rounded-2xl border border-border/70 bg-card p-4 ${compact ? "max-w-3xl" : "max-w-4xl"}`}>
@@ -63,7 +59,7 @@ export function BannerUnlockAd({
         <iframe
           title="ExpertsTeam sponsored banner"
           srcDoc={AD_DOCUMENT}
-          sandbox="allow-scripts allow-same-origin"
+          sandbox="allow-scripts"
           referrerPolicy="strict-origin-when-cross-origin"
           className="h-full w-full border-0"
           loading="eager"
