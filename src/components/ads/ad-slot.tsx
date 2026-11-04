@@ -1,172 +1,190 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { siteSettingsQuery } from "@/hooks/use-site-settings";
 import type { Json } from "@/integrations/supabase/types";
 
-type AdUnit = "nativeBanner" | "banner728";
-type AdSettings = {
-  nativeBannerEnabled: boolean;
-  popunderEnabled: boolean;
-  banner728Enabled: boolean;
-  placements: Record<string, AdUnit>;
+export const MYBID_VAST_DEFAULT_URL = "https://vast.vstserv.com/vast?spot_id=2030847";
+
+type MyBidSettings = {
+  myBidVastEnabled: boolean;
+  myBidVastUrl: string;
+  myBidAdCodeId: string;
+  myBidFormatId: string;
+  myBidAdCodeName: string;
 };
 
-const DEFAULT_SETTINGS: AdSettings = {
-  nativeBannerEnabled: true,
-  popunderEnabled: true,
-  banner728Enabled: true,
-  placements: { "video-before": "nativeBanner" },
+const DEFAULT_SETTINGS: MyBidSettings = {
+  myBidVastEnabled: true,
+  myBidVastUrl: MYBID_VAST_DEFAULT_URL,
+  myBidAdCodeId: "470834",
+  myBidFormatId: "2030847",
+  myBidAdCodeName: "ExpertsTeam",
 };
 
-function parseAdSettings(value: Json | null | undefined): AdSettings {
+function parseAdSettings(value: Json | null | undefined): MyBidSettings {
   if (!value || typeof value !== "object" || Array.isArray(value)) return DEFAULT_SETTINGS;
   const raw = value as Record<string, Json | undefined>;
-  const rawPlacements = raw.placements;
-  const placements =
-    rawPlacements && typeof rawPlacements === "object" && !Array.isArray(rawPlacements)
-      ? (Object.fromEntries(
-          Object.entries(rawPlacements).filter(
-            ([slot, unit]) =>
-              (unit === "nativeBanner" || unit === "banner728") &&
-              !(unit === "nativeBanner" && slot !== "video-before"),
-          ),
-        ) as Record<string, AdUnit>)
-      : {};
-  placements["video-before"] = "nativeBanner";
   return {
-    nativeBannerEnabled:
-      typeof raw.nativeBannerEnabled === "boolean"
-        ? raw.nativeBannerEnabled
-        : DEFAULT_SETTINGS.nativeBannerEnabled,
-    popunderEnabled:
-      typeof raw.popunderEnabled === "boolean"
-        ? raw.popunderEnabled
-        : DEFAULT_SETTINGS.popunderEnabled,
-    banner728Enabled:
-      typeof raw.banner728Enabled === "boolean"
-        ? raw.banner728Enabled
-        : DEFAULT_SETTINGS.banner728Enabled,
-    placements,
+    myBidVastEnabled:
+      typeof raw.myBidVastEnabled === "boolean"
+        ? raw.myBidVastEnabled
+        : DEFAULT_SETTINGS.myBidVastEnabled,
+    myBidVastUrl:
+      typeof raw.myBidVastUrl === "string" && raw.myBidVastUrl.trim()
+        ? raw.myBidVastUrl
+        : DEFAULT_SETTINGS.myBidVastUrl,
+    myBidAdCodeId:
+      typeof raw.myBidAdCodeId === "string" ? raw.myBidAdCodeId : DEFAULT_SETTINGS.myBidAdCodeId,
+    myBidFormatId:
+      typeof raw.myBidFormatId === "string" ? raw.myBidFormatId : DEFAULT_SETTINGS.myBidFormatId,
+    myBidAdCodeName:
+      typeof raw.myBidAdCodeName === "string"
+        ? raw.myBidAdCodeName
+        : DEFAULT_SETTINGS.myBidAdCodeName,
   };
 }
 
-function NativeBanner() {
-  const hostRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const host = hostRef.current;
-    if (!host) return;
-    host.replaceChildren();
-
-    const container = document.createElement("div");
-    container.id = "container-e6d8442231a964256120f8359c3b588e";
-    container.className = "flex min-h-[90px] w-full items-center justify-center overflow-hidden";
-    const script = document.createElement("script");
-    script.async = true;
-    script.setAttribute("data-cfasync", "false");
-    script.src = "https://bauval.org/21/e6d8442231a964256120f8359c3b588e";
-    script.dataset.expertsteamAd = "native-banner";
-    host.append(script, container);
-
-    return () => {
-      script.remove();
-      container.remove();
-    };
-  }, []);
-
-  return (
-    <div
-      ref={hostRef}
-      className="my-4 flex min-h-[100px] w-full items-center justify-center overflow-hidden rounded-lg"
-      aria-label="Advertisement"
-    />
-  );
+type ImaAdEvent = { getAd?: () => { isLinear?: () => boolean } };
+type ImaAdsManager = {
+  init: (width: number, height: number, viewMode: number) => void;
+  start: () => void;
+  destroy: () => void;
+  addEventListener: (event: string, callback: (event: ImaAdEvent) => void) => void;
+};
+type ImaAdsLoader = {
+  requestAds: (request: { adTagUrl: string; linearAdSlotWidth: number; linearAdSlotHeight: number }) => void;
+  addEventListener: (event: string, callback: (event: { getAdsManager: (video: HTMLVideoElement) => ImaAdsManager }) => void) => void;
+  contentComplete: () => void;
+};
+type ImaNamespace = {
+  AdDisplayContainer: new (container: HTMLElement, video: HTMLVideoElement) => { initialize: () => void };
+  AdsLoader: new (container: unknown) => ImaAdsLoader;
+  AdsRequest: new () => { adTagUrl: string; linearAdSlotWidth: number; linearAdSlotHeight: number };
+  AdsManagerLoadedEvent: { Type: { ADS_MANAGER_LOADED: string } };
+  AdErrorEvent: { Type: { AD_ERROR: string } };
+  AdsManagerLoadedEventType: { LINEAR: number };
+  ViewMode: { NORMAL: number };
+  AdEvent: { Type: { ALL_ADS_COMPLETED: string; CONTENT_PAUSE_REQUESTED: string; CONTENT_RESUME_REQUESTED: string; STARTED: string } };
+};
+declare global {
+  interface Window {
+    google?: { ima?: ImaNamespace };
+  }
 }
 
-function Banner728() {
-  const hostRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const host = hostRef.current;
-    if (!host) return;
-    host.replaceChildren();
-
-    (
-      window as Window & {
-        atOptions?: {
-          key: string;
-          format: string;
-          height: number;
-          width: number;
-          params: Record<string, never>;
-        };
-      }
-    ).atOptions = {
-      key: "502debf88d7d96769c683f2ec09cb70b",
-      format: "iframe",
-      height: 90,
-      width: 728,
-      params: {},
+let imaSdkPromise: Promise<ImaNamespace> | null = null;
+function loadImaSdk(): Promise<ImaNamespace> {
+  if (window.google?.ima) return Promise.resolve(window.google.ima);
+  if (imaSdkPromise) return imaSdkPromise;
+  imaSdkPromise = new Promise<ImaNamespace>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>('script[data-expertsteam-ima="true"]');
+    const script = existing ?? document.createElement("script");
+    const onLoad = () => {
+      if (window.google?.ima) resolve(window.google.ima);
+      else reject(new Error("The video advertising SDK did not initialize."));
     };
+    script.addEventListener("load", onLoad, { once: true });
+    script.addEventListener("error", () => reject(new Error("Could not load the video advertising SDK.")), { once: true });
+    if (!existing) {
+      script.src = "https://imasdk.googleapis.com/js/sdkloader/ima3.js";
+      script.async = true;
+      script.dataset.expertsteamIma = "true";
+      document.head.appendChild(script);
+    }
+  }).catch((error: unknown) => {
+    imaSdkPromise = null;
+    throw error;
+  });
+  return imaSdkPromise;
+}
 
-    const script = document.createElement("script");
-    script.src = "https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b";
-    script.dataset.expertsteamAd = "banner-728";
-    host.appendChild(script);
+export function VideoVastAd() {
+  const { data, isFetched, isError } = useQuery(siteSettingsQuery);
+  const settings = useMemo(() => parseAdSettings(data?.ad_settings), [data?.ad_settings]);
+  const adContainerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const managerRef = useRef<ImaAdsManager | null>(null);
+  const [status, setStatus] = useState<"ready" | "loading" | "playing" | "complete" | "unavailable">("ready");
+  const [message, setMessage] = useState<string | null>(null);
 
-    return () => {
-      script.remove();
-      host.replaceChildren();
-      delete (window as Window & { atOptions?: unknown }).atOptions;
-    };
+  useEffect(() => () => {
+    managerRef.current?.destroy();
+    managerRef.current = null;
   }, []);
 
+  async function playAd() {
+    if (!videoRef.current || !adContainerRef.current || status === "loading" || status === "playing") return;
+    setStatus("loading");
+    setMessage(null);
+    try {
+      const ima = await loadImaSdk();
+      const video = videoRef.current;
+      const container = adContainerRef.current;
+      if (!video || !container) return;
+      const display = new ima.AdDisplayContainer(container, video);
+      display.initialize();
+      const loader = new ima.AdsLoader(display);
+      loader.addEventListener(ima.AdsManagerLoadedEvent.Type.ADS_MANAGER_LOADED, (event) => {
+        const manager = event.getAdsManager(video);
+        managerRef.current = manager;
+        manager.addEventListener(ima.AdEvent.Type.ALL_ADS_COMPLETED, () => {
+          setStatus("complete");
+          manager.destroy();
+          managerRef.current = null;
+        });
+        manager.addEventListener(ima.AdEvent.Type.CONTENT_RESUME_REQUESTED, () => setStatus("complete"));
+        manager.addEventListener(ima.AdEvent.Type.STARTED, () => setStatus("playing"));
+        manager.init(container.clientWidth || 640, container.clientHeight || 360, ima.ViewMode.NORMAL);
+        manager.start();
+      });
+      loader.addEventListener(ima.AdErrorEvent.Type.AD_ERROR, () => {
+        managerRef.current?.destroy();
+        managerRef.current = null;
+        setStatus("unavailable");
+        setMessage("MyBid did not return a playable video ad. You can continue to the video.");
+      });
+      const request = new ima.AdsRequest();
+      request.adTagUrl = settings.myBidVastUrl;
+      request.linearAdSlotWidth = container.clientWidth || 640;
+      request.linearAdSlotHeight = container.clientHeight || 360;
+      loader.requestAds(request);
+    } catch (error) {
+      setStatus("unavailable");
+      setMessage(error instanceof Error ? error.message : "The video ad could not be loaded.");
+    }
+  }
+
+  if (!isFetched || isError || !settings.myBidVastEnabled) return null;
+
   return (
-    <div className="my-4 flex w-full justify-center overflow-hidden" aria-label="Advertisement">
-      <div ref={hostRef} className="min-h-[90px] w-full max-w-[728px] overflow-hidden" />
+    <div className="w-full max-w-3xl space-y-3">
+      <div className="relative aspect-video overflow-hidden rounded-xl bg-black">
+        <video ref={videoRef} className="absolute inset-0 h-full w-full" playsInline />
+        <div ref={adContainerRef} className="absolute inset-0 h-full w-full" />
+        {status === "ready" && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/95 p-5 text-center">
+            <p className="text-sm font-medium">Sponsored video</p>
+            <button type="button" onClick={() => void playAd()} className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">
+              Play ad
+            </button>
+          </div>
+        )}
+        {status === "loading" && <div className="absolute inset-0 grid place-items-center bg-background/90 text-sm">Loading sponsored video…</div>}
+        {status === "unavailable" && <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/95 p-5 text-center"><p className="text-sm">{message}</p></div>}
+        {status === "complete" && <div className="absolute inset-0 grid place-items-center bg-background/90 text-sm font-medium">Advertisement finished</div>}
+      </div>
+      <p className="text-center text-xs text-muted-foreground">Video advertisement provided by MyBid</p>
     </div>
   );
 }
 
-export function AdSlot({ slot }: { slot: string }) {
-  const { data, isFetched, isError } = useQuery(siteSettingsQuery);
-  const settings = useMemo(() => parseAdSettings(data?.ad_settings), [data?.ad_settings]);
-  const unit = settings.placements[slot];
-
-  if (!isFetched || isError) return null;
-  if (unit === "nativeBanner" && settings.nativeBannerEnabled) return <NativeBanner />;
-  if (unit === "banner728" && settings.banner728Enabled) return <Banner728 />;
+/** Legacy display slots are intentionally empty: ExpertsTeam now uses MyBid VAST pre-roll only. */
+export function AdSlot(_props: { slot: string }) {
   return null;
 }
 
+/** Adsterra global scripts have been retired. */
 export function GlobalAdScripts() {
-  const { data, isFetched, isError } = useQuery(siteSettingsQuery);
-  const settings = useMemo(() => parseAdSettings(data?.ad_settings), [data?.ad_settings]);
-
-  useEffect(() => {
-    if (!isFetched || isError) return;
-    const source = "https://abscloud.org/1/8a9d4492df70b9208cb7428f8f5544f6";
-    const existing = document.querySelector<HTMLScriptElement>(
-      'script[data-expertsteam-ad="popunder"]',
-    );
-
-    if (!settings.popunderEnabled) {
-      existing?.remove();
-      return;
-    }
-    if (existing) return;
-
-    const script = document.createElement("script");
-    script.setAttribute("data-cfasync", "false");
-    script.src = source;
-    script.dataset.expertsteamAd = "popunder";
-    document.head.appendChild(script);
-
-    return () => {
-      // Keep the single page-level popunder script mounted for this app session.
-    };
-  }, [settings.popunderEnabled, isFetched, isError]);
-
   return null;
 }
