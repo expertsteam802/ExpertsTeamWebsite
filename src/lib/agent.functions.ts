@@ -18,57 +18,6 @@ const codingRequest = z
     "The project is too large to send to the agent.",
   );
 
-export const createCodingPlan = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => {
-    const parsed = z
-      .object({
-        prompt: z.string().trim().min(1).max(16000),
-        files: z.record(z.string(), z.string().max(100000)),
-      })
-      .refine(
-        ({ files }) =>
-          Object.keys(files).length <= 80 &&
-          Object.values(files).reduce((total, content) => total + content.length, 0) <= 200000,
-        "The project is too large to plan in one request.",
-      )
-      .parse(input);
-    return parsed;
-  })
-  .handler(async ({ data, context }) => {
-    const { data: profile, error: profileError } = await context.supabase
-      .from("profiles")
-      .select("ai_credits,ai_subscribed,ai_subscription_expires_at")
-      .eq("id", context.userId)
-      .single();
-    if (profileError) throw new Error(profileError.message);
-    const { data: isAdmin, error: roleError } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (roleError) throw new Error(roleError.message);
-    const studioActive =
-      Boolean(isAdmin) ||
-      (profile.ai_subscribed &&
-        (!profile.ai_subscription_expires_at ||
-          new Date(profile.ai_subscription_expires_at).getTime() > Date.now()));
-    if (!studioActive)
-      throw new Error(
-        "Studio app creation requires an active $1 / 30-day plan. Use the Upgrade button in AI Studio to subscribe.",
-      );
-    if (!isAdmin && profile.ai_credits < 1)
-      throw new Error(
-        "You have no AI credits remaining. Renew your Studio plan to continue building.",
-      );
-    const { createAgentPlan } = await import("./agent.server");
-    const plan = await createAgentPlan(data.prompt, data.files);
-    if (!isAdmin) {
-      const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
-      if (creditError) throw new Error(creditError.message);
-    }
-    return plan;
-  });
-
 export const runCodingAgent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => codingRequest.parse(input))
