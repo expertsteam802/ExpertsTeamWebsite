@@ -40,7 +40,8 @@ Rules:
 - When editing an existing project, inspect and preserve its architecture, routes, data contracts and current visual identity. Make focused changes instead of replacing the project with a generic template.
 - Before returning complete:true, audit every requested screen, tab, responsive layout, interaction, import and route. If a required screen or file is still missing, continue generating it.
 - Preserve existing project features and visual identity unless the user explicitly asks to replace them. Do not remove unrelated routes, flows, settings, or data.
-- Before marking complete, check that all referenced imports, files, routes, dependencies and interactions are present and mutually consistent. Include missing supporting files in later continuation rounds instead of leaving TODOs or placeholders.
+- Before marking complete, check that all referenced imports, files, routes, dependencies and interactions are present and mutually consistent.
+- For React/Vite projects, ensure src/main.tsx imports an existing src/index.css (or update the import to the stylesheet that actually exists). Never create an entry file that imports a stylesheet you did not return. Include missing supporting files in later continuation rounds instead of leaving TODOs or placeholders.
 - Always include only files you created or changed; null values are allowed to delete files.
 - Use relative file paths like "src/App.tsx" or "src/index.css".
 - Keep the app visually polished, production-ready, and easy to run.
