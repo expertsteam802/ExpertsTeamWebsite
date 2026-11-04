@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Check, ImagePlus, MessageCircle, MoreHorizontal,
-  Search, Send, Sparkles, Video, X,
+  ArrowLeft, Check, ImagePlus, MessageCircle,
+  Search, Send, Sparkles, X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -107,10 +107,10 @@ function MessagesPage() {
         .from("direct_messages")
         .select("id,conversation_id,sender_id,body,media_url,created_at")
         .eq("conversation_id", activeConversation!.id)
-        .order("created_at", { ascending: true })
+        .order("created_at", { ascending: false })
         .limit(300);
       if (error) throw error;
-      return (data ?? []) as DirectMessage[];
+      return ((data ?? []) as DirectMessage[]).reverse();
     },
   });
 
@@ -137,7 +137,6 @@ function MessagesPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "direct_messages" }, (payload) => {
         const row = (payload.new ?? payload.old) as { conversation_id?: string } | undefined;
         void queryClient.invalidateQueries({ queryKey: ["direct-conversations", user.id] });
-        void queryClient.invalidateQueries({ queryKey: ["direct-message-previews", user.id] });
         void queryClient.invalidateQueries({ queryKey: ["direct-message-previews", user.id] });
         if (row?.conversation_id) {
           void queryClient.invalidateQueries({ queryKey: ["direct-messages", row.conversation_id] });
@@ -388,7 +387,7 @@ function MessagesPage() {
                 const unread = latest && latest.sender_id !== user.id && new Date(latest.created_at) > new Date(member?.last_read_at ?? 0);
                 return <button key={conversation.id} onClick={() => { setActiveId(conversation.id); setMobileChatOpen(true); }} className={\`mb-1 flex w-full items-center gap-3 rounded-2xl p-3 text-left transition \${conversation.id === activeConversation?.id ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-secondary/70"}\`}>
                   <div className="relative shrink-0"><Avatar className="h-12 w-12"><AvatarImage src={person?.avatar_url ?? undefined} /><AvatarFallback>{initials(personName(person))}</AvatarFallback></Avatar>{onlineIds.includes(person?.id ?? "") && <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-emerald-500" />}</div>
-                  <span className="min-w-0 flex-1"><span className="flex items-center justify-between gap-2"><span className="truncate text-sm font-semibold">{personName(person)}</span><span className="shrink-0 text-[10px] text-muted-foreground">{shortTime(conversation.last_message_at)}</span></span><span className="mt-1 block truncate text-xs text-muted-foreground">{latest?.body || "Start a conversation"}</span></span>
+                  <span className="min-w-0 flex-1"><span className="flex items-center justify-between gap-2"><span className="truncate text-sm font-semibold">{personName(person)}</span><span className="shrink-0 text-[10px] text-muted-foreground">{shortTime(conversation.last_message_at)}</span></span><span className="mt-1 block truncate text-xs text-muted-foreground">{latest ? (latest.body || "Photo") : "Start a conversation"}</span></span>
                   {unread && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />}
                 </button>;
               })}
@@ -403,7 +402,7 @@ function MessagesPage() {
                   <Avatar className="h-11 w-11"><AvatarImage src={recipient.avatar_url ?? undefined} /><AvatarFallback>{initials(personName(recipient))}</AvatarFallback></Avatar>
                   <div className="min-w-0"><p className="truncate text-sm font-bold">{personName(recipient)}</p><p className="text-xs text-muted-foreground">{onlineIds.includes(recipient.id) ? "Active now" : typing ? "Typing…" : "ExpertsTeam member"}</p></div>
                 </div>
-                <div className="flex items-center gap-1 text-muted-foreground"><Button variant="ghost" size="icon" aria-label="Video calls coming soon" disabled><Video className="h-4 w-4" /></Button><Button variant="ghost" size="icon" aria-label="Conversation options" disabled><MoreHorizontal className="h-4 w-4" /></Button></div>
+
               </header>
               <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-7">
                 <div className="mb-7 text-center"><Avatar className="mx-auto h-16 w-16"><AvatarImage src={recipient.avatar_url ?? undefined} /><AvatarFallback>{initials(personName(recipient))}</AvatarFallback></Avatar><p className="mt-3 font-semibold">{personName(recipient)}</p><p className="text-xs text-muted-foreground">@{recipient.username || "member"} · ExpertsTeam</p></div>
