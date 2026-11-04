@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { SiteHeader } from "@/components/layout/site-header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -440,9 +441,10 @@ function MessagesPage() {
   }
 
   return (
-    <PageShell>
-      <main className="mx-auto flex max-w-7xl flex-col px-3 py-5 sm:px-5 lg:px-8">
-        <div className="mb-4 flex items-end justify-between gap-3">
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
+      <SiteHeader />
+      <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col overflow-hidden px-3 py-3 sm:px-5 lg:px-8">
+        <div className="mb-3 flex shrink-0 items-end justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
               Stay connected
@@ -463,9 +465,9 @@ function MessagesPage() {
           </Button>
         </div>
 
-        <section className="grid min-h-[min(76vh,780px)] overflow-hidden rounded-3xl border border-border/70 bg-card shadow-2xl shadow-black/5 md:grid-cols-[320px_minmax(0,1fr)]">
+        <section className="grid min-h-0 flex-1 overflow-hidden rounded-3xl border border-border/70 bg-card shadow-2xl shadow-black/5 md:grid-cols-[320px_minmax(0,1fr)]">
           <aside
-            className={`flex min-h-[68vh] flex-col border-r border-border/70 bg-background/70 ${mobileChatOpen ? "hidden md:flex" : "flex"}`}
+            className={`flex min-h-0 flex-col overflow-hidden border-r border-border/70 bg-background/70 ${mobileChatOpen ? "hidden md:flex" : "flex"}`}
           >
             <div className="border-b border-border/70 p-4">
               <div className="mb-4 flex items-center justify-between">
@@ -616,7 +618,7 @@ function MessagesPage() {
           </aside>
 
           <div
-            className={`flex min-h-[68vh] min-w-0 flex-col bg-gradient-to-b from-background to-secondary/20 ${mobileChatOpen ? "flex" : "hidden md:flex"}`}
+            className={`flex min-h-0 min-w-0 flex-col overflow-hidden bg-gradient-to-b from-background to-secondary/20 ${mobileChatOpen ? "flex" : "hidden md:flex"}`}
           >
             {activeConversation && recipient ? (
               <>
@@ -647,7 +649,7 @@ function MessagesPage() {
                     </div>
                   </div>
                 </header>
-                <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-7">
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-5 sm:px-7">
                   <div className="mb-7 text-center">
                     <Avatar className="mx-auto h-16 w-16">
                       <AvatarImage src={recipient.avatar_url ?? undefined} />
@@ -767,7 +769,7 @@ function MessagesPage() {
                       rows={1}
                       maxLength={5000}
                       placeholder="Message…"
-                      className="max-h-32 min-h-10 flex-1 resize-y bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground"
+                      className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground"
                     />
                     <Button
                       type="submit"
@@ -807,6 +809,6 @@ function MessagesPage() {
           </div>
         </section>
       </main>
-    </PageShell>
+    </div>
   );
 }
