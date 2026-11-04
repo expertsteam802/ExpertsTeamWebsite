@@ -129,9 +129,11 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
             <Input
               id="upload-file"
               type="file"
+              disabled={Boolean(sourceUrl.trim())}
               onChange={(event) => {
                 const selected = event.target.files?.[0] ?? null;
                 setFile(selected);
+                if (selected) setSourceUrl("");
                 if (selected && !title) setTitle(selected.name.replace(/\.[^.]+$/, ""));
               }}
             />
@@ -149,7 +151,7 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
               placeholder="https://example.com/my-file.zip"
               value={sourceUrl}
               disabled={Boolean(file)}
-              onChange={(event) => setSourceUrl(event.target.value)}
+              onChange={(event) => { setSourceUrl(event.target.value); if (event.target.value) setFile(null); }}
             />
             <p className="text-xs text-muted-foreground">No upload is required when you already have a public link.</p>
           </div>
