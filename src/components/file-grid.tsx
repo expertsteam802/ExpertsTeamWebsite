@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Download, Pencil, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Download, ExternalLink, FileDown, Pencil, Trash2 } from "lucide-react";
+import { useState } from "react";\nimport { BannerUnlockAd } from "@/components/ads/banner-unlock-ad";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +27,7 @@ export type CommunityFile = {
   user_id: string;
   title: string;
   description: string | null;
-  storage_path: string;
+  storage_path: string | null;\n  source_url?: string | null;\n  thumbnail_url?: string | null;
   file_name: string;
   size_bytes: number;
   category: string;
@@ -43,7 +43,7 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
   const [editing, setEditing] = useState<CommunityFile | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("0");
+  const [price, setPrice] = useState("0");\n  const [unlocking, setUnlocking] = useState<CommunityFile | null>(null);\n  const [isUnlocked, setIsUnlocked] = useState(false);
 
   const saveEdit = useMutation({
     mutationFn: async () => {
@@ -107,14 +107,14 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
               key={file.id}
               className="animate-rise group flex flex-col gap-3 p-5 transition-transform duration-300 hover:-translate-y-1 hover:glow-panel"
             >
-              <div className="flex items-start gap-3">
+              {file.thumbnail_url && (\n                <img src={file.thumbnail_url} alt="" loading="lazy" className="max-h-36 w-full rounded-xl border border-border/60 object-cover" />\n              )}\n              <div className="flex items-start gap-3">
                 <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-secondary">
                   <Icon className={`h-6 w-6 ${tone}`} />
                 </span>
                 <div className="min-w-0">
                   <h3 className="truncate font-display font-semibold">{file.title}</h3>
                   <p className="text-xs text-muted-foreground">
-                    {ext.toUpperCase() || "FILE"} · {formatBytes(file.size_bytes)}
+                    {ext.toUpperCase() || "FILE"} · {file.source_url ? "External link" : formatBytes(file.size_bytes)}
                   </p>
                 </div>
                 <Badge
@@ -163,7 +163,29 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
         })}
       </div>
 
-      <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
+      <Dialog open={!!unlocking} onOpenChange={(open) => { if (!open) { setUnlocking(null); setIsUnlocked(false); } }}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{isUnlocked ? "Your resource is ready" : "A quick message from our sponsor"}</DialogTitle>
+          </DialogHeader>
+          {unlocking && (
+            <div className="space-y-4">
+              {!isUnlocked ? (
+                <BannerUnlockAd onUnlocked={() => setIsUnlocked(true)} />
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">Thanks for supporting ExpertsTeam. Continue when you're ready.</p>
+                  <Button className="w-full sm:w-auto" onClick={() => void download(unlocking)}>
+                    {unlocking.source_url ? <ExternalLink className="mr-2 h-4 w-4" /> : <FileDown className="mr-2 h-4 w-4" />}
+                    {unlocking.source_url ? "Open source link" : "Download file"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+\n      <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit upload</DialogTitle>
