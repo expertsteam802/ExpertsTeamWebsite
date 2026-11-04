@@ -193,6 +193,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/entertainment'
     | '/learn'
+    | '/messages'
     | '/projects'
     | '/videos'
     | '/_authenticated/admin'
