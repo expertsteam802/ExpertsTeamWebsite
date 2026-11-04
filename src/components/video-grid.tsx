@@ -38,7 +38,7 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
   const [playing, setPlaying] = useState<VideoItem | null>(null);
   const [editing, setEditing] = useState<VideoItem | null>(null);
   const [title, setTitle] = useState("");
-  const [link, setLink] = useState("");
+  const [link, setLink] = useState("");\n  const [thumbnailUrl, setThumbnailUrl] = useState("");\n  const [alignment, setAlignment] = useState<"left" | "center" | "right">("center");
 
   const saveEdit = useMutation({
     mutationFn: async () => {
@@ -50,7 +50,7 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
         .update({
           title: title.trim().slice(0, 140) || editing.title,
           youtube_url: link.trim(),
-          youtube_id: youtubeId,
+          youtube_id: youtubeId,\n          thumbnail_url: thumbnailUrl.trim() || null,\n          player_alignment: alignment,
         })
         .eq("id", editing.id);
       if (error) throw error;
@@ -99,7 +99,7 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
                 className="group relative block w-full overflow-hidden"
               >
                 <img
-                  src={youTubeThumb(video.youtube_id)}
+                  src={video.thumbnail_url || youTubeThumb(video.youtube_id)}
                   alt={video.title}
                   loading="lazy"
                   className="aspect-video w-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -131,7 +131,7 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
                         onClick={() => {
                           setEditing(video);
                           setTitle(video.title);
-                          setLink(video.youtube_url);
+                          setLink(video.youtube_url);\n                          setThumbnailUrl(video.thumbnail_url ?? "");\n                          setAlignment(video.player_alignment ?? "center");
                         }}
                       >
                         <Pencil className="h-4 w-4" />
@@ -167,6 +167,30 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="video-edit-thumbnail">Custom thumbnail URL</Label>
+              <Input
+                id="video-edit-thumbnail"
+                type="url"
+                placeholder="https://example.com/thumbnail.jpg"
+                value={thumbnailUrl}
+                onChange={(event) => setThumbnailUrl(event.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Leave blank to use the YouTube thumbnail.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="video-edit-alignment">Player alignment</Label>
+              <select
+                id="video-edit-alignment"
+                value={alignment}
+                onChange={(event) => setAlignment(event.target.value as "left" | "center" | "right")}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="video-edit-link">YouTube link</Label>
