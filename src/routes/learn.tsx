@@ -15,10 +15,10 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/learn")({
   head: () => ({
     meta: [
-      { title: "Learn to code with Chris — ExpertsTeam" },
-      { name: "description", content: "Coding lessons, books, learning files and tutorial videos from Chris Expert and the ExpertsTeam community." },
-      { property: "og:title", content: "Learn to code with Chris" },
-      { property: "og:description", content: "Free coding basics, books, videos and lessons on ExpertsTeam." },
+      { title: "Learn to Code with Christo — Become a Pro Coder | ExpertsTeam" },
+      { name: "description", content: "Learn to code with Christo, become a pro coder, and study programming through beginner-friendly lessons, books, files and videos." },
+      { property: "og:title", content: "Learn to Code with Christo — Become a Pro Coder" },
+      { property: "og:description", content: "Learn programming with Christo through coding lessons, books, videos and practical resources." },
     ],
   }),
   component: LearnPage,
@@ -65,8 +65,8 @@ function LearnPage() {
       <section className="hero-surface border-b border-border/60 px-4 py-10 sm:py-12">
         <div className="mx-auto max-w-7xl">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Your learning space</p>
-          <h1 className="mt-2 font-display text-3xl font-bold sm:text-5xl">Learn to code <span className="brand-text">with Chris</span></h1>
-          <p className="mt-3 max-w-2xl text-muted-foreground">Books, downloadable files, video tutorials and guided lessons — each in its own space.</p>
+          <h1 className="mt-2 font-display text-3xl font-bold sm:text-5xl">Learn to code <span className="brand-text">with Christo</span></h1>
+          <p className="mt-3 max-w-2xl text-muted-foreground">Start as a beginner, practise step by step and grow into a pro coder with coding lessons, books, downloadable files and tutorial videos.</p>
         </div>
       </section>
       <AdSlot slot="learn-top" />
