@@ -1,4 +1,4 @@
-import { AI_PLAN_PROMPT, AI_SYSTEM_PROMPT, AI_WORKSPACE_PROMPT } from "./ai-prompt";
+import { AI_SYSTEM_PROMPT, AI_WORKSPACE_PROMPT } from "./ai-prompt";
 import { generateGeminiContent } from "./gemini.server";
 
 export type AiAttachment = {
@@ -30,7 +30,7 @@ export async function askChrisAi(
     attachments = [],
   }: {
     prompt: string;
-    mode: "chat" | "workspace" | "plan";
+    mode: "chat" | "workspace";
     history?: { role: string; content: string }[];
     attachments?: AiAttachment[];
   },
@@ -39,12 +39,7 @@ export async function askChrisAi(
   const cleanPrompt = prompt.trim();
   if (!cleanPrompt) throw new Error("Please type a message first.");
 
-  const systemPrompt =
-    mode === "workspace"
-      ? AI_WORKSPACE_PROMPT
-      : mode === "plan"
-        ? AI_PLAN_PROMPT
-        : AI_SYSTEM_PROMPT;
+  const systemPrompt = mode === "workspace" ? AI_WORKSPACE_PROMPT : AI_SYSTEM_PROMPT;
 
   const promptWithAttachments = [cleanPrompt, buildAttachmentSummary(attachments)]
     .filter(Boolean)
