@@ -9,6 +9,11 @@ type AgentInput = {
     mimeType: "image/png" | "image/jpeg" | "image/webp";
     data: string;
   };
+  referenceImages?: {
+    name: string;
+    mimeType: "image/png" | "image/jpeg" | "image/webp";
+    data: string;
+  }[];
 };
 
 const AGENT_PROMPT = `You are the ExpertsTeam coding agent.
@@ -148,17 +153,26 @@ function parseAgentFiles(text: string): {
 }
 
 export async function runAgent(
-  { prompt, files, history, referenceImage }: AgentInput,
+  { prompt, files, history, referenceImage, referenceImages: suppliedReferenceImages }: AgentInput,
   apiKey?: string,
 ) {
   const cleanPrompt = prompt.trim();
   if (!cleanPrompt) throw new Error("Tell the agent what to build.");
+  const visualReferences = suppliedReferenceImages?.length
+    ? suppliedReferenceImages
+    : referenceImage
+      ? [referenceImage]
+      : [];
   if (
-    referenceImage &&
-    (referenceImage.data.length > 4_000_000 ||
-      !["image/png", "image/jpeg", "image/webp"].includes(referenceImage.mimeType))
+    visualReferences.length > 3 ||
+    visualReferences.some(
+      (image) =>
+        image.data.length > 3_000_000 ||
+        !["image/png", "image/jpeg", "image/webp"].includes(image.mimeType),
+    ) ||
+    visualReferences.reduce((total, image) => total + image.data.length, 0) > 8_000_000
   )
-    throw new Error("The reference image is invalid or too large.");
+    throw new Error("Use up to three PNG, JPG or WebP references, with a combined size under 8 MB.");
   if (cleanPrompt.length > 16000) throw new Error("That request is too long.");
   const entries = Object.entries(files);
   if (entries.length > 80)
@@ -263,26 +277,23 @@ export async function runAgent(
                 {
                   text:
                     continuation +
-                    (referenceImage
-                      ? "\\n\\nVISUAL REFERENCE: Inspect the attached screenshot/photo and reproduce its visible layout, spacing, typography, colors, responsive behavior and all visible controls as working app code. Treat the image as a design specification, not as an image to merely display."
+                    (visualReferences.length
+                      ? "\\n\\nVISUAL REFERENCES: Inspect every attached screenshot/photo. Use them together as a complete visual specification for the requested screens, tabs, panels and canvases. Reproduce the layouts and working interactions, not just the images. Reference files: " +
+                        visualReferences.map((image) => image.name).join(", ")
                       : ""),
                 },
-                ...(referenceImage
-                  ? [
-                      {
-                        inlineData: {
-                          mimeType: referenceImage.mimeType,
-                          data: referenceImage.data,
-                        },
-                      },
-                    ]
-                  : []),
+                ...visualReferences.map((image) => ({
+                  inlineData: {
+                    mimeType: image.mimeType,
+                    data: image.data,
+                  },
+                })),
               ],
             },
           ],
         },
         apiKey,
-        referenceImage ? ["gemini"] : rotatedProviders,
+        visualReferences.length ? ["gemini"] : rotatedProviders,
       );
 
       const candidate = response.candidates?.[0];
