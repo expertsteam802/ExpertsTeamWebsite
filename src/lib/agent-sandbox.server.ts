@@ -68,6 +68,8 @@ async function waitForPreview(url: string) {
         } else if (response.status < 500) {
           return;
         }
+      } else if (response.status === 410) {
+        lastError = "The preview sandbox stopped. Restarting the cloud preview…";
       } else if (response.status < 500) {
         return;
       } else {
@@ -217,7 +219,7 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
     const body = response.status === 403 ? await response.text() : "";
     blockedByViteHostCheck =
       isVite && response.status === 403 && /Blocked request|not allowed|allowedHosts/i.test(body);
-    alreadyRunning = response.status < 500 && !blockedByViteHostCheck;
+    alreadyRunning = response.status < 500 && response.status !== 410 && !blockedByViteHostCheck;
   } catch {
     alreadyRunning = false;
   }
