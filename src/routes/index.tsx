@@ -18,6 +18,7 @@ import {
   WandSparkles,
 } from "lucide-react";
 
+import { AdSlot } from "@/components/ads/ad-slot";
 import { PageShell } from "@/components/layout/page-shell";
 import { VideoGrid, type VideoItem } from "@/components/video-grid";
 import { Button } from "@/components/ui/button";
@@ -292,6 +293,8 @@ function Index() {
         </div>
       </section>
 
+      <AdSlot slot="home-top" />
+
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
         <div className="mx-auto max-w-2xl text-center">
           <span className="text-xs font-semibold tracking-[0.22em] text-primary">
@@ -391,6 +394,8 @@ function Index() {
           </div>
         </section>
       )}
+
+      <AdSlot slot="home-bottom" />
 
       <section className="px-4 pb-20 sm:px-6 lg:px-8">
         <div className="relative mx-auto max-w-7xl overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 via-card to-accent/10 p-8 sm:p-12 lg:p-14">
