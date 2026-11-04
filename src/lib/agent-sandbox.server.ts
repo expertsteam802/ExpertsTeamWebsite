@@ -167,12 +167,27 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   }
 
   const url = sandbox.domain(port);
+  const previewHost = new URL(url).hostname;
   let alreadyRunning = false;
+  let blockedByViteHostCheck = false;
   try {
     const response = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(1500) });
-    alreadyRunning = response.status < 500;
+    const body = response.status === 403 ? await response.text() : "";
+    blockedByViteHostCheck =
+      isVite && response.status === 403 && body.includes("Blocked request") && body.includes("not allowed");
+    alreadyRunning = response.status < 500 && !blockedByViteHostCheck;
   } catch {
     alreadyRunning = false;
+  }
+
+  // A resumed sandbox can still have Vite running with the old environment.
+  // Stop that process so it can restart with the exact current preview hostname.
+  if (blockedByViteHostCheck) {
+    await sandbox.runCommand({
+      cmd: "pkill",
+      args: ["-f", "[v]ite"],
+      cwd: WORKDIR,
+    });
   }
 
   if (!alreadyRunning) {
@@ -184,7 +199,11 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
         cmd: "npm",
         args,
         cwd: WORKDIR,
-        env: { HOST: "0.0.0.0", PORT: String(port) },
+        env: {
+          HOST: "0.0.0.0",
+          PORT: String(port),
+          ...(isVite ? { __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: previewHost } : {}),
+        },
         detached: true,
       });
     } else {
@@ -192,6 +211,7 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
         cmd: "npx",
         args: ["vite", "--host", "0.0.0.0", "--port", String(port)],
         cwd: WORKDIR,
+        env: { __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: previewHost },
         detached: true,
       });
     }
