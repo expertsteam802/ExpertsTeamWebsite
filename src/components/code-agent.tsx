@@ -716,9 +716,9 @@ export function CodeAgent() {
   }
 
   return (
-    <div className="not-prose flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#080e19] text-slate-100">
+    <div className="expert-agent-shell not-prose flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#080e19] text-slate-100">
       {/* Workspace top bar */}
-      <header className="flex min-h-[62px] flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#0d1523] px-4 py-3">
+      <header className="expert-agent-topbar flex min-h-[62px] flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#0d1523] px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 text-slate-950 shadow-lg shadow-cyan-500/20">
             <Zap className="h-5 w-5 fill-current" />
@@ -809,7 +809,7 @@ export function CodeAgent() {
       >
         {/* Left sidebar */}
         {sidebarOpen && (
-          <aside className="flex min-h-0 flex-col overflow-y-auto border-b border-white/[0.08] bg-[#0b1320] lg:border-b-0 lg:border-r">
+          <aside className="expert-agent-sidebar flex min-h-0 flex-col overflow-y-auto border-b border-white/[0.08] bg-[#0b1320] lg:border-b-0 lg:border-r">
             <div className="flex items-center justify-between px-4 pb-3 pt-4">
               <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
                 Workspace
@@ -967,9 +967,9 @@ export function CodeAgent() {
         )}
 
         {/* Centre and assistant area */}
-        <main className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+        <main className="expert-agent-stage flex min-h-0 min-w-0 flex-col overflow-hidden">
           {/* Toolbar */}
-          <div className="flex min-h-[48px] flex-wrap items-center justify-between gap-2 border-b border-white/[0.08] bg-[#0d1726] px-3 py-2">
+          <div className="expert-agent-toolbar flex min-h-[48px] flex-wrap items-center justify-between gap-2 border-b border-white/[0.08] bg-[#0d1726] px-3 py-2">
             <div className="flex items-center gap-1">
               {!sidebarOpen && (
                 <Button
@@ -1107,7 +1107,7 @@ export function CodeAgent() {
             className={`grid min-h-0 flex-1 grid-cols-1 overflow-hidden ${assistantOpen ? "xl:grid-cols-[minmax(0,1fr)_5px_var(--assistant-width)]" : "xl:grid-cols-1"}`}
             style={{ "--assistant-width": `${assistantWidth}px` } as CSSProperties}
           >
-            <section className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#080e19]">
+            <section className="expert-agent-canvas flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#080e19]">
               {panel === "preview" && (
                 <>
                   <div className="flex h-10 items-center justify-between border-b border-white/[0.07] px-3">
@@ -1388,7 +1388,7 @@ export function CodeAgent() {
 
             {/* AI panel */}
             {assistantOpen && (
-              <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-white/[0.08] bg-[#0c1523] xl:border-l xl:border-t-0">
+              <aside className="expert-agent-assistant flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-white/[0.08] bg-[#0c1523] xl:border-l xl:border-t-0">
                 <div className="flex h-12 items-center justify-between border-b border-white/[0.08] px-4">
                   <div className="flex items-center gap-2">
                     <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400/20 to-blue-500/20 text-cyan-200">
@@ -1519,7 +1519,7 @@ export function CodeAgent() {
           </div>
 
           {/* Bottom status bar */}
-          <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.08] bg-[#0d1523] px-4 py-2">
+          <footer className="expert-agent-statusbar flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.08] bg-[#0d1523] px-4 py-2">
             <div className="flex items-center gap-4 text-[10px] text-slate-500">
               <span className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
