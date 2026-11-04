@@ -77,7 +77,10 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
 
   const remove = useMutation({
     mutationFn: async (file: CommunityFile) => {
-      await supabase.storage.from("uploads").remove([file.storage_path]);
+      if (file.storage_path) {
+        const { error: storageError } = await supabase.storage.from("uploads").remove([file.storage_path]);
+        if (storageError) throw storageError;
+      }
       const { error } = await supabase.from("files").delete().eq("id", file.id);
       if (error) throw error;
     },
@@ -90,8 +93,9 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
 
   async function download(file: CommunityFile) {
     try {
-      const url = await signedUrlFor(file.storage_path);
-      window.open(url, "_blank", "noopener");
+      const url = file.source_url || (file.storage_path ? await signedUrlFor(file.storage_path) : null);
+      if (!url) throw new Error("This resource has no download source.");
+      window.open(url, "_blank", "noopener,noreferrer");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not open that file");
     }
@@ -147,8 +151,8 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
               </p>
 
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="secondary" onClick={() => void download(file)}>
-                  <Download className="mr-2 h-4 w-4" /> Open
+                <Button size="sm" variant="secondary" onClick={() => { setUnlocking(file); setIsUnlocked(false); }}>
+                  <Download className="mr-2 h-4 w-4" /> {file.source_url ? "Open source" : "Download"}
                 </Button>
                 {canManage && (
                   <>
