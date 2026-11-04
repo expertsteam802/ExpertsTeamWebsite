@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 
-import { useSiteSettings } from "@/hooks/use-site-settings";
+import { siteSettingsQuery } from "@/hooks/use-site-settings";
 import type { Json } from "@/integrations/supabase/types";
 
 type AdUnit = "nativeBanner" | "banner728";
@@ -130,20 +131,22 @@ function Banner728() {
 }
 
 export function AdSlot({ slot }: { slot: string }) {
-  const { data } = useSiteSettings();
+  const { data, isFetched, isError } = useQuery(siteSettingsQuery);
   const settings = useMemo(() => parseAdSettings(data?.ad_settings), [data?.ad_settings]);
   const unit = settings.placements[slot];
 
+  if (!isFetched || isError) return null;
   if (unit === "nativeBanner" && settings.nativeBannerEnabled) return <NativeBanner />;
   if (unit === "banner728" && settings.banner728Enabled) return <Banner728 />;
   return null;
 }
 
 export function GlobalAdScripts() {
-  const { data } = useSiteSettings();
+  const { data, isFetched, isError } = useQuery(siteSettingsQuery);
   const settings = useMemo(() => parseAdSettings(data?.ad_settings), [data?.ad_settings]);
 
   useEffect(() => {
+    if (!isFetched || isError) return;
     const source = "https://abscloud.org/1/8a9d4492df70b9208cb7428f8f5544f6";
     const existing = document.querySelector<HTMLScriptElement>(
       'script[data-expertsteam-ad="popunder"]',
@@ -165,7 +168,7 @@ export function GlobalAdScripts() {
     return () => {
       // Keep the single page-level popunder script mounted for this app session.
     };
-  }, [settings.popunderEnabled]);
+  }, [settings.popunderEnabled, isFetched, isError]);
 
   return null;
 }
