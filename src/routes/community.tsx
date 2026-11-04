@@ -139,6 +139,7 @@ function CommunityPage() {
     },
     [],
   );
+  storyGroups.forEach((group) => group.items.reverse());
   const activeStoryGroup = storyGroups.find((group) => group.userId === storyViewer?.userId);
   const activeStory = activeStoryGroup?.items[storyViewer?.index ?? 0] ?? null;
 
@@ -575,6 +576,12 @@ function CommunityPage() {
         <DialogContent className="max-h-[94dvh] max-w-lg overflow-hidden border-border/70 bg-background p-0">
           {activeStory && activeStoryGroup && (
             <div className="flex max-h-[94dvh] flex-col">
+              <DialogHeader className="sr-only"><DialogTitle>Community story</DialogTitle></DialogHeader>
+              <div className="flex gap-1 px-4 pt-3">
+                {activeStoryGroup.items.map((item, index) => (
+                  <span key={item.id} className={`h-1 flex-1 rounded-full ${index <= (storyViewer?.index ?? 0) ? "bg-primary" : "bg-muted"}`} />
+                ))}
+              </div>
               <div className="flex items-center gap-3 p-4">
                 <Avatar className="h-9 w-9">
                   <AvatarImage src={activeStoryGroup.profile?.avatar_url ?? undefined} />
