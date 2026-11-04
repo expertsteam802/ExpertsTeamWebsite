@@ -76,3 +76,58 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
       return { ok: false as const, error: error instanceof Error ? error.message : "Push failed" };
     }
   });
+
+
+const previewRequest = z.object({
+  projectId: z.string().uuid(),
+  files: z.record(z.string().max(512), z.string().max(150000)),
+}).refine(({ files }) =>
+  Object.keys(files).length <= 120 &&
+  Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 1_000_000,
+  "The project is too large to preview.",
+);
+
+async function assertProjectOwnership(
+  supabase: typeof import("@/integrations/supabase/client").supabase,
+  projectId: string,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from("agent_projects")
+    .select("id")
+    .eq("id", projectId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw new Error("Could not verify project access.");
+  if (!data) throw new Error("This project is not available in your account.");
+}
+
+export const startAgentPreview = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => previewRequest.parse(input))
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const { startCloudProjectPreview } = await import("./agent-sandbox.server");
+    return startCloudProjectPreview(data.projectId, data.files);
+  });
+
+export const runAgentTerminalCommand = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({
+    projectId: z.string().uuid(),
+    command: z.string().trim().min(1).max(3000),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const { runCloudProjectCommand } = await import("./agent-sandbox.server");
+    return runCloudProjectCommand(data.projectId, data.command);
+  });
+
+export const stopAgentPreview = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const { stopCloudProjectPreview } = await import("./agent-sandbox.server");
+    return stopCloudProjectPreview(data.projectId);
+  });
