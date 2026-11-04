@@ -53,19 +53,36 @@ type ImaAdsManager = {
   addEventListener: (event: string, callback: (event: ImaAdEvent) => void) => void;
 };
 type ImaAdsLoader = {
-  requestAds: (request: { adTagUrl: string; linearAdSlotWidth: number; linearAdSlotHeight: number }) => void;
-  addEventListener: (event: string, callback: (event: { getAdsManager: (video: HTMLVideoElement) => ImaAdsManager }) => void) => void;
+  requestAds: (request: {
+    adTagUrl: string;
+    linearAdSlotWidth: number;
+    linearAdSlotHeight: number;
+  }) => void;
+  addEventListener: (
+    event: string,
+    callback: (event: { getAdsManager: (video: HTMLVideoElement) => ImaAdsManager }) => void,
+  ) => void;
   contentComplete: () => void;
 };
 type ImaNamespace = {
-  AdDisplayContainer: new (container: HTMLElement, video: HTMLVideoElement) => { initialize: () => void };
+  AdDisplayContainer: new (
+    container: HTMLElement,
+    video: HTMLVideoElement,
+  ) => { initialize: () => void };
   AdsLoader: new (container: unknown) => ImaAdsLoader;
   AdsRequest: new () => { adTagUrl: string; linearAdSlotWidth: number; linearAdSlotHeight: number };
   AdsManagerLoadedEvent: { Type: { ADS_MANAGER_LOADED: string } };
   AdErrorEvent: { Type: { AD_ERROR: string } };
   AdsManagerLoadedEventType: { LINEAR: number };
   ViewMode: { NORMAL: number };
-  AdEvent: { Type: { ALL_ADS_COMPLETED: string; CONTENT_PAUSE_REQUESTED: string; CONTENT_RESUME_REQUESTED: string; STARTED: string } };
+  AdEvent: {
+    Type: {
+      ALL_ADS_COMPLETED: string;
+      CONTENT_PAUSE_REQUESTED: string;
+      CONTENT_RESUME_REQUESTED: string;
+      STARTED: string;
+    };
+  };
 };
 declare global {
   interface Window {
@@ -78,14 +95,20 @@ function loadImaSdk(): Promise<ImaNamespace> {
   if (window.google?.ima) return Promise.resolve(window.google.ima);
   if (imaSdkPromise) return imaSdkPromise;
   imaSdkPromise = new Promise<ImaNamespace>((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>('script[data-expertsteam-ima="true"]');
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[data-expertsteam-ima="true"]',
+    );
     const script = existing ?? document.createElement("script");
     const onLoad = () => {
       if (window.google?.ima) resolve(window.google.ima);
       else reject(new Error("The video advertising SDK did not initialize."));
     };
     script.addEventListener("load", onLoad, { once: true });
-    script.addEventListener("error", () => reject(new Error("Could not load the video advertising SDK.")), { once: true });
+    script.addEventListener(
+      "error",
+      () => reject(new Error("Could not load the video advertising SDK.")),
+      { once: true },
+    );
     if (!existing) {
       script.src = "https://imasdk.googleapis.com/js/sdkloader/ima3.js";
       script.async = true;
@@ -105,16 +128,27 @@ export function VideoVastAd() {
   const adContainerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const managerRef = useRef<ImaAdsManager | null>(null);
-  const [status, setStatus] = useState<"ready" | "loading" | "playing" | "complete" | "unavailable">("ready");
+  const [status, setStatus] = useState<
+    "ready" | "loading" | "playing" | "complete" | "unavailable"
+  >("ready");
   const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => () => {
-    managerRef.current?.destroy();
-    managerRef.current = null;
-  }, []);
+  useEffect(
+    () => () => {
+      managerRef.current?.destroy();
+      managerRef.current = null;
+    },
+    [],
+  );
 
   async function playAd() {
-    if (!videoRef.current || !adContainerRef.current || status === "loading" || status === "playing") return;
+    if (
+      !videoRef.current ||
+      !adContainerRef.current ||
+      status === "loading" ||
+      status === "playing"
+    )
+      return;
     setStatus("loading");
     setMessage(null);
     try {
@@ -133,9 +167,15 @@ export function VideoVastAd() {
           manager.destroy();
           managerRef.current = null;
         });
-        manager.addEventListener(ima.AdEvent.Type.CONTENT_RESUME_REQUESTED, () => setStatus("complete"));
+        manager.addEventListener(ima.AdEvent.Type.CONTENT_RESUME_REQUESTED, () =>
+          setStatus("complete"),
+        );
         manager.addEventListener(ima.AdEvent.Type.STARTED, () => setStatus("playing"));
-        manager.init(container.clientWidth || 640, container.clientHeight || 360, ima.ViewMode.NORMAL);
+        manager.init(
+          container.clientWidth || 640,
+          container.clientHeight || 360,
+          ima.ViewMode.NORMAL,
+        );
         manager.start();
       });
       loader.addEventListener(ima.AdErrorEvent.Type.AD_ERROR, () => {
@@ -165,16 +205,34 @@ export function VideoVastAd() {
         {status === "ready" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/95 p-5 text-center">
             <p className="text-sm font-medium">Sponsored video</p>
-            <button type="button" onClick={() => void playAd()} className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">
+            <button
+              type="button"
+              onClick={() => void playAd()}
+              className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
+            >
               Play ad
             </button>
           </div>
         )}
-        {status === "loading" && <div className="absolute inset-0 grid place-items-center bg-background/90 text-sm">Loading sponsored video…</div>}
-        {status === "unavailable" && <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/95 p-5 text-center"><p className="text-sm">{message}</p></div>}
-        {status === "complete" && <div className="absolute inset-0 grid place-items-center bg-background/90 text-sm font-medium">Advertisement finished</div>}
+        {status === "loading" && (
+          <div className="absolute inset-0 grid place-items-center bg-background/90 text-sm">
+            Loading sponsored video…
+          </div>
+        )}
+        {status === "unavailable" && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/95 p-5 text-center">
+            <p className="text-sm">{message}</p>
+          </div>
+        )}
+        {status === "complete" && (
+          <div className="absolute inset-0 grid place-items-center bg-background/90 text-sm font-medium">
+            Advertisement finished
+          </div>
+        )}
       </div>
-      <p className="text-center text-xs text-muted-foreground">Video advertisement provided by MyBid</p>
+      <p className="text-center text-xs text-muted-foreground">
+        Video advertisement provided by MyBid
+      </p>
     </div>
   );
 }
