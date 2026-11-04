@@ -43,7 +43,7 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
   const [editing, setEditing] = useState<CommunityFile | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("0");\n  const [unlocking, setUnlocking] = useState<CommunityFile | null>(null);\n  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [price, setPrice] = useState("0");\n  const [editSourceUrl, setEditSourceUrl] = useState("");\n  const [editThumbnailUrl, setEditThumbnailUrl] = useState("");\n  const [unlocking, setUnlocking] = useState<CommunityFile | null>(null);\n  const [isUnlocked, setIsUnlocked] = useState(false);
 
   const saveEdit = useMutation({
     mutationFn: async () => {
@@ -53,7 +53,7 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
         .update({
           title: title.trim().slice(0, 140) || editing.title,
           description: description.trim().slice(0, 1000) || null,
-          price: Math.max(0, Number(price) || 0),
+          price: Math.max(0, Number(price) || 0),\n          source_url: editSourceUrl.trim() || null,\n          thumbnail_url: editThumbnailUrl.trim() || null,
         })
         .eq("id", editing.id);
       if (error) throw error;
@@ -147,7 +147,7 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
                         setEditing(file);
                         setTitle(file.title);
                         setDescription(file.description ?? "");
-                        setPrice(String(file.price));
+                        setPrice(String(file.price));\n                        setEditSourceUrl(file.source_url ?? "");\n                        setEditThumbnailUrl(file.thumbnail_url ?? "");
                       }}
                     >
                       <Pencil className="h-4 w-4" />
@@ -206,6 +206,14 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-source-url">Source / download link</Label>
+              <Input id="edit-source-url" type="url" placeholder="https://example.com/file.zip" value={editSourceUrl} onChange={(event) => setEditSourceUrl(event.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-thumbnail-url">Thumbnail image URL</Label>
+              <Input id="edit-thumbnail-url" type="url" placeholder="https://example.com/preview.jpg" value={editThumbnailUrl} onChange={(event) => setEditThumbnailUrl(event.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-price">Price (USD)</Label>
