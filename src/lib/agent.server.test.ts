@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 
-import { runAgent } from "./agent.server";
+import { repairMissingStylesheetImports, runAgent } from "./agent.server";
 import { resetProviderCooldowns } from "./gemini.server";
 import { compactSmartContents, estimateSmartTokens } from "./smart-processing.server";
 
@@ -12,6 +12,24 @@ afterEach(() => {
 });
 
 const input = { prompt: "Build a game", files: {}, history: [] };
+
+test("agent repairs a missing src/index.css import by reusing the project's style.css", () => {
+  const files = repairMissingStylesheetImports({
+    "src/main.tsx": 'import "./index.css";\\n',
+    "style.css": "body { background: #111; }",
+  });
+  assert.equal(
+    files["src/index.css"],
+    '/* Recovered missing stylesheet entry; original styles are kept in style.css. */\\n@import "../style.css";\\n',
+  );
+});
+
+test("agent creates a minimal stylesheet when an imported CSS entry is missing", () => {
+  const files = repairMissingStylesheetImports({
+    "src/main.tsx": 'import "./index.css";',
+  });
+  assert.match(files["src/index.css"] ?? "", /box-sizing: border-box/);
+});
 
 test("agent never uses a browser-prefixed key when server credential is missing", async () => {
   const previous = process.env["VITE_GEMINI_API_KEY"];
