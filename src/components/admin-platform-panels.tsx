@@ -7,69 +7,33 @@ import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
-type AdUnit = "nativeBanner" | "banner728";
 type AdSettings = {
-  nativeBannerEnabled: boolean;
-  popunderEnabled: boolean;
-  banner728Enabled: boolean;
-  placements: Record<string, AdUnit>;
+  myBidVastEnabled: boolean;
+  myBidVastUrl: string;
+  myBidAdCodeId: string;
+  myBidFormatId: string;
+  myBidAdCodeName: string;
 };
 
 const DEFAULT_AD_SETTINGS: AdSettings = {
-  nativeBannerEnabled: true,
-  popunderEnabled: true,
-  banner728Enabled: true,
-  placements: { "video-before": "nativeBanner" },
+  myBidVastEnabled: true,
+  myBidVastUrl: "https://vast.vstserv.com/vast?spot_id=2030847",
+  myBidAdCodeId: "470834",
+  myBidFormatId: "2030847",
+  myBidAdCodeName: "ExpertsTeam",
 };
-
-const AD_SLOTS = [
-  ["video-before", "Before video lessons"],
-  ["home-top", "Home — top"],
-  ["home-bottom", "Home — bottom"],
-  ["videos-top", "Video archive — top"],
-  ["videos-bottom", "Video archive — bottom"],
-  ["learn-top", "Learn — top"],
-  ["learn-bottom", "Learn — bottom"],
-  ["community-top", "Community — top"],
-  ["community-bottom", "Community — bottom"],
-  ["entertainment-top", "Entertainment — top"],
-  ["entertainment-bottom", "Entertainment — bottom"],
-  ["projects-top", "Workspace — top"],
-  ["projects-bottom", "Workspace — bottom"],
-  ["ai-top", "ExpertAI Studio — top"],
-  ["ai-bottom", "ExpertAI Studio — bottom"],
-] as const;
 
 function normalizeAdSettings(value: Json | null | undefined): AdSettings {
   if (!value || typeof value !== "object" || Array.isArray(value)) return DEFAULT_AD_SETTINGS;
   const raw = value as Record<string, Json | undefined>;
-  const rawPlacements = raw.placements;
-  const placements =
-    rawPlacements && typeof rawPlacements === "object" && !Array.isArray(rawPlacements)
-      ? (Object.fromEntries(
-          Object.entries(rawPlacements).filter(
-            ([slot, unit]) =>
-              AD_SLOTS.some(([knownSlot]) => knownSlot === slot) &&
-              (unit === "nativeBanner" || unit === "banner728") &&
-              !(unit === "nativeBanner" && slot !== "video-before"),
-          ),
-        ) as Record<string, AdUnit>)
-      : {};
-  placements["video-before"] = "nativeBanner";
   return {
-    nativeBannerEnabled:
-      typeof raw.nativeBannerEnabled === "boolean"
-        ? raw.nativeBannerEnabled
-        : DEFAULT_AD_SETTINGS.nativeBannerEnabled,
-    popunderEnabled:
-      typeof raw.popunderEnabled === "boolean"
-        ? raw.popunderEnabled
-        : DEFAULT_AD_SETTINGS.popunderEnabled,
-    banner728Enabled:
-      typeof raw.banner728Enabled === "boolean"
-        ? raw.banner728Enabled
-        : DEFAULT_AD_SETTINGS.banner728Enabled,
-    placements,
+    myBidVastEnabled: typeof raw.myBidVastEnabled === "boolean" ? raw.myBidVastEnabled : true,
+    myBidVastUrl: typeof raw.myBidVastUrl === "string" && raw.myBidVastUrl.trim()
+      ? raw.myBidVastUrl
+      : DEFAULT_AD_SETTINGS.myBidVastUrl,
+    myBidAdCodeId: typeof raw.myBidAdCodeId === "string" ? raw.myBidAdCodeId : DEFAULT_AD_SETTINGS.myBidAdCodeId,
+    myBidFormatId: typeof raw.myBidFormatId === "string" ? raw.myBidFormatId : DEFAULT_AD_SETTINGS.myBidFormatId,
+    myBidAdCodeName: typeof raw.myBidAdCodeName === "string" ? raw.myBidAdCodeName : DEFAULT_AD_SETTINGS.myBidAdCodeName,
   };
 }
 
@@ -125,6 +89,10 @@ export function AdminAdsSettingsPanel() {
 
   const save = useMutation({
     mutationFn: async () => {
+      const parsedUrl = new URL(draft.myBidVastUrl);
+      if (parsedUrl.protocol !== "https:" || parsedUrl.hostname !== "vast.vstserv.com") {
+        throw new Error("Use the secure MyBid VAST URL supplied for this placement.");
+      }
       const { error } = await supabase
         .from("site_settings")
         .update({
@@ -139,29 +107,10 @@ export function AdminAdsSettingsPanel() {
         queryClient.invalidateQueries({ queryKey: ["admin", "ad-settings"] }),
         queryClient.invalidateQueries({ queryKey: ["site-settings"] }),
       ]);
-      toast.success("Ad and error-display settings saved");
+      toast.success("MyBid video advertising settings saved");
     },
     onError: (error: Error) => toast.error(error.message),
   });
-
-  function setUnitPlacement(unit: AdUnit, slot: string) {
-    setDraft((current) => {
-      const placements = Object.fromEntries(
-        Object.entries(current.placements).filter(([, assigned]) => assigned !== unit),
-      ) as Record<string, AdUnit>;
-      if (slot) {
-        for (const [existingSlot, assigned] of Object.entries(placements)) {
-          if (existingSlot === slot && assigned !== unit) delete placements[existingSlot];
-        }
-        placements[slot] = unit;
-      }
-      return { ...current, placements };
-    });
-  }
-
-  function getUnitSlot(unit: AdUnit) {
-    return Object.entries(draft.placements).find(([, assigned]) => assigned === unit)?.[0] ?? "";
-  }
 
   if (isLoading) {
     return <Card className="p-6 text-sm text-muted-foreground">Loading ad controls…</Card>;
@@ -170,69 +119,56 @@ export function AdminAdsSettingsPanel() {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="font-display text-xl font-semibold">Advertising & error controls</h2>
+        <h2 className="font-display text-xl font-semibold">Video advertising</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Control which approved Adsterra units appear and choose their page placement. Ad scripts
-          are fixed to your supplied publisher snippets; this panel never accepts arbitrary scripts.
+          Manage the MyBid VAST pre-roll shown before ExpertsTeam videos. Adsterra display and popunder scripts have been retired.
         </p>
       </div>
 
-      <Card className="space-y-3 p-5">
-        <h3 className="font-semibold">Ad units</h3>
-        <ToggleRow
-          title="Native Banner"
-          description="Your 4:1 Native Banner. It is assigned to the pre-video lesson screen by default."
-          checked={draft.nativeBannerEnabled}
-          onChange={(checked) =>
-            setDraft((current) => ({ ...current, nativeBannerEnabled: checked }))
-          }
-        />
-        <ToggleRow
-          title="Popunder"
-          description="Loads the supplied Popunder unit once per page when enabled."
-          checked={draft.popunderEnabled}
-          onChange={(checked) => setDraft((current) => ({ ...current, popunderEnabled: checked }))}
-        />
-        <ToggleRow
-          title="728 × 90 banner"
-          description="Your supplied fixed-size banner unit. Choose one page section below."
-          checked={draft.banner728Enabled}
-          onChange={(checked) => setDraft((current) => ({ ...current, banner728Enabled: checked }))}
-        />
-      </Card>
-
       <Card className="space-y-4 p-5">
-        <div>
-          <h3 className="font-semibold">Ad placement</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Choose one location per display unit. The pre-video Native Banner placement is the
-            default.
-          </p>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h3 className="font-semibold">MyBid Video VAST</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Publisher ad code #{draft.myBidAdCodeId} · Format ID {draft.myBidFormatId}</p>
+          </div>
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600">Configured</span>
         </div>
-        <div className="rounded-xl border border-border/70 p-4">
-          <p className="text-sm font-medium">Native Banner location</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Fixed before every video lesson so the pre-video ad is never accidentally moved.
-          </p>
-        </div>
+        <ToggleRow
+          title="Enable pre-roll video ads"
+          description="Request a MyBid video ad before each video lesson. Visitors can continue if MyBid has no ad available."
+          checked={draft.myBidVastEnabled}
+          onChange={(checked) => setDraft((current) => ({ ...current, myBidVastEnabled: checked }))}
+        />
         <label className="block space-y-2">
-          <span className="text-sm font-medium">728 × 90 banner location</span>
-          <select
-            value={getUnitSlot("banner728")}
-            onChange={(event) => setUnitPlacement("banner728", event.target.value)}
+          <span className="text-sm font-medium">Ad code name</span>
+          <input
+            value={draft.myBidAdCodeName}
+            onChange={(event) => setDraft((current) => ({ ...current, myBidAdCodeName: event.target.value }))}
             className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-          >
-            <option value="">Not placed</option>
-            {AD_SLOTS.filter(([value]) => value !== "video-before").map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
+          />
         </label>
+        <label className="block space-y-2">
+          <span className="text-sm font-medium">VAST tag URL</span>
+          <input
+            type="url"
+            value={draft.myBidVastUrl}
+            onChange={(event) => setDraft((current) => ({ ...current, myBidVastUrl: event.target.value }))}
+            className="h-10 w-full rounded-md border border-input bg-background px-3 font-mono text-xs"
+            spellCheck={false}
+          />
+        </label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block space-y-2">
+            <span className="text-sm font-medium">MyBid ad code ID</span>
+            <input value={draft.myBidAdCodeId} readOnly className="h-10 w-full rounded-md border border-input bg-muted px-3 text-sm" />
+          </label>
+          <label className="block space-y-2">
+            <span className="text-sm font-medium">Video VAST format ID</span>
+            <input value={draft.myBidFormatId} readOnly className="h-10 w-full rounded-md border border-input bg-muted px-3 text-sm" />
+          </label>
+        </div>
         <p className="text-xs text-muted-foreground">
-          Only the page slots installed in ExpertsTeam can render ads. A selected slot will be
-          connected to the corresponding page component.
+          The VAST tag is requested through the Google IMA SDK. The original YouTube video starts only after the ad completes or MyBid reports no fill.
         </p>
       </Card>
 
