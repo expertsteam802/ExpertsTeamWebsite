@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { AdSlot } from "@/components/ads/ad-slot";
 
 type YouTubePlayer = { destroy: () => void; getIframe: () => HTMLIFrameElement };
 type YouTubeApi = {
@@ -131,7 +132,6 @@ function playerErrorMessage(code: number) {
 type Props = { videoId: string | null; title: string; onClose: () => void };
 export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
   const playerContainerRef = useRef<HTMLDivElement>(null);
-  const adContainerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YouTubePlayer | null>(null);
   const countedRef = useRef(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
@@ -144,7 +144,6 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
     setLoading(false);
   }, [videoId]);
 
-  // Load the supplied Adsterra display unit inside the pre-video unlock screen.
   useEffect(() => {
     if (!videoId || unlockedVideoId === videoId) return;
     const container = adContainerRef.current;
@@ -275,11 +274,7 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
                   An advertisement is displayed before this video. Continue when you're ready.
                 </p>
               </div>
-              <div
-                id="container-e6d8442231a964256120f8359c3b588e"
-                ref={adContainerRef}
-                className="flex min-h-[90px] w-full max-w-full items-center justify-center overflow-hidden rounded-lg"
-              />
+              <AdSlot slot="video-before" />
               <Button onClick={() => setUnlockedVideoId(videoId)}>Continue to video</Button>
               <p className="text-xs text-muted-foreground">
                 The ad may not appear if no advertisement is available or your browser blocks it.
