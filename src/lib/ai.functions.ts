@@ -14,7 +14,7 @@ const attachmentSchema = z.object({
 const aiRequest = z
   .object({
     prompt: z.string().trim().min(1).max(6000),
-    mode: z.enum(["chat", "workspace", "plan"]),
+    mode: z.enum(["chat", "workspace"]),
     history: z
       .array(
         z.object({
