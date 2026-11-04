@@ -180,33 +180,59 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
 
   const url = sandbox.domain(port);
   const previewHost = new URL(url).hostname;
+  const viteConfigFile = [
+    "vite.config.ts",
+    "vite.config.js",
+    "vite.config.mts",
+    "vite.config.mjs",
+    "vite.config.cts",
+    "vite.config.cjs",
+  ].find((candidate) => typeof files[candidate] === "string");
+  const previewConfigPath = ".experts-vite-preview.config.ts";
+  if (isVite) {
+    const configImport = viteConfigFile
+      ? `import userConfig from "./${viteConfigFile}";`
+      : "const userConfig = {};";
+    const previewConfig = [
+      'import { mergeConfig } from "vite";',
+      configImport,
+      `const previewHost = ${JSON.stringify(previewHost)};`,
+      "export default async (environment) => {",
+      "  const base = typeof userConfig === \"function\" ? await userConfig(environment) : await userConfig;",
+      "  const hostConfig = { server: { allowedHosts: [previewHost] }, preview: { allowedHosts: [previewHost] } };",
+      "  return Array.isArray(base) ? base.map((entry) => mergeConfig(entry, hostConfig)) : mergeConfig(base ?? {}, hostConfig);",
+      "};",
+      "",
+    ].join("\\n");
+    await sandbox.writeFiles([{ path: previewConfigPath, content: Buffer.from(previewConfig, "utf8") }]);
+  }
   let alreadyRunning = false;
   let blockedByViteHostCheck = false;
   try {
     const response = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(1500) });
     const body = response.status === 403 ? await response.text() : "";
     blockedByViteHostCheck =
-      isVite && response.status === 403 && body.includes("Blocked request") && body.includes("not allowed");
+      isVite && response.status === 403 && /Blocked request|not allowed|allowedHosts/i.test(body);
     alreadyRunning = response.status < 500 && !blockedByViteHostCheck;
   } catch {
     alreadyRunning = false;
   }
 
-  // A resumed sandbox can still have Vite running with the old environment.
-  // Stop that process so it can restart with the exact current preview hostname.
-  if (blockedByViteHostCheck) {
+  // Always restart Vite so the per-sandbox config is loaded, including on resumed sandboxes.
+  if (isVite) {
     await sandbox.runCommand({
       cmd: "pkill",
       args: ["-f", "[v]ite"],
       cwd: WORKDIR,
     });
+    alreadyRunning = false;
   }
 
   if (!alreadyRunning) {
     if (scriptName) {
       const args = ["run", scriptName];
       if (isNext) args.push("--", "--hostname", "0.0.0.0", "--port", String(port));
-      else if (isVite) args.push("--", "--host", "0.0.0.0", "--port", String(port));
+      else if (isVite) args.push("--", "--host", "0.0.0.0", "--port", String(port), "--config", previewConfigPath);
       await sandbox.runCommand({
         cmd: "npm",
         args,
@@ -221,7 +247,7 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
     } else {
       await sandbox.runCommand({
         cmd: "npx",
-        args: ["vite", "--host", "0.0.0.0", "--port", String(port)],
+        args: ["vite", "--host", "0.0.0.0", "--port", String(port), "--config", previewConfigPath],
         cwd: WORKDIR,
         env: { __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: previewHost },
         detached: true,

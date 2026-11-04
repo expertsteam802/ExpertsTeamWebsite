@@ -94,14 +94,53 @@ function fileToText(file: File): Promise<string> {
   });
 }
 
+async function compressImageForAi(file: File): Promise<UploadedFile> {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error(`Could not decode ${file.name}.`));
+      element.src = objectUrl;
+    });
+    const scale = Math.min(1, 1280 / Math.max(image.width, image.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Image compression is unavailable in this browser.");
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    let quality = 0.76;
+    let blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not compress image.")), "image/jpeg", quality),
+    );
+    while (blob.size > 420_000 && quality > 0.48) {
+      quality -= 0.08;
+      blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not compress image.")), "image/jpeg", quality),
+      );
+    }
+    if (blob.size > 520_000) throw new Error(`${file.name} is too large after compression.`);
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(new Error(`Could not read compressed ${file.name}.`));
+      reader.readAsDataURL(blob);
+    });
+    return { name: file.name.replace(/\\.[^.]+$/, "") + ".jpg", mimeType: "image/jpeg", dataUrl, size: blob.size };
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 function loadFileForAi(file: File): Promise<UploadedFile> {
   const textLike =
     file.type.startsWith("text/") ||
     /\.(txt|md|json|csv|js|ts|tsx|jsx|html|css|sql|yaml|yml|xml)$/i.test(file.name);
-  if (file.size > (textLike ? 200_000 : 1_200_000)) {
+  if (file.size > (textLike ? 200_000 : 12_000_000)) {
     return Promise.reject(
       new Error(
-        `${file.name} is too large. Text files must be under 200 KB and images under 1.2 MB.`,
+        `${file.name} is too large. Text files must be under 200 KB and images under 12 MB before compression.`,
       ),
     );
   }
@@ -112,22 +151,11 @@ function loadFileForAi(file: File): Promise<UploadedFile> {
     return fileToText(file).then((text) => ({
       name: file.name,
       mimeType: file.type || "text/plain",
-      text: text.slice(0, 80_000),
+      text: text.slice(0, 24_000),
       size: file.size,
     }));
   }
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () =>
-      resolve({
-        name: file.name,
-        mimeType: file.type || "image/png",
-        dataUrl: String(reader.result ?? ""),
-        size: file.size,
-      });
-    reader.onerror = () => reject(new Error(`Could not read ${file.name}.`));
-    reader.readAsDataURL(file);
-  });
+  return compressImageForAi(file);
 }
 
 export function ChrisAiChat({
@@ -231,7 +259,7 @@ export function ChrisAiChat({
       });
       if (userMessageError) throw userMessageError;
 
-      const history = messages.slice(-10).map((message) => ({
+      const history = messages.slice(-6).map((message) => ({
         role: message.role,
         content: message.content,
       }));
@@ -348,8 +376,8 @@ export function ChrisAiChat({
       const next = await Promise.all(Array.from(files).slice(0, 3).map(loadFileForAi));
       setAttachments((current) => {
         const combined = [...current, ...next].slice(0, 3);
-        if (combined.reduce((total, item) => total + (item.size ?? 0), 0) > 2_000_000) {
-          toast.error("Keep all attachments together under 2 MB.");
+        if (combined.reduce((total, item) => total + (item.dataUrl?.length ?? item.text?.length ?? 0), 0) > 1_350_000) {
+          toast.error("Compressed attachments must stay under 1 MB in total.");
           return current;
         }
         return combined;

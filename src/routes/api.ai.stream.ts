@@ -165,7 +165,7 @@ export const Route = createFileRoute("/api/ai/stream")({
 
           const compactedContents = compactSmartContents(contents);
           const systemText =
-            "You are ExpertAI for ExpertsTeam. Be accurate, direct, practical, and helpful. Use plain English and ordinary ASCII punctuation. Do not add emojis, decorative symbols, unusual Unicode characters, or ornamental bullets. Use simple hyphen bullets. Preserve required syntax inside code. Never claim access to private user data unless it was supplied in the conversation.";
+            "You are ExpertAI.";
           const providerOrder = (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
             .split(",")
             .map((item) => item.trim().toLowerCase())
@@ -189,7 +189,7 @@ export const Route = createFileRoute("/api/ai/stream")({
                   body: JSON.stringify({
                     systemInstruction: { parts: [{ text: systemText }] },
                     contents: compactedContents,
-                    generationConfig: { maxOutputTokens: 1800 },
+                    generationConfig: { maxOutputTokens: 700 },
                   }),
                   signal: request.signal,
                 },
@@ -238,7 +238,7 @@ export const Route = createFileRoute("/api/ai/stream")({
                   (part): part is { text: string } => typeof part.text === "string",
                 ),
               })),
-              generationConfig: { maxOutputTokens: 1800 },
+              generationConfig: { maxOutputTokens: 700 },
             },
             undefined,
             fallbackOrder,
