@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Check, ImagePlus, Loader2, MessageCircle, MoreHorizontal,
-  Search, Send, Smile, Sparkles, Video, X,
+  ArrowLeft, Check, ImagePlus, MessageCircle, MoreHorizontal,
+  Search, Send, Sparkles, Video, X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -130,11 +130,25 @@ function MessagesPage() {
     },
   });
 
-  const latestByConversation = useMemo(() => {
+  const conversationIds = conversations.map((conversation) => conversation.id);
+  const { data: previews = [] } = useQuery({
+    queryKey: ["direct-message-previews", user?.id, conversationIds.join(",")],
+    enabled: conversationIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await db.from("direct_messages")
+        .select("id,conversation_id,sender_id,body,media_url,created_at")
+        .in("conversation_id", conversationIds)
+        .order("created_at", { ascending: false })
+        .limit(Math.min(500, conversationIds.length * 20));
+      if (error) throw error;
+      return (data ?? []) as DirectMessage[];
+    },
+  });
+  const previewByConversation = useMemo(() => {
     const map = new Map<string, DirectMessage>();
-    for (const message of messages) map.set(message.conversation_id, message);
+    for (const message of previews) if (!map.has(message.conversation_id)) map.set(message.conversation_id, message);
     return map;
-  }, [messages]);
+  }, [previews]);
 
   useEffect(() => {
     if (!activeConversation?.id || !user) return;
@@ -352,7 +366,7 @@ function MessagesPage() {
               {visibleConversations.map((conversation) => {
                 const member = conversation.direct_conversation_members.find((item) => item.user_id !== user.id);
                 const person = member?.profiles;
-                const latest = conversation.id === activeConversation?.id ? messages[messages.length - 1] : undefined;
+                const latest = previewByConversation.get(conversation.id);
                 const unread = latest && latest.sender_id !== user.id && new Date(latest.created_at) > new Date(member?.last_read_at ?? 0);
                 return <button key={conversation.id} onClick={() => { setActiveId(conversation.id); setMobileChatOpen(true); }} className={\`mb-1 flex w-full items-center gap-3 rounded-2xl p-3 text-left transition \${conversation.id === activeConversation?.id ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-secondary/70"}\`}>
                   <div className="relative shrink-0"><Avatar className="h-12 w-12"><AvatarImage src={person?.avatar_url ?? undefined} /><AvatarFallback>{initials(personName(person))}</AvatarFallback></Avatar>{onlineIds.includes(person?.id ?? "") && <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-emerald-500" />}</div>
