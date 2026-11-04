@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoVastAd } from "@/components/ads/ad-slot";
+import { siteSettingsQuery } from "@/hooks/use-site-settings";
 
 type YouTubePlayer = { destroy: () => void; getIframe: () => HTMLIFrameElement };
 type YouTubeApi = {
@@ -131,6 +133,16 @@ function playerErrorMessage(code: number) {
 }
 type Props = { videoId: string | null; title: string; onClose: () => void };
 export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
+  const { data: siteSettings } = useQuery(siteSettingsQuery);
+  const savedAdSettings = (siteSettings?.ad_settings ?? {}) as Record<string, unknown>;
+  const overlayActive =
+    savedAdSettings.myBidActiveFormat === "overlay" &&
+    savedAdSettings.myBidOverlayEnabled !== false;
+  const overlayAdCodeId =
+    typeof savedAdSettings.myBidOverlayAdCodeId === "string"
+      ? savedAdSettings.myBidOverlayAdCodeId
+      : "470837";
+  const shouldLoadLesson = unlockedVideoId === videoId || overlayActive;
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YouTubePlayer | null>(null);
   const countedRef = useRef(false);
@@ -148,7 +160,7 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
   }, [videoId]);
 
   useEffect(() => {
-    if (!videoId || unlockedVideoId !== videoId || !playerContainerRef.current) return;
+    if (!videoId || !shouldLoadLesson || !playerContainerRef.current) return;
     let cancelled = false;
     let readyTimedOut = false;
     let readyTimeout: number | undefined;
@@ -232,7 +244,22 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
       playerRef.current = null;
       playerContainerRef.current?.replaceChildren();
     };
-  }, [videoId, unlockedVideoId, title]);
+  }, [videoId, shouldLoadLesson, title]);
+
+  useEffect(() => {
+    if (!videoId || !overlayActive || !/^\\d+$/.test(overlayAdCodeId)) return;
+    const existing = document.querySelector<HTMLScriptElement>(
+      "script[data-expertsteam-my-bid-overlay='true']",
+    );
+    if (existing?.dataset.admpid === overlayAdCodeId) return;
+    existing?.remove();
+    const script = document.createElement("script");
+    script.src = "https://js.mbidadm.com/static/scripts.js";
+    script.async = true;
+    script.dataset.admpid = overlayAdCodeId;
+    script.dataset.expertsteamMyBidOverlay = "true";
+    document.head.appendChild(script);
+  }, [videoId, overlayActive, overlayAdCodeId]);
 
   return (
     <Dialog open={!!videoId} onOpenChange={(open) => !open && onClose()}>
@@ -240,8 +267,8 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
         <DialogHeader>
           <DialogTitle className="pr-8 text-left">{title}</DialogTitle>
         </DialogHeader>
-        <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-secondary">
-          {videoId && unlockedVideoId !== videoId ? (
+        <div className="expertsteam-video-player relative aspect-video w-full overflow-hidden rounded-xl bg-secondary">
+          {videoId && !shouldLoadLesson ? (
             <div className="flex h-full w-full flex-col items-center justify-center gap-4 overflow-y-auto bg-background p-5 text-center">
               <div>
                 <p className="font-display text-lg font-semibold">Support ExpertsTeam</p>
