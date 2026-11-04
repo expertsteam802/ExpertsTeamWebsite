@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Clock3, ShieldCheck } from "lucide-react";
 
 const AD_DOCUMENT = `<!doctype html>
@@ -28,6 +28,7 @@ export function BannerUnlockAd({
   seconds?: number;
   compact?: boolean;
 }) {
+  const onUnlockedRef = useRef(onUnlocked);
   const [remaining, setRemaining] = useState(seconds);
   const [finished, setFinished] = useState(false);
 
@@ -38,14 +39,14 @@ export function BannerUnlockAd({
         if (current <= 1) {
           window.clearInterval(timer);
           setFinished(true);
-          onUnlocked();
+          onUnlockedRef.current();
           return 0;
         }
         return current - 1;
       });
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [finished, onUnlocked]);
+  }, [finished, seconds]);
 
   return (
     <section className={`w-full rounded-2xl border border-border/70 bg-card p-4 ${compact ? "max-w-3xl" : "max-w-4xl"}`}>
