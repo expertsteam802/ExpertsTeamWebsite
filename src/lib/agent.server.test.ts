@@ -15,12 +15,12 @@ const input = { prompt: "Build a game", files: {}, history: [] };
 
 test("agent repairs a missing src/index.css import by reusing the project's style.css", () => {
   const files = repairMissingStylesheetImports({
-    "src/main.tsx": 'import "./index.css";\\n',
+    "src/main.tsx": 'import "./index.css";\n',
     "style.css": "body { background: #111; }",
   });
   assert.equal(
     files["src/index.css"],
-    '/* Recovered missing stylesheet entry; original styles are kept in style.css. */\\n@import "../style.css";\\n',
+    '/* Recovered missing stylesheet entry; original styles are kept in style.css. */\n@import "../style.css";\n',
   );
 });
 
