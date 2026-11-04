@@ -115,23 +115,43 @@ export const Route = createFileRoute("/api/ai/stream")({
             return Response.json({ error: "The message or attachments are invalid or too large." }, { status: 400 });
           }
 
+          let guestServiceClient: ReturnType<typeof createClient> | null = null;
+          let guestIpHash = "";
+          if (isGuest) {
+            const serviceRoleKey = process.env["SUPABASE_SERVICE_ROLE_KEY"] || process.env["SERVICE_ROLE_KEY"];
+            if (!serviceRoleKey) {
+              return Response.json({ error: "Guest chat is not configured yet. Please sign in to use ExpertAI." }, { status: 503 });
+            }
+            const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+            const ip = forwarded || request.headers.get("x-real-ip") || "unknown";
+            const digest = await crypto.subtle.digest(
+              "SHA-256",
+              new TextEncoder().encode(`${ip}:${serviceRoleKey}`),
+            );
+            guestIpHash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+            guestServiceClient = createClient(supabaseUrl, serviceRoleKey, {
+              auth: { persistSession: false, autoRefreshToken: false },
+            });
+            const { data: canUseCredits, error: guestCheckError } = await guestServiceClient.rpc(
+              "can_use_guest_ai_credit",
+              { p_ip_hash: guestIpHash },
+            );
+            if (guestCheckError) {
+              return Response.json({ error: "Guest chat credits could not be checked. Please try again later." }, { status: 503 });
+            }
+            if (!canUseCredits) {
+              return Response.json({
+                error: "You've used your 15 free guest credits for this 24-hour period. Create an account for more AI credits.",
+              }, { status: 402 });
+            }
+          }
+
           const consumeCredit = async (): Promise<string | null> => {
             if (isAdmin) return null;
             if (isGuest) {
-              const serviceRoleKey = process.env["SUPABASE_SERVICE_ROLE_KEY"] || process.env["SERVICE_ROLE_KEY"];
-              if (!serviceRoleKey) return "Guest chat is not configured yet. Please sign in to use ExpertAI.";
-              const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-              const ip = forwarded || request.headers.get("x-real-ip") || "unknown";
-              const digest = await crypto.subtle.digest(
-                "SHA-256",
-                new TextEncoder().encode(`${ip}:${serviceRoleKey}`),
-              );
-              const ipHash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-              const serviceClient = createClient(supabaseUrl, serviceRoleKey, {
-                auth: { persistSession: false, autoRefreshToken: false },
-              });
-              const { data: allowed, error } = await serviceClient.rpc("consume_guest_ai_credit", {
-                p_ip_hash: ipHash,
+              if (!guestServiceClient || !guestIpHash) return "Guest chat is not configured yet. Please sign in to use ExpertAI.";
+              const { data: allowed, error } = await guestServiceClient.rpc("consume_guest_ai_credit", {
+                p_ip_hash: guestIpHash,
               });
               if (error) return "Guest chat credits could not be checked. Please try again later.";
               if (!allowed) return "You've used your 15 free guest credits for this 24-hour period. Create an account for more AI credits.";
