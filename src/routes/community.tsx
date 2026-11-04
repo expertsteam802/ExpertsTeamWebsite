@@ -158,16 +158,14 @@ function CommunityPage() {
             ? "Community question"
             : "Community update")
       ).slice(0, 120);
-      const { error } = await supabase
-        .from("community_posts")
-        .insert({
-          user_id: user.id,
-          kind,
-          title,
-          body: caption || null,
-          link_url: linkUrl.trim() || null,
-          media_url,
-        });
+      const { error } = await supabase.from("community_posts").insert({
+        user_id: user.id,
+        kind,
+        title,
+        body: caption || null,
+        link_url: linkUrl.trim() || null,
+        media_url,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
