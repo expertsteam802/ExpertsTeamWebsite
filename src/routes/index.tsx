@@ -135,7 +135,7 @@ function Index() {
                   className="group h-12 w-full px-6 text-sm font-semibold sm:w-auto"
                 >
                   <Sparkles className="mr-2 h-4 w-4" />
-                  Open AI Studio
+                  Open ExpertAI Studio
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>
@@ -345,7 +345,7 @@ function Index() {
             </p>
             <Link to="/ai" className="mt-7 inline-flex">
               <Button size="lg" className="group">
-                Try the AI workspace{" "}
+                Try ExpertAI{" "}
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
