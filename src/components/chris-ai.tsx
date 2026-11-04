@@ -172,7 +172,15 @@ export function ChrisAiChat({
   const [generatedImage, setGeneratedImage] = useState<{ mimeType: string; data: string } | null>(
     null,
   );
-  const [streamingReply, setStreamingReply] = useState("");\n  const [guestMessages, setGuestMessages] = useState<ChatRow[]>([]);\n  const [guestCredits, setGuestCredits] = useState(() => {\n    if (typeof window === "undefined") return 15;\n    try {\n      const saved = window.localStorage.getItem("experts-team:guest-ai-credits");\n      return saved === null ? 15 : Math.max(0, Math.min(15, Number(saved) || 0));\n    } catch { return 15; }\n  });
+  const [streamingReply, setStreamingReply] = useState("");
+  const [guestMessages, setGuestMessages] = useState<ChatRow[]>([]);
+  const [guestCredits, setGuestCredits] = useState(() => {
+    if (typeof window === "undefined") return 15;
+    try {
+      const saved = window.localStorage.getItem("experts-team:guest-ai-credits");
+      return saved === null ? 15 : Math.max(0, Math.min(15, Number(saved) || 0));
+    } catch { return 15; }
+  });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -430,7 +438,10 @@ export function ChrisAiChat({
   const guestCreditsExhausted = !user && guestCredits <= 0;
 
   function submit() {
-    if (guestCreditsExhausted) {\n      toast.error("You have used your 15 free guest credits. Create an account to keep chatting.");\n      return;\n    }\n    if (chatIsFull) {
+    if (guestCreditsExhausted) {
+      toast.error("You have used your 15 free guest credits. Create an account to keep chatting.");
+      return;
+    }\n    if (chatIsFull) {
       toast.error("This chat is full. Start a new chat to continue; this conversation remains saved.");
       return;
     }
@@ -598,7 +609,9 @@ export function ChrisAiChat({
       )}
 
       <div className="border-t border-border/70 p-3">
-        {guestCreditsExhausted && (\n          <div role="status" className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">Your 15 free guest credits are used. Create an account to continue chatting with ExpertAI.</div>\n        )}\n        {chatIsFull && (
+        {guestCreditsExhausted && (
+          <div role="status" className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">Your 15 free guest credits are used. Create an account to continue chatting with ExpertAI.</div>
+        )}\n        {chatIsFull && (
           <div role="status" className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
             <span>This chat is full. Your conversation is saved. Start a new chat to continue.</span>
             <Button size="sm" onClick={newChat}>New chat</Button>
