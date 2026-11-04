@@ -420,7 +420,13 @@ export function ChrisAiChat({
     );
   }
 
+  const chatIsFull = messages.length >= 50;
+
   function submit() {
+    if (chatIsFull) {
+      toast.error("This chat is full. Start a new chat to continue; this conversation remains saved.");
+      return;
+    }
     const prompt = input.trim();
     if (!prompt && attachments.length === 0) return;
     if (send.isPending) return;
@@ -585,6 +591,12 @@ export function ChrisAiChat({
       )}
 
       <div className="border-t border-border/70 p-3">
+        {chatIsFull && (
+          <div role="status" className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+            <span>This chat is full. Your conversation is saved. Start a new chat to continue.</span>
+            <Button size="sm" onClick={newChat}>New chat</Button>
+          </div>
+        )}
         {attachments.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-2">
             {attachments.map((attachment) => (
@@ -635,6 +647,7 @@ export function ChrisAiChat({
             rows={1}
             placeholder="Ask ExpertAI anything…"
             onChange={(event) => setInput(event.target.value)}
+            disabled={chatIsFull}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
@@ -656,7 +669,7 @@ export function ChrisAiChat({
               <ImagePlus className="h-4 w-4" />
             )}
           </Button>
-          <Button onClick={submit} disabled={send.isPending} aria-label="Send message">
+          <Button onClick={submit} disabled={send.isPending || chatIsFull} aria-label="Send message">
             <Send className="h-4 w-4" />
           </Button>
         </div>
