@@ -108,6 +108,7 @@ function MessagesPage() {
   const activeConversation = conversations.find((item) => item.id === activeId) ?? conversations[0] ?? null;
   const otherMember = activeConversation?.direct_conversation_members.find((item) => item.user_id !== user?.id);
   const recipient = otherMember?.profiles ?? null;
+  const activeConversationId = activeConversation?.id ?? null;
 
   const { data: messages = [], isLoading: messagesLoading } = useQuery({
     queryKey: ["direct-messages", activeConversation?.id],
@@ -236,12 +237,12 @@ function MessagesPage() {
   }, [activeConversation?.id, userId, queryClient]);
 
   useEffect(() => {
-    if (!activeConversation || !userId) return;
+    if (!activeConversationId || !userId) return;
     void supabase.from("direct_conversation_members")
       .update({ last_read_at: new Date().toISOString() })
-      .eq("conversation_id", activeConversation.id)
+      .eq("conversation_id", activeConversationId)
       .eq("user_id", userId);
-  }, [activeConversation?.id, userId, messages.length]);
+  }, [activeConversationId, userId, messages.length]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
