@@ -51,7 +51,7 @@ const CAPABILITIES = [
     icon: WandSparkles,
     number: "01",
     title: "Describe it. Start building.",
-    body: "Turn a plain-language idea into a clear build plan, then approve each step as your project takes shape.",
+    body: "Turn a plain-language idea into a working project with ExpertAI, then refine the result as you go.",
     tag: "AI APP BUILDER",
   },
   {
@@ -234,7 +234,7 @@ function Index() {
                   </div>
 
                   <div className="my-5 flex items-center gap-3 text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                    <span className="h-px flex-1 bg-white/10" /> BUILD PLAN{" "}
+                    <span className="h-px flex-1 bg-white/10" /> BUILD PROGRESS{" "}
                     <span className="h-px flex-1 bg-white/10" />
                   </div>
 
@@ -272,7 +272,7 @@ function Index() {
                 </div>
               </div>
               <div className="flex items-center justify-between border-t border-white/10 bg-white/[0.025] px-4 py-3 text-[10px] text-slate-500">
-                <span>IDEAS → PLAN → BUILD → PREVIEW</span>
+                <span>IDEAS → BUILD → PREVIEW</span>
                 <span className="inline-flex items-center gap-1.5 text-cyan-300">
                   <Sparkles className="h-3 w-3" /> Made to create
                 </span>
@@ -341,7 +341,7 @@ function Index() {
             </h2>
             <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground sm:text-base">
               No need to know every technical step before you begin. Start with what you want to
-              make, review the plan, and shape the result as you go.
+              make, review the changes, and shape the result as you go.
             </p>
             <Link to="/ai" className="mt-7 inline-flex">
               <Button size="lg" className="group">
@@ -353,7 +353,7 @@ function Index() {
           <div className="grid gap-3 sm:grid-cols-3">
             {[
               { icon: MessageCircle, title: "Tell us", text: "Explain what you want to create." },
-              { icon: Layers3, title: "Shape it", text: "Review the plan and guide the build." },
+              { icon: Layers3, title: "Shape it", text: "Review the changes and guide the result." },
               { icon: Rocket, title: "Launch it", text: "Preview, refine and keep ownership." },
             ].map((step, index) => (
               <div key={step.title} className="rounded-2xl border border-border bg-card p-5">
