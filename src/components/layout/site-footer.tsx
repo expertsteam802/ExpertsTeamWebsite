@@ -3,6 +3,16 @@ import { Instagram, Mail, Youtube } from "lucide-react";
 
 import { useSiteSettings } from "@/hooks/use-site-settings";
 
+function socialLabel(value: string, fallback: string) {
+  try {
+    const path = new URL(value).pathname.split("/").filter(Boolean).join("/");
+    if (!path) return fallback;
+    return path.startsWith("@") ? path : `@${path}`;
+  } catch {
+    return fallback;
+  }
+}
+
 export function SiteFooter() {
   const settings = useSiteSettings();
 
@@ -42,7 +52,7 @@ export function SiteFooter() {
             rel="noreferrer"
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
           >
-            <Youtube className="h-4 w-4" /> {settings.youtube_url.replace(/^https?:\\/\\/(www\\.)?youtube\\.com\\//i, "@").replace(/\\/?$/, "")}
+            <Youtube className="h-4 w-4" /> {socialLabel(settings.youtube_url, "YouTube channel")}
           </a>
           <a
             href={settings.instagram_url}
@@ -50,7 +60,7 @@ export function SiteFooter() {
             rel="noreferrer"
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
           >
-            <Instagram className="h-4 w-4" /> {settings.instagram_url.replace(/^https?:\\/\\/(www\\.)?instagram\\.com\\//i, "@").replace(/\\/?$/, "")}
+            <Instagram className="h-4 w-4" /> {socialLabel(settings.instagram_url, "Instagram")}
           </a>
           <a
             href={`mailto:${settings.owner_email}`}
