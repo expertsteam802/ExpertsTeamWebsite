@@ -265,10 +265,10 @@ export const Route = createFileRoute("/api/ai/stream")({
             }
           }
 
-          const fallbackOrder =
-            geminiKey && orderedProviders[0] === "gemini"
-              ? orderedProviders.slice(1)
-              : orderedProviders;
+          // Guest and signed-in chats share this exact provider chain. If the
+          // optional Gemini streaming attempt fails, let the standard adapter
+          // retry/fallback across the same configured providers.
+          const fallbackOrder = orderedProviders;
           const result = await generateGeminiContent(
             {
               systemInstruction: { parts: [{ text: systemText }] },
