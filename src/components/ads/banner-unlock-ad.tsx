@@ -7,15 +7,30 @@ const AD_DOCUMENT = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
+*{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f4f4f5}
-.ad-frame{width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#ad-root{position:relative;width:728px;height:90px;transform-origin:top center}
+#ad-fallback{position:absolute;inset:0;display:grid;place-items:center;color:#71717a;font:12px Arial,sans-serif;background:#f4f4f5}
 </style>
 </head>
 <body>
-<div class="ad-frame">
-<script>window.atOptions={key:"502debf88d7d96769c683f2ec09cb70b",format:"iframe",height:90,width:728,params:{}};<\/script>
-<script src="https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b"><\/script>
-</div>
+<div id="ad-root"><div id="ad-fallback">Advertisement · ExpertsTeam</div></div>
+<script>
+(function(){
+  var root=document.getElementById("ad-root");
+  var fallback=document.getElementById("ad-fallback");
+  function fit(){var scale=Math.min(1,window.innerWidth/728);root.style.transform="scale("+scale+")";document.body.style.height=(90*scale)+"px";}
+  fit();window.addEventListener("resize",fit);
+  window.atOptions={key:"502debf88d7d96769c683f2ec09cb70b",format:"iframe",height:90,width:728,params:{}};
+  var script=document.createElement("script");script.async=true;
+  script.src="https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b";
+  script.onload=function(){if(root.querySelector("iframe,ins,a"))fallback.style.display="none";};
+  root.appendChild(script);
+  var observer=new MutationObserver(function(){if(root.querySelector("iframe,ins,a"))fallback.style.display="none";});
+  observer.observe(root,{childList:true,subtree:true});
+})();
+<\/script>
 </body>
 </html>`;
 
