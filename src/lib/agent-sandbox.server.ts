@@ -97,7 +97,7 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   const activeScripts = (packageJson.scripts ?? {}) as Record<string, string>;
   const scriptName = activeScripts.dev ? "dev" : activeScripts.start ? "start" : null;
   const devScript = activeScripts[scriptName ?? ""] ?? "";
-  const isNext = /next\\s+dev|next\\s+start/.test(devScript);
+  const isNext = /next\s+dev|next\s+start/.test(devScript);
   const isVite = /vite/.test(devScript);
   const port = isNext || scriptName === "start" || /react-scripts/.test(devScript) ? 3000 : 5173;
   const name = sandboxName(projectId);
