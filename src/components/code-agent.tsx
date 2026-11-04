@@ -191,7 +191,6 @@ export function CodeAgent() {
   const [terminalInput, setTerminalInput] = useState("");
   const [terminalReady, setTerminalReady] = useState(false);
   const runtimeFilesRef = useRef<ProjectFiles>({});
-  const runtimeInstallKeyRef = useRef<string | null>(null);
   const runtimeSyncQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -267,8 +266,13 @@ export function CodeAgent() {
   async function openTerminal() {
     if (terminalReady) return;
     try {
-      if (!projectId) await persist();
-      if (!runtimeUrl) await runProject();
+      const activeProjectId = projectId ?? await persist();
+      if (!runtimeUrl) {
+        const result = await startPreview({ data: { projectId: activeProjectId, files } });
+        setRuntimeUrl(result.url);
+        setRuntimeStatus("Running in Vercel Sandbox");
+        runtimeFilesRef.current = { ...files };
+      }
       setTerminalReady(true);
       setTerminalOutput((current) => current || "Cloud terminal connected. Commands run inside your isolated project sandbox.\\r\\n");
     } catch (error) {
@@ -345,7 +349,6 @@ export function CodeAgent() {
     setRuntimeUrl(null);
     setRuntimeStatus("Not started");
     runtimeFilesRef.current = {};
-    runtimeInstallKeyRef.current = null;
   }
 
   async function saveProjectName() {
@@ -1004,11 +1007,7 @@ export function CodeAgent() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => {
-                    stopDevServer();
-                    setRuntimeUrl(null);
-                    setRuntimeStatus("Stopped");
-                  }}
+                  onClick={() => void stopProject()}
                   className="h-8 px-2 text-slate-400 hover:text-white"
                   title="Stop the development server"
                 >
@@ -1226,13 +1225,13 @@ export function CodeAgent() {
                           key={command}
                           type="button"
                           disabled={!terminalReady}
-                          onClick={() =>
-                            void writeTerminalInput(command + "\n").catch((error) =>
-                              toast.error(
-                                error instanceof Error ? error.message : "Command failed",
-                              ),
-                            )
-                          }
+                          onClick={() => {
+                            if (!projectId) return;
+                            setTerminalOutput((current) => (current + `\\r\\n$ ${command}\\r\\n`).slice(-40000));
+                            void terminalCommand({ data: { projectId, command } }).then((result) => {
+                              setTerminalOutput((current) => (current + result.stdout + (result.stderr ? `\\r\\n${result.stderr}` : "") + `\\r\\n[exit ${result.exitCode}]\\r\\n`).slice(-40000));
+                            }).catch((error) => toast.error(error instanceof Error ? error.message : "Command failed"));
+                          }}
                           className="rounded border border-white/10 px-2 py-1 font-mono text-[10px] text-slate-400 hover:border-emerald-400/40 hover:text-emerald-200 disabled:opacity-30"
                         >
                           {command}
