@@ -34,15 +34,18 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type FormEvent,
-  type KeyboardEvent,
-} from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import CodeMirror from "@uiw/react-codemirror";
+import { EditorView } from "@codemirror/view";
+import { javascript } from "@codemirror/lang-javascript";
+import { html } from "@codemirror/lang-html";
+import { css } from "@codemirror/lang-css";
+import { json } from "@codemirror/lang-json";
+import { oneDark } from "@codemirror/theme-one-dark";
+import { bracketMatching, foldGutter, indentOnInput } from "@codemirror/language";
+import { autocompletion, closeBrackets } from "@codemirror/autocomplete";
+import { indentWithTab } from "@codemirror/commands";
+import { keymap } from "@codemirror/view";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -53,20 +56,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
-import { pushProjectToGithub, runCodingAgent } from "@/lib/agent.functions";
+import { pushProjectToGithub, runCodingAgent, runAgentTerminalCommand, startAgentPreview, stopAgentPreview } from "@/lib/agent.functions";
 import { buildSrcDocWithConsole, STARTER_FILES, type ProjectFiles } from "@/lib/sandbox";
-import {
-  installDependencies,
-  mountProjectFiles,
-  removeProjectFile,
-  startDevServer,
-  startTerminalSession,
-  stopTerminalSession,
-  stopDevServer,
-  writeTerminalInput,
-  writeProjectFile,
-} from "@/lib/webcontainer-runtime";
-
 type Message = { role: "user" | "assistant"; content: string };
 
 type ProjectRow = {
@@ -160,6 +151,9 @@ export function CodeAgent() {
   const queryClient = useQueryClient();
   const run = useServerFn(runCodingAgent);
   const push = useServerFn(pushProjectToGithub);
+  const startPreview = useServerFn(startAgentPreview);
+  const terminalCommand = useServerFn(runAgentTerminalCommand);
+  const stopPreview = useServerFn(stopAgentPreview);
 
   const [projectId, setProjectId] = useState<string | null>(null);
   const [name, setName] = useState("Untitled project");
@@ -202,8 +196,16 @@ export function CodeAgent() {
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
-  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<EditorView | null>(null);
   const srcDoc = useMemo(() => buildSrcDocWithConsole(files), [files]);
+  const editorExtensions = useMemo(() => {
+    const language = activeFile.endsWith(".tsx") || activeFile.endsWith(".ts") || activeFile.endsWith(".jsx") || activeFile.endsWith(".js")
+      ? javascript({ jsx: true, typescript: /\\.tsx?$/.test(activeFile) })
+      : activeFile.endsWith(".html") ? html()
+      : activeFile.endsWith(".css") ? css()
+      : activeFile.endsWith(".json") ? json() : null;
+    return [foldGutter(), bracketMatching(), indentOnInput(), closeBrackets(), autocompletion(), keymap.of([indentWithTab]), ...(language ? [language] : [])];
+  }, [activeFile]);
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["agent-projects", user?.id],
@@ -222,35 +224,27 @@ export function CodeAgent() {
 
   useEffect(() => {
     return () => {
-      stopDevServer();
-      stopTerminalSession();
+      // The cloud workspace is intentionally persistent between visits.
+      // It is stopped by the workspace Stop control, not by route unmounts.
     };
   }, []);
 
   useEffect(() => {
-    if (!runtimeUrl) return;
-
-    const previousFiles = runtimeFilesRef.current;
+    if (!runtimeUrl || !projectId) return;
+    if (JSON.stringify(runtimeFilesRef.current) === JSON.stringify(files)) return;
     const nextFiles = files;
-    const changedPaths = new Set([...Object.keys(previousFiles), ...Object.keys(nextFiles)]);
-
     runtimeSyncQueueRef.current = runtimeSyncQueueRef.current
       .then(async () => {
-        for (const path of changedPaths) {
-          if (previousFiles[path] === nextFiles[path]) continue;
-          if (nextFiles[path] === undefined) {
-            await removeProjectFile(path);
-          } else {
-            await writeProjectFile(path, nextFiles[path]);
-          }
-        }
+        await startPreview({ data: { projectId, files: nextFiles } });
         runtimeFilesRef.current = { ...nextFiles };
+        setRuntimeStatus("Running · files synced");
       })
       .catch((error) => {
         const message = error instanceof Error ? error.message : "Could not sync project files.";
         setLogs((current) => [...current.slice(-199), { type: "error", message }]);
+        setRuntimeStatus("Sync failed");
       });
-  }, [files, runtimeUrl]);
+  }, [files, runtimeUrl, projectId]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -272,143 +266,79 @@ export function CodeAgent() {
 
   async function openTerminal() {
     if (terminalReady) return;
-    setTerminalOutput((current) => current || "Starting browser shell…\r\n");
     try {
-      // A terminal must open in the active project, not an empty WebContainer home.
-      await runtimeSyncQueueRef.current;
-      const runtimeAlreadyHasFiles =
-        JSON.stringify(runtimeFilesRef.current) === JSON.stringify(files);
-      if (!runtimeAlreadyHasFiles) {
-        await mountProjectFiles(files, {
-          onOutput: (output) => setTerminalOutput((current) => (current + output).slice(-40000)),
-          onError: (message) =>
-            setTerminalOutput((current) =>
-              (current + `\\r\n[setup error] ${message}\\r\n`).slice(-40000),
-            ),
-        });
-        runtimeFilesRef.current = { ...files };
-      }
-      const installKey = JSON.stringify({
-        packageJson: files["package.json"] ?? "default-vite",
-        packageLock: files["package-lock.json"] ?? "",
-        npmShrinkwrap: files["npm-shrinkwrap.json"] ?? "",
-      });
-      if (runtimeInstallKeyRef.current !== installKey) {
-        const exitCode = await installDependencies(
-          {
-            onOutput: (output) => setTerminalOutput((current) => (current + output).slice(-40000)),
-            onError: (message) =>
-              setTerminalOutput((current) =>
-                (current + `\\r\n[setup error] ${message}\\r\n`).slice(-40000),
-              ),
-          },
-          installKey,
-        );
-        if (exitCode !== 0)
-          throw new Error(
-            "Project dependencies could not be installed. Review the terminal output.",
-          );
-        runtimeInstallKeyRef.current = installKey;
-      }
-      await startTerminalSession(
-        (chunk) => setTerminalOutput((current) => (current + chunk).slice(-40000)),
-        (exitCode) => {
-          setTerminalReady(false);
-          setTerminalOutput(
-            (current) => `${current}\r\n[process exited with code ${exitCode}]\r\n`,
-          );
-        },
-      );
+      if (!projectId) await persist();
+      if (!runtimeUrl) await runProject();
       setTerminalReady(true);
+      setTerminalOutput((current) => current || "Cloud terminal connected. Commands run inside your isolated project sandbox.\\r\\n");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not start the terminal.";
-      setTerminalOutput((current) => `${current}\r\n[terminal error] ${message}\r\n`);
+      const message = error instanceof Error ? error.message : "Could not connect to the cloud terminal.";
+      setTerminalOutput((current) => current + `\\r\\n[terminal error] ${message}\\r\\n`);
       toast.error(message);
     }
   }
 
   async function submitTerminalCommand(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const command = terminalInput;
-    if (!command.trim()) return;
-    if (!terminalReady) {
-      toast.error("Start the terminal before entering a command.");
-      return;
-    }
+    const command = terminalInput.trim();
+    if (!command || !projectId) return;
+    setTerminalInput("");
+    setTerminalOutput((current) => (current + `\\r\\n$ ${command}\\r\\n`).slice(-40000));
     try {
-      await writeTerminalInput(`${command}\n`);
-      setTerminalInput("");
+      const result = await terminalCommand({ data: { projectId, command } });
+      setTerminalOutput((current) =>
+        (current + result.stdout + (result.stderr ? `\\r\\n${result.stderr}` : "") +
+          `\\r\\n[exit ${result.exitCode}]\\r\\n`).slice(-40000),
+      );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not send the command.");
+      const message = error instanceof Error ? error.message : "Command failed.";
+      setTerminalOutput((current) => (current + `\\r\\n[terminal error] ${message}\\r\\n`).slice(-40000));
     }
   }
 
   async function runProject() {
     if (runtimeBusy) return;
-
     setRuntimeBusy(true);
-    setRuntimeStatus("Starting browser runtime…");
-    setRuntimeUrl(null);
-    stopDevServer();
+    setRuntimeStatus("Preparing cloud sandbox…");
     setPanel("preview");
     setLogs([]);
-
-    const callbacks = {
-      onOutput: (output: string) => {
-        setLogs((current) => [...current.slice(-199), { type: "runtime", message: output }]);
-      },
-      onError: (message: string) => {
-        setLogs((current) => [...current.slice(-199), { type: "error", message }]);
-      },
-      onServerReady: (_port: number, url: string) => {
-        setRuntimeUrl(url);
-        setRuntimeStatus("Running");
-      },
-    };
-
     try {
-      await runtimeSyncQueueRef.current;
-      const runtimeAlreadyHasFiles =
-        JSON.stringify(runtimeFilesRef.current) === JSON.stringify(files);
-      if (!runtimeAlreadyHasFiles) {
-        await mountProjectFiles(files, callbacks);
-        runtimeFilesRef.current = { ...files };
-      }
-
-      const installKey = JSON.stringify({
-        packageJson: files["package.json"] ?? "default-vite",
-        packageLock: files["package-lock.json"] ?? "",
-        npmShrinkwrap: files["npm-shrinkwrap.json"] ?? "",
-      });
-
-      if (runtimeInstallKeyRef.current !== installKey) {
-        setRuntimeStatus("Installing npm packages…");
-        const exitCode = await installDependencies(callbacks, installKey);
-        if (exitCode !== 0) {
-          throw new Error("Package installation failed. Review the Console for details.");
-        }
-        runtimeInstallKeyRef.current = installKey;
-      }
-
-      setRuntimeStatus("Starting development server…");
-      await startDevServer(callbacks);
-      setPanel("preview");
-      toast.success("Your project is running");
+      const activeProjectId = projectId ?? await persist();
+      const result = await startPreview({ data: { projectId: activeProjectId, files } });
+      setRuntimeUrl(result.url);
+      setRuntimeStatus("Running in Vercel Sandbox");
+      runtimeFilesRef.current = { ...files };
+      if (result.installOutput) setLogs([{ type: "runtime", message: result.installOutput }]);
+      toast.success("Cloud preview is running");
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "The project runtime could not start.";
+      const message = error instanceof Error ? error.message : "The cloud preview could not start.";
       setRuntimeStatus("Could not start");
       setRuntimeUrl(null);
-      setLogs((current) => [...current.slice(-199), { type: "error", message }]);
+      setLogs((current) => [...current, { type: "error", message }]);
       toast.error(message);
     } finally {
       setRuntimeBusy(false);
     }
   }
 
+  async function stopProject() {
+    if (!projectId || runtimeBusy) return;
+    setRuntimeBusy(true);
+    try {
+      await stopPreview({ data: { projectId } });
+      setRuntimeUrl(null);
+      setRuntimeStatus("Stopped · sandbox saved");
+      setTerminalReady(false);
+      toast.success("Cloud preview stopped");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not stop the preview.");
+    } finally {
+      setRuntimeBusy(false);
+    }
+  }
+
   function resetRuntimeForProjectChange() {
-    stopDevServer();
-    stopTerminalSession();
+    if (projectId && runtimeUrl) void stopPreview({ data: { projectId } }).catch(() => undefined);
     setTerminalReady(false);
     setTerminalInput("");
     setTerminalOutput("");
@@ -649,63 +579,14 @@ export function CodeAgent() {
   function insertEditorSnippet(value: string) {
     const editor = editorRef.current;
     if (!editor) return;
-    const start = editor.selectionStart;
-    const end = editor.selectionEnd;
-    const nextValue = editor.value.slice(0, start) + value + editor.value.slice(end);
-    updateFile(nextValue);
+    const { from, to } = editor.state.selection.main;
+    editor.dispatch({
+      changes: { from, to, insert: value },
+      selection: { anchor: from + value.length },
+      scrollIntoView: true,
+    });
+    editor.focus();
     setCompletionsOpen(false);
-    window.setTimeout(() => {
-      editor.focus();
-      editor.setSelectionRange(start + value.length, start + value.length);
-    }, 0);
-  }
-
-  function handleEditorKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    const editor = event.currentTarget;
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
-      event.preventDefault();
-      saveMutation.mutate();
-      return;
-    }
-    if ((event.ctrlKey || event.metaKey) && event.code === "Space") {
-      event.preventDefault();
-      setCompletionsOpen(true);
-      return;
-    }
-    if (event.key === "Tab") {
-      event.preventDefault();
-      editor.setRangeText("  ", editor.selectionStart, editor.selectionEnd, "end");
-      updateFile(editor.value);
-      return;
-    }
-    if (event.key === "Enter") {
-      event.preventDefault();
-      const before = editor.value.slice(0, editor.selectionStart);
-      const line = before.split("\n").pop() ?? "";
-      const indent = line.match(/^\s*/)?.[0] ?? "";
-      const trimmedBefore = before.trimEnd();
-      const extraIndent = ["{", "(", "["].some((character) => trimmedBefore.endsWith(character))
-        ? "  "
-        : "";
-      editor.setRangeText(
-        "\n" + indent + extraIndent,
-        editor.selectionStart,
-        editor.selectionEnd,
-        "end",
-      );
-      updateFile(editor.value);
-      return;
-    }
-    const pairs: Record<string, string> = { "(": ")", "[": "]", "{": "}", '"': '"', "'": "'" };
-    const closing = pairs[event.key];
-    if (closing && !event.ctrlKey && !event.metaKey && !event.altKey) {
-      event.preventDefault();
-      const start = editor.selectionStart;
-      const end = editor.selectionEnd;
-      editor.setRangeText(event.key + closing, start, end, "end");
-      editor.setSelectionRange(start + 1, start + 1);
-      updateFile(editor.value);
-    }
   }
 
   function beginPanelResize(
@@ -1215,7 +1096,7 @@ export function CodeAgent() {
                     </div>
                     <span className="max-w-[55%] truncate text-[10px] text-slate-500">
                       {runtimeUrl
-                        ? "WebContainer · Vite / npm"
+                        ? "Vercel Sandbox · isolated cloud runtime"
                         : runtimeBusy || runtimeStatus !== "Not started"
                           ? runtimeStatus
                           : "HTML quick preview · press Run for React/Vite"}
@@ -1301,17 +1182,30 @@ export function CodeAgent() {
                         )}
                       </div>
                     )}
-                    <textarea
-                      ref={editorRef}
-                      onKeyDown={handleEditorKeyDown}
-                      aria-label="Code editor"
-                      value={files[activeFile] ?? ""}
-                      onChange={(event) => updateFile(event.target.value)}
-                      spellCheck={false}
-                      disabled={!activeFile}
-                      className="min-h-0 min-w-0 flex-1 resize-none overflow-auto bg-transparent p-3 font-mono text-xs leading-6 text-slate-200 outline-none selection:bg-cyan-500/30"
-                      placeholder="Select a file to start editing…"
-                    />
+                    <div className="min-h-0 min-w-0 flex-1 overflow-auto text-sm">
+                      <CodeMirror
+                        value={files[activeFile] ?? ""}
+                        height="100%"
+                        theme={oneDark}
+                        extensions={editorExtensions}
+                        onCreateEditor={(view) => { editorRef.current = view; }}
+                        onChange={(value) => updateFile(value)}
+                        editable={Boolean(activeFile)}
+                        basicSetup={{
+                          lineNumbers: true,
+                          foldGutter: true,
+                          highlightActiveLine: true,
+                          highlightActiveLineGutter: true,
+                          bracketMatching: true,
+                          autocompletion: true,
+                          closeBrackets: true,
+                          indentOnInput: true,
+                          tabSize: 2,
+                        }}
+                        className="h-full min-h-full text-[13px]"
+                        placeholder="Select a file to start editing…"
+                      />
+                    </div>
                   </div>
                 </>
               )}
@@ -1321,11 +1215,11 @@ export function CodeAgent() {
                   <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] px-4">
                     <span className="flex items-center gap-2 text-xs text-slate-300">
                       <Terminal className="h-3.5 w-3.5 text-emerald-300" />
-                      Expert Terminal · Kali-inspired workspace
+                      Expert Terminal · isolated cloud workspace
                     </span>
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       <span className="text-[10px] text-slate-500">
-                        {terminalReady ? "WORKSPACE ONLINE" : "SHELL OFFLINE"}
+                        {terminalReady ? "SANDBOX ONLINE" : "SANDBOX OFFLINE"}
                       </span>
                       {["ls", "pwd", "npm run dev", "npm run build"].map((command) => (
                         <button
