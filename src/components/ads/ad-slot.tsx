@@ -122,7 +122,7 @@ function loadImaSdk(): Promise<ImaNamespace> {
   return imaSdkPromise;
 }
 
-export function VideoVastAd() {
+export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
   const { data, isFetched, isError } = useQuery(siteSettingsQuery);
   const settings = useMemo(() => parseAdSettings(data?.ad_settings), [data?.ad_settings]);
   const adContainerRef = useRef<HTMLDivElement>(null);
@@ -164,6 +164,7 @@ export function VideoVastAd() {
         managerRef.current = manager;
         manager.addEventListener(ima.AdEvent.Type.ALL_ADS_COMPLETED, () => {
           setStatus("complete");
+          onFinished?.();
           manager.destroy();
           managerRef.current = null;
         });
@@ -183,6 +184,7 @@ export function VideoVastAd() {
         managerRef.current = null;
         setStatus("unavailable");
         setMessage("MyBid did not return a playable video ad. You can continue to the video.");
+        onFinished?.();
       });
       const request = new ima.AdsRequest();
       request.adTagUrl = settings.myBidVastUrl;
@@ -192,6 +194,7 @@ export function VideoVastAd() {
     } catch (error) {
       setStatus("unavailable");
       setMessage(error instanceof Error ? error.message : "The video ad could not be loaded.");
+      onFinished?.();
     }
   }
 
