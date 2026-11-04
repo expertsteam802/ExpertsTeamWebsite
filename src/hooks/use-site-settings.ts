@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
 export type SiteSettings = {
   id: number;
@@ -15,6 +16,8 @@ export type SiteSettings = {
   ai_subscription_price: number;
   ai_subscription_credits: number;
   payout_account: string | null;
+  ad_settings: Json;
+  error_dialog_enabled: boolean;
 };
 
 export const siteSettingsQuery = {
@@ -46,6 +49,13 @@ export function useSiteSettings() {
       ai_subscription_price: 1,
       ai_subscription_credits: 500,
       payout_account: null,
+      ad_settings: {
+        nativeBannerEnabled: true,
+        popunderEnabled: true,
+        banner728Enabled: true,
+        placements: { "video-before": "nativeBanner" },
+      },
+      error_dialog_enabled: true,
     }
   );
 }
