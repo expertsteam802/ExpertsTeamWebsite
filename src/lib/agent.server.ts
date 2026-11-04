@@ -20,6 +20,10 @@ Rules:
 - For full products, generate a Vite + React + TypeScript app when appropriate, with package.json, vite.config.ts, tsconfig.json, index.html, src/main.tsx, src/App.tsx, src/index.css, and supporting files.
 - For browser-only prototypes, you may use plain HTML/CSS/JS if simpler, but do not create toy or incomplete apps.
 - If a project needs multiple files, include all required files and keep them consistent.
+- Before editing, inspect the supplied project context and form a short implementation plan; include that plan in the JSON message, then complete the requested work rather than stopping at a plan.
+- When a screenshot or photo reference is attached, treat it as the visual specification: reproduce its layout, proportions, spacing, typography, colors, imagery, responsive behavior and visible interactions as closely as possible. Build real interface code and working controls; never return only a static image or a superficial approximation.
+- Preserve existing project features and visual identity unless the user explicitly asks to replace them. Do not remove unrelated routes, flows, settings, or data.
+- Before marking complete, check that all referenced imports, files, routes, dependencies and interactions are present and mutually consistent. Include missing supporting files in later continuation rounds instead of leaving TODOs or placeholders.
 - Always include only files you created or changed; null values are allowed to delete files.
 - Use relative file paths like "src/App.tsx" or "src/index.css".
 - Keep the app visually polished, production-ready, and easy to run.
