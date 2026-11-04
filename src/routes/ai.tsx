@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { Bot, Code2, MessageSquare, Sparkles } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Bot, Code2, Home, MessageSquare, Sparkles } from "lucide-react";
 
 import { AdSlot } from "@/components/ads/ad-slot";
 import { ChrisAiChat } from "@/components/chris-ai";
@@ -69,6 +69,13 @@ function AiPage() {
             <span>ExpertAI Chat</span>
           </button>
         </nav>
+
+        <Link
+          to="/"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+        >
+          <Home className="h-4 w-4" /> Home
+        </Link>
 
         <div className="hidden items-center gap-2 text-xs text-emerald-300 sm:flex">
           <span className="h-2 w-2 rounded-full bg-emerald-400" />
