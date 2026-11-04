@@ -54,10 +54,25 @@ AS $$
 $$;
 GRANT EXECUTE ON FUNCTION public.is_direct_conversation_member(uuid) TO authenticated;
 
+CREATE OR REPLACE FUNCTION public.can_add_direct_conversation_member(target_conversation uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $
+  SELECT EXISTS (
+    SELECT 1 FROM public.direct_conversations conversation
+    WHERE conversation.id = target_conversation
+      AND conversation.created_by = auth.uid()
+  );
+$;
+GRANT EXECUTE ON FUNCTION public.can_add_direct_conversation_member(uuid) TO authenticated;
+
 DROP POLICY IF EXISTS "Members read direct conversations" ON public.direct_conversations;
 CREATE POLICY "Members read direct conversations"
   ON public.direct_conversations FOR SELECT TO authenticated
-  USING (public.is_direct_conversation_member(id));
+  USING (created_by = auth.uid() OR public.is_direct_conversation_member(id));
 
 DROP POLICY IF EXISTS "Members create direct conversations" ON public.direct_conversations;
 CREATE POLICY "Members create direct conversations"
@@ -73,11 +88,7 @@ DROP POLICY IF EXISTS "Conversation creators add participants" ON public.direct_
 CREATE POLICY "Conversation creators add participants"
   ON public.direct_conversation_members FOR INSERT TO authenticated
   WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.direct_conversations conversation
-      WHERE conversation.id = conversation_id
-        AND conversation.created_by = auth.uid()
-    )
+    public.can_add_direct_conversation_member(conversation_id)
   );
 
 DROP POLICY IF EXISTS "Members update own read state" ON public.direct_conversation_members;
