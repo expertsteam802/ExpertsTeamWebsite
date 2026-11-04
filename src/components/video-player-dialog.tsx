@@ -137,12 +137,12 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [unlockedVideoId, setUnlockedVideoId] = useState<string | null>(null);
-  const [adFinished, setAdFinished] = useState(false);
-  const handleAdFinished = useCallback(() => setAdFinished(true), []);
+  const handleAdFinished = useCallback(() => {
+    if (videoId) setUnlockedVideoId(videoId);
+  }, [videoId]);
 
   useEffect(() => {
     setUnlockedVideoId(null);
-    setAdFinished(false);
     setPlaybackError(null);
     setLoading(false);
   }, [videoId]);
@@ -250,11 +250,8 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
                 </p>
               </div>
               <VideoVastAd onFinished={handleAdFinished} />
-              {adFinished && (
-                <Button onClick={() => setUnlockedVideoId(videoId)}>Continue to video</Button>
-              )}
               <p className="text-xs text-muted-foreground">
-                If no ad is available, you can continue without waiting.
+                Your lesson unlocks automatically after the sponsored video finishes.
               </p>
             </div>
           ) : (
