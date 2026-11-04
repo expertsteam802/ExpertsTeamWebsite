@@ -1616,8 +1616,8 @@ export function CodeAgent() {
                           toast.error(file.name + ": use PNG, JPG or WebP.");
                           return false;
                         }
-                        if (file.size > 2 * 1024 * 1024) {
-                          toast.error(file.name + ": reference images must be 2 MB or smaller.");
+                        if (file.size > 1.8 * 1024 * 1024) {
+                          toast.error(file.name + ": reference images must be 1.8 MB or smaller.");
                           return false;
                         }
                         return true;
