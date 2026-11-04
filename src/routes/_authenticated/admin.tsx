@@ -18,6 +18,7 @@ import {
   Users,
   Video,
   Eye,
+  FileDown,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -135,7 +136,12 @@ function AdminPage() {
     },
   });
 
-  const { data: adminFiles = [], isLoading: adminFilesLoading } = useQuery({
+  const {
+    data: adminFiles = [],
+    isLoading: adminFilesLoading,
+    isError: adminFilesError,
+    refetch: refetchAdminFiles,
+  } = useQuery({
     queryKey: ["admin", "all-files"],
     enabled: isAdmin,
     queryFn: async () => {
@@ -709,6 +715,15 @@ function AdminPage() {
                 </div>
                 {adminFilesLoading ? (
                   <Card className="p-8 text-sm text-muted-foreground">Loading community resources…</Card>
+                ) : adminFilesError ? (
+                  <Card className="flex flex-col items-start gap-3 p-6">
+                    <p className="text-sm text-destructive">
+                      The upload library could not be loaded. Check your connection and access permissions, then try again.
+                    </p>
+                    <Button variant="outline" onClick={() => void refetchAdminFiles()}>
+                      <RefreshCw className="mr-2 h-4 w-4" /> Retry loading uploads
+                    </Button>
+                  </Card>
                 ) : (
                   <FileGrid files={adminFiles} />
                 )}
