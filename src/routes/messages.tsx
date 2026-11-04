@@ -77,6 +77,7 @@ function shortTime(value?: string) {
 
 function MessagesPage() {
   const { user, profile } = useAuth();
+  const userId = user?.id ?? null;
   const queryClient = useQueryClient();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -148,20 +149,20 @@ function MessagesPage() {
   });
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     const inboxChannel = supabase
-      .channel("direct-inbox-" + user.id)
+      .channel("direct-inbox-" + userId)
       .on("postgres_changes", { event: "*", schema: "public", table: "direct_messages" }, (payload) => {
         const row = (payload.new ?? payload.old) as { conversation_id?: string } | undefined;
-        void queryClient.invalidateQueries({ queryKey: ["direct-conversations", user.id] });
-        void queryClient.invalidateQueries({ queryKey: ["direct-message-previews", user.id] });
+        void queryClient.invalidateQueries({ queryKey: ["direct-conversations", userId] });
+        void queryClient.invalidateQueries({ queryKey: ["direct-message-previews", userId] });
         if (row?.conversation_id) {
           void queryClient.invalidateQueries({ queryKey: ["direct-messages", row.conversation_id] });
         }
       })
       .subscribe();
     return () => { void supabase.removeChannel(inboxChannel); };
-  }, [user?.id, queryClient]);
+  }, [userId, queryClient]);
 
   const conversationIds = conversations.map((conversation) => conversation.id);
   const { data: previews = [] } = useQuery({
@@ -184,9 +185,9 @@ function MessagesPage() {
   }, [previews]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     const presenceChannel = supabase.channel("expertsteam-live-presence", {
-      config: { presence: { key: user.id } },
+      config: { presence: { key: userId } },
     });
     presenceChannel
       .on("presence", { event: "sync" }, () => {
@@ -195,22 +196,22 @@ function MessagesPage() {
           Object.values(state)
             .flat()
             .map((entry) => entry.user_id ?? "")
-            .filter((id) => id && id !== user.id),
+            .filter((id) => id && id !== userId),
         );
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
-          await presenceChannel.track({ user_id: user.id, online_at: new Date().toISOString() });
+          await presenceChannel.track({ user_id: userId, online_at: new Date().toISOString() });
         }
       });
     return () => {
       setOnlineIds([]);
       void supabase.removeChannel(presenceChannel);
     };
-  }, [user?.id]);
+  }, [userId]);
 
   useEffect(() => {
-    if (!activeConversation?.id || !user) return;
+    if (!activeConversation?.id || !userId) return;
     const channel = supabase.channel("direct-chat-" + activeConversation.id, {
       config: { broadcast: { self: false } },
     });
@@ -220,10 +221,10 @@ function MessagesPage() {
         filter: "conversation_id=eq." + activeConversation.id,
       }, () => {
         void queryClient.invalidateQueries({ queryKey: ["direct-messages", activeConversation.id] });
-        void queryClient.invalidateQueries({ queryKey: ["direct-conversations", user.id] });
+        void queryClient.invalidateQueries({ queryKey: ["direct-conversations", userId] });
       })
       .on("broadcast", { event: "typing" }, ({ payload }) => {
-        if (payload?.user_id !== user.id) setTyping(Boolean(payload?.typing));
+        if (payload?.user_id !== userId) setTyping(Boolean(payload?.typing));
       })
       .subscribe();
     channelRef.current = channel;
@@ -232,15 +233,15 @@ function MessagesPage() {
       setTyping(false);
       void supabase.removeChannel(channel);
     };
-  }, [activeConversation?.id, user?.id, queryClient]);
+  }, [activeConversation?.id, userId, queryClient]);
 
   useEffect(() => {
-    if (!activeConversation || !user) return;
+    if (!activeConversation || !userId) return;
     void supabase.from("direct_conversation_members")
       .update({ last_read_at: new Date().toISOString() })
       .eq("conversation_id", activeConversation.id)
-      .eq("user_id", user.id);
-  }, [activeConversation?.id, user?.id, messages.length]);
+      .eq("user_id", userId);
+  }, [activeConversation?.id, userId, messages.length]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -287,12 +288,13 @@ function MessagesPage() {
     if (!user) return;
     const pairKey = [user.id, person.id].sort().join(":");
     try {
-      let { data: conversation, error } = await supabase
+      const { data: existingConversation, error } = await supabase
         .from("direct_conversations")
         .select("id")
         .eq("pair_key", pairKey)
         .maybeSingle();
       if (error) throw error;
+      let conversation = existingConversation;
       if (!conversation) {
         const created = await supabase.from("direct_conversations")
           .insert({ pair_key: pairKey, created_by: user.id })
