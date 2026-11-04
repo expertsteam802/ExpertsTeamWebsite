@@ -31,7 +31,8 @@ export function AddVideoDialog({ category, triggerLabel = "Add a YouTube video" 
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [link, setLink] = useState("");\n  const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [link, setLink] = useState("");
+  const [thumbnailUrl, setThumbnailUrl] = useState("");
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -46,6 +47,7 @@ export function AddVideoDialog({ category, triggerLabel = "Add a YouTube video" 
         description: description.trim().slice(0, 1000) || null,
         youtube_url: link.trim(),
         youtube_id: youtubeId,
+        thumbnail_url: thumbnailUrl.trim() || null,
         category,
       });
       if (error) throw error;
@@ -55,6 +57,7 @@ export function AddVideoDialog({ category, triggerLabel = "Add a YouTube video" 
       setTitle("");
       setDescription("");
       setLink("");
+      setThumbnailUrl("");
       setOpen(false);
       void queryClient.invalidateQueries({ queryKey: ["videos"] });
     },
