@@ -138,6 +138,28 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
             )}
           </div>
           <div className="space-y-2">
+            <Label htmlFor="upload-source-url">Or share an HTTPS download/source link</Label>
+            <Input
+              id="upload-source-url"
+              type="url"
+              placeholder="https://example.com/my-file.zip"
+              value={sourceUrl}
+              disabled={Boolean(file)}
+              onChange={(event) => setSourceUrl(event.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">No upload is required when you already have a public link.</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="upload-thumbnail-url">Thumbnail image URL (optional)</Label>
+            <Input
+              id="upload-thumbnail-url"
+              type="url"
+              placeholder="https://example.com/preview.jpg"
+              value={thumbnailUrl}
+              onChange={(event) => setThumbnailUrl(event.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="upload-title">Title</Label>
             <Input
               id="upload-title"
