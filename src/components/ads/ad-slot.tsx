@@ -166,26 +166,16 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
     if (isFetched && (isError || !settings.myBidVastEnabled)) onFinished?.();
   }, [isFetched, isError, settings.myBidVastEnabled, onFinished]);
 
-  function playAd() {
-    if (
-      !videoRef.current ||
-      !adContainerRef.current ||
-      status === "loading" ||
-      status === "playing"
-    )
-      return;
+  function playAd(userInitiated = false) {
+    if (!videoRef.current || !adContainerRef.current || status === "loading" || status === "playing") return;
     const ima = window.google?.ima;
     const video = videoRef.current;
     const container = adContainerRef.current;
     if (!ima || !video || !container) {
       setStatus("unavailable");
-      setMessage("The MyBid video ad player is unavailable. You can continue to the video.");
-      onFinished?.();
+      setMessage("The sponsored video could not be initialized. The lesson remains locked; please retry.");
       return;
     }
-
-    // IMA requires initialize() to run directly from the user's click gesture.
-    // The SDK is preloaded as soon as the pre-roll screen mounts.
     setStatus("loading");
     setMessage(null);
     try {
@@ -196,8 +186,7 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
         const manager = event.getAdsManager(video);
         managerRef.current = manager;
         manager.addEventListener(ima.AdEvent.Type.ALL_ADS_COMPLETED, () => {
-          if (requestTimeoutRef.current !== undefined)
-            window.clearTimeout(requestTimeoutRef.current);
+          if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
           setStatus("complete");
           onFinished?.();
           manager.destroy();
@@ -208,33 +197,30 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
           onFinished?.();
         });
         manager.addEventListener(ima.AdEvent.Type.STARTED, () => {
-          if (requestTimeoutRef.current !== undefined)
-            window.clearTimeout(requestTimeoutRef.current);
+          if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
           setStatus("playing");
         });
         manager.addEventListener(ima.AdErrorEvent.Type.AD_ERROR, () => {
-          if (requestTimeoutRef.current !== undefined)
-            window.clearTimeout(requestTimeoutRef.current);
+          if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
           setStatus("unavailable");
-          setMessage("The MyBid video ad could not be played. You can continue to the video.");
-          onFinished?.();
+          setMessage("MyBid could not play an ad. The lesson is still locked. Retry the sponsored video.");
           manager.destroy();
           managerRef.current = null;
         });
-        manager.init(
-          container.clientWidth || 640,
-          container.clientHeight || 360,
-          ima.ViewMode.NORMAL,
-        );
-        manager.start();
+        manager.init(container.clientWidth || 640, container.clientHeight || 360, ima.ViewMode.NORMAL);
+        try { manager.start(); } catch {
+          setStatus("ready");
+          setMessage("Your browser requires a tap before video playback. Tap Start sponsored video to play the ad.");
+          manager.destroy();
+          managerRef.current = null;
+        }
       });
       loader.addEventListener(ima.AdErrorEvent.Type.AD_ERROR, () => {
         managerRef.current?.destroy();
         managerRef.current = null;
         if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
         setStatus("unavailable");
-        setMessage("MyBid did not return a playable video ad. You can continue to the video.");
-        onFinished?.();
+        setMessage("MyBid returned no playable ad. The lesson remains locked. Retry in a moment.");
       });
       const request = new ima.AdsRequest();
       request.adTagUrl = settings.myBidVastUrl;
@@ -244,20 +230,24 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
       requestTimeoutRef.current = window.setTimeout(() => {
         setStatus((current) => {
           if (current === "loading") {
-            setMessage("MyBid did not respond with a video ad. You can continue to the video.");
-            onFinished?.();
+            setMessage("The ad request timed out. The lesson remains locked; please retry.");
             return "unavailable";
           }
           return current;
         });
-      }, 15000);
-    } catch (error) {
-      if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
-      setStatus("unavailable");
-      setMessage(error instanceof Error ? error.message : "The video ad could not be loaded.");
-      onFinished?.();
+      }, 20000);
+    } catch {
+      setStatus(userInitiated ? "unavailable" : "ready");
+      setMessage(userInitiated ? "The sponsored video could not start. The lesson remains locked; please retry." : "Your browser requires a tap before video playback. Tap Start sponsored video to play the ad.");
     }
   }
+
+  const autoStartAttemptedRef = useRef(false);
+  useEffect(() => {
+    if (!sdkReady || autoStartAttemptedRef.current || status !== "ready") return;
+    autoStartAttemptedRef.current = true;
+    playAd(false);
+  }, [sdkReady]);
 
   if (!isFetched || isError || !settings.myBidVastEnabled) return null;
 
@@ -269,17 +259,13 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
         {status === "ready" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/95 p-5 text-center">
             <p className="text-sm font-medium">Sponsored video</p>
-            {sdkReady ? (
-              <button
-                type="button"
-                onClick={playAd}
-                className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
-              >
-                Play ad
+            {message && <p className="max-w-md text-sm text-muted-foreground">{message}</p>}
+            {sdkReady && (
+              <button type="button" onClick={() => playAd(true)} className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">
+                Start sponsored video
               </button>
-            ) : (
-              <p className="text-sm text-muted-foreground">Preparing sponsored video…</p>
             )}
+            {!sdkReady && <p className="text-sm text-muted-foreground">Preparing sponsored video…</p>}
           </div>
         )}
         {status === "loading" && (
@@ -288,8 +274,9 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
           </div>
         )}
         {status === "unavailable" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/95 p-5 text-center">
-            <p className="text-sm">{message}</p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/95 p-5 text-center">
+            <p className="max-w-md text-sm">{message}</p>
+            {sdkReady && <button type="button" onClick={() => playAd(true)} className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">Retry sponsored video</button>}
           </div>
         )}
         {status === "complete" && (
