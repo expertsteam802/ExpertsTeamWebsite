@@ -3,12 +3,105 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { brokeredPreviewStorage } from "./previewAuthStorage";
 
+type ApiUsageEvent = {
+  service: "rest" | "auth" | "storage" | "realtime" | "functions";
+  endpoint: string;
+  method: string;
+  status_code: number;
+  duration_ms: number;
+  request_bytes: number;
+  response_bytes: number;
+};
+
+const apiUsageQueue: ApiUsageEvent[] = [];
+let apiUsageFlushTimer: number | undefined;
+let apiUsageFlushInFlight = false;
+let _supabase: ReturnType<typeof createSupabaseClient> | undefined;
+
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
 }
 
-function createSupabaseFetch(supabaseKey: string): typeof fetch {
-  return (input, init) => {
+function getRequestBytes(body: BodyInit | null | undefined): number {
+  if (typeof body === "string") return new TextEncoder().encode(body).byteLength;
+  if (body instanceof ArrayBuffer) return body.byteLength;
+  if (typeof Blob !== "undefined" && body instanceof Blob) return body.size;
+  return 0;
+}
+
+function getUsageTarget(url: string, supabaseUrl: string) {
+  try {
+    const parsed = new URL(url, supabaseUrl);
+    const path = parsed.pathname;
+    if (path.includes("/rest/v1/api_request_usage")) return null;
+
+    const services = [
+      ["/rest/v1/", "rest"],
+      ["/auth/v1/", "auth"],
+      ["/storage/v1/", "storage"],
+      ["/realtime/v1/", "realtime"],
+      ["/functions/v1/", "functions"],
+    ] as const;
+    const match = services.find(([prefix]) => path.includes(prefix));
+    if (!match) return null;
+
+    // Keep only the path. Query strings can contain user data and are not stored.
+    return {
+      service: match[1],
+      endpoint: path.slice(path.indexOf(match[0]) + match[0].length - 1).slice(0, 255),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function queueApiUsage(event: ApiUsageEvent) {
+  if (typeof window === "undefined") return;
+  apiUsageQueue.push(event);
+
+  if (apiUsageQueue.length >= 20) {
+    void flushApiUsage();
+    return;
+  }
+  if (apiUsageFlushTimer === undefined) {
+    apiUsageFlushTimer = window.setTimeout(() => {
+      apiUsageFlushTimer = undefined;
+      void flushApiUsage();
+    }, 15000);
+  }
+}
+
+async function flushApiUsage() {
+  if (apiUsageFlushInFlight || apiUsageQueue.length === 0 || !_supabase) return;
+  apiUsageFlushInFlight = true;
+  const batch = apiUsageQueue.splice(0, 100);
+
+  try {
+    const { data, error: sessionError } = await _supabase.auth.getSession();
+    const userId = data.session?.user.id;
+    if (sessionError || !userId) return;
+
+    const rows = batch.map((event) => ({ ...event, user_id: userId }));
+    const { error } = await _supabase.from("api_request_usage").insert(rows);
+    if (error) {
+      // Usage telemetry must never interrupt the user's actual Supabase request.
+      console.warn("[Supabase usage] Could not save request metrics:", error.message);
+    }
+  } catch (error) {
+    console.warn("[Supabase usage] Metrics batch failed:", error);
+  } finally {
+    apiUsageFlushInFlight = false;
+    if (apiUsageQueue.length > 0 && typeof window !== "undefined") {
+      apiUsageFlushTimer = window.setTimeout(() => {
+        apiUsageFlushTimer = undefined;
+        void flushApiUsage();
+      }, 5000);
+    }
+  }
+}
+
+function createSupabaseFetch(supabaseKey: string, supabaseUrl: string): typeof fetch {
+  return async (input, init) => {
     const headers = new Headers(
       typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
     );
@@ -26,7 +119,45 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
     }
 
     headers.set("apikey", supabaseKey);
-    return fetch(input, { ...init, headers });
+    const requestUrl = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    const usageTarget =
+      typeof window !== "undefined" ? getUsageTarget(requestUrl, supabaseUrl) : null;
+    const method = (init?.method || (input instanceof Request ? input.method : "GET")).toUpperCase();
+    const requestBytes = getRequestBytes(init?.body);
+    const startedAt = typeof performance !== "undefined" ? performance.now() : 0;
+
+    try {
+      const response = await fetch(input, { ...init, headers });
+      if (usageTarget) {
+        queueApiUsage({
+          ...usageTarget,
+          method,
+          status_code: response.status,
+          duration_ms: Math.max(
+            0,
+            Math.round((typeof performance !== "undefined" ? performance.now() : startedAt) - startedAt),
+          ),
+          request_bytes: requestBytes,
+          response_bytes: Number(response.headers.get("content-length") || 0),
+        });
+      }
+      return response;
+    } catch (error) {
+      if (usageTarget) {
+        queueApiUsage({
+          ...usageTarget,
+          method,
+          status_code: 0,
+          duration_ms: Math.max(
+            0,
+            Math.round((typeof performance !== "undefined" ? performance.now() : startedAt) - startedAt),
+          ),
+          request_bytes: requestBytes,
+          response_bytes: 0,
+        });
+      }
+      throw error;
+    }
   };
 }
 
@@ -49,7 +180,7 @@ function createSupabaseClient() {
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     global: {
-      fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY),
+      fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL),
     },
     auth: {
       storage: brokeredPreviewStorage(),
@@ -58,8 +189,6 @@ function createSupabaseClient() {
     },
   });
 }
-
-let _supabase: ReturnType<typeof createSupabaseClient> | undefined;
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
