@@ -280,7 +280,8 @@ export const Route = createFileRoute("/api/ai/stream")({
           console.error("[ExpertAI stream]", error);
           return Response.json(
             {
-              error: "ExpertAI is temporarily unavailable. Your request is safe to retry in a moment.",
+              error:
+                "ExpertAI is temporarily unavailable. Your request is safe to retry in a moment.",
             },
             { status: 503 },
           );
