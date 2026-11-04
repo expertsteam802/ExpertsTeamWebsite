@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Instagram, LogOut, Menu, MessageCircle, Palette, Shield, Youtube } from "lucide-react";
+import { Instagram, LogOut, Menu, Palette, Shield, Youtube } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
