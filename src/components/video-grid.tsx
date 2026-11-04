@@ -27,6 +27,8 @@ export type VideoItem = {
   description: string | null;
   youtube_url: string;
   youtube_id: string;
+  thumbnail_url?: string | null;
+  player_alignment?: "left" | "center" | "right";
   category: string;
   created_at: string;
   profiles?: { username: string; display_name: string | null } | null;
@@ -157,6 +159,7 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
       <VideoPlayerDialog
         videoId={playing?.youtube_id ?? null}
         title={playing?.title ?? ""}
+        alignment={playing?.player_alignment ?? "center"}
         onClose={() => setPlaying(null)}
       />
 
