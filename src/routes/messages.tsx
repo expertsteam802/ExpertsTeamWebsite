@@ -419,9 +419,10 @@ function MessagesPage() {
               {!isLoading && visibleConversations.length === 0 && <div className="px-5 py-10 text-center"><MessageCircle className="mx-auto h-8 w-8 text-muted-foreground/50" /><p className="mt-3 text-sm font-semibold">No conversations yet</p><p className="mt-1 text-xs text-muted-foreground">Start a chat with someone in the community.</p></div>}
               {visibleConversations.map((conversation) => {
                 const member = conversation.direct_conversation_members.find((item) => item.user_id !== user.id);
+                const selfMember = conversation.direct_conversation_members.find((item) => item.user_id === user.id);
                 const person = member?.profiles;
                 const latest = previewByConversation.get(conversation.id);
-                const unread = latest && latest.sender_id !== user.id && new Date(latest.created_at) > new Date(member?.last_read_at ?? 0);
+                const unread = latest && latest.sender_id !== user.id && new Date(latest.created_at) > new Date(selfMember?.last_read_at ?? 0);
                 return <button key={conversation.id} onClick={() => { setActiveId(conversation.id); setMobileChatOpen(true); }} className={`mb-1 flex w-full items-center gap-3 rounded-2xl p-3 text-left transition ${conversation.id === activeConversation?.id ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-secondary/70"}`}>
                   <div className="relative shrink-0"><Avatar className="h-12 w-12"><AvatarImage src={person?.avatar_url ?? undefined} /><AvatarFallback>{initials(personName(person))}</AvatarFallback></Avatar>{onlineIds.includes(person?.id ?? "") && <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-emerald-500" />}</div>
                   <span className="min-w-0 flex-1"><span className="flex items-center justify-between gap-2"><span className="truncate text-sm font-semibold">{personName(person)}</span><span className="shrink-0 text-[10px] text-muted-foreground">{shortTime(conversation.last_message_at)}</span></span><span className="mt-1 block truncate text-xs text-muted-foreground">{latest ? (latest.body || "Photo") : "Start a conversation"}</span></span>
