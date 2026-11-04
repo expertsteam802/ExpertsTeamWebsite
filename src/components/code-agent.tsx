@@ -720,7 +720,7 @@ export function CodeAgent() {
 
   function renameFile() {
     if (!renameFileFrom) return;
-    const nextPath = renameFileName.trim().replace(/^\\/+/, "");
+    const nextPath = renameFileName.trim().replace(/^\/+/, "");
     if (!nextPath || nextPath.includes("..") || nextPath.startsWith(".")) {
       toast.error("Enter a valid file path.");
       return;
