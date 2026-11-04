@@ -31,7 +31,7 @@ export function AddVideoDialog({ category, triggerLabel = "Add a YouTube video" 
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [link, setLink] = useState("");
+  const [link, setLink] = useState("");\n  const [thumbnailUrl, setThumbnailUrl] = useState("");
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -85,6 +85,16 @@ export function AddVideoDialog({ category, triggerLabel = "Add a YouTube video" 
               placeholder="https://www.youtube.com/watch?v=..."
               value={link}
               onChange={(event) => setLink(event.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="video-thumbnail">Custom thumbnail URL (optional)</Label>
+            <Input
+              id="video-thumbnail"
+              type="url"
+              placeholder="https://example.com/video-cover.jpg"
+              value={thumbnailUrl}
+              onChange={(event) => setThumbnailUrl(event.target.value)}
             />
           </div>
           <div className="space-y-2">
