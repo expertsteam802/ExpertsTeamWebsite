@@ -315,8 +315,22 @@ export function CodeAgent() {
       if (checking || !active) return;
       checking = true;
       try {
-        const result = await startPreview({ data: { projectId, files } });
+        let result: Awaited<ReturnType<typeof startPreview>> | null = null;
+        let lastError: unknown;
+        for (let attempt = 1; attempt <= 3 && active; attempt++) {
+          try {
+            result = await startPreview({ data: { projectId, files } });
+            break;
+          } catch (error) {
+            lastError = error;
+            if (attempt < 3) {
+              setRuntimeStatus("Preview reconnecting");
+              await new Promise((resolve) => window.setTimeout(resolve, attempt * 2500));
+            }
+          }
+        }
         if (!active) return;
+        if (!result) throw lastError instanceof Error ? lastError : new Error("Preview health check failed.");
         setRuntimeStatus("Running in Vercel Sandbox");
         if (result.recovered) {
           setRuntimeUrl(result.url);
