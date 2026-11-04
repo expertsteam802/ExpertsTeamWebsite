@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
   ArrowLeft, Check, ImagePlus, MessageCircle,
   Search, Send, Sparkles, X,
@@ -49,7 +50,6 @@ type DirectMessage = {
   media_url: string | null;
   created_at: string;
 };
-const db = supabase as any;
 
 function personName(person?: Person | null) {
   return person?.display_name || person?.username || "Community member";
@@ -79,7 +79,7 @@ function MessagesPage() {
   const [onlineIds, setOnlineIds] = useState<string[]>([]);
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const channelRef = useRef<any>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: conversations = [], isLoading } = useQuery({
@@ -151,7 +151,7 @@ function MessagesPage() {
     queryKey: ["direct-message-previews", user?.id, conversationIds.join(",")],
     enabled: conversationIds.length > 0,
     queryFn: async () => {
-      const { data, error } = await db.from("direct_messages")
+      const { data, error } = await supabase.from("direct_messages")
         .select("id,conversation_id,sender_id,body,media_url,created_at")
         .in("conversation_id", conversationIds)
         .order("created_at", { ascending: false })
@@ -202,7 +202,7 @@ function MessagesPage() {
 
   useEffect(() => {
     if (!activeConversation || !user) return;
-    void db.from("direct_conversation_members")
+    void supabase.from("direct_conversation_members")
       .update({ last_read_at: new Date().toISOString() })
       .eq("conversation_id", activeConversation.id)
       .eq("user_id", user.id);
@@ -233,7 +233,7 @@ function MessagesPage() {
       }
       const body = draft.trim();
       if (!body && !media_url) throw new Error("Write a message or attach a photo.");
-      const { error } = await db.from("direct_messages").insert({
+      const { error } = await supabase.from("direct_messages").insert({
         conversation_id: activeConversation.id, sender_id: user.id, body, media_url,
       });
       if (error) throw error;
@@ -260,17 +260,17 @@ function MessagesPage() {
         .maybeSingle();
       if (error) throw error;
       if (!conversation) {
-        const created = await db.from("direct_conversations")
+        const created = await supabase.from("direct_conversations")
           .insert({ pair_key: pairKey, created_by: user.id })
           .select("id")
           .single();
         if (created.error) {
           if (created.error.code !== "23505") throw created.error;
-          const retry = await db.from("direct_conversations").select("id").eq("pair_key", pairKey).single();
+          const retry = await supabase.from("direct_conversations").select("id").eq("pair_key", pairKey).single();
           if (retry.error) throw retry.error;
           conversation = retry.data;
         } else conversation = created.data;
-        const { error: memberError } = await db.from("direct_conversation_members").insert([
+        const { error: memberError } = await supabase.from("direct_conversation_members").insert([
           { conversation_id: conversation.id, user_id: user.id },
           { conversation_id: conversation.id, user_id: person.id },
         ]);
