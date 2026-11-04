@@ -59,7 +59,7 @@ export const Route = createFileRoute("/api/ai/stream")({
           const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
           if (!token || token.split(".").length !== 3) {
             return Response.json(
-              { error: "Please sign in again to use Expert AI." },
+              { error: "Please sign in again to use ExpertAI." },
               { status: 401 },
             );
           }
@@ -165,7 +165,7 @@ export const Route = createFileRoute("/api/ai/stream")({
 
           const compactedContents = compactSmartContents(contents);
           const systemText =
-            "You are Expert AI for ExpertsTeam. Be accurate, direct, practical, and helpful. Use plain English and ordinary ASCII punctuation. Do not add emojis, decorative symbols, unusual Unicode characters, or ornamental bullets. Use simple hyphen bullets. Preserve required syntax inside code. Never claim access to private user data unless it was supplied in the conversation.";
+            "You are ExpertAI for ExpertsTeam. Be accurate, direct, practical, and helpful. Use plain English and ordinary ASCII punctuation. Do not add emojis, decorative symbols, unusual Unicode characters, or ornamental bullets. Use simple hyphen bullets. Preserve required syntax inside code. Never claim access to private user data unless it was supplied in the conversation.";
           const providerOrder = (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
             .split(",")
             .map((item) => item.trim().toLowerCase())
@@ -221,7 +221,7 @@ export const Route = createFileRoute("/api/ai/stream")({
             } catch (error) {
               if (request.signal.aborted) throw error;
               markProviderCoolingDown("gemini", 20);
-              console.error("[Expert AI Gemini stream; trying fallback]", error);
+              console.error("[ExpertAI Gemini stream; trying fallback]", error);
             }
           }
 
@@ -277,15 +277,12 @@ export const Route = createFileRoute("/api/ai/stream")({
             },
           });
         } catch (error) {
-          console.error("[Expert AI stream]", error);
+          console.error("[ExpertAI stream]", error);
           return Response.json(
             {
-              error:
-                error instanceof Error
-                  ? error.message
-                  : "Expert AI could not complete the request.",
+              error: "ExpertAI is temporarily unavailable. Your request is safe to retry in a moment.",
             },
-            { status: 500 },
+            { status: 503 },
           );
         }
       },
