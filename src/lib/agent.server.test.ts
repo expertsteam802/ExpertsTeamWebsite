@@ -253,7 +253,7 @@ test("agent salvages complete files from truncated JSON and continues with anoth
   }
 });
 
-test("agent returns completed files if continuation providers are exhausted", async () => {
+test("agent refuses partial files when continuation providers are exhausted", async () => {
   const previousOrder = process.env["AI_PROVIDER_ORDER"];
   process.env["AI_PROVIDER_ORDER"] = "gemini";
   globalThis.fetch = (async () =>
@@ -277,5 +277,46 @@ test("agent returns completed files if continuation providers are exhausted", as
   } finally {
     if (previousOrder === undefined) delete process.env["AI_PROVIDER_ORDER"];
     else process.env["AI_PROVIDER_ORDER"] = previousOrder;
+  }
+});
+
+test("Groq retries a 413 TPM response with smaller context and output budgets", async () => {
+  const previousOrder = process.env["AI_PROVIDER_ORDER"];
+  const previousGroqKey = process.env["GROQ_API_KEY"];
+  process.env["AI_PROVIDER_ORDER"] = "groq";
+  process.env["GROQ_API_KEY"] = "groq-test-key";
+  const outputBudgets: number[] = [];
+  let calls = 0;
+  globalThis.fetch = (async (url, init) => {
+    if (!String(url).includes("api.groq.com")) {
+      throw new Error("Unexpected provider request: " + String(url));
+    }
+    calls++;
+    const body = JSON.parse(String(init?.body ?? "{}")) as { max_tokens?: number };
+    outputBudgets.push(body.max_tokens ?? 0);
+    if (calls === 1) return new Response("TPM limit exceeded", { status: 413 });
+    return Response.json({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            message: "Recovered with compact context",
+            files: { "index.html": "<h1>Recovered</h1>" },
+            complete: true,
+          }),
+        },
+      }],
+    });
+  }) as typeof fetch;
+
+  try {
+    const result = await runAgent(input, "test-key");
+    assert.equal(result.files["index.html"], "<h1>Recovered</h1>");
+    assert.equal(calls, 2);
+    assert.deepEqual(outputBudgets, [1100, 600]);
+  } finally {
+    if (previousOrder === undefined) delete process.env["AI_PROVIDER_ORDER"];
+    else process.env["AI_PROVIDER_ORDER"] = previousOrder;
+    if (previousGroqKey === undefined) delete process.env["GROQ_API_KEY"];
+    else process.env["GROQ_API_KEY"] = previousGroqKey;
   }
 });
