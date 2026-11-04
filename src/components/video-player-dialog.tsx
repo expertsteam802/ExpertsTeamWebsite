@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoVastAd } from "@/components/ads/ad-slot";
-import { siteSettingsQuery } from "@/hooks/use-site-settings";
 
 type YouTubePlayer = { destroy: () => void; getIframe: () => HTMLIFrameElement };
 type YouTubeApi = {
@@ -133,22 +131,13 @@ function playerErrorMessage(code: number) {
 }
 type Props = { videoId: string | null; title: string; onClose: () => void };
 export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
-  const { data: siteSettings } = useQuery(siteSettingsQuery);
-  const savedAdSettings = (siteSettings?.ad_settings ?? {}) as unknown as Record<string, unknown>;
-  const overlayActive =
-    savedAdSettings.myBidActiveFormat === "overlay" &&
-    savedAdSettings.myBidOverlayEnabled !== false;
-  const overlayAdCodeId =
-    typeof savedAdSettings.myBidOverlayAdCodeId === "string"
-      ? savedAdSettings.myBidOverlayAdCodeId
-      : "470837";
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YouTubePlayer | null>(null);
   const countedRef = useRef(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [unlockedVideoId, setUnlockedVideoId] = useState<string | null>(null);
-  const shouldLoadLesson = unlockedVideoId === videoId || overlayActive;
+  const shouldLoadLesson = unlockedVideoId === videoId;
   const handleAdFinished = useCallback(() => {
     if (videoId) setUnlockedVideoId(videoId);
   }, [videoId]);
@@ -245,21 +234,6 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
       playerContainerRef.current?.replaceChildren();
     };
   }, [videoId, shouldLoadLesson, title]);
-
-  useEffect(() => {
-    if (!videoId || !overlayActive || !/^\d+$/.test(overlayAdCodeId)) return;
-    const existing = document.querySelector<HTMLScriptElement>(
-      "script[data-expertsteam-my-bid-overlay='true']",
-    );
-    if (existing?.dataset.admpid === overlayAdCodeId) return;
-    existing?.remove();
-    const script = document.createElement("script");
-    script.src = "https://js.mbidadm.com/static/scripts.js";
-    script.async = true;
-    script.dataset.admpid = overlayAdCodeId;
-    script.dataset.expertsteamMyBidOverlay = "true";
-    document.head.appendChild(script);
-  }, [videoId, overlayActive, overlayAdCodeId]);
 
   return (
     <Dialog open={!!videoId} onOpenChange={(open) => !open && onClose()}>

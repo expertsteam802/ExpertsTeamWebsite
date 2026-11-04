@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { siteSettingsQuery } from "@/hooks/use-site-settings";
@@ -160,14 +160,19 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
     [],
   );
 
+  const finishedRef = useRef(false);
+  const finishLesson = useCallback(() => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+    onFinished?.();
+  }, [onFinished]);
+
   useEffect(() => {
-    if (
-      !isFetched ||
-      isError ||
-      settings.myBidActiveFormat !== "vast" ||
-      !settings.myBidVastEnabled
-    )
-      return;
+    finishedRef.current = false;
+  }, [onFinished]);
+
+  useEffect(() => {
+    if (!isFetched || isError || !settings.myBidVastEnabled) return;
     let cancelled = false;
     void loadImaSdk()
       .then(() => {
@@ -177,7 +182,7 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
         if (cancelled) return;
         setStatus("unavailable");
         setMessage(error instanceof Error ? error.message : "The video ad player could not load.");
-        onFinished?.();
+        finishLesson();
       });
     return () => {
       cancelled = true;
@@ -185,12 +190,8 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
   }, [isFetched, isError, settings.myBidActiveFormat, settings.myBidVastEnabled, onFinished]);
 
   useEffect(() => {
-    if (
-      isFetched &&
-      (isError || settings.myBidActiveFormat !== "vast" || !settings.myBidVastEnabled)
-    )
-      onFinished?.();
-  }, [isFetched, isError, settings.myBidActiveFormat, settings.myBidVastEnabled, onFinished]);
+    if (isFetched && (isError || !settings.myBidVastEnabled)) finishLesson();
+  }, [isFetched, isError, settings.myBidVastEnabled, finishLesson]);
 
   function playAd(userInitiated = false) {
     if (
@@ -245,9 +246,8 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
           if (requestTimeoutRef.current !== undefined)
             window.clearTimeout(requestTimeoutRef.current);
           setStatus("unavailable");
-          setMessage(
-            "MyBid could not play an ad. The lesson is still locked. Retry the sponsored video.",
-          );
+          setMessage("MyBid did not return a playable ad. Continuing to the lesson.");
+          finishLesson();
           manager.destroy();
           managerRef.current = null;
         });
@@ -274,7 +274,8 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
         managerRef.current = null;
         if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
         setStatus("unavailable");
-        setMessage("MyBid returned no playable ad. The lesson remains locked. Retry in a moment.");
+        setMessage("MyBid returned no playable ad. Continuing to the lesson.");
+        finishLesson();
       });
       const request = new ima.AdsRequest();
       request.adTagUrl = settings.myBidVastUrl;
@@ -282,13 +283,11 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
       request.linearAdSlotHeight = container.clientHeight || 360;
       loader.requestAds(request);
       requestTimeoutRef.current = window.setTimeout(() => {
-        setStatus((current) => {
-          if (current === "loading") {
-            setMessage("The ad request timed out. The lesson remains locked; please retry.");
-            return "unavailable";
-          }
-          return current;
-        });
+        setMessage("The ad request timed out. Continuing to the lesson.");
+        setStatus("unavailable");
+        finishLesson();
+        managerRef.current?.destroy();
+        managerRef.current = null;
       }, 20000);
     } catch {
       setStatus(userInitiated ? "unavailable" : "ready");
@@ -307,8 +306,7 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
     playAd(false);
   }, [sdkReady]);
 
-  if (!isFetched || isError || settings.myBidActiveFormat !== "vast" || !settings.myBidVastEnabled)
-    return null;
+  if (!isFetched || isError || !settings.myBidVastEnabled) return null;
 
   return (
     <div className="w-full max-w-3xl space-y-3">
@@ -365,7 +363,11 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
   );
 }
 
-/** Legacy display slots are intentionally empty: ExpertsTeam now uses MyBid VAST pre-roll only. */
+/**
+ * Page display placements need a separate MyBid display/banner placement ID.
+ * The configured 2030847 placement is a VAST video tag and must not be reused
+ * as a banner. Keep this slot visually absent until a valid display tag exists.
+ */
 export function AdSlot(_props: { slot: string }) {
   return null;
 }

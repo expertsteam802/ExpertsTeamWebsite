@@ -120,7 +120,9 @@ export function AdminAdsSettingsPanel() {
       const { error } = await supabase
         .from("site_settings")
         .update({
-          ad_settings: draft as unknown as Json,
+          // VAST is the supported, measurable video-ad path. Keep legacy overlay
+          // values stored for reference, but do not select them for playback.
+          ad_settings: { ...draft, myBidActiveFormat: "vast" } as unknown as Json,
           error_dialog_enabled: errorDialogEnabled,
         })
         .eq("id", 1);
@@ -145,31 +147,19 @@ export function AdminAdsSettingsPanel() {
       <div>
         <h2 className="font-display text-xl font-semibold">Video advertising</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Choose which MyBid video format runs on lesson videos. You can switch between the existing
-          VAST pre-roll and the new Video Overlay at any time.
+          Lesson videos use the MyBid VAST pre-roll. It reports ad-start, completion, and no-fill
+          events, so visitors can continue safely when MyBid has no available ad.
         </p>
       </div>
 
       <Card className="space-y-4 p-5">
-        <label className="block space-y-2">
-          <span className="text-sm font-medium">Active MyBid format</span>
-          <select
-            value={draft.myBidActiveFormat}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                myBidActiveFormat: event.target.value === "overlay" ? "overlay" : "vast",
-              }))
-            }
-            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-          >
-            <option value="vast">VAST Pre-roll — before the lesson</option>
-            <option value="overlay">Video Overlay — over the lesson player</option>
-          </select>
-          <span className="block text-xs text-muted-foreground">
-            Only the selected format runs. Your other format settings are kept for later switching.
-          </span>
-        </label>
+        <div className="rounded-lg border border-border/70 bg-muted/40 p-3">
+          <p className="text-sm font-medium">Active format: MyBid VAST pre-roll</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            VAST provides reliable playback and no-fill events. The legacy overlay values below
+            are retained for reference but are not loaded by the video player.
+          </p>
+        </div>
         <div className="flex items-center justify-between gap-4">
           <div>
             <h3 className="font-semibold">MyBid VAST Pre-roll</h3>
@@ -232,7 +222,7 @@ export function AdminAdsSettingsPanel() {
         </div>
         <ToggleRow
           title="Enable Video Overlay"
-          description="Keep the overlay ready when selected above. The MyBid script is loaded on lesson video pages."
+          description="Legacy setting retained for reference. The overlay script is not loaded; lesson videos use the VAST placement above."
           checked={draft.myBidOverlayEnabled}
           onChange={(checked) =>
             setDraft((current) => ({ ...current, myBidOverlayEnabled: checked }))
