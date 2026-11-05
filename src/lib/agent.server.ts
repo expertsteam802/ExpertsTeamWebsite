@@ -343,11 +343,12 @@ export async function runAgent(
                 { role: "system", content: systemPrompt },
                 ...modelContents.map((item) => ({
                   role: item.role === "model" ? "assistant" : "user",
-                  content: item.parts.map((part) => part.text ?? "").join("\\n"),
+                  content: item.parts.map((part) => part.text ?? "").join("\n"),
                 })),
               ],
               options: { num_predict: 4096, temperature: 0.15 },
             }),
+            signal: AbortSignal.timeout(120000),
           });
           if (!ollamaResponse.ok) throw new Error(`Ollama HTTP ${ollamaResponse.status}`);
           const payload = await ollamaResponse.json() as { message?: { content?: string } };
