@@ -1,17 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bot,
-  Copy,
   Home,
   ImagePlus,
   Loader2,
   Minimize2,
   MessageSquare,
-  PanelLeftClose,
   Plus,
   Paperclip,
   Send,
-  Sparkles,
   Trash2,
   User,
 } from "lucide-react";
