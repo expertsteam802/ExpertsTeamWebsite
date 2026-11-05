@@ -192,6 +192,7 @@ function parseAgentFiles(text: string): {
 export async function runAgent(
   { prompt, files, history, referenceImage, referenceImages: suppliedReferenceImages }: AgentInput,
   apiKey?: string,
+  ollamaBaseUrl?: string,
 ) {
   const cleanPrompt = prompt.trim();
   if (!cleanPrompt) throw new Error("Tell the agent what to build.");
@@ -265,6 +266,7 @@ export async function runAgent(
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
   const maxRounds = 12;
+  let ollamaEnabled = Boolean(ollamaBaseUrl && !visualReferences.length);
 
   for (let round = 0; round < maxRounds; round++) {
     const existingNames = Object.keys(completedFiles);
@@ -302,11 +304,7 @@ export async function runAgent(
       ...providerSequence.slice(0, startAt),
     ];
     try {
-      const response = await generateGeminiContent(
-        {
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1400 },
-          contents: [
+      const modelContents = [
             ...history.slice(-4).map((message) => ({
               role: message.role === "assistant" ? ("model" as const) : ("user" as const),
               parts: [{ text: message.content.slice(-700) }],
@@ -330,11 +328,48 @@ export async function runAgent(
                 })),
               ],
             },
-          ],
-        },
-        apiKey,
-        visualReferences.length ? ["gemini"] : rotatedProviders,
-      );
+          ];
+      let response: Awaited<ReturnType<typeof generateGeminiContent>>;
+      if (ollamaEnabled && ollamaBaseUrl) {
+        try {
+          const ollamaResponse = await fetch(`${ollamaBaseUrl}/api/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "bypass-tunnel-reminder": "true" },
+            body: JSON.stringify({
+              model: process.env["OLLAMA_MODEL"] || "qwen2.5:1.5b",
+              stream: false,
+              format: "json",
+              messages: [
+                { role: "system", content: systemPrompt },
+                ...modelContents.map((item) => ({
+                  role: item.role === "model" ? "assistant" : "user",
+                  content: item.parts.map((part) => part.text ?? "").join("\\n"),
+                })),
+              ],
+              options: { num_predict: 4096, temperature: 0.15 },
+            }),
+          });
+          if (!ollamaResponse.ok) throw new Error(`Ollama HTTP ${ollamaResponse.status}`);
+          const payload = await ollamaResponse.json() as { message?: { content?: string } };
+          const content = payload.message?.content?.trim();
+          if (!content) throw new Error("Ollama returned an empty response.");
+          response = { candidates: [{ content: { parts: [{ text: content }] }, finishReason: "STOP" }] } as Awaited<ReturnType<typeof generateGeminiContent>>;
+        } catch (error) {
+          ollamaEnabled = false;
+          console.warn("[ExpertsTeam coding agent] Ollama unavailable; falling back to API providers.", error);
+          response = await generateGeminiContent({
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1400 },
+            contents: modelContents,
+          }, apiKey, rotatedProviders);
+        }
+      } else {
+        response = await generateGeminiContent({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1400 },
+          contents: modelContents,
+        }, apiKey, visualReferences.length ? ["gemini"] : rotatedProviders);
+      }
 
       const candidate = response.candidates?.[0];
       const responseText =
