@@ -336,7 +336,7 @@ export async function runAgent(
             method: "POST",
             headers: { "Content-Type": "application/json", "bypass-tunnel-reminder": "true" },
             body: JSON.stringify({
-              model: process.env["OLLAMA_MODEL"] || "qwen2.5:1.5b",
+              model: process.env["OLLAMA_MODEL"] || "qwen2.5-coder:14b",
               stream: false,
               format: "json",
               messages: [
