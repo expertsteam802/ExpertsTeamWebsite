@@ -293,7 +293,7 @@ export const Route = createFileRoute("/api/ai/stream")({
                     { role: "system", content: systemText },
                     ...contents.map((item) => ({
                       role: item.role === "model" ? "assistant" : "user",
-                      content: item.parts.map((part) => part.text ?? "").join("\\n"),
+                      content: item.parts.map((part) => part.text ?? "").join("\n"),
                     })),
                   ],
                   options: { num_predict: 900, temperature: 0.25 },
