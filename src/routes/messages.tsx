@@ -476,6 +476,10 @@ function MessagesPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               Private conversations, live presence and instant replies.
             </p>
+            <p className="mt-2 inline-flex items-center gap-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              {onlineIds.length} {onlineIds.length === 1 ? "developer" : "developers"} active now
+            </p>
           </div>
           <Button
             onClick={() => {
