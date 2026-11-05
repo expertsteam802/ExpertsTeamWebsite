@@ -59,6 +59,7 @@ type SettingsForm = {
   logo_url: string;
   background_image_url: string;
   banner_image_url: string;
+  ollama_url: string;
   youtube_url: string;
   instagram_url: string;
   owner_email: string;
@@ -277,6 +278,12 @@ function AdminPage() {
             : undefined;
           return typeof branding?.banner_image_url === "string" ? branding.banner_image_url : "";
         })(),
+        ollama_url: (() => {
+          const branding = settings.ad_settings && typeof settings.ad_settings === "object" && !Array.isArray(settings.ad_settings)
+            ? (settings.ad_settings as Record<string, unknown>).siteBranding as Record<string, unknown> | undefined
+            : undefined;
+          return typeof branding?.ollama_url === "string" ? branding.ollama_url : "";
+        })(),
         youtube_url: settings.youtube_url,
         instagram_url: settings.instagram_url,
         owner_email: settings.owner_email,
@@ -314,6 +321,7 @@ function AdminPage() {
             siteBranding: {
               background_image_url: form.background_image_url.trim(),
               banner_image_url: form.banner_image_url.trim(),
+              ollama_url: form.ollama_url.trim(),
             },
           } as Json,
           youtube_url: form.youtube_url.trim(),
@@ -847,6 +855,7 @@ function AdminPage() {
                           ["logo_url", "Logo image URL"],
                           ["background_image_url", "Website background image URL"],
                           ["banner_image_url", "Top banner image URL"],
+                          ["ollama_url", "Colab Ollama public URL"],
                           ["youtube_url", "YouTube channel URL"],
                           ["instagram_url", "Instagram URL"],
                           ["owner_email", "Owner email"],
@@ -869,7 +878,8 @@ function AdminPage() {
                               key === "youtube_url" ? "https://youtube.com/@yourchannel" :
                               key === "logo_url" ? "https://example.com/logo.png" :
                               key === "background_image_url" ? "https://example.com/background.jpg" :
-                              key === "banner_image_url" ? "https://example.com/banner.jpg" : ""
+                              key === "banner_image_url" ? "https://example.com/banner.jpg" :
+                              key === "ollama_url" ? "https://your-tunnel.loca.lt" : ""
                             }
                             onChange={(event) => setForm({ ...form, [key]: event.target.value })}
                           />
@@ -881,6 +891,7 @@ function AdminPage() {
                       >
                         Save settings
                       </Button>
+                      <p className="text-xs text-muted-foreground">Ollama is the preferred text model when this URL is online. Paste the new LocalTunnel URL whenever Colab reconnects. Use an HTTPS LocalTunnel address; never paste an API key into this field.</p>
                     </>
                   ) : (
                     <p className="text-sm text-muted-foreground">Loading settings…</p>
