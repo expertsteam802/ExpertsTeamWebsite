@@ -309,24 +309,40 @@ export const Route = createFileRoute("/api/ai/stream")({
               const encoder = new TextEncoder();
               const decoder = new TextDecoder();
               const reader = ollamaResponse.body.getReader();
+              let pending = "";
               const stream = new ReadableStream<Uint8Array>({
                 async pull(controller) {
                   try {
-                    const { value, done } = await reader.read();
-                    if (done) {
-                      controller.enqueue(encoder.encode("data: [DONE]\\n\\n"));
-                      controller.close();
-                      return;
-                    }
-                    const lines = decoder.decode(value, { stream: true }).split("\\n").filter(Boolean);
-                    for (const line of lines) {
-                      const chunk = JSON.parse(line) as { message?: { content?: string }; error?: string };
-                      if (chunk.error) throw new Error(chunk.error);
-                      const token = chunk.message?.content;
-                      if (token) {
-                        const event = { candidates: [{ content: { parts: [{ text: token }] } }] };
-                        controller.enqueue(encoder.encode("data: " + JSON.stringify(event) + "\\n\\n"));
+                    while (true) {
+                      const { value, done } = await reader.read();
+                      if (done) {
+                        pending += decoder.decode();
+                        if (pending.trim()) {
+                          const finalChunk = JSON.parse(pending) as { message?: { content?: string }; error?: string };
+                          if (finalChunk.error) throw new Error(finalChunk.error);
+                          if (finalChunk.message?.content) {
+                            const event = { candidates: [{ content: { parts: [{ text: finalChunk.message.content }] } }] };
+                            controller.enqueue(encoder.encode("data: " + JSON.stringify(event) + "\\n\\n"));
+                          }
+                        }
+                        controller.enqueue(encoder.encode("data: [DONE]\\n\\n"));
+                        controller.close();
+                        return;
                       }
+                      pending += decoder.decode(value, { stream: true });
+                      const lines = pending.split("\\n");
+                      pending = lines.pop() ?? "";
+                      for (const line of lines) {
+                        if (!line.trim()) continue;
+                        const chunk = JSON.parse(line) as { message?: { content?: string }; error?: string };
+                        if (chunk.error) throw new Error(chunk.error);
+                        const token = chunk.message?.content;
+                        if (token) {
+                          const event = { candidates: [{ content: { parts: [{ text: token }] } }] };
+                          controller.enqueue(encoder.encode("data: " + JSON.stringify(event) + "\\n\\n"));
+                        }
+                      }
+                      if (pending.length > 0 || value.length > 0) return;
                     }
                   } catch (error) {
                     controller.error(error);
