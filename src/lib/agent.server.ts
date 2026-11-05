@@ -254,8 +254,8 @@ export async function runAgent(
     remainingCharacters -= content.length;
   }
   const fileDump = selected
-    .map(({ name, content }) => "--- " + name + " ---\\n" + content)
-    .join("\\n\\n");
+    .map(({ name, content }) => "--- " + name + " ---\n" + content)
+    .join("\n\n");
 
   const configured = (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
     .split(",")
@@ -266,15 +266,20 @@ export async function runAgent(
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
   const maxRounds = 12;
+  const startedAt = Date.now();
   let ollamaEnabled = Boolean(ollamaBaseUrl && !visualReferences.length);
 
   for (let round = 0; round < maxRounds; round++) {
+    if (Date.now() - startedAt > 360_000) {
+      lastFailure = "The coding agent reached its 6-minute processing limit. Your existing project files were not changed.";
+      break;
+    }
     const existingNames = Object.keys(completedFiles);
     const continuation =
       round === 0
         ? "User request: " +
           cleanPrompt +
-          "\\nRelevant current project files:\\n" +
+          "\nRelevant current project files:\n" +
           (fileDump || "(empty starter project)")
         : [
             "Continue implementation of this same request: " + cleanPrompt,
@@ -284,18 +289,18 @@ export async function runAgent(
             "If a previous response was truncated, regenerate the missing file from scratch. Never return half a file as completed.",
             "Previously generated file names and short contents:",
             ...Object.entries(completedFiles).map(
-              ([path, content]) => "--- " + path + " ---\\n" + String(content).slice(0, 500),
+              ([path, content]) => "--- " + path + " ---\n" + String(content).slice(0, 500),
             ),
-          ].join("\\n\\n");
+          ].join("\n\n");
 
     const systemPrompt =
       AGENT_PROMPT +
-      "\\n\\nResponse style: keep progress notes and explanations concise, direct, and useful. Use short sentences and small lists. Do not add long introductions, repeat the request, or explain obvious steps. Put implementation effort into complete working files, not verbose commentary.\\n" +
-      "Smart Processing rules:\\n" +
-      "- Work in resumable batches of no more than 2 complete files per response.\\n" +
-      '- Return JSON: {"message":"...","files":{"path":"full file content"},"complete":false}.\\n' +
-      "- Set complete:true only after all necessary files have been supplied across continuation rounds.\\n" +
-      "- Never intentionally truncate a file. Finish the current file, stop, and set complete:false if output budget is low.\\n" +
+      "\n\nResponse style: keep progress notes and explanations concise, direct, and useful. Use short sentences and small lists. Do not add long introductions, repeat the request, or explain obvious steps. Put implementation effort into complete working files, not verbose commentary.\n" +
+      "Smart Processing rules:\n" +
+      "- Work in resumable batches of no more than 2 complete files per response.\n" +
+      '- Return JSON: {"message":"...","files":{"path":"full file content"},"complete":false}.\n' +
+      "- Set complete:true only after all necessary files have been supplied across continuation rounds.\n" +
+      "- Never intentionally truncate a file. Finish the current file, stop, and set complete:false if output budget is low.\n" +
       "- Do not repeat files already supplied unless fixing a specific inconsistency.";
 
     const startAt = round % providerSequence.length;
@@ -316,7 +321,7 @@ export async function runAgent(
                   text:
                     continuation +
                     (visualReferences.length
-                      ? "\\n\\nVISUAL REFERENCES: Inspect every attached screenshot/photo. Use them together as a complete visual specification for the requested screens, tabs, panels and canvases. Reproduce the layouts and working interactions, not just the images. Reference files: " +
+                      ? "\n\nVISUAL REFERENCES: Inspect every attached screenshot/photo. Use them together as a complete visual specification for the requested screens, tabs, panels and canvases. Reproduce the layouts and working interactions, not just the images. Reference files: " +
                         visualReferences.map((image) => image.name).join(", ")
                       : ""),
                 },
