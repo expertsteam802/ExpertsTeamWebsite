@@ -370,7 +370,7 @@ function MessagesPage() {
   const deleteConversation = useMutation({
     mutationFn: async (conversationId: string) => {
       if (!user) throw new Error("Sign in to delete a conversation.");
-      const { error } = await supabase.from("direct_conversation_hidden").upsert({
+      const { error } = await supabase.from("direct_conversation_hidden").insert({
         conversation_id: conversationId,
         user_id: user.id,
       });
