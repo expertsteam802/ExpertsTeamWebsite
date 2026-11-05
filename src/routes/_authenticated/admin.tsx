@@ -56,6 +56,8 @@ export const Route = createFileRoute("/_authenticated/admin")({
 type SettingsForm = {
   site_name: string;
   logo_url: string;
+  background_image_url: string;
+  banner_image_url: string;
   youtube_url: string;
   instagram_url: string;
   owner_email: string;
@@ -262,6 +264,18 @@ function AdminPage() {
       setForm({
         site_name: settings.site_name,
         logo_url: settings.logo_url ?? "",
+        background_image_url: (() => {
+          const branding = settings.ad_settings && typeof settings.ad_settings === "object" && !Array.isArray(settings.ad_settings)
+            ? (settings.ad_settings as Record<string, unknown>).siteBranding as Record<string, unknown> | undefined
+            : undefined;
+          return typeof branding?.background_image_url === "string" ? branding.background_image_url : "";
+        })(),
+        banner_image_url: (() => {
+          const branding = settings.ad_settings && typeof settings.ad_settings === "object" && !Array.isArray(settings.ad_settings)
+            ? (settings.ad_settings as Record<string, unknown>).siteBranding as Record<string, unknown> | undefined
+            : undefined;
+          return typeof branding?.banner_image_url === "string" ? branding.banner_image_url : "";
+        })(),
         youtube_url: settings.youtube_url,
         instagram_url: settings.instagram_url,
         owner_email: settings.owner_email,
@@ -292,6 +306,15 @@ function AdminPage() {
         .update({
           site_name: form.site_name.trim().slice(0, 60),
           logo_url: form.logo_url.trim() || null,
+          ad_settings: {
+            ...(settings.ad_settings && typeof settings.ad_settings === "object" && !Array.isArray(settings.ad_settings)
+              ? settings.ad_settings as Record<string, unknown>
+              : {}),
+            siteBranding: {
+              background_image_url: form.background_image_url.trim(),
+              banner_image_url: form.banner_image_url.trim(),
+            },
+          },
           youtube_url: form.youtube_url.trim(),
           instagram_url: form.instagram_url.trim(),
           owner_email: form.owner_email.trim(),
@@ -815,6 +838,8 @@ function AdminPage() {
                         [
                           ["site_name", "Website name"],
                           ["logo_url", "Logo image URL"],
+                          ["background_image_url", "Website background image URL"],
+                          ["banner_image_url", "Top banner image URL"],
                           ["youtube_url", "YouTube channel URL"],
                           ["instagram_url", "Instagram URL"],
                           ["owner_email", "Owner email"],
@@ -835,7 +860,9 @@ function AdminPage() {
                               key === "owner_email" ? "hello@yourwebsite.com" :
                               key === "instagram_url" ? "https://instagram.com/yourhandle" :
                               key === "youtube_url" ? "https://youtube.com/@yourchannel" :
-                              key === "logo_url" ? "https://example.com/logo.png" : ""
+                              key === "logo_url" ? "https://example.com/logo.png" :
+                              key === "background_image_url" ? "https://example.com/background.jpg" :
+                              key === "banner_image_url" ? "https://example.com/banner.jpg" : ""
                             }
                             onChange={(event) => setForm({ ...form, [key]: event.target.value })}
                           />
