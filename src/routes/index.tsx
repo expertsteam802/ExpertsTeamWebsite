@@ -33,13 +33,13 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Expertsteam802 is the official ExpertsTeam website to ask any question and get help, learn to code with Christo and become a pro coder, build apps with AI, and explore creator videos and developer projects.",
+          "Expertsteam802 is the official ExpertsTeam website to ask any question and get help, learn to code and become a pro coder, build apps with AI, and explore creator videos and developer projects.",
       },
       { property: "og:title", content: "Expertsteam802 | ExpertsTeam Coding & AI Studio" },
       {
         property: "og:description",
         content:
-          "Visit Expertsteam802 to get community answers, learn coding with Christo, become a pro coder, build with ExpertAI and explore developer resources.",
+          "Visit Expertsteam802 to get community answers, learn to code and become a pro coder, build with ExpertAI and explore developer resources.",
       },
     ],
   }),
