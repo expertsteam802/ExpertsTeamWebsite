@@ -10,6 +10,7 @@ import {
   Search,
   Send,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -334,6 +335,28 @@ function MessagesPage() {
       void queryClient.invalidateQueries({ queryKey: ["direct-messages", activeConversation?.id] });
       void queryClient.invalidateQueries({ queryKey: ["direct-conversations", user?.id] });
       void queryClient.invalidateQueries({ queryKey: ["direct-message-previews", user?.id] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const unsendMessage = useMutation({
+    mutationFn: async (message: DirectMessage) => {
+      if (!user || message.sender_id !== user.id) throw new Error("You can only unsend your own messages.");
+      const { error } = await supabase
+        .from("direct_messages")
+        .delete()
+        .eq("id", message.id)
+        .eq("sender_id", user.id);
+      if (error) throw error;
+      if (message.media_path) {
+        await supabase.storage.from("direct-messages").remove([message.media_path]);
+      }
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["direct-messages", activeConversation?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["direct-conversations", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["direct-message-previews", user?.id] });
+      toast.success("Message unsent");
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -698,11 +721,23 @@ function MessagesPage() {
                               {message.body}
                             </p>
                           )}
-                          <p
-                            className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}
-                          >
-                            {shortTime(message.created_at)} {mine && <Check className="h-3 w-3" />}
-                          </p>
+                          <div className="mt-1 flex items-center justify-end gap-2">
+                            <span className={`flex items-center gap-1 text-[10px] ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                              {shortTime(message.created_at)} {mine && <Check className="h-3 w-3" />}
+                            </span>
+                            {mine && (
+                              <button
+                                type="button"
+                                aria-label="Unsend message"
+                                title="Unsend message"
+                                onClick={() => unsendMessage.mutate(message)}
+                                disabled={unsendMessage.isPending}
+                                className="rounded p-1 opacity-70 transition hover:bg-black/10 hover:opacity-100"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
