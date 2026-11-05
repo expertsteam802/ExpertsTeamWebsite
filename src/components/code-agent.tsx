@@ -898,9 +898,7 @@ export function CodeAgent() {
       {/* Workspace top bar */}
       <header className="expert-agent-topbar flex min-h-[62px] flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#0d1523] px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 text-slate-950 shadow-lg shadow-cyan-500/20">
-            <Zap className="h-5 w-5 fill-current" />
-          </div>
+          <img src="/agent-mark.svg" alt="ExpertAI coding agent" className="h-9 w-9 shrink-0 rounded-xl shadow-lg shadow-cyan-500/10" />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">
