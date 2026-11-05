@@ -227,13 +227,16 @@ export const Route = createFileRoute("/api/ai/stream")({
             } catch { ollamaBaseUrl = ""; }
           }
           const geminiKey = process.env["GEMINI_API_KEY"]?.trim();
+          if (!ollamaBaseUrl && !hasImageAttachments) {
+            return Response.json({ error: "Your Qwen connection is not configured. Add the current Colab LocalTunnel URL in ExpertAI Studio settings." }, { status: 503 });
+          }
           const hasImageAttachments = attachments.some((file) => Boolean(file.dataUrl));
           const orderedProviders = hasImageAttachments
             ? ["gemini", ...providerOrder.filter((provider) => provider !== "gemini")]
             : providerOrder;
 
           // Prefer Gemini for image inputs because the text-only providers cannot inspect them.
-          if (geminiKey && orderedProviders[0] === "gemini" && !isProviderCoolingDown("gemini") && (hasImageAttachments || !ollamaBaseUrl)) {
+          if (geminiKey && orderedProviders[0] === "gemini" && !isProviderCoolingDown("gemini") && hasImageAttachments) {
             const model =
               process.env["GEMINI_CHAT_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.8-flash";
             try {
@@ -358,12 +361,13 @@ export const Route = createFileRoute("/api/ai/stream")({
               }});
             } catch (error) {
               if (request.signal.aborted) throw error;
-              console.warn("[ExpertAI Ollama] Colab endpoint unavailable; falling back to configured providers.", error);
+              const detail = error instanceof Error ? error.message : String(error);
+              console.error("[ExpertAI Qwen] Colab endpoint unavailable.", error);
+              return Response.json({ error: "Qwen is unavailable. Check that Colab is running, the tunnel URL is current, and qwen2.5-coder:14b is installed. Details: " + detail }, { status: 503 });
             }
           }
 
-          // If Colab sleeps or LocalTunnel changes, the configured providers remain as fallback.
-          const fallbackOrder = orderedProviders;
+          // Image attachments alone may use Gemini because the configured Qwen model is text-only.
           const result = await generateGeminiContent(
             {
               systemInstruction: { parts: [{ text: systemText }] },
@@ -376,7 +380,7 @@ export const Route = createFileRoute("/api/ai/stream")({
               generationConfig: { maxOutputTokens: 700 },
             },
             undefined,
-            fallbackOrder,
+            ["gemini"],
           );
 
           const creditError = await consumeCredit();
