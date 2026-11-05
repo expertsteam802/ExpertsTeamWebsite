@@ -15,10 +15,10 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/learn")({
   head: () => ({
     meta: [
-      { title: "Learn to Code with Christo — Become a Pro Coder | ExpertsTeam" },
-      { name: "description", content: "Learn to code with Christo, become a pro coder, and study programming through beginner-friendly lessons, books, files and videos." },
-      { property: "og:title", content: "Learn to Code with Christo — Become a Pro Coder" },
-      { property: "og:description", content: "Learn programming with Christo through coding lessons, books, videos and practical resources." },
+      { title: "Learn to Code — Become a Pro Coder | ExpertsTeam" },
+      { name: "description", content: "Learn to code, become a pro coder, and study programming through beginner-friendly lessons, books, files and videos." },
+      { property: "og:title", content: "Learn to Code — Become a Pro Coder" },
+      { property: "og:description", content: "Learn programming through coding lessons, books, videos and practical resources." },
     ],
   }),
   component: LearnPage,
@@ -65,7 +65,7 @@ function LearnPage() {
       <section className="hero-surface border-b border-border/60 px-4 py-10 sm:py-12">
         <div className="mx-auto max-w-7xl">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Your learning space</p>
-          <h1 className="mt-2 font-display text-3xl font-bold sm:text-5xl">Learn to code <span className="brand-text">with Christo</span></h1>
+          <h1 className="mt-2 font-display text-3xl font-bold sm:text-5xl">Learn to <span className="brand-text">code</span></h1>
           <p className="mt-3 max-w-2xl text-muted-foreground">Start as a beginner, practise step by step and grow into a pro coder with coding lessons, books, downloadable files and tutorial videos.</p>
         </div>
       </section>
