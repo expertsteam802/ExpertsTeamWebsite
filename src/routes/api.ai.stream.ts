@@ -247,7 +247,7 @@ export const Route = createFileRoute("/api/ai/stream")({
                     contents: compactedContents,
                     generationConfig: { maxOutputTokens: 700 },
                   }),
-                  signal: request.signal,
+                  signal: AbortSignal.any([request.signal, AbortSignal.timeout(45000)]),
                 },
               );
               if (upstream.ok && upstream.body) {
@@ -298,7 +298,7 @@ export const Route = createFileRoute("/api/ai/stream")({
                   ],
                   options: { num_predict: 900, temperature: 0.25 },
                 }),
-                signal: request.signal,
+                signal: AbortSignal.any([request.signal, AbortSignal.timeout(120000)]),
               });
               if (!ollamaResponse.ok || !ollamaResponse.body) throw new Error(`Ollama HTTP ${ollamaResponse.status}`);
               const creditError = await consumeCredit();
@@ -322,15 +322,15 @@ export const Route = createFileRoute("/api/ai/stream")({
                           if (finalChunk.error) throw new Error(finalChunk.error);
                           if (finalChunk.message?.content) {
                             const event = { candidates: [{ content: { parts: [{ text: finalChunk.message.content }] } }] };
-                            controller.enqueue(encoder.encode("data: " + JSON.stringify(event) + "\\n\\n"));
+                            controller.enqueue(encoder.encode("data: " + JSON.stringify(event) + "\n\n"));
                           }
                         }
-                        controller.enqueue(encoder.encode("data: [DONE]\\n\\n"));
+                        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
                         controller.close();
                         return;
                       }
                       pending += decoder.decode(value, { stream: true });
-                      const lines = pending.split("\\n");
+                      const lines = pending.split("\n");
                       pending = lines.pop() ?? "";
                       for (const line of lines) {
                         if (!line.trim()) continue;
@@ -339,7 +339,7 @@ export const Route = createFileRoute("/api/ai/stream")({
                         const token = chunk.message?.content;
                         if (token) {
                           const event = { candidates: [{ content: { parts: [{ text: token }] } }] };
-                          controller.enqueue(encoder.encode("data: " + JSON.stringify(event) + "\\n\\n"));
+                          controller.enqueue(encoder.encode("data: " + JSON.stringify(event) + "\n\n"));
                         }
                       }
                       if (pending.length > 0 || value.length > 0) return;
