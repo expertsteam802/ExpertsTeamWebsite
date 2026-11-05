@@ -24,7 +24,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
-import { AdminAdsSettingsPanel, AdminApiUsagePanel } from "@/components/admin-platform-panels";
+import { AdminApiUsagePanel } from "@/components/admin-platform-panels";
 import { FileGrid, type CommunityFile } from "@/components/file-grid";
 import { UploadDialog } from "@/components/upload-dialog";
 import { Button } from "@/components/ui/button";
@@ -544,12 +544,6 @@ function AdminPage() {
                   className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
                 >
                   <Video className="h-4 w-4" /> Video analytics
-                </TabsTrigger>
-                <TabsTrigger
-                  value="ads"
-                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
-                >
-                  <Video className="h-4 w-4" /> Ads & display
                 </TabsTrigger>
                 <TabsTrigger
                   value="api-usage"
@@ -1266,10 +1260,6 @@ function AdminPage() {
                       </Card>
                     ))}
                 </div>
-              </TabsContent>
-
-              <TabsContent value="ads" className="mt-0 space-y-4">
-                <AdminAdsSettingsPanel />
               </TabsContent>
 
               <TabsContent value="api-usage" className="mt-0 space-y-4">
