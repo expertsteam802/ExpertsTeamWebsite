@@ -213,6 +213,19 @@ export const Route = createFileRoute("/api/ai/stream")({
             .map((item) => item.trim().toLowerCase())
             .filter((item) => ["groq", "gemini", "openrouter"].includes(item));
           const providerOrder = [...new Set(["groq", ...configuredProviderOrder.filter((item) => item !== "groq"), "gemini", "openrouter"])];
+          const { data: providerSettings } = await supabase.from("site_settings").select("ad_settings").eq("id", 1).maybeSingle();
+          const settingsRoot = providerSettings?.ad_settings;
+          const siteBranding = settingsRoot && typeof settingsRoot === "object" && !Array.isArray(settingsRoot)
+            ? (settingsRoot as Record<string, unknown>).siteBranding : null;
+          const ollamaCandidate = siteBranding && typeof siteBranding === "object" && !Array.isArray(siteBranding)
+            ? (siteBranding as Record<string, unknown>).ollama_url : null;
+          let ollamaBaseUrl = "";
+          if (typeof ollamaCandidate === "string" && ollamaCandidate.trim()) {
+            try {
+              const parsedUrl = new URL(ollamaCandidate.trim());
+              if (parsedUrl.protocol === "https:" && parsedUrl.hostname.endsWith(".loca.lt")) ollamaBaseUrl = parsedUrl.origin;
+            } catch { ollamaBaseUrl = ""; }
+          }
           const geminiKey = process.env["GEMINI_API_KEY"]?.trim();
           const hasImageAttachments = attachments.some((file) => Boolean(file.dataUrl));
           const orderedProviders = hasImageAttachments
@@ -266,9 +279,54 @@ export const Route = createFileRoute("/api/ai/stream")({
             }
           }
 
-          // Guest and signed-in chats share this exact provider chain. If the
-          // optional Gemini streaming attempt fails, let the standard adapter
-          // retry/fallback across the same configured providers.
+          // Colab-hosted Ollama is the primary text provider. The small Qwen model
+          // is text-only, so image attachments continue through Gemini.
+          if (ollamaBaseUrl && !hasImageAttachments) {
+            try {
+              const ollamaResponse = await fetch(`${ollamaBaseUrl}/api/chat`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "bypass-tunnel-reminder": "true" },
+                body: JSON.stringify({
+                  model: process.env["OLLAMA_MODEL"] || "qwen2.5:1.5b",
+                  stream: false,
+                  messages: [
+                    { role: "system", content: systemText },
+                    ...contents.map((item) => ({
+                      role: item.role === "model" ? "assistant" : "user",
+                      content: item.parts.map((part) => part.text ?? "").join("\\n"),
+                    })),
+                  ],
+                  options: { num_predict: 900, temperature: 0.25 },
+                }),
+                signal: request.signal,
+              });
+              if (!ollamaResponse.ok) throw new Error(`Ollama HTTP ${ollamaResponse.status}`);
+              const payload = await ollamaResponse.json() as { message?: { content?: string } };
+              const answer = payload.message?.content?.trim();
+              if (!answer) throw new Error("Ollama returned an empty response.");
+              const creditError = await consumeCredit();
+              if (creditError) return Response.json({ error: creditError }, { status: 402 });
+              const encoder = new TextEncoder();
+              const event = { candidates: [{ content: { parts: [{ text: answer }] } }] };
+              const stream = new ReadableStream<Uint8Array>({
+                start(controller) {
+                  controller.enqueue(encoder.encode("data: " + JSON.stringify(event) + "\\n\\n"));
+                  controller.enqueue(encoder.encode("data: [DONE]\\n\\n"));
+                  controller.close();
+                },
+              });
+              return new Response(stream, { headers: {
+                "Content-Type": "text/event-stream; charset=utf-8",
+                "Cache-Control": "no-cache, no-transform",
+                "X-Accel-Buffering": "no",
+              }});
+            } catch (error) {
+              if (request.signal.aborted) throw error;
+              console.warn("[ExpertAI Ollama] Colab endpoint unavailable; falling back to configured providers.", error);
+            }
+          }
+
+          // If Colab sleeps or LocalTunnel changes, the configured providers remain as fallback.
           const fallbackOrder = orderedProviders;
           const result = await generateGeminiContent(
             {
