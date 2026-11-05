@@ -1,47 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Clock3, ShieldCheck } from "lucide-react";
 
-// The publisher-provided Adsterra 728 × 90 snippet, kept intact inside
-// an isolated document so its document.write-based ad loader has a real body.
-const AD_DOCUMENT = `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-*{box-sizing:border-box}
-html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent}
-body{display:flex;align-items:flex-start;justify-content:center}
-#ad-root{position:relative;width:728px;height:90px;transform-origin:top center}
-</style>
-</head>
-<body>
-<div id="ad-root">
-<script>
-  atOptions = {
-    'key' : '502debf88d7d96769c683f2ec09cb70b',
-    'format' : 'iframe',
-    'height' : 90,
-    'width' : 728,
-    'params' : {}
-  };
-</script>
-<script src="https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b"></script>
-</div>
-<script>
-(function(){
-  var root=document.getElementById("ad-root");
-  function fit(){
-    var scale=Math.min(1,window.innerWidth/728);
-    root.style.transform="scale("+scale+")";
-    document.body.style.height=(90*scale)+"px";
-  }
-  fit();
-  window.addEventListener("resize",fit);
-})();
-</script>
-</body>
-</html>`;
+const AD_KEY = "502debf88d7d96769c683f2ec09cb70b";
+const AD_SCRIPT_URL = "https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b";
 
 export function BannerUnlockAd({
   onUnlocked,
@@ -52,6 +13,7 @@ export function BannerUnlockAd({
   seconds?: number;
   compact?: boolean;
 }) {
+  const slotRef = useRef<HTMLDivElement>(null);
   const onUnlockedRef = useRef(onUnlocked);
   const completedRef = useRef(false);
   const [adReady, setAdReady] = useState(false);
@@ -62,9 +24,76 @@ export function BannerUnlockAd({
     onUnlockedRef.current = onUnlocked;
   }, [onUnlocked]);
 
+  // Run the publisher's exact two-script snippet in the real page body.
+  // The previous sandboxed srcDoc iframe changed the execution context and
+  // could prevent the publisher script from serving its creative.
   useEffect(() => {
-    const fallback = window.setTimeout(() => setAdReady(true), 12000);
-    return () => window.clearTimeout(fallback);
+    const slot = slotRef.current;
+    if (!slot || slot.dataset.adsterraMounted === "true") return;
+
+    slot.dataset.adsterraMounted = "true";
+
+    const fitBanner = () => {
+      const scale = Math.min(1, slot.clientWidth / 728);
+      const creative = slot.querySelector<HTMLElement>("[data-adsterra-creative]");
+      if (creative) {
+        creative.style.transform = `scale(${scale})`;
+        creative.style.height = `${90 * scale}px`;
+      }
+    };
+
+    const creative = document.createElement("div");
+    creative.dataset.adsterraCreative = "true";
+    creative.style.width = "728px";
+    creative.style.height = "90px";
+    creative.style.transformOrigin = "top left";
+    creative.style.margin = "0 auto";
+    slot.appendChild(creative);
+
+    // Exact publisher configuration from the Adsterra dashboard.
+    (window as Window & { atOptions?: Record<string, unknown> }).atOptions = {
+      key: AD_KEY,
+      format: "iframe",
+      height: 90,
+      width: 728,
+      params: {},
+    };
+
+    const configScript = document.createElement("script");
+    configScript.type = "text/javascript";
+    configScript.text = `atOptions = {
+      'key' : '${AD_KEY}',
+      'format' : 'iframe',
+      'height' : 90,
+      'width' : 728,
+      'params' : {}
+    };`;
+
+    const adScript = document.createElement("script");
+    adScript.type = "text/javascript";
+    adScript.src = AD_SCRIPT_URL;
+    adScript.async = false;
+    adScript.onload = () => setAdReady(true);
+    adScript.onerror = () => setAdReady(true);
+
+    // Keep the exact order: atOptions first, publisher script second.
+    creative.appendChild(configScript);
+    creative.appendChild(adScript);
+
+    fitBanner();
+    const observer = new ResizeObserver(fitBanner);
+    observer.observe(slot);
+
+    // Do not fabricate an ad if the network blocks or has no fill. The
+    // content-unlock fallback still prevents a broken ad from trapping users.
+    const loadFallback = window.setTimeout(() => setAdReady(true), 15000);
+
+    return () => {
+      window.clearTimeout(loadFallback);
+      observer.disconnect();
+      slot.replaceChildren();
+      delete slot.dataset.adsterraMounted;
+    };
   }, []);
 
   useEffect(() => {
@@ -90,20 +119,19 @@ export function BannerUnlockAd({
           Sponsored
         </span>
       </div>
-      <div className="mx-auto w-full max-w-[728px] overflow-hidden" style={{ aspectRatio: "728 / 90" }}>
-        <iframe
-          title="Adsterra 728 by 90 banner"
-          srcDoc={AD_DOCUMENT}
-          sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
-          referrerPolicy="strict-origin-when-cross-origin"
-          className="h-full w-full border-0 bg-transparent"
-          loading="eager"
-          onLoad={() => setAdReady(true)}
-        />
-      </div>
+      <div
+        ref={slotRef}
+        className="mx-auto w-full max-w-[728px] overflow-hidden"
+        style={{ height: "90px" }}
+        aria-label="Adsterra 728 by 90 banner"
+      />
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          {finished ? "You're all set. Your content is ready." : adReady ? "Stay here for a few seconds to unlock this content." : "Loading Adsterra banner…"}
+          {finished
+            ? "You're all set. Your content is ready."
+            : adReady
+              ? "Stay here for a few seconds to unlock this content."
+              : "Loading Adsterra banner…"}
         </p>
         {finished ? (
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
