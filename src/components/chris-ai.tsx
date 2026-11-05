@@ -336,11 +336,20 @@ export function ChrisAiChat({
         headers["X-Guest-Session"] = guestSessionId;
       }
 
-      const response = await fetch("/api/ai/stream", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ prompt, history, attachments }),
-      });
+      let response: Response;
+      try {
+        response = await fetch("/api/ai/stream", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ prompt, history, attachments }),
+          signal: AbortSignal.timeout(210000),
+        });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "TimeoutError") {
+          throw new Error("ExpertAI took too long to respond. Check the Colab runtime and tunnel URL, then try again.");
+        }
+        throw error;
+      }
       if (!response.ok) {
         const errorBody = (await response.json().catch(() => ({}))) as { error?: string };
         throw new Error(errorBody.error || `ExpertAI request failed (${response.status}).`);
