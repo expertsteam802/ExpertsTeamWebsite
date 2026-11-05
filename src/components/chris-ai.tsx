@@ -283,11 +283,11 @@ export function ChrisAiChat({
         if (!current) {
           grouped.set(row.thread_id, {
             threadId: row.thread_id,
-            title: row.role === "user" ? String(row.content).replace(/\\s+/g, " ").slice(0, 52) : "New conversation",
+            title: row.role === "user" ? String(row.content).replace(/\s+/g, " ").slice(0, 52) : "New conversation",
             updatedAt: row.created_at,
           });
         } else if (row.role === "user") {
-          current.title = String(row.content).replace(/\\s+/g, " ").slice(0, 52) || current.title;
+          current.title = String(row.content).replace(/\s+/g, " ").slice(0, 52) || current.title;
         }
       }
       return [...grouped.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
