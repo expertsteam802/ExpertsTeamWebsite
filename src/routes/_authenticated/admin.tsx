@@ -833,6 +833,12 @@ function AdminPage() {
 
               <TabsContent value="branding" className="mt-0">
                 <Card className="max-w-3xl gap-4 p-6">
+                  <div>
+                    <h2 className="font-display text-lg font-semibold">Website branding and appearance</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Update the logo, background and top banner with image URLs. To change the site colour theme, use the palette button in the website's top bar.
+                    </p>
+                  </div>
                   {form ? (
                     <>
                       {(
