@@ -114,7 +114,13 @@ function MessagesPage() {
         )
         .order("last_message_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as Conversation[];
+      const { data: hiddenRows, error: hiddenError } = await supabase
+        .from("direct_conversation_hidden")
+        .select("conversation_id")
+        .eq("user_id", user!.id);
+      if (hiddenError) throw hiddenError;
+      const hiddenIds = new Set((hiddenRows ?? []).map((row) => row.conversation_id));
+      return ((data ?? []) as Conversation[]).filter((conversation) => !hiddenIds.has(conversation.id));
     },
   });
 
@@ -357,6 +363,25 @@ function MessagesPage() {
       void queryClient.invalidateQueries({ queryKey: ["direct-conversations", user?.id] });
       void queryClient.invalidateQueries({ queryKey: ["direct-message-previews", user?.id] });
       toast.success("Message unsent");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const deleteConversation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      if (!user) throw new Error("Sign in to delete a conversation.");
+      const { error } = await supabase.from("direct_conversation_hidden").upsert({
+        conversation_id: conversationId,
+        user_id: user.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setActiveId(null);
+      setMobileChatOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["direct-conversations", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["direct-message-previews", user?.id] });
+      toast.success("Chat removed from your inbox");
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -675,6 +700,17 @@ function MessagesPage() {
                       </p>
                     </div>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Delete chat"
+                    title="Remove chat from your inbox"
+                    onClick={() => deleteConversation.mutate(activeConversation.id)}
+                    disabled={deleteConversation.isPending}
+                    className="shrink-0 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </header>
                 <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-5 sm:px-7">
                   <div className="mb-7 text-center">
