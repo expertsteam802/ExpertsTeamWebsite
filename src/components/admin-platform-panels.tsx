@@ -46,6 +46,9 @@ export function AdminApiUsagePanel() {
     }),
     { requests: 0, errors: 0 },
   );
+  const edgeFunctionCalls = data
+    .filter((row) => row.service.toLowerCase() === "functions")
+    .reduce((total, row) => total + Number(row.request_count), 0);
 
   return (
     <div className="space-y-5">
@@ -74,7 +77,7 @@ export function AdminApiUsagePanel() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Card className="p-5">
           <p className="text-sm text-muted-foreground">Tracked requests</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">
@@ -92,6 +95,13 @@ export function AdminApiUsagePanel() {
           <p className="mt-1 text-2xl font-semibold tabular-nums">
             {isLoading ? "…" : data.length.toLocaleString()}
           </p>
+        </Card>
+        <Card className="p-5">
+          <p className="text-sm text-muted-foreground">Edge Function calls</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums">
+            {isLoading ? "…" : edgeFunctionCalls.toLocaleString()}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Observed in the selected period</p>
         </Card>
       </div>
 
