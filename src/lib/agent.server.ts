@@ -214,6 +214,9 @@ export async function runAgent(
       "Use up to three PNG, JPG or WebP references, with a combined size under 8 MB.",
     );
   if (cleanPrompt.length > 16000) throw new Error("That request is too long.");
+  if (!ollamaBaseUrl && visualReferences.length === 0) {
+    throw new Error("Your Qwen connection is not configured. Add the current Colab LocalTunnel URL in ExpertAI Studio settings.");
+  }
   const entries = Object.entries(files);
   if (entries.length > 80)
     throw new Error("This project has too many files to send to the agent at once.");
@@ -257,11 +260,6 @@ export async function runAgent(
     .map(({ name, content }) => "--- " + name + " ---\n" + content)
     .join("\n\n");
 
-  const configured = (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
-    .split(",")
-    .map((item) => item.trim().toLowerCase())
-    .filter((item) => ["groq", "gemini", "openrouter"].includes(item));
-  const providerSequence = [...new Set(["groq", ...configured.filter((provider) => provider !== "groq"), "gemini", "openrouter"])];
   const completedFiles: Record<string, string | null> = {};
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
@@ -303,11 +301,6 @@ export async function runAgent(
       "- Never intentionally truncate a file. Finish the current file, stop, and set complete:false if output budget is low.\n" +
       "- Do not repeat files already supplied unless fixing a specific inconsistency.";
 
-    const startAt = round % providerSequence.length;
-    const rotatedProviders = [
-      ...providerSequence.slice(startAt),
-      ...providerSequence.slice(0, startAt),
-    ];
     try {
       const modelContents = [
             ...history.slice(-4).map((message) => ({
@@ -361,20 +354,16 @@ export async function runAgent(
           if (!content) throw new Error("Ollama returned an empty response.");
           response = { candidates: [{ content: { parts: [{ text: content }] }, finishReason: "STOP" }] } as Awaited<ReturnType<typeof generateGeminiContent>>;
         } catch (error) {
-          ollamaEnabled = false;
-          console.warn("[ExpertsTeam coding agent] Ollama unavailable; falling back to API providers.", error);
-          response = await generateGeminiContent({
-            systemInstruction: { parts: [{ text: systemPrompt }] },
-            generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1400 },
-            contents: modelContents,
-          }, apiKey, rotatedProviders);
+          const detail = error instanceof Error ? error.message : String(error);
+          throw new Error("Qwen coding service is unavailable. Check that Colab is running, the tunnel URL is current, and qwen2.5-coder:14b is installed. Details: " + detail);
         }
       } else {
+        // Visual references require a vision-capable provider; text-only coding always uses Qwen.
         response = await generateGeminiContent({
           systemInstruction: { parts: [{ text: systemPrompt }] },
           generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1400 },
           contents: modelContents,
-        }, apiKey, visualReferences.length ? ["gemini"] : rotatedProviders);
+        }, apiKey, ["gemini"]);
       }
 
       const candidate = response.candidates?.[0];
