@@ -56,8 +56,21 @@ export const runCodingAgent = createServerFn({ method: "POST" })
       throw new Error(
         "You have no AI credits remaining on this account. Ask an administrator about your usage allowance.",
       );
+    const { data: providerSettings } = await context.supabase.from("site_settings").select("ad_settings").eq("id", 1).maybeSingle();
+    const settingsRoot = providerSettings?.ad_settings;
+    const siteBranding = settingsRoot && typeof settingsRoot === "object" && !Array.isArray(settingsRoot)
+      ? (settingsRoot as Record<string, unknown>).siteBranding : null;
+    const candidateUrl = siteBranding && typeof siteBranding === "object" && !Array.isArray(siteBranding)
+      ? (siteBranding as Record<string, unknown>).ollama_url : null;
+    let ollamaBaseUrl = "";
+    if (typeof candidateUrl === "string" && candidateUrl.trim()) {
+      try {
+        const parsedUrl = new URL(candidateUrl.trim());
+        if (parsedUrl.protocol === "https:" && parsedUrl.hostname.endsWith(".loca.lt")) ollamaBaseUrl = parsedUrl.origin;
+      } catch { ollamaBaseUrl = ""; }
+    }
     const { runAgent } = await import("./agent.server");
-    const result = await runAgent(data, process.env["GEMINI_API_KEY"]);
+    const result = await runAgent(data, process.env["GEMINI_API_KEY"], ollamaBaseUrl);
     if (!isAdmin) {
       const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
       if (creditError) throw new Error(creditError.message);
