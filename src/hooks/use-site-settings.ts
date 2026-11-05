@@ -8,6 +8,8 @@ export type SiteSettings = {
   site_name: string;
   tagline: string;
   logo_url: string | null;
+  background_image_url: string | null;
+  banner_image_url: string | null;
   owner_email: string;
   youtube_url: string;
   instagram_url: string;
@@ -38,12 +40,24 @@ export const siteSettingsQuery = {
 
 export function useSiteSettings() {
   const { data } = useQuery(siteSettingsQuery);
+  const branding = data?.ad_settings && typeof data.ad_settings === "object" && !Array.isArray(data.ad_settings)
+    ? (data.ad_settings as Record<string, Json>).siteBranding
+    : null;
+  const brandingRecord = branding && typeof branding === "object" && !Array.isArray(branding)
+    ? branding as Record<string, Json>
+    : {};
   return (
-    data ?? {
+    data ? {
+      ...data,
+      background_image_url: typeof brandingRecord.background_image_url === "string" ? brandingRecord.background_image_url : null,
+      banner_image_url: typeof brandingRecord.banner_image_url === "string" ? brandingRecord.banner_image_url : null,
+    } : {
       id: 1,
       site_name: "ExpertsTeam",
       tagline: "Code. Create. Community.",
       logo_url: null,
+      background_image_url: null,
+      banner_image_url: null,
       owner_email: "mucyochristhecla@gmail.com",
       youtube_url: "https://www.youtube.com/@expertchris",
       instagram_url: "https://instagram.com/m.chris_t2011",
