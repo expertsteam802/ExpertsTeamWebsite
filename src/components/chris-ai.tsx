@@ -448,6 +448,7 @@ export function ChrisAiChat({
       toast.success("Chat cleared");
       setGeneratedImage(null);
       void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["ai-chat-threads", user?.id] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
