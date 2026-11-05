@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Clock3, ShieldCheck } from "lucide-react";
 
+// The publisher-provided Adsterra 728 × 90 snippet, kept intact inside
+// an isolated document so its document.write-based ad loader has a real body.
 const AD_DOCUMENT = `<!doctype html>
 <html lang="en">
 <head>
@@ -8,29 +10,36 @@ const AD_DOCUMENT = `<!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f4f4f5}
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent}
 body{display:flex;align-items:flex-start;justify-content:center}
 #ad-root{position:relative;width:728px;height:90px;transform-origin:top center}
-#ad-fallback{position:absolute;inset:0;display:grid;place-items:center;color:#71717a;font:12px Arial,sans-serif;background:#f4f4f5}
 </style>
 </head>
 <body>
-<div id="ad-root"><div id="ad-fallback">Advertisement · ExpertsTeam</div></div>
+<div id="ad-root">
+<script>
+  atOptions = {
+    'key' : '502debf88d7d96769c683f2ec09cb70b',
+    'format' : 'iframe',
+    'height' : 90,
+    'width' : 728,
+    'params' : {}
+  };
+</script>
+<script src="https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b"></script>
+</div>
 <script>
 (function(){
   var root=document.getElementById("ad-root");
-  var fallback=document.getElementById("ad-fallback");
-  function fit(){var scale=Math.min(1,window.innerWidth/728);root.style.transform="scale("+scale+")";document.body.style.height=(90*scale)+"px";}
-  fit();window.addEventListener("resize",fit);
-  window.atOptions={key:"502debf88d7d96769c683f2ec09cb70b",format:"iframe",height:90,width:728,params:{}};
-  var script=document.createElement("script");script.async=true;
-  script.src="https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b";
-  script.onload=function(){if(root.querySelector("iframe,ins,a"))fallback.style.display="none";};
-  root.appendChild(script);
-  var observer=new MutationObserver(function(){if(root.querySelector("iframe,ins,a"))fallback.style.display="none";});
-  observer.observe(root,{childList:true,subtree:true});
+  function fit(){
+    var scale=Math.min(1,window.innerWidth/728);
+    root.style.transform="scale("+scale+")";
+    document.body.style.height=(90*scale)+"px";
+  }
+  fit();
+  window.addEventListener("resize",fit);
 })();
-<\/script>
+</script>
 </body>
 </html>`;
 
@@ -81,20 +90,20 @@ export function BannerUnlockAd({
           Sponsored
         </span>
       </div>
-      <div className="mx-auto w-full max-w-[728px] overflow-hidden rounded-lg bg-muted" style={{ aspectRatio: "728 / 90" }}>
+      <div className="mx-auto w-full max-w-[728px] overflow-hidden" style={{ aspectRatio: "728 / 90" }}>
         <iframe
-          title="ExpertsTeam sponsored banner"
+          title="Adsterra 728 by 90 banner"
           srcDoc={AD_DOCUMENT}
           sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
           referrerPolicy="strict-origin-when-cross-origin"
-          className="h-full w-full border-0"
+          className="h-full w-full border-0 bg-transparent"
           loading="eager"
           onLoad={() => setAdReady(true)}
         />
       </div>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          {finished ? "You're all set. Your content is ready." : adReady ? "Stay here for a few seconds to unlock this content." : "Loading sponsor banner…"}
+          {finished ? "You're all set. Your content is ready." : adReady ? "Stay here for a few seconds to unlock this content." : "Loading Adsterra banner…"}
         </p>
         {finished ? (
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
