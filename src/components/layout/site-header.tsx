@@ -60,7 +60,7 @@ export function SiteHeader() {
               key={item.to}
               to={item.to}
               activeOptions={{ exact: item.to === "/" }}
-              className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:font-semibold data-[status=active]:text-foreground"
+              className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:font-semibold data-[status=active]:text-foreground ${item.to === "/community" ? "bg-primary/10 font-semibold text-primary" : "text-muted-foreground"}`}
             >
               {item.label}
             </Link>
