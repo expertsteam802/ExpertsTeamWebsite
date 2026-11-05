@@ -34,6 +34,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { deleteUserAccount } from "@/lib/accounts.functions";
 import { formatBytes, formatDate } from "@/lib/format";
 import { paymentMethodLabel, type UpgradeRequest } from "@/lib/subscription";
@@ -314,7 +315,7 @@ function AdminPage() {
               background_image_url: form.background_image_url.trim(),
               banner_image_url: form.banner_image_url.trim(),
             },
-          },
+          } as Json,
           youtube_url: form.youtube_url.trim(),
           instagram_url: form.instagram_url.trim(),
           owner_email: form.owner_email.trim(),
