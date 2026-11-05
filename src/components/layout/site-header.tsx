@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
   { to: "/", label: "Home" },
   { to: "/explore", label: "Explore" },
+  { to: "/community", label: "Community" },
   { to: "/learn", label: "Learn" },
   { to: "/entertainment", label: "Games, Apps & Files" },
   { to: "/projects", label: "Workspace" },
