@@ -51,6 +51,7 @@ export function useSiteSettings() {
       ...data,
       background_image_url: typeof brandingRecord.background_image_url === "string" ? brandingRecord.background_image_url : null,
       banner_image_url: typeof brandingRecord.banner_image_url === "string" ? brandingRecord.banner_image_url : null,
+      ollama_url: typeof brandingRecord.ollama_url === "string" ? brandingRecord.ollama_url : null,
     } : {
       id: 1,
       site_name: "ExpertsTeam",
@@ -58,6 +59,7 @@ export function useSiteSettings() {
       logo_url: null,
       background_image_url: null,
       banner_image_url: null,
+      ollama_url: null,
       owner_email: "mucyochristhecla@gmail.com",
       youtube_url: "https://www.youtube.com/@expertchris",
       instagram_url: "https://instagram.com/m.chris_t2011",
