@@ -309,6 +309,26 @@ function AdminPage() {
         throw new Error("Studio subscription price must be between $0.01 and $1,000.");
       if (!Number.isInteger(studioCredits) || studioCredits < 1 || studioCredits > 100000)
         throw new Error("Studio AI credits must be between 1 and 100,000.");
+      const endpoint = form.ollama_url.trim();
+      if (endpoint) {
+        let parsedEndpoint: URL;
+        try {
+          parsedEndpoint = new URL(endpoint);
+        } catch {
+          throw new Error("Enter a valid HTTPS LocalTunnel URL.");
+        }
+        if (
+          parsedEndpoint.protocol !== "https:" ||
+          !parsedEndpoint.hostname.endsWith(".loca.lt") ||
+          parsedEndpoint.username ||
+          parsedEndpoint.password ||
+          parsedEndpoint.search ||
+          parsedEndpoint.hash ||
+          parsedEndpoint.pathname !== "/"
+        ) {
+          throw new Error("Use the HTTPS root URL from your active LocalTunnel instance, such as https://your-name.loca.lt.");
+        }
+      }
       const { error } = await supabase
         .from("site_settings")
         .update({
