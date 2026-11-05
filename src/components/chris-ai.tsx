@@ -6,13 +6,16 @@ import {
   ImagePlus,
   Loader2,
   Minimize2,
+  MessageSquare,
+  PanelLeftClose,
+  Plus,
   Paperclip,
   Send,
   Sparkles,
   Trash2,
   User,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 
@@ -265,6 +268,35 @@ export function ChrisAiChat({
       return (data ?? []) as ChatRow[];
     },
   });
+  const { data: chatThreads = [] } = useQuery({
+    queryKey: ["ai-chat-threads", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ai_chats")
+        .select("thread_id, role, content, created_at")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      const grouped = new Map<string, { threadId: string; title: string; updatedAt: string }>();
+      for (const row of data ?? []) {
+        if (!row.thread_id) continue;
+        const current = grouped.get(row.thread_id);
+        if (!current) {
+          grouped.set(row.thread_id, {
+            threadId: row.thread_id,
+            title: row.role === "user" ? String(row.content).replace(/\\s+/g, " ").slice(0, 52) : "New conversation",
+            updatedAt: row.created_at,
+          });
+        } else if (row.role === "user") {
+          current.title = String(row.content).replace(/\\s+/g, " ").slice(0, 52) || current.title;
+        }
+      }
+      return [...grouped.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    },
+  });
+  const visibleThreads = useMemo(() => chatThreads, [chatThreads]);
   const messages = user ? savedMessages : guestMessages;
 
   const send = useMutation({
@@ -390,6 +422,7 @@ export function ChrisAiChat({
     },
     onSuccess: () => {
       if (user) void queryClient.invalidateQueries({ queryKey: ["ai-chats", user.id] });
+      if (user) void queryClient.invalidateQueries({ queryKey: ["ai-chat-threads", user.id] });
       void queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
     onError: (error: Error) => {
@@ -418,6 +451,26 @@ export function ChrisAiChat({
       toast.success("Chat cleared");
       setGeneratedImage(null);
       void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const deleteThread = useMutation({
+    mutationFn: async (targetThreadId: string) => {
+      if (!user) return;
+      const { error } = await supabase
+        .from("ai_chats")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("thread_id", targetThreadId);
+      if (error) throw error;
+      return targetThreadId;
+    },
+    onSuccess: (deletedThreadId) => {
+      if (deletedThreadId === threadId) newChat();
+      void queryClient.invalidateQueries({ queryKey: ["ai-chat-threads", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
+      toast.success("Conversation deleted");
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -478,14 +531,58 @@ export function ChrisAiChat({
   }
 
   return (
-    <Card className="glow-panel flex h-full min-h-0 w-full flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 w-full overflow-hidden bg-background">
+      {user && (
+        <aside className="hidden w-60 shrink-0 flex-col border-r border-border/70 bg-card/70 md:flex">
+          <div className="flex items-center justify-between border-b border-border/70 p-3">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <MessageSquare className="h-4 w-4 text-primary" /> Your chats
+            </div>
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => newChat()} aria-label="New chat">
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
+            {visibleThreads.length === 0 && (
+              <p className="px-2 py-5 text-xs leading-relaxed text-muted-foreground">Your conversations will appear here when you start chatting.</p>
+            )}
+            {visibleThreads.map((thread) => (
+              <div key={thread.threadId} className={`group flex items-center gap-1 rounded-lg ${threadId === thread.threadId ? "bg-primary/10 text-foreground" : "hover:bg-secondary/70"}`}>
+                <button
+                  type="button"
+                  onClick={() => { setThreadId(thread.threadId); setAttachments([]); setGeneratedImage(null); }}
+                  className="min-w-0 flex-1 px-3 py-2.5 text-left"
+                  title={thread.title}
+                >
+                  <span className="block truncate text-xs font-medium">{thread.title || "New conversation"}</span>
+                  <span className="mt-1 block text-[10px] text-muted-foreground">{new Date(thread.updatedAt).toLocaleDateString()}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Delete conversation ${thread.title}`}
+                  title="Delete conversation"
+                  onClick={() => deleteThread.mutate(thread.threadId)}
+                  disabled={deleteThread.isPending}
+                  className="mr-1 rounded-md p-2 text-muted-foreground opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus:opacity-100"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="border-t border-border/70 p-3 text-[11px] text-muted-foreground">
+            Private conversations · saved to your account
+          </div>
+        </aside>
+      )}
+      <Card className="glow-panel flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/15">
-            <Sparkles className="h-4 w-4 text-primary" />
+            <img src="/expertai-mark.svg" alt="" className="h-7 w-7" />
           </span>
           <div>
-            <p className="text-sm font-semibold">ExpertAI</p>
+            <p className="text-sm font-semibold">ExpertAI Chat</p>
             <p className="text-xs text-muted-foreground">
               File analysis · app building · {user ? `${profile?.ai_credits ?? 0} AI credits` : `${guestCredits} of 15 free guest credits`}
             </p>
@@ -716,7 +813,8 @@ export function ChrisAiChat({
           </Button>
         </div>
       </div>
-    </Card>
+      </Card>
+    </div>
   );
 }
 
