@@ -891,7 +891,7 @@ function AdminPage() {
                       >
                         Save settings
                       </Button>
-                      <p className="text-xs text-muted-foreground">Ollama is the preferred text model when this URL is online. Paste the new LocalTunnel URL whenever Colab reconnects. Use an HTTPS LocalTunnel address; never paste an API key into this field.</p>
+                      <p className="text-xs text-muted-foreground">ExpertAI prefers qwen2.5-coder:14b on this Ollama tunnel for text and coding. Paste the new HTTPS LocalTunnel URL whenever Colab reconnects. The URL is stored in site settings; no redeploy is needed.</p>
                     </>
                   ) : (
                     <p className="text-sm text-muted-foreground">Loading settings…</p>
