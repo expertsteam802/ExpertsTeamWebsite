@@ -233,7 +233,7 @@ export const Route = createFileRoute("/api/ai/stream")({
             : providerOrder;
 
           // Prefer Gemini for image inputs because the text-only providers cannot inspect them.
-          if (geminiKey && orderedProviders[0] === "gemini" && !isProviderCoolingDown("gemini")) {
+          if (geminiKey && orderedProviders[0] === "gemini" && !isProviderCoolingDown("gemini") && (hasImageAttachments || !ollamaBaseUrl)) {
             const model =
               process.env["GEMINI_CHAT_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.8-flash";
             try {
@@ -287,8 +287,8 @@ export const Route = createFileRoute("/api/ai/stream")({
                 method: "POST",
                 headers: { "Content-Type": "application/json", "bypass-tunnel-reminder": "true" },
                 body: JSON.stringify({
-                  model: process.env["OLLAMA_MODEL"] || "qwen2.5:1.5b",
-                  stream: false,
+                  model: process.env["OLLAMA_MODEL"] || "qwen2.5-coder:14b",
+                  stream: true,
                   messages: [
                     { role: "system", content: systemText },
                     ...contents.map((item) => ({
@@ -300,20 +300,40 @@ export const Route = createFileRoute("/api/ai/stream")({
                 }),
                 signal: request.signal,
               });
-              if (!ollamaResponse.ok) throw new Error(`Ollama HTTP ${ollamaResponse.status}`);
-              const payload = await ollamaResponse.json() as { message?: { content?: string } };
-              const answer = payload.message?.content?.trim();
-              if (!answer) throw new Error("Ollama returned an empty response.");
+              if (!ollamaResponse.ok || !ollamaResponse.body) throw new Error(`Ollama HTTP ${ollamaResponse.status}`);
               const creditError = await consumeCredit();
-              if (creditError) return Response.json({ error: creditError }, { status: 402 });
+              if (creditError) {
+                await ollamaResponse.body.cancel();
+                return Response.json({ error: creditError }, { status: 402 });
+              }
               const encoder = new TextEncoder();
-              const event = { candidates: [{ content: { parts: [{ text: answer }] } }] };
+              const decoder = new TextDecoder();
+              const reader = ollamaResponse.body.getReader();
               const stream = new ReadableStream<Uint8Array>({
-                start(controller) {
-                  controller.enqueue(encoder.encode("data: " + JSON.stringify(event) + "\\n\\n"));
-                  controller.enqueue(encoder.encode("data: [DONE]\\n\\n"));
-                  controller.close();
+                async pull(controller) {
+                  try {
+                    const { value, done } = await reader.read();
+                    if (done) {
+                      controller.enqueue(encoder.encode("data: [DONE]\\n\\n"));
+                      controller.close();
+                      return;
+                    }
+                    const lines = decoder.decode(value, { stream: true }).split("\\n").filter(Boolean);
+                    for (const line of lines) {
+                      const chunk = JSON.parse(line) as { message?: { content?: string }; error?: string };
+                      if (chunk.error) throw new Error(chunk.error);
+                      const token = chunk.message?.content;
+                      if (token) {
+                        const event = { candidates: [{ content: { parts: [{ text: token }] } }] };
+                        controller.enqueue(encoder.encode("data: " + JSON.stringify(event) + "\\n\\n"));
+                      }
+                    }
+                  } catch (error) {
+                    controller.error(error);
+                    await reader.cancel(error);
+                  }
                 },
+                async cancel(reason) { await reader.cancel(reason); },
               });
               return new Response(stream, { headers: {
                 "Content-Type": "text/event-stream; charset=utf-8",
