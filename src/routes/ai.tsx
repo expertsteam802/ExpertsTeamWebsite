@@ -57,7 +57,7 @@ function AiPage() {
       }).eq("id", 1);
       if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: ["site-settings"] });
-      window.alert(cleanUrl ? "Ollama endpoint saved. ExpertAI will use it for text requests." : "Ollama endpoint cleared.");
+      window.alert(cleanUrl ? "Ollama endpoint saved. ExpertAI will use qwen2.5-coder:14b for text and coding requests." : "Ollama endpoint cleared.");
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Could not save the Ollama endpoint.");
     } finally {
