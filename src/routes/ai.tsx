@@ -34,7 +34,7 @@ function AiPage() {
   const [savingOllama, setSavingOllama] = useState(false);
   useEffect(() => { setOllamaUrl(settings.ollama_url ?? ""); }, [settings.ollama_url]);
   async function saveOllamaUrl() {
-    const cleanUrl = ollamaUrl.trim().replace(/\\/+$/, "");
+    const cleanUrl = ollamaUrl.trim().replace(/\/+$/, "");
     if (cleanUrl) {
       try {
         const parsed = new URL(cleanUrl);
