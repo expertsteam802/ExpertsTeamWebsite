@@ -2,7 +2,6 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Code2, MessageSquare, Users } from "lucide-react";
 
-import { AdSlot } from "@/components/ads/ad-slot";
 import { ChrisAiChat } from "@/components/chris-ai";
 import { CodeAgent } from "@/components/code-agent";
 
@@ -76,7 +75,6 @@ function AiPage() {
         </Link>
       </header>
 
-      <AdSlot slot="ai-top" />
       <section className="relative min-h-0 flex-1 overflow-hidden">
         <div className={`h-full min-h-0 overflow-hidden ${activeView === "builder" ? "block" : "hidden"}`}>
           <CodeAgent />
@@ -85,7 +83,6 @@ function AiPage() {
           <ChrisAiChat />
         </div>
       </section>
-      <AdSlot slot="ai-bottom" />
     </main>
   );
 }
