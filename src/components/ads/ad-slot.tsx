@@ -435,9 +435,11 @@ export function AdSlot({ slot }: { slot: string }) {
   return (
     <aside className="mx-auto my-5 w-full max-w-[728px]" aria-label="Sponsored banner">
       <div ref={slotRef} className="mx-auto w-full max-w-[728px] overflow-hidden" style={{ height: 90 }} />
-      <p className="mt-1 text-center text-[10px] text-muted-foreground" aria-live="polite">
-        {loadState === "blocked" ? "Sponsored placement unavailable" : "Sponsored"}
-      </p>
+      {loadState !== "blocked" && (
+        <p className="mt-1 text-center text-[10px] text-muted-foreground" aria-live="polite">
+          Sponsored
+        </p>
+      )}
     </aside>
   );
 }
