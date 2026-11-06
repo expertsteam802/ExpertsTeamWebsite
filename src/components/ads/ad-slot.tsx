@@ -181,8 +181,7 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
       .catch((error: unknown) => {
         if (cancelled) return;
         setStatus("unavailable");
-        setMessage(error instanceof Error ? error.message : "The video ad player could not load.");
-        finishLesson();
+        setMessage(error instanceof Error ? `${error.message} The lesson remains locked; please retry.` : "The video ad player could not load. The lesson remains locked; please retry.");
       });
     return () => {
       cancelled = true;
@@ -190,7 +189,7 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
   }, [isFetched, isError, settings.myBidActiveFormat, settings.myBidVastEnabled, onFinished]);
 
   useEffect(() => {
-    if (isFetched && (isError || !settings.myBidVastEnabled)) finishLesson();
+    if (isFetched && !isError && !settings.myBidVastEnabled) finishLesson();
   }, [isFetched, isError, settings.myBidVastEnabled, finishLesson]);
 
   function playAd(userInitiated = false) {
@@ -246,8 +245,7 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
           if (requestTimeoutRef.current !== undefined)
             window.clearTimeout(requestTimeoutRef.current);
           setStatus("unavailable");
-          setMessage("MyBid did not return a playable ad. Continuing to the lesson.");
-          finishLesson();
+          setMessage("MyBid did not return a playable ad. The lesson remains locked; retry the ad.");
           manager.destroy();
           managerRef.current = null;
         });
@@ -274,8 +272,7 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
         managerRef.current = null;
         if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
         setStatus("unavailable");
-        setMessage("MyBid returned no playable ad. Continuing to the lesson.");
-        finishLesson();
+        setMessage("MyBid returned no playable ad. The lesson remains locked; retry the ad.");
       });
       const request = new ima.AdsRequest();
       request.adTagUrl = settings.myBidVastUrl;
@@ -283,9 +280,8 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
       request.linearAdSlotHeight = container.clientHeight || 360;
       loader.requestAds(request);
       requestTimeoutRef.current = window.setTimeout(() => {
-        setMessage("The ad request timed out. Continuing to the lesson.");
+        setMessage("The ad request timed out. No ad was shown, so the lesson remains locked. Retry the ad.");
         setStatus("unavailable");
-        finishLesson();
         managerRef.current?.destroy();
         managerRef.current = null;
       }, 20000);
