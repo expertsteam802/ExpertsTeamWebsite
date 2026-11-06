@@ -60,6 +60,7 @@ type SettingsForm = {
   background_image_url: string;
   banner_image_url: string;
   ollama_url: string;
+  ai_provider: string;
   youtube_url: string;
   instagram_url: string;
   owner_email: string;
@@ -284,6 +285,14 @@ function AdminPage() {
             : undefined;
           return typeof branding?.ollama_url === "string" ? branding.ollama_url : "";
         })(),
+        ai_provider: (() => {
+          const branding = settings.ad_settings && typeof settings.ad_settings === "object" && !Array.isArray(settings.ad_settings)
+            ? (settings.ad_settings as Record<string, unknown>).siteBranding as Record<string, unknown> | undefined
+            : undefined;
+          const provider = branding?.ai_provider;
+          return typeof provider === "string" && ["ollama", "groq", "gemini", "openrouter", "mistral", "cloudflare"].includes(provider)
+            ? provider : "ollama";
+        })(),
         youtube_url: settings.youtube_url,
         instagram_url: settings.instagram_url,
         owner_email: settings.owner_email,
@@ -342,6 +351,7 @@ function AdminPage() {
               background_image_url: form.background_image_url.trim(),
               banner_image_url: form.banner_image_url.trim(),
               ollama_url: form.ollama_url.trim(),
+              ai_provider: form.ai_provider,
             },
           } as Json,
           youtube_url: form.youtube_url.trim(),
@@ -905,6 +915,25 @@ function AdminPage() {
                           />
                         </div>
                       ))}
+                      <div className="space-y-2 rounded-xl border border-border/70 bg-secondary/30 p-4">
+                        <Label htmlFor="ai-provider">ExpertAI engine</Label>
+                        <select
+                          id="ai-provider"
+                          value={form.ai_provider}
+                          onChange={(event) => setForm({ ...form, ai_provider: event.target.value })}
+                          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                        >
+                          <option value="ollama">Colab Ollama — Qwen2.5 Coder 14B</option>
+                          <option value="groq">Groq API</option>
+                          <option value="gemini">Google Gemini API</option>
+                          <option value="openrouter">OpenRouter API</option>
+                          <option value="mistral">Mistral API</option>
+                          <option value="cloudflare">Cloudflare Workers AI</option>
+                        </select>
+                        <p className="text-xs text-muted-foreground">
+                          Select one configured service. Add its API key in Vercel Environment Variables. ExpertAI will not silently switch to another provider if this selection fails. Image attachments use Gemini vision.
+                        </p>
+                      </div>
                       <Button
                         onClick={() => saveSettings.mutate()}
                         disabled={saveSettings.isPending}
