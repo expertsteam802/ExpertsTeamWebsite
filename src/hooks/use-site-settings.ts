@@ -66,13 +66,7 @@ export function useSiteSettings() {
       ai_subscription_price: 1,
       ai_subscription_credits: 500,
       payout_account: null,
-      ad_settings: {
-        myBidVastEnabled: true,
-        myBidVastUrl: "https://vast.vstserv.com/vast?spot_id=2030847",
-        myBidAdCodeId: "470834",
-        myBidFormatId: "2030847",
-        myBidAdCodeName: "ExpertsTeam",
-      },
+      ad_settings: {},
       error_dialog_enabled: true,
     }
   );
