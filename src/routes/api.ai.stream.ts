@@ -227,10 +227,10 @@ export const Route = createFileRoute("/api/ai/stream")({
             } catch { ollamaBaseUrl = ""; }
           }
           const geminiKey = process.env["GEMINI_API_KEY"]?.trim();
+          const hasImageAttachments = attachments.some((file) => Boolean(file.dataUrl));
           if (!ollamaBaseUrl && !hasImageAttachments) {
             return Response.json({ error: "Your Qwen connection is not configured. Add the current Colab LocalTunnel URL in ExpertAI Studio settings." }, { status: 503 });
           }
-          const hasImageAttachments = attachments.some((file) => Boolean(file.dataUrl));
           const orderedProviders = hasImageAttachments
             ? ["gemini", ...providerOrder.filter((provider) => provider !== "gemini")]
             : providerOrder;
