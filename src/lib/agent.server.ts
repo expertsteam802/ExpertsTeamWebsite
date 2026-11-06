@@ -193,6 +193,7 @@ export async function runAgent(
   { prompt, files, history, referenceImage, referenceImages: suppliedReferenceImages }: AgentInput,
   apiKey?: string,
   ollamaBaseUrl?: string,
+  aiProvider: string = "ollama",
 ) {
   const cleanPrompt = prompt.trim();
   if (!cleanPrompt) throw new Error("Tell the agent what to build.");
@@ -214,7 +215,7 @@ export async function runAgent(
       "Use up to three PNG, JPG or WebP references, with a combined size under 8 MB.",
     );
   if (cleanPrompt.length > 16000) throw new Error("That request is too long.");
-  if (!ollamaBaseUrl && visualReferences.length === 0) {
+  if (aiProvider === "ollama" && !ollamaBaseUrl && visualReferences.length === 0) {
     throw new Error("Your Qwen connection is not configured. Add the current Colab LocalTunnel URL in ExpertAI Studio settings.");
   }
   const entries = Object.entries(files);
@@ -265,7 +266,7 @@ export async function runAgent(
   let lastFailure = "";
   const maxRounds = 12;
   const startedAt = Date.now();
-  let ollamaEnabled = Boolean(ollamaBaseUrl && !visualReferences.length);
+  let ollamaEnabled = aiProvider === "ollama" && Boolean(ollamaBaseUrl && !visualReferences.length);
 
   for (let round = 0; round < maxRounds; round++) {
     if (Date.now() - startedAt > 360_000) {
@@ -363,7 +364,7 @@ export async function runAgent(
           systemInstruction: { parts: [{ text: systemPrompt }] },
           generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1400 },
           contents: modelContents,
-        }, apiKey, ["gemini"]);
+        }, apiKey, [visualReferences.length ? "gemini" : aiProvider]);
       }
 
       const candidate = response.candidates?.[0];
