@@ -227,6 +227,32 @@ function RootContent() {
     );
   }, [settings.error_dialog_enabled]);
 
+  // The popunder is controlled centrally from Admin → Site settings.
+  // One script is mounted for the whole page; it is never duplicated on route changes.
+  useEffect(() => {
+    const raw = settings.ad_settings;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
+    const adSettings = raw as Record<string, unknown>;
+    if (adSettings.popunderEnabled !== true) return;
+
+    const src =
+      typeof adSettings.popunderScriptUrl === "string" && adSettings.popunderScriptUrl.trim()
+        ? adSettings.popunderScriptUrl.trim()
+        : "https://abscloud.org/1/8a9d4492df70b9208cb7428f8f5544f6";
+    if (!src.startsWith("https://")) return;
+    if (document.querySelector('script[data-expertsteam-popunder="true"]')) return;
+
+    const script = document.createElement("script");
+    script.dataset.cfasync = "false";
+    script.dataset.expertsteamPopunder = "true";
+    script.src = src;
+    document.head.appendChild(script);
+
+    return () => {
+      script.remove();
+    };
+  }, [settings.ad_settings]);
+
   useEffect(() => {
     const reportRuntimeError = (error: Error, boundary: string) => {
       reportLovableError(error, { boundary });
