@@ -1,357 +1,126 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-
+import { useEffect, useRef, useState } from "react";
 import { siteSettingsQuery } from "@/hooks/use-site-settings";
+import { useQuery } from "@tanstack/react-query";
 import type { Json } from "@/integrations/supabase/types";
 
-export const MYBID_VAST_DEFAULT_URL = "https://vast.vstserv.com/vast?spot_id=2030847";
+export const ADSTERRA_BANNER_SCRIPT =
+  "https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b";
 
-type MyBidSettings = {
-  myBidVastEnabled: boolean;
-  myBidVastUrl: string;
-};
-
-const DEFAULT_SETTINGS: MyBidSettings = {
-  myBidVastEnabled: true,
-  myBidVastUrl: MYBID_VAST_DEFAULT_URL,
-};
-
-function parseAdSettings(value: Json | null | undefined): MyBidSettings {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return DEFAULT_SETTINGS;
+type AdsterraSettings = { adsterraEnabled: boolean; adsterraBannerScript: string };
+function readSettings(value: Json | null | undefined): AdsterraSettings {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { adsterraEnabled: true, adsterraBannerScript: ADSTERRA_BANNER_SCRIPT };
+  }
   const raw = value as Record<string, Json | undefined>;
   return {
-    myBidVastEnabled:
-      typeof raw.myBidVastEnabled === "boolean"
-        ? raw.myBidVastEnabled
-        : DEFAULT_SETTINGS.myBidVastEnabled,
-    myBidVastUrl:
-      typeof raw.myBidVastUrl === "string" && raw.myBidVastUrl.trim()
-        ? raw.myBidVastUrl
-        : DEFAULT_SETTINGS.myBidVastUrl,
+    adsterraEnabled: raw.adsterraEnabled !== false,
+    adsterraBannerScript:
+      typeof raw.adsterraBannerScript === "string" && raw.adsterraBannerScript.startsWith("https://bauval.org/22/")
+        ? raw.adsterraBannerScript
+        : ADSTERRA_BANNER_SCRIPT,
   };
 }
 
-type ImaAdEvent = { getAd?: () => { isLinear?: () => boolean } };
-type ImaAdsManager = {
-  init: (width: number, height: number, viewMode: number) => void;
-  start: () => void;
-  destroy: () => void;
-  addEventListener: (event: string, callback: (event: ImaAdEvent) => void) => void;
-};
-type ImaAdsLoader = {
-  requestAds: (request: {
-    adTagUrl: string;
-    linearAdSlotWidth: number;
-    linearAdSlotHeight: number;
-  }) => void;
-  addEventListener: (
-    event: string,
-    callback: (event: { getAdsManager: (video: HTMLVideoElement) => ImaAdsManager }) => void,
-  ) => void;
-  contentComplete: () => void;
-};
-type ImaNamespace = {
-  AdDisplayContainer: new (
-    container: HTMLElement,
-    video: HTMLVideoElement,
-  ) => { initialize: () => void };
-  AdsLoader: new (container: unknown) => ImaAdsLoader;
-  AdsRequest: new () => { adTagUrl: string; linearAdSlotWidth: number; linearAdSlotHeight: number };
-  AdsManagerLoadedEvent: { Type: { ADS_MANAGER_LOADED: string } };
-  AdErrorEvent: { Type: { AD_ERROR: string } };
-  AdsManagerLoadedEventType: { LINEAR: number };
-  ViewMode: { NORMAL: number };
-  AdEvent: {
-    Type: {
-      ALL_ADS_COMPLETED: string;
-      CONTENT_PAUSE_REQUESTED: string;
-      CONTENT_RESUME_REQUESTED: string;
-      STARTED: string;
-      SKIPPED: string;
-    };
-  };
-};
-declare global {
-  interface Window {
-    google?: { ima?: ImaNamespace };
-  }
-}
-
-let imaSdkPromise: Promise<ImaNamespace> | null = null;
-function loadImaSdk(): Promise<ImaNamespace> {
-  if (window.google?.ima) return Promise.resolve(window.google.ima);
-  if (imaSdkPromise) return imaSdkPromise;
-  imaSdkPromise = new Promise<ImaNamespace>((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>(
-      'script[data-expertsteam-ima="true"]',
-    );
-    const script = existing ?? document.createElement("script");
-    const onLoad = () => {
-      if (window.google?.ima) resolve(window.google.ima);
-      else reject(new Error("The video advertising SDK did not initialize."));
-    };
-    script.addEventListener("load", onLoad, { once: true });
-    script.addEventListener(
-      "error",
-      () => reject(new Error("Could not load the video advertising SDK.")),
-      { once: true },
-    );
-    if (!existing) {
-      script.src = "https://imasdk.googleapis.com/js/sdkloader/ima3.js";
-      script.async = true;
-      script.dataset.expertsteamIma = "true";
-      document.head.appendChild(script);
-    }
-  }).catch((error: unknown) => {
-    imaSdkPromise = null;
-    throw error;
-  });
-  return imaSdkPromise;
-}
-
-export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
+/**
+ * Loads the supplied Adsterra 728x90 banner in an isolated iframe.
+ * The lesson unlocks only after the banner creative is detected and has been
+ * visible for six seconds. No popunder/social-bar scripts are loaded.
+ */
+export function AdsterraBannerAd({ onFinished }: { onFinished?: () => void }) {
   const { data, isFetched, isError } = useQuery(siteSettingsQuery);
-  const settings = useMemo(() => parseAdSettings(data?.ad_settings), [data?.ad_settings]);
-  const adContainerRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const managerRef = useRef<ImaAdsManager | null>(null);
-  const requestTimeoutRef = useRef<number | undefined>(undefined);
-  const [status, setStatus] = useState<
-    "ready" | "loading" | "playing" | "complete" | "unavailable"
-  >("ready");
-  const [message, setMessage] = useState<string | null>(null);
-  const [sdkReady, setSdkReady] = useState(false);
-
-  useEffect(
-    () => () => {
-      managerRef.current?.destroy();
-      managerRef.current = null;
-      if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
-    },
-    [],
-  );
-
+  const settings = readSettings(data?.ad_settings);
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  const [status, setStatus] = useState<"loading" | "visible" | "unavailable" | "complete">("loading");
+  const [secondsLeft, setSecondsLeft] = useState(6);
   const finishedRef = useRef(false);
-  const finishLesson = useCallback(() => {
-    if (finishedRef.current) return;
-    finishedRef.current = true;
-    onFinished?.();
-  }, [onFinished]);
 
   useEffect(() => {
     finishedRef.current = false;
-  }, [onFinished]);
-
-  useEffect(() => {
-    if (!isFetched || isError || !settings.myBidVastEnabled) return;
-    let cancelled = false;
-    void loadImaSdk()
-      .then(() => {
-        if (!cancelled) setSdkReady(true);
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setStatus("unavailable");
-        setMessage(
-          error instanceof Error
-            ? `${error.message} The lesson remains locked; please retry.`
-            : "The video ad player could not load. The lesson remains locked; please retry.",
-        );
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isFetched, isError, settings.myBidVastEnabled]);
-
-  useEffect(() => {
-    if (isFetched && isError) {
-      setStatus("unavailable");
-      setMessage("Ad settings could not be loaded. The lesson remains locked; refresh and retry.");
-    }
-    if (isFetched && !isError && !settings.myBidVastEnabled) finishLesson();
-  }, [isFetched, isError, settings.myBidVastEnabled, finishLesson]);
-
-  function playAd(userInitiated = false) {
-    if (
-      !videoRef.current ||
-      !adContainerRef.current ||
-      status === "loading" ||
-      status === "playing"
-    )
-      return;
-    const ima = window.google?.ima;
-    const video = videoRef.current;
-    const container = adContainerRef.current;
-    if (!ima || !video || !container) {
-      setStatus("unavailable");
-      setMessage(
-        "The sponsored video could not be initialized. The lesson remains locked; please retry.",
-      );
-      return;
-    }
     setStatus("loading");
-    setMessage(null);
-    try {
-      const display = new ima.AdDisplayContainer(container, video);
-      display.initialize();
-      const loader = new ima.AdsLoader(display);
-      loader.addEventListener(ima.AdsManagerLoadedEvent.Type.ADS_MANAGER_LOADED, (event) => {
-        const manager = event.getAdsManager(video);
-        managerRef.current = manager;
-        let wasSkipped = false;
-        manager.addEventListener(ima.AdEvent.Type.SKIPPED, () => {
-          wasSkipped = true;
-          setStatus("unavailable");
-          setMessage(
-            "The sponsored video was skipped. The lesson remains locked; play the ad to completion.",
-          );
-        });
-        manager.addEventListener(ima.AdEvent.Type.ALL_ADS_COMPLETED, () => {
-          if (requestTimeoutRef.current !== undefined)
-            window.clearTimeout(requestTimeoutRef.current);
-          if (wasSkipped) return;
+    setSecondsLeft(6);
+  }, [settings.adsterraBannerScript, settings.adsterraEnabled]);
+
+  useEffect(() => {
+    if (!isFetched) return;
+    if (isError) {
+      setStatus("unavailable");
+      return;
+    }
+    if (!settings.adsterraEnabled) {
+      setStatus("unavailable");
+      return;
+    }
+    const frame = frameRef.current;
+    if (!frame) return;
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== frame.contentWindow || event.data?.type !== "EXPERTSTEAM_ADSTERRA_CREATIVE_READY") return;
+      setStatus("visible");
+    };
+    window.addEventListener("message", onMessage);
+    const timeout = window.setTimeout(() => {
+      setStatus((current) => current === "loading" ? "unavailable" : current);
+    }, 18000);
+    return () => {
+      window.removeEventListener("message", onMessage);
+      window.clearTimeout(timeout);
+    };
+  }, [isFetched, isError, settings.adsterraEnabled, settings.adsterraBannerScript]);
+
+  useEffect(() => {
+    if (status !== "visible") return;
+    setSecondsLeft(6);
+    const startedAt = Date.now();
+    const interval = window.setInterval(() => {
+      const remaining = Math.max(0, 6 - Math.floor((Date.now() - startedAt) / 1000));
+      setSecondsLeft(remaining);
+      if (remaining === 0) {
+        window.clearInterval(interval);
+        if (!finishedRef.current) {
+          finishedRef.current = true;
           setStatus("complete");
           onFinished?.();
-          manager.destroy();
-          managerRef.current = null;
-        });
-        manager.addEventListener(ima.AdEvent.Type.STARTED, () => {
-          if (requestTimeoutRef.current !== undefined)
-            window.clearTimeout(requestTimeoutRef.current);
-          setStatus("playing");
-        });
-        manager.addEventListener(ima.AdErrorEvent.Type.AD_ERROR, () => {
-          if (requestTimeoutRef.current !== undefined)
-            window.clearTimeout(requestTimeoutRef.current);
-          setStatus("unavailable");
-          setMessage(
-            "MyBid did not return a playable ad. The lesson remains locked; retry the ad.",
-          );
-          manager.destroy();
-          managerRef.current = null;
-        });
-        manager.init(
-          container.clientWidth || 640,
-          container.clientHeight || 360,
-          ima.ViewMode.NORMAL,
-        );
-        // Muted autoplay is permitted by more browsers; sound can be enabled using player controls.
-        video.muted = true;
-        try {
-          manager.start();
-        } catch {
-          setStatus("ready");
-          setMessage(
-            "Your browser requires a tap before video playback. Tap Start sponsored video to play the ad.",
-          );
-          manager.destroy();
-          managerRef.current = null;
         }
-      });
-      loader.addEventListener(ima.AdErrorEvent.Type.AD_ERROR, () => {
-        managerRef.current?.destroy();
-        managerRef.current = null;
-        if (requestTimeoutRef.current !== undefined) window.clearTimeout(requestTimeoutRef.current);
-        setStatus("unavailable");
-        setMessage("MyBid returned no playable ad. The lesson remains locked; retry the ad.");
-      });
-      const request = new ima.AdsRequest();
-      request.adTagUrl = settings.myBidVastUrl;
-      request.linearAdSlotWidth = container.clientWidth || 640;
-      request.linearAdSlotHeight = container.clientHeight || 360;
-      loader.requestAds(request);
-      requestTimeoutRef.current = window.setTimeout(() => {
-        setMessage(
-          "The ad request timed out. No ad was shown, so the lesson remains locked. Retry the ad.",
-        );
-        setStatus("unavailable");
-        managerRef.current?.destroy();
-        managerRef.current = null;
-      }, 20000);
-    } catch {
-      setStatus(userInitiated ? "unavailable" : "ready");
-      setMessage(
-        userInitiated
-          ? "The sponsored video could not start. The lesson remains locked; please retry."
-          : "Your browser requires a tap before video playback. Tap Start sponsored video to play the ad.",
-      );
-    }
+      }
+    }, 250);
+    return () => window.clearInterval(interval);
+  }, [status, onFinished]);
+
+  const srcDoc = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;padding:0;width:100%;height:90px;overflow:hidden;background:transparent}body{display:flex;align-items:center;justify-content:center}</style></head><body><script>window.atOptions={key:'502debf88d7d96769c683f2ec09cb70b',format:'iframe',height:90,width:728,params:{}};</script><script async src="${settings.adsterraBannerScript}" data-cfasync="false"></script><script>(function(){var sent=false;function check(){if(sent)return;var creative=document.querySelector('iframe,img, a img, video');if(creative){sent=true;window.parent.postMessage({type:'EXPERTSTEAM_ADSTERRA_CREATIVE_READY'},'*');}}var observer=new MutationObserver(check);observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true});setInterval(check,300);setTimeout(function(){observer.disconnect();},17000);})();</script></body></html>`;
+
+  if (!isFetched || (isFetched && !isError && !settings.adsterraEnabled)) {
+    return <div className="rounded-xl border border-border p-4 text-sm text-muted-foreground">Ad settings are unavailable. The lesson remains locked.</div>;
   }
 
-  const autoStartAttemptedRef = useRef(false);
-  useEffect(() => {
-    if (!sdkReady || autoStartAttemptedRef.current || status !== "ready") return;
-    autoStartAttemptedRef.current = true;
-    playAd(false);
-  }, [sdkReady]);
-
-  if (!isFetched || (!isError && !settings.myBidVastEnabled)) return null;
-
   return (
-    <div className="w-full max-w-3xl space-y-3">
-      <div className="relative aspect-video overflow-hidden rounded-xl bg-black">
-        <video ref={videoRef} className="absolute inset-0 h-full w-full" playsInline />
-        <div ref={adContainerRef} className="absolute inset-0 h-full w-full" />
-        {status === "ready" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/95 p-5 text-center">
-            <p className="text-sm font-medium">Sponsored video</p>
-            {message && <p className="max-w-md text-sm text-muted-foreground">{message}</p>}
-            {sdkReady && (
-              <button
-                type="button"
-                onClick={() => playAd(true)}
-                className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
-              >
-                Start sponsored video
-              </button>
-            )}
-            {!sdkReady && (
-              <p className="text-sm text-muted-foreground">Preparing sponsored video…</p>
-            )}
-          </div>
-        )}
-        {status === "loading" && (
-          <div className="absolute inset-0 grid place-items-center bg-background/90 text-sm">
-            Loading sponsored video…
-          </div>
-        )}
-        {status === "unavailable" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/95 p-5 text-center">
-            <p className="max-w-md text-sm">{message}</p>
-            {sdkReady && (
-              <button
-                type="button"
-                onClick={() => playAd(true)}
-                className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
-              >
-                Retry sponsored video
-              </button>
-            )}
-          </div>
-        )}
-        {status === "complete" && (
-          <div className="absolute inset-0 grid place-items-center bg-background/90 text-sm font-medium">
-            Advertisement finished
-          </div>
-        )}
+    <div className="w-full space-y-3">
+      <div className="flex min-h-[112px] flex-col items-center justify-center gap-2 rounded-xl border border-border bg-card p-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sponsored · Adsterra</p>
+        <div className="flex w-full justify-center overflow-hidden">
+          <iframe
+            ref={frameRef}
+            title="Adsterra sponsored banner"
+            srcDoc={srcDoc}
+            sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms"
+            referrerPolicy="strict-origin-when-cross-origin"
+            className="h-[90px] w-full max-w-[728px] border-0"
+            style={{ minWidth: 0 }}
+          />
+        </div>
+        {status === "loading" && <p className="text-xs text-muted-foreground">Loading sponsored banner…</p>}
+        {status === "visible" && <p className="text-sm font-medium">Your lesson unlocks in {secondsLeft} seconds…</p>}
+        {status === "unavailable" && <p className="text-sm text-destructive">Adsterra did not load a banner. The lesson remains locked; refresh and retry later.</p>}
+        {status === "complete" && <p className="text-sm font-medium text-emerald-600">Sponsored banner shown. Unlocking lesson…</p>}
       </div>
-      <p className="text-center text-xs text-muted-foreground">
-        Video advertisement provided by MyBid
-      </p>
     </div>
   );
 }
 
-/**
- * Page display placements need a separate MyBid display/banner placement ID.
- * The configured 2030847 placement is a VAST video tag and must not be reused
- * as a banner. Keep this slot visually absent until a valid display tag exists.
- */
-export function AdSlot(_props: { slot: string }) {
+/** No global advertising scripts are injected; the explicit Adsterra banner is isolated to its placement. */
+export function GlobalAdScripts() {
   return null;
 }
 
-/** No global advertising scripts are injected; lesson ads use the explicit MyBid VAST player only. */
-export function GlobalAdScripts() {
+/** Legacy display slots are intentionally empty; the lesson gate uses AdsterraBannerAd. */
+export function AdSlot(_props: { slot: string }) {
   return null;
 }
