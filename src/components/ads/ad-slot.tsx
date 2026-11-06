@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-const ADSTERRA_DOCUMENT = \`<!doctype html>
+const ADSTERRA_DOCUMENT = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=728, initial-scale=1"></head>
 <body style="margin:0;width:728px;height:90px;overflow:hidden;background:transparent">
 <script>
@@ -41,7 +41,7 @@ window.atOptions = {
 var atOptions = window.atOptions;
 </script>
 <script type="text/javascript" src="https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b"></script>
-</body></html>\`;
+</body></html>`;
 
 export function AdSlot({ slot }: { slot: string }) {
   const frameRef = useRef<HTMLIFrameElement>(null);
@@ -82,12 +82,12 @@ export function AdSlot({ slot }: { slot: string }) {
       <div className="mx-auto w-full max-w-[728px] overflow-hidden" style={{ height: 90 * scale }}>
         <iframe
           ref={frameRef}
-          title={\`Adsterra banner \${slot}\`}
+          title={`Adsterra banner ${slot}`}
           srcDoc={ADSTERRA_DOCUMENT}
           sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms"
           referrerPolicy="strict-origin-when-cross-origin"
           scrolling="no"
-          style={{ display: "block", width: 728, height: 90, border: 0, transform: \`scale(\${scale})\`, transformOrigin: "top left" }}
+          style={{ display: "block", width: 728, height: 90, border: 0, transform: `scale(${scale})`, transformOrigin: "top left" }}
         />
       </div>
       {status === "loaded" && <p className="mt-1 text-center text-[10px] text-muted-foreground">Sponsored</p>}
