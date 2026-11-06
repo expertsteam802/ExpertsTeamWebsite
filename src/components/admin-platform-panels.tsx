@@ -7,39 +7,22 @@ import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
-type AdSettings = {
-  myBidVastEnabled: boolean;
-  myBidVastUrl: string;
-  myBidAdCodeId: string;
-  myBidFormatId: string;
-  myBidAdCodeName: string;
-};
-
+type AdSettings = { adsterraEnabled: boolean; adsterraBannerScript: string };
 const DEFAULT_AD_SETTINGS: AdSettings = {
-  myBidVastEnabled: true,
-  myBidVastUrl: "https://vast.vstserv.com/vast?spot_id=2030847",
-  myBidAdCodeId: "470834",
-  myBidFormatId: "2030847",
-  myBidAdCodeName: "ExpertsTeam",
+  adsterraEnabled: true,
+  adsterraBannerScript: "https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b",
 };
 
 function normalizeAdSettings(value: Json | null | undefined): AdSettings {
   if (!value || typeof value !== "object" || Array.isArray(value)) return DEFAULT_AD_SETTINGS;
   const raw = value as Record<string, Json | undefined>;
   return {
-    myBidVastEnabled: typeof raw.myBidVastEnabled === "boolean" ? raw.myBidVastEnabled : true,
-    myBidVastUrl:
-      typeof raw.myBidVastUrl === "string" && raw.myBidVastUrl.trim()
-        ? raw.myBidVastUrl
-        : DEFAULT_AD_SETTINGS.myBidVastUrl,
-    myBidAdCodeId:
-      typeof raw.myBidAdCodeId === "string" ? raw.myBidAdCodeId : DEFAULT_AD_SETTINGS.myBidAdCodeId,
-    myBidFormatId:
-      typeof raw.myBidFormatId === "string" ? raw.myBidFormatId : DEFAULT_AD_SETTINGS.myBidFormatId,
-    myBidAdCodeName:
-      typeof raw.myBidAdCodeName === "string"
-        ? raw.myBidAdCodeName
-        : DEFAULT_AD_SETTINGS.myBidAdCodeName,
+    adsterraEnabled: raw.adsterraEnabled !== false,
+    adsterraBannerScript:
+      typeof raw.adsterraBannerScript === "string" &&
+      raw.adsterraBannerScript.startsWith("https://bauval.org/22/")
+        ? raw.adsterraBannerScript
+        : DEFAULT_AD_SETTINGS.adsterraBannerScript,
   };
 }
 
@@ -60,12 +43,7 @@ function ToggleRow({
         <span className="block text-sm font-medium">{title}</span>
         <span className="mt-1 block text-xs text-muted-foreground">{description}</span>
       </span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className="h-5 w-5 shrink-0 accent-primary"
-      />
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="h-5 w-5 shrink-0 accent-primary" />
     </label>
   );
 }
@@ -95,24 +73,19 @@ export function AdminAdsSettingsPanel() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const parsedUrl = new URL(draft.myBidVastUrl);
-      if (parsedUrl.protocol !== "https:" || parsedUrl.hostname !== "vast.vstserv.com") {
-        throw new Error("Use the secure MyBid VAST URL supplied for this placement.");
+      const parsedUrl = new URL(draft.adsterraBannerScript);
+      if (parsedUrl.protocol !== "https:" || parsedUrl.hostname !== "bauval.org" || !parsedUrl.pathname.startsWith("/22/")) {
+        throw new Error("Use the configured secure Adsterra 728x90 banner script.");
       }
       const existingSettings =
-        data?.ad_settings &&
-        typeof data.ad_settings === "object" &&
-        !Array.isArray(data.ad_settings)
+        data?.ad_settings && typeof data.ad_settings === "object" && !Array.isArray(data.ad_settings)
           ? (data.ad_settings as Record<string, Json>)
           : {};
       const { error } = await supabase
         .from("site_settings")
         .update({
-          // Persist only MyBid VAST while preserving the separate site-branding settings.
           ad_settings: {
-            ...(existingSettings.siteBranding
-              ? { siteBranding: existingSettings.siteBranding }
-              : {}),
+            ...(existingSettings.siteBranding ? { siteBranding: existingSettings.siteBranding } : {}),
             ...draft,
           } as unknown as Json,
           error_dialog_enabled: errorDialogEnabled,
@@ -125,86 +98,49 @@ export function AdminAdsSettingsPanel() {
         queryClient.invalidateQueries({ queryKey: ["admin", "ad-settings"] }),
         queryClient.invalidateQueries({ queryKey: ["site-settings"] }),
       ]);
-      toast.success("MyBid video advertising settings saved");
+      toast.success("Adsterra banner settings saved");
     },
     onError: (error: Error) => toast.error(error.message),
   });
 
-  if (isLoading) {
-    return <Card className="p-6 text-sm text-muted-foreground">Loading ad controls…</Card>;
-  }
+  if (isLoading) return <Card className="p-6 text-sm text-muted-foreground">Loading ad controls…</Card>;
 
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="font-display text-xl font-semibold">Video advertising</h2>
+        <h2 className="font-display text-xl font-semibold">Advertising</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Lesson videos use the MyBid VAST pre-roll. It reports ad-start, completion, and no-fill
-          events. Lessons stay locked when no ad is actually played; visitors can retry.
+          ExpertsTeam uses the Adsterra 728×90 banner placement only. No popunder, social bar, video overlay, or MyBid tags are loaded.
         </p>
       </div>
-
       <Card className="space-y-4 p-5">
-        <div className="rounded-lg border border-border/70 bg-muted/40 p-3">
-          <p className="text-sm font-medium">Active format: MyBid VAST pre-roll</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Only the MyBid VAST pre-roll is enabled. No banner, popunder, or overlay provider is
-            loaded.
-          </p>
-        </div>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h3 className="font-semibold">MyBid VAST Pre-roll</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Publisher ad code #{draft.myBidAdCodeId} · Format ID {draft.myBidFormatId}
-            </p>
+            <h3 className="font-semibold">Adsterra banner</h3>
+            <p className="mt-1 text-xs text-muted-foreground">728×90 display banner · placement key 502debf88d7d96769c683f2ec09cb70b</p>
           </div>
-          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600">
-            Configured
-          </span>
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600">Configured</span>
         </div>
         <ToggleRow
-          title="Enable VAST pre-roll"
-          description="The lesson unlocks only after MyBid confirms ad completion."
-          checked={draft.myBidVastEnabled}
-          onChange={(checked) => setDraft((current) => ({ ...current, myBidVastEnabled: checked }))}
+          title="Enable Adsterra banner"
+          description="Show the banner before lesson videos. If the banner fails to load, the lesson stays locked."
+          checked={draft.adsterraEnabled}
+          onChange={(checked) => setDraft((current) => ({ ...current, adsterraEnabled: checked }))}
         />
         <label className="block space-y-2">
-          <span className="text-sm font-medium">VAST tag URL</span>
+          <span className="text-sm font-medium">Banner script URL</span>
           <input
             type="url"
-            value={draft.myBidVastUrl}
-            onChange={(event) =>
-              setDraft((current) => ({ ...current, myBidVastUrl: event.target.value }))
-            }
+            value={draft.adsterraBannerScript}
+            onChange={(event) => setDraft((current) => ({ ...current, adsterraBannerScript: event.target.value }))}
             className="h-10 w-full rounded-md border border-input bg-background px-3 font-mono text-xs"
             spellCheck={false}
           />
         </label>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block space-y-2">
-            <span className="text-sm font-medium">VAST ad code ID</span>
-            <input
-              value={draft.myBidAdCodeId}
-              readOnly
-              className="h-10 w-full rounded-md border border-input bg-muted px-3 text-sm"
-            />
-          </label>
-          <label className="block space-y-2">
-            <span className="text-sm font-medium">VAST format ID</span>
-            <input
-              value={draft.myBidFormatId}
-              readOnly
-              className="h-10 w-full rounded-md border border-input bg-muted px-3 text-sm"
-            />
-          </label>
-        </div>
         <p className="text-xs text-muted-foreground">
-          The VAST tag is requested through Google IMA. A no-fill, timeout, or playback error does
-          not unlock the lesson.
+          The lesson unlocks after the banner creative is detected and has remained visible for six seconds. This confirms rendering, not a billable impression from the ad network.
         </p>
       </Card>
-
       <Card className="space-y-3 p-5">
         <h3 className="font-semibold">Application errors</h3>
         <ToggleRow
@@ -214,7 +150,6 @@ export function AdminAdsSettingsPanel() {
           onChange={setErrorDialogEnabled}
         />
       </Card>
-
       <div className="flex justify-end">
         <Button onClick={() => save.mutate()} disabled={save.isPending}>
           {save.isPending ? "Saving…" : "Save advertising settings"}
