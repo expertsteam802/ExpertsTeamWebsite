@@ -202,15 +202,18 @@ export async function generateGeminiContent(
       .map((item) => item.trim().toLowerCase())
       .filter(Boolean);
   const availableProviders = ["groq", "gemini", "openrouter", "mistral", "cloudflare"];
-  // Use every configured adapter as a fallback; credentials stay server-side.
+  // An explicit providerOrder means the owner selected one provider: do not silently rotate.
+  // Without an explicit selection, retain the configured automatic fallback order.
   const configuredOrder = hasImageReference
     ? ["gemini"]
-    : [
-        ...new Set([
-          ...requestedOrder.filter((item) => availableProviders.includes(item)),
-          ...availableProviders,
-        ]),
-      ];
+    : providerOrder
+      ? [...new Set(requestedOrder.filter((item) => availableProviders.includes(item)))]
+      : [
+          ...new Set([
+            ...requestedOrder.filter((item) => availableProviders.includes(item)),
+            ...availableProviders,
+          ]),
+        ];
   const failures: string[] = [];
   const coolingDown: string[] = [];
 
