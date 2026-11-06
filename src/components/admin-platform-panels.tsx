@@ -99,11 +99,22 @@ export function AdminAdsSettingsPanel() {
       if (parsedUrl.protocol !== "https:" || parsedUrl.hostname !== "vast.vstserv.com") {
         throw new Error("Use the secure MyBid VAST URL supplied for this placement.");
       }
+      const existingSettings =
+        data?.ad_settings &&
+        typeof data.ad_settings === "object" &&
+        !Array.isArray(data.ad_settings)
+          ? (data.ad_settings as Record<string, Json>)
+          : {};
       const { error } = await supabase
         .from("site_settings")
         .update({
-          // Persist only the single supported provider and format.
-          ad_settings: { ...draft } as unknown as Json,
+          // Persist only MyBid VAST while preserving the separate site-branding settings.
+          ad_settings: {
+            ...(existingSettings.siteBranding
+              ? { siteBranding: existingSettings.siteBranding }
+              : {}),
+            ...draft,
+          } as unknown as Json,
           error_dialog_enabled: errorDialogEnabled,
         })
         .eq("id", 1);
