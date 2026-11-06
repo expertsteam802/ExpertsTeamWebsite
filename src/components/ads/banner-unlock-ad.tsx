@@ -5,7 +5,7 @@ const AD_KEY = "502debf88d7d96769c683f2ec09cb70b";
 const AD_SCRIPT_URL = "https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b";
 
 // Run the publisher snippet in its own document because banner tags may use document.write.
-const ADSTERRA_DOCUMENT = \`<!doctype html>
+const ADSTERRA_DOCUMENT = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=728, initial-scale=1"></head>
 <body style="margin:0;width:728px;height:90px;overflow:hidden;background:transparent">
 <script>
@@ -46,7 +46,7 @@ window.atOptions = {
 var atOptions = window.atOptions;
 </script>
 <script type="text/javascript" src="https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b"></script>
-</body></html>\`;
+</body></html>`;
 
 export function BannerUnlockAd({
   onUnlocked,
@@ -121,7 +121,7 @@ export function BannerUnlockAd({
   };
 
   return (
-    <section className={\`w-full rounded-2xl border border-border/70 bg-card p-4 \${compact ? "max-w-3xl" : "max-w-4xl"}\`}>
+    <section className={`w-full rounded-2xl border border-border/70 bg-card p-4 ${compact ? "max-w-3xl" : "max-w-4xl"}`}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm font-semibold">
           <ShieldCheck className="h-4 w-4 text-primary" />
@@ -137,7 +137,7 @@ export function BannerUnlockAd({
           sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms"
           referrerPolicy="strict-origin-when-cross-origin"
           scrolling="no"
-          style={{ display: "block", width: 728, height: 90, border: 0, transform: \`scale(\${scale})\`, transformOrigin: "top left" }}
+          style={{ display: "block", width: 728, height: 90, border: 0, transform: `scale(${scale})`, transformOrigin: "top left" }}
         />
       </div>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
