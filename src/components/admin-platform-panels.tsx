@@ -43,7 +43,12 @@ function ToggleRow({
         <span className="block text-sm font-medium">{title}</span>
         <span className="mt-1 block text-xs text-muted-foreground">{description}</span>
       </span>
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="h-5 w-5 shrink-0 accent-primary" />
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="h-5 w-5 shrink-0 accent-primary"
+      />
     </label>
   );
 }
@@ -74,18 +79,26 @@ export function AdminAdsSettingsPanel() {
   const save = useMutation({
     mutationFn: async () => {
       const parsedUrl = new URL(draft.adsterraBannerScript);
-      if (parsedUrl.protocol !== "https:" || parsedUrl.hostname !== "bauval.org" || !parsedUrl.pathname.startsWith("/22/")) {
+      if (
+        parsedUrl.protocol !== "https:" ||
+        parsedUrl.hostname !== "bauval.org" ||
+        !parsedUrl.pathname.startsWith("/22/")
+      ) {
         throw new Error("Use the configured secure Adsterra 728x90 banner script.");
       }
       const existingSettings =
-        data?.ad_settings && typeof data.ad_settings === "object" && !Array.isArray(data.ad_settings)
+        data?.ad_settings &&
+        typeof data.ad_settings === "object" &&
+        !Array.isArray(data.ad_settings)
           ? (data.ad_settings as Record<string, Json>)
           : {};
       const { error } = await supabase
         .from("site_settings")
         .update({
           ad_settings: {
-            ...(existingSettings.siteBranding ? { siteBranding: existingSettings.siteBranding } : {}),
+            ...(existingSettings.siteBranding
+              ? { siteBranding: existingSettings.siteBranding }
+              : {}),
             ...draft,
           } as unknown as Json,
           error_dialog_enabled: errorDialogEnabled,
@@ -103,23 +116,29 @@ export function AdminAdsSettingsPanel() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  if (isLoading) return <Card className="p-6 text-sm text-muted-foreground">Loading ad controls…</Card>;
+  if (isLoading)
+    return <Card className="p-6 text-sm text-muted-foreground">Loading ad controls…</Card>;
 
   return (
     <div className="space-y-5">
       <div>
         <h2 className="font-display text-xl font-semibold">Advertising</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          ExpertsTeam uses only the Adsterra 728×90 banner placement. No popunder, social bar, or video overlay scripts are loaded.
+          ExpertsTeam uses only the Adsterra 728×90 banner placement. No popunder, social bar, or
+          video overlay scripts are loaded.
         </p>
       </div>
       <Card className="space-y-4 p-5">
         <div className="flex items-center justify-between gap-4">
           <div>
             <h3 className="font-semibold">Adsterra banner</h3>
-            <p className="mt-1 text-xs text-muted-foreground">728×90 display banner · placement key 502debf88d7d96769c683f2ec09cb70b</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              728×90 display banner · placement key 502debf88d7d96769c683f2ec09cb70b
+            </p>
           </div>
-          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600">Configured</span>
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600">
+            Configured
+          </span>
         </div>
         <ToggleRow
           title="Enable Adsterra banner"
@@ -132,13 +151,16 @@ export function AdminAdsSettingsPanel() {
           <input
             type="url"
             value={draft.adsterraBannerScript}
-            onChange={(event) => setDraft((current) => ({ ...current, adsterraBannerScript: event.target.value }))}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, adsterraBannerScript: event.target.value }))
+            }
             className="h-10 w-full rounded-md border border-input bg-background px-3 font-mono text-xs"
             spellCheck={false}
           />
         </label>
         <p className="text-xs text-muted-foreground">
-          The lesson unlocks after the banner creative is detected and has remained visible for six seconds. This confirms rendering, not a billable impression from the ad network.
+          The lesson unlocks after the banner creative is detected and has remained visible for six
+          seconds. This confirms rendering, not a billable impression from the ad network.
         </p>
       </Card>
       <Card className="space-y-3 p-5">
