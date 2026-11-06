@@ -7,40 +7,19 @@ import type { Json } from "@/integrations/supabase/types";
 export const MYBID_VAST_DEFAULT_URL = "https://vast.vstserv.com/vast?spot_id=2030847";
 
 type MyBidSettings = {
-  myBidActiveFormat: "vast" | "overlay";
-  myBidOverlayEnabled: boolean;
-  myBidOverlayAdCodeId: string;
   myBidVastEnabled: boolean;
   myBidVastUrl: string;
-  myBidAdCodeId: string;
-  myBidFormatId: string;
-  myBidAdCodeName: string;
 };
 
 const DEFAULT_SETTINGS: MyBidSettings = {
-  myBidActiveFormat: "vast",
-  myBidOverlayEnabled: true,
-  myBidOverlayAdCodeId: "470837",
   myBidVastEnabled: true,
   myBidVastUrl: MYBID_VAST_DEFAULT_URL,
-  myBidAdCodeId: "470834",
-  myBidFormatId: "2030847",
-  myBidAdCodeName: "ExpertsTeam",
 };
 
 function parseAdSettings(value: Json | null | undefined): MyBidSettings {
   if (!value || typeof value !== "object" || Array.isArray(value)) return DEFAULT_SETTINGS;
   const raw = value as Record<string, Json | undefined>;
   return {
-    myBidActiveFormat: raw.myBidActiveFormat === "overlay" ? "overlay" : "vast",
-    myBidOverlayEnabled:
-      typeof raw.myBidOverlayEnabled === "boolean"
-        ? raw.myBidOverlayEnabled
-        : DEFAULT_SETTINGS.myBidOverlayEnabled,
-    myBidOverlayAdCodeId:
-      typeof raw.myBidOverlayAdCodeId === "string"
-        ? raw.myBidOverlayAdCodeId
-        : DEFAULT_SETTINGS.myBidOverlayAdCodeId,
     myBidVastEnabled:
       typeof raw.myBidVastEnabled === "boolean"
         ? raw.myBidVastEnabled
@@ -49,14 +28,6 @@ function parseAdSettings(value: Json | null | undefined): MyBidSettings {
       typeof raw.myBidVastUrl === "string" && raw.myBidVastUrl.trim()
         ? raw.myBidVastUrl
         : DEFAULT_SETTINGS.myBidVastUrl,
-    myBidAdCodeId:
-      typeof raw.myBidAdCodeId === "string" ? raw.myBidAdCodeId : DEFAULT_SETTINGS.myBidAdCodeId,
-    myBidFormatId:
-      typeof raw.myBidFormatId === "string" ? raw.myBidFormatId : DEFAULT_SETTINGS.myBidFormatId,
-    myBidAdCodeName:
-      typeof raw.myBidAdCodeName === "string"
-        ? raw.myBidAdCodeName
-        : DEFAULT_SETTINGS.myBidAdCodeName,
   };
 }
 
@@ -190,9 +161,13 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
     return () => {
       cancelled = true;
     };
-  }, [isFetched, isError, settings.myBidActiveFormat, settings.myBidVastEnabled, onFinished]);
+  }, [isFetched, isError, settings.myBidVastEnabled]);
 
   useEffect(() => {
+    if (isFetched && isError) {
+      setStatus("unavailable");
+      setMessage("Ad settings could not be loaded. The lesson remains locked; refresh and retry.");
+    }
     if (isFetched && !isError && !settings.myBidVastEnabled) finishLesson();
   }, [isFetched, isError, settings.myBidVastEnabled, finishLesson]);
 
@@ -310,7 +285,7 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
     playAd(false);
   }, [sdkReady]);
 
-  if (!isFetched || isError || !settings.myBidVastEnabled) return null;
+  if (!isFetched || (!isError && !settings.myBidVastEnabled)) return null;
 
   return (
     <div className="w-full max-w-3xl space-y-3">
@@ -376,7 +351,7 @@ export function AdSlot(_props: { slot: string }) {
   return null;
 }
 
-/** Adsterra global scripts have been retired. */
+/** No global advertising scripts are injected; lesson ads use the explicit MyBid VAST player only. */
 export function GlobalAdScripts() {
   return null;
 }
