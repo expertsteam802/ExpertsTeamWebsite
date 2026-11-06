@@ -940,7 +940,7 @@ function AdminPage() {
                       >
                         Save settings
                       </Button>
-                      <p className="text-xs text-muted-foreground">ExpertAI prefers qwen2.5-coder:14b on this Ollama tunnel for text and coding. Paste the new HTTPS LocalTunnel URL whenever Colab reconnects. The URL is stored in site settings; no redeploy is needed.</p>
+                      <p className="text-xs text-muted-foreground">The selected engine is used for both ExpertAI Chat and the coding agent. When Qwen is selected, paste the current HTTPS LocalTunnel URL here; saving it does not require a redeploy.</p>
                     </>
                   ) : (
                     <p className="text-sm text-muted-foreground">Loading settings…</p>
