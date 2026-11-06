@@ -219,6 +219,10 @@ export const Route = createFileRoute("/api/ai/stream")({
             ? (settingsRoot as Record<string, unknown>).siteBranding : null;
           const ollamaCandidate = siteBranding && typeof siteBranding === "object" && !Array.isArray(siteBranding)
             ? (siteBranding as Record<string, unknown>).ollama_url : null;
+          const providerCandidate = siteBranding && typeof siteBranding === "object" && !Array.isArray(siteBranding)
+            ? (siteBranding as Record<string, unknown>).ai_provider : null;
+          const configuredProvider = typeof providerCandidate === "string" && ["ollama", "groq", "gemini", "openrouter", "mistral", "cloudflare"].includes(providerCandidate)
+            ? providerCandidate : "ollama";
           let ollamaBaseUrl = "";
           if (typeof ollamaCandidate === "string" && ollamaCandidate.trim()) {
             try {
@@ -228,7 +232,8 @@ export const Route = createFileRoute("/api/ai/stream")({
           }
           const geminiKey = process.env["GEMINI_API_KEY"]?.trim();
           const hasImageAttachments = attachments.some((file) => Boolean(file.dataUrl));
-          if (!ollamaBaseUrl && !hasImageAttachments) {
+          const selectedProvider = hasImageAttachments ? "gemini" : configuredProvider;
+          if (selectedProvider === "ollama" && !ollamaBaseUrl && !hasImageAttachments) {
             return Response.json({ error: "Your Qwen connection is not configured. Add the current Colab LocalTunnel URL in ExpertAI Studio settings." }, { status: 503 });
           }
           const orderedProviders = hasImageAttachments
@@ -284,7 +289,7 @@ export const Route = createFileRoute("/api/ai/stream")({
 
           // Colab-hosted Ollama is the primary text provider. The small Qwen model
           // is text-only, so image attachments continue through Gemini.
-          if (ollamaBaseUrl && !hasImageAttachments) {
+          if (selectedProvider === "ollama" && ollamaBaseUrl && !hasImageAttachments) {
             try {
               const ollamaResponse = await fetch(`${ollamaBaseUrl}/api/chat`, {
                 method: "POST",
@@ -380,7 +385,7 @@ export const Route = createFileRoute("/api/ai/stream")({
               generationConfig: { maxOutputTokens: 700 },
             },
             undefined,
-            ["gemini"],
+            [selectedProvider],
           );
 
           const creditError = await consumeCredit();
