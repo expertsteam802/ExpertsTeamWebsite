@@ -110,7 +110,7 @@ export function AdminAdsSettingsPanel() {
       <div>
         <h2 className="font-display text-xl font-semibold">Advertising</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          ExpertsTeam uses the Adsterra 728×90 banner placement only. No popunder, social bar, video overlay, or MyBid tags are loaded.
+          ExpertsTeam uses only the Adsterra 728×90 banner placement. No popunder, social bar, or video overlay scripts are loaded.
         </p>
       </div>
       <Card className="space-y-4 p-5">
