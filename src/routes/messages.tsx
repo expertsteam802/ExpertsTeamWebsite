@@ -10,6 +10,7 @@ import {
   Search,
   Send,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -113,7 +114,13 @@ function MessagesPage() {
         )
         .order("last_message_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as Conversation[];
+      const { data: hiddenRows, error: hiddenError } = await supabase
+        .from("direct_conversation_hidden")
+        .select("conversation_id")
+        .eq("user_id", user!.id);
+      if (hiddenError) throw hiddenError;
+      const hiddenIds = new Set((hiddenRows ?? []).map((row) => row.conversation_id));
+      return ((data ?? []) as Conversation[]).filter((conversation) => !hiddenIds.has(conversation.id));
     },
   });
 
@@ -338,6 +345,47 @@ function MessagesPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const unsendMessage = useMutation({
+    mutationFn: async (message: DirectMessage) => {
+      if (!user || message.sender_id !== user.id) throw new Error("You can only unsend your own messages.");
+      const { error } = await supabase
+        .from("direct_messages")
+        .delete()
+        .eq("id", message.id)
+        .eq("sender_id", user.id);
+      if (error) throw error;
+      if (message.media_path) {
+        await supabase.storage.from("direct-messages").remove([message.media_path]);
+      }
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["direct-messages", activeConversation?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["direct-conversations", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["direct-message-previews", user?.id] });
+      toast.success("Message unsent");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const deleteConversation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      if (!user) throw new Error("Sign in to delete a conversation.");
+      const { error } = await supabase.from("direct_conversation_hidden").insert({
+        conversation_id: conversationId,
+        user_id: user.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setActiveId(null);
+      setMobileChatOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["direct-conversations", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["direct-message-previews", user?.id] });
+      toast.success("Chat removed from your inbox");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   async function startConversation(person: Person) {
     if (!user) return;
     const pairKey = [user.id, person.id].sort().join(":");
@@ -452,6 +500,10 @@ function MessagesPage() {
             <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">Messages</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Private conversations, live presence and instant replies.
+            </p>
+            <p className="mt-2 inline-flex items-center gap-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              {onlineIds.length} {onlineIds.length === 1 ? "developer" : "developers"} active now
             </p>
           </div>
           <Button
@@ -648,6 +700,17 @@ function MessagesPage() {
                       </p>
                     </div>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Delete chat"
+                    title="Remove chat from your inbox"
+                    onClick={() => deleteConversation.mutate(activeConversation.id)}
+                    disabled={deleteConversation.isPending}
+                    className="shrink-0 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </header>
                 <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-5 sm:px-7">
                   <div className="mb-7 text-center">
@@ -698,11 +761,23 @@ function MessagesPage() {
                               {message.body}
                             </p>
                           )}
-                          <p
-                            className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}
-                          >
-                            {shortTime(message.created_at)} {mine && <Check className="h-3 w-3" />}
-                          </p>
+                          <div className="mt-1 flex items-center justify-end gap-2">
+                            <span className={`flex items-center gap-1 text-[10px] ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                              {shortTime(message.created_at)} {mine && <Check className="h-3 w-3" />}
+                            </span>
+                            {mine && (
+                              <button
+                                type="button"
+                                aria-label="Unsend message"
+                                title="Unsend message"
+                                onClick={() => unsendMessage.mutate(message)}
+                                disabled={unsendMessage.isPending}
+                                className="rounded p-1 opacity-70 transition hover:bg-black/10 hover:opacity-100"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );

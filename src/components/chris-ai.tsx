@@ -1,18 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bot,
-  Copy,
   Home,
   ImagePlus,
   Loader2,
   Minimize2,
+  MessageSquare,
+  Plus,
   Paperclip,
   Send,
-  Sparkles,
   Trash2,
   User,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 
@@ -173,6 +173,26 @@ export function ChrisAiChat({
     null,
   );
   const [streamingReply, setStreamingReply] = useState("");
+  const [guestMessages, setGuestMessages] = useState<ChatRow[]>([]);
+  const [guestSessionId] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      const existing = window.localStorage.getItem("experts-team:guest-session");
+      if (existing && /^[0-9a-f-]{36}$/i.test(existing)) return existing;
+      const created = crypto.randomUUID();
+      window.localStorage.setItem("experts-team:guest-session", created);
+      return created;
+    } catch {
+      return crypto.randomUUID();
+    }
+  });
+  const [guestCredits, setGuestCredits] = useState(() => {
+    if (typeof window === "undefined") return 15;
+    try {
+      const saved = window.localStorage.getItem(`experts-team:guest-ai-credits:${guestSessionId}`);
+      return saved === null ? 15 : Math.max(0, Math.min(15, Number(saved) || 0));
+    } catch { return 15; }
+  });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -227,7 +247,7 @@ export function ChrisAiChat({
   }, [user?.id, threadId]);
 
   const {
-    data: messages = [],
+    data: savedMessages = [],
     isError: messagesError,
     refetch: refetchMessages,
   } = useQuery({
@@ -245,37 +265,80 @@ export function ChrisAiChat({
       return (data ?? []) as ChatRow[];
     },
   });
+  const { data: chatThreads = [] } = useQuery({
+    queryKey: ["ai-chat-threads", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ai_chats")
+        .select("thread_id, role, content, created_at")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      const grouped = new Map<string, { threadId: string; title: string; updatedAt: string }>();
+      for (const row of data ?? []) {
+        if (!row.thread_id) continue;
+        const current = grouped.get(row.thread_id);
+        if (!current) {
+          grouped.set(row.thread_id, {
+            threadId: row.thread_id,
+            title: row.role === "user" ? String(row.content).replace(/\s+/g, " ").slice(0, 52) : "New conversation",
+            updatedAt: row.created_at,
+          });
+        } else if (row.role === "user") {
+          current.title = String(row.content).replace(/\s+/g, " ").slice(0, 52) || current.title;
+        }
+      }
+      return [...grouped.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    },
+  });
+  const visibleThreads = useMemo(() => chatThreads, [chatThreads]);
+  const messages = user ? savedMessages : guestMessages;
 
   const send = useMutation({
     mutationFn: async (prompt: string) => {
       const activeThreadId = threadId ?? crypto.randomUUID();
-      if (!threadId) setThreadId(activeThreadId);
-
-      const { error: userMessageError } = await supabase.from("ai_chats").insert({
-        user_id: user!.id,
-        thread_id: activeThreadId,
-        role: "user",
-        content: prompt,
-      });
-      if (userMessageError) throw userMessageError;
+      if (user && !threadId) setThreadId(activeThreadId);
 
       const history = messages.slice(-6).map((message) => ({
         role: message.role,
         content: message.content,
       }));
+      const userMessage: ChatRow = {
+        id: crypto.randomUUID(),
+        role: "user",
+        content: prompt,
+        created_at: new Date().toISOString(),
+        thread_id: activeThreadId,
+      };
+      if (user) {
+        const { error: userMessageError } = await supabase.from("ai_chats").insert({
+          user_id: user.id,
+          thread_id: activeThreadId,
+          role: "user",
+          content: prompt,
+        });
+        if (userMessageError) throw userMessageError;
+      } else {
+        setGuestMessages((current) => [...current, userMessage]);
+      }
 
       setStreamingReply("");
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !sessionData.session?.access_token) {
-        throw new Error("Your session expired. Please sign in again.");
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (user) {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !sessionData.session?.access_token) {
+          throw new Error("Your session expired. Please sign in again.");
+        }
+        headers.Authorization = `Bearer ${sessionData.session.access_token}`;
+      } else {
+        headers["X-Guest-Session"] = guestSessionId;
       }
 
       const response = await fetch("/api/ai/stream", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${sessionData.session.access_token}`,
-        },
+        headers,
         body: JSON.stringify({ prompt, history, attachments }),
       });
       if (!response.ok) {
@@ -329,18 +392,34 @@ export function ChrisAiChat({
         throw new Error("ExpertAI returned an empty answer. Please try again.");
       }
 
-      const { error: aiMessageError } = await supabase
-        .from("ai_chats")
-        .insert({ user_id: user!.id, thread_id: activeThreadId, role: "ai", content: reply });
-      if (aiMessageError) {
-        throw new Error("ExpertAI replied, but the reply could not be saved. Please try again.");
+      if (user) {
+        const { error: aiMessageError } = await supabase
+          .from("ai_chats")
+          .insert({ user_id: user.id, thread_id: activeThreadId, role: "ai", content: reply });
+        if (aiMessageError) {
+          throw new Error("ExpertAI replied, but the reply could not be saved. Please try again.");
+        }
+      } else {
+        setGuestMessages((current) => [...current, {
+          id: crypto.randomUUID(),
+          role: "ai",
+          content: reply,
+          created_at: new Date().toISOString(),
+          thread_id: activeThreadId,
+        }]);
+        setGuestCredits((current) => {
+          const next = Math.max(0, current - 1);
+          try { window.localStorage.setItem(`experts-team:guest-ai-credits:${guestSessionId}`, String(next)); } catch { /* Server also enforces the guest limit. */ }
+          return next;
+        });
       }
 
       setAttachments([]);
       setStreamingReply("");
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
+      if (user) void queryClient.invalidateQueries({ queryKey: ["ai-chats", user.id] });
+      if (user) void queryClient.invalidateQueries({ queryKey: ["ai-chat-threads", user.id] });
       void queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
     onError: (error: Error) => {
@@ -352,13 +431,16 @@ export function ChrisAiChat({
 
   const clear = useMutation({
     mutationFn: async () => {
+      if (!user) {
+        setGuestMessages([]);
+        return;
+      }
       const activeThreadId = threadId ?? crypto.randomUUID();
       if (!threadId) setThreadId(activeThreadId);
-
       const { error } = await supabase
         .from("ai_chats")
         .delete()
-        .eq("user_id", user!.id)
+        .eq("user_id", user.id)
         .eq("thread_id", activeThreadId);
       if (error) throw error;
     },
@@ -366,6 +448,27 @@ export function ChrisAiChat({
       toast.success("Chat cleared");
       setGeneratedImage(null);
       void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["ai-chat-threads", user?.id] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const deleteThread = useMutation({
+    mutationFn: async (targetThreadId: string) => {
+      if (!user) return;
+      const { error } = await supabase
+        .from("ai_chats")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("thread_id", targetThreadId);
+      if (error) throw error;
+      return targetThreadId;
+    },
+    onSuccess: (deletedThreadId) => {
+      if (deletedThreadId === threadId) newChat();
+      void queryClient.invalidateQueries({ queryKey: ["ai-chat-threads", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
+      toast.success("Conversation deleted");
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -396,33 +499,14 @@ export function ChrisAiChat({
     onError: (error: Error) => toast.error(error.message),
   });
 
-  if (!user) {
-    return (
-      <Card className="relative p-8 text-center">
-        {onMinimize && (
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Minimize ExpertAI"
-            title="Minimize ExpertAI"
-            className="absolute right-3 top-3"
-            onClick={onMinimize}
-          >
-            <Minimize2 className="h-4 w-4" />
-          </Button>
-        )}
-        <Bot className="mx-auto h-8 w-8 text-primary" />
-        <h2 className="mt-3 font-display text-xl font-semibold">Sign in to chat with ExpertAI</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Your conversations, uploads, and generated images stay attached to your account.
-        </p>
-      </Card>
-    );
-  }
-
   const chatIsFull = messages.length >= 50;
+  const guestCreditsExhausted = !user && guestCredits <= 0;
 
   function submit() {
+    if (guestCreditsExhausted) {
+      toast.error("You have used your 15 free guest credits. Create an account to keep chatting.");
+      return;
+    }
     if (chatIsFull) {
       toast.error("This chat is full. Start a new chat to continue; this conversation remains saved.");
       return;
@@ -435,22 +519,70 @@ export function ChrisAiChat({
   }
 
   function newChat() {
-    setThreadId(crypto.randomUUID());
     setAttachments([]);
-    void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
+    if (user) {
+      setThreadId(crypto.randomUUID());
+      void queryClient.invalidateQueries({ queryKey: ["ai-chats", user.id] });
+    } else {
+      setGuestMessages([]);
+    }
   }
 
   return (
-    <Card className="glow-panel flex h-full min-h-0 w-full flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 w-full overflow-hidden bg-background">
+      {user && (
+        <aside className="hidden w-60 shrink-0 flex-col border-r border-border/70 bg-card/70 md:flex">
+          <div className="flex items-center justify-between border-b border-border/70 p-3">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <MessageSquare className="h-4 w-4 text-primary" /> Your chats
+            </div>
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => newChat()} aria-label="New chat">
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
+            {visibleThreads.length === 0 && (
+              <p className="px-2 py-5 text-xs leading-relaxed text-muted-foreground">Your conversations will appear here when you start chatting.</p>
+            )}
+            {visibleThreads.map((thread) => (
+              <div key={thread.threadId} className={`group flex items-center gap-1 rounded-lg ${threadId === thread.threadId ? "bg-primary/10 text-foreground" : "hover:bg-secondary/70"}`}>
+                <button
+                  type="button"
+                  onClick={() => { setThreadId(thread.threadId); setAttachments([]); setGeneratedImage(null); }}
+                  className="min-w-0 flex-1 px-3 py-2.5 text-left"
+                  title={thread.title}
+                >
+                  <span className="block truncate text-xs font-medium">{thread.title || "New conversation"}</span>
+                  <span className="mt-1 block text-[10px] text-muted-foreground">{new Date(thread.updatedAt).toLocaleDateString()}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Delete conversation ${thread.title}`}
+                  title="Delete conversation"
+                  onClick={() => deleteThread.mutate(thread.threadId)}
+                  disabled={deleteThread.isPending}
+                  className="mr-1 rounded-md p-2 text-muted-foreground opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus:opacity-100"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="border-t border-border/70 p-3 text-[11px] text-muted-foreground">
+            Private conversations · saved to your account
+          </div>
+        </aside>
+      )}
+      <Card className="glow-panel flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/15">
-            <Sparkles className="h-4 w-4 text-primary" />
+            <img src="/expertai-mark.svg" alt="" className="h-7 w-7" />
           </span>
           <div>
-            <p className="text-sm font-semibold">ExpertAI</p>
+            <p className="text-sm font-semibold">ExpertAI Chat</p>
             <p className="text-xs text-muted-foreground">
-              File analysis · image ideas · app building · {profile?.ai_credits ?? 0} AI credits
+              File analysis · app building · {user ? `${profile?.ai_credits ?? 0} AI credits` : `${guestCredits} of 15 free guest credits`}
             </p>
           </div>
         </div>
@@ -471,9 +603,9 @@ export function ChrisAiChat({
             variant="ghost"
             size="sm"
             onClick={() => window.location.assign("/")}
-            title="Back to the ExpertsTeam website"
+            title="Back to ExpertsTeam home"
           >
-            <Home className="mr-1.5 h-4 w-4" /> Back to website
+            <Home className="mr-1.5 h-4 w-4" /> Home
           </Button>
           <Button variant="secondary" size="sm" onClick={newChat} disabled={send.isPending}>
             New chat
@@ -591,6 +723,9 @@ export function ChrisAiChat({
       )}
 
       <div className="border-t border-border/70 p-3">
+        {guestCreditsExhausted && (
+          <div role="status" className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">Your 15 free guest credits are used. Create an account to continue chatting with ExpertAI. <button type="button" className="ml-2 font-semibold text-primary underline" onClick={() => window.location.assign("/auth")}>Create account</button></div>
+        )}
         {chatIsFull && (
           <div role="status" className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
             <span>This chat is full. Your conversation is saved. Start a new chat to continue.</span>
@@ -647,7 +782,7 @@ export function ChrisAiChat({
             rows={1}
             placeholder="Ask ExpertAI anything…"
             onChange={(event) => setInput(event.target.value)}
-            disabled={chatIsFull}
+            disabled={chatIsFull || guestCreditsExhausted}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
@@ -656,25 +791,28 @@ export function ChrisAiChat({
             }}
             className="min-h-10 resize-none"
           />
-          <Button
-            variant="secondary"
-            size="icon"
-            aria-label="Generate image"
-            onClick={() => void generateImageMutation.mutateAsync()}
-            disabled={generateImageMutation.isPending}
-          >
-            {generateImageMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <ImagePlus className="h-4 w-4" />
-            )}
-          </Button>
-          <Button onClick={submit} disabled={send.isPending || chatIsFull} aria-label="Send message">
+          {user && (
+            <Button
+              variant="secondary"
+              size="icon"
+              aria-label="Generate image"
+              onClick={() => void generateImageMutation.mutateAsync()}
+              disabled={generateImageMutation.isPending}
+            >
+              {generateImageMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ImagePlus className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+          <Button onClick={submit} disabled={send.isPending || chatIsFull || guestCreditsExhausted} aria-label="Send message">
             <Send className="h-4 w-4" />
           </Button>
         </div>
       </div>
-    </Card>
+      </Card>
+    </div>
   );
 }
 

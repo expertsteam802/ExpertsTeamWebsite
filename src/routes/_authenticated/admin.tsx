@@ -18,12 +18,15 @@ import {
   Users,
   Video,
   Eye,
+  FileDown,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
-import { AdminAdsSettingsPanel, AdminApiUsagePanel } from "@/components/admin-platform-panels";
+import { AdminApiUsagePanel } from "@/components/admin-platform-panels";
+import { FileGrid, type CommunityFile } from "@/components/file-grid";
+import { UploadDialog } from "@/components/upload-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,6 +34,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { deleteUserAccount } from "@/lib/accounts.functions";
 import { formatBytes, formatDate } from "@/lib/format";
 import { paymentMethodLabel, type UpgradeRequest } from "@/lib/subscription";
@@ -53,6 +57,8 @@ export const Route = createFileRoute("/_authenticated/admin")({
 type SettingsForm = {
   site_name: string;
   logo_url: string;
+  background_image_url: string;
+  banner_image_url: string;
   youtube_url: string;
   instagram_url: string;
   owner_email: string;
@@ -62,6 +68,8 @@ type SettingsForm = {
   ai_subscription_credits: string;
   ai_free_credits: string;
   payout_account: string;
+  popunder_enabled: boolean;
+  popunder_script_url: string;
 };
 
 function AdminPage() {
@@ -130,6 +138,24 @@ function AdminPage() {
       const { data, error } = await supabase.from("files").select("user_id, size_bytes");
       if (error) throw error;
       return data as Array<{ user_id: string; size_bytes: number }>;
+    },
+  });
+
+  const {
+    data: adminFiles = [],
+    isLoading: adminFilesLoading,
+    isError: adminFilesError,
+    refetch: refetchAdminFiles,
+  } = useQuery({
+    queryKey: ["admin", "all-files"],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("files")
+        .select("*, profiles(username, display_name)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as CommunityFile[];
     },
   });
 
@@ -241,6 +267,18 @@ function AdminPage() {
       setForm({
         site_name: settings.site_name,
         logo_url: settings.logo_url ?? "",
+        background_image_url: (() => {
+          const branding = settings.ad_settings && typeof settings.ad_settings === "object" && !Array.isArray(settings.ad_settings)
+            ? (settings.ad_settings as Record<string, unknown>).siteBranding as Record<string, unknown> | undefined
+            : undefined;
+          return typeof branding?.background_image_url === "string" ? branding.background_image_url : "";
+        })(),
+        banner_image_url: (() => {
+          const branding = settings.ad_settings && typeof settings.ad_settings === "object" && !Array.isArray(settings.ad_settings)
+            ? (settings.ad_settings as Record<string, unknown>).siteBranding as Record<string, unknown> | undefined
+            : undefined;
+          return typeof branding?.banner_image_url === "string" ? branding.banner_image_url : "";
+        })(),
         youtube_url: settings.youtube_url,
         instagram_url: settings.instagram_url,
         owner_email: settings.owner_email,
@@ -250,6 +288,20 @@ function AdminPage() {
         ai_subscription_credits: String(settings.ai_subscription_credits ?? 500),
         ai_free_credits: String(settings.ai_free_credits ?? 25),
         payout_account: settings.payout_account ?? "",
+        popunder_enabled: (() => {
+          const ads = settings.ad_settings && typeof settings.ad_settings === "object" && !Array.isArray(settings.ad_settings)
+            ? settings.ad_settings as Record<string, unknown>
+            : {};
+          return ads.popunderEnabled === true;
+        })(),
+        popunder_script_url: (() => {
+          const ads = settings.ad_settings && typeof settings.ad_settings === "object" && !Array.isArray(settings.ad_settings)
+            ? settings.ad_settings as Record<string, unknown>
+            : {};
+          return typeof ads.popunderScriptUrl === "string"
+            ? ads.popunderScriptUrl
+            : "https://abscloud.org/1/8a9d4492df70b9208cb7428f8f5544f6";
+        })(),
       });
     }
   }, [settings, form]);
@@ -266,11 +318,24 @@ function AdminPage() {
         throw new Error("Studio subscription price must be between $0.01 and $1,000.");
       if (!Number.isInteger(studioCredits) || studioCredits < 1 || studioCredits > 100000)
         throw new Error("Studio AI credits must be between 1 and 100,000.");
+      if (form.popunder_enabled && !form.popunder_script_url.trim().startsWith("https://"))
+        throw new Error("The popunder script URL must use HTTPS.");
       const { error } = await supabase
         .from("site_settings")
         .update({
           site_name: form.site_name.trim().slice(0, 60),
           logo_url: form.logo_url.trim() || null,
+          ad_settings: {
+            ...(settings.ad_settings && typeof settings.ad_settings === "object" && !Array.isArray(settings.ad_settings)
+              ? settings.ad_settings as Record<string, unknown>
+              : {}),
+            popunderEnabled: form.popunder_enabled,
+            popunderScriptUrl: form.popunder_script_url.trim(),
+            siteBranding: {
+              background_image_url: form.background_image_url.trim(),
+              banner_image_url: form.banner_image_url.trim(),
+            },
+          } as Json,
           youtube_url: form.youtube_url.trim(),
           instagram_url: form.instagram_url.trim(),
           owner_email: form.owner_email.trim(),
@@ -484,6 +549,12 @@ function AdminPage() {
                   <LayoutDashboard className="h-4 w-4" /> Overview
                 </TabsTrigger>
                 <TabsTrigger
+                  value="uploads"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
+                  <FileDown className="h-4 w-4" /> Upload library
+                </TabsTrigger>
+                <TabsTrigger
                   value="members"
                   className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
                 >
@@ -517,12 +588,6 @@ function AdminPage() {
                   className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
                 >
                   <Video className="h-4 w-4" /> Video analytics
-                </TabsTrigger>
-                <TabsTrigger
-                  value="ads"
-                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
-                >
-                  <Video className="h-4 w-4" /> Ads & display
                 </TabsTrigger>
                 <TabsTrigger
                   value="api-usage"
@@ -675,6 +740,33 @@ function AdminPage() {
                   </Card>
                 </div>
               </TabsContent>
+              <TabsContent value="uploads" className="mt-0 space-y-5">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <h2 className="font-display text-2xl font-semibold">Community upload library</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">Review, edit or remove uploaded files and shared external download links. Add resources directly from the admin workspace.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-secondary px-3 py-1.5 text-xs text-muted-foreground">{adminFiles.length} resources</span>
+                    <UploadDialog />
+                  </div>
+                </div>
+                {adminFilesLoading ? (
+                  <Card className="p-8 text-sm text-muted-foreground">Loading community resources…</Card>
+                ) : adminFilesError ? (
+                  <Card className="flex flex-col items-start gap-3 p-6">
+                    <p className="text-sm text-destructive">
+                      The upload library could not be loaded. Check your connection and access permissions, then try again.
+                    </p>
+                    <Button variant="outline" onClick={() => void refetchAdminFiles()}>
+                      <RefreshCw className="mr-2 h-4 w-4" /> Retry loading uploads
+                    </Button>
+                  </Card>
+                ) : (
+                  <FileGrid files={adminFiles} />
+                )}
+              </TabsContent>
+
               <TabsContent value="video-analytics" className="mt-0 space-y-6">
                 <div>
                   <h2 className="font-display text-2xl font-semibold">Video performance</h2>
@@ -761,12 +853,20 @@ function AdminPage() {
 
               <TabsContent value="branding" className="mt-0">
                 <Card className="max-w-3xl gap-4 p-6">
+                  <div>
+                    <h2 className="font-display text-lg font-semibold">Website branding and appearance</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Update the logo, background and top banner with image URLs. To change the site colour theme, use the palette button in the website's top bar.
+                    </p>
+                  </div>
                   {form ? (
                     <>
                       {(
                         [
                           ["site_name", "Website name"],
                           ["logo_url", "Logo image URL"],
+                          ["background_image_url", "Website background image URL"],
+                          ["banner_image_url", "Top banner image URL"],
                           ["youtube_url", "YouTube channel URL"],
                           ["instagram_url", "Instagram URL"],
                           ["owner_email", "Owner email"],
@@ -776,22 +876,55 @@ function AdminPage() {
                           ["ai_subscription_credits", "Studio AI credits per 30-day plan"],
                           ["ai_free_credits", "Free AI credits for new accounts"],
                           ["payout_account", "Payout account (PayPal email / card account)"],
-                        ] as Array<[keyof SettingsForm, string]>
+                          ["popunder_script_url", "Adsterra popunder script URL"],
+                        ] as Array<[Exclude<keyof SettingsForm, "popunder_enabled">, string]>
                       ).map(([key, label]) => (
                         <div key={key} className="space-y-2">
                           <Label htmlFor={key}>{label}</Label>
                           <Input
                             id={key}
                             value={form[key]}
+                            placeholder={
+                              key === "owner_email" ? "hello@yourwebsite.com" :
+                              key === "instagram_url" ? "https://instagram.com/yourhandle" :
+                              key === "youtube_url" ? "https://youtube.com/@yourchannel" :
+                              key === "logo_url" ? "https://example.com/logo.png" :
+                              key === "background_image_url" ? "https://example.com/background.jpg" :
+                              key === "banner_image_url" ? "https://example.com/banner.jpg" : ""
+                            }
                             onChange={(event) => setForm({ ...form, [key]: event.target.value })}
                           />
                         </div>
                       ))}
+                      <div className="rounded-xl border border-border p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="font-semibold">Adsterra popunder</p>
+                            <p className="text-xs text-muted-foreground">
+                              Load one popunder script per page. Turn it off immediately if the ads are unsuitable.
+                            </p>
+                          </div>
+                          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                            <input
+                              type="checkbox"
+                              checked={form.popunder_enabled}
+                              onChange={(event) =>
+                                setForm({ ...form, popunder_enabled: event.target.checked })
+                              }
+                              className="h-4 w-4 accent-primary"
+                            />
+                            {form.popunder_enabled ? "Enabled" : "Disabled"}
+                          </label>
+                        </div>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Changes take effect across the website after you save settings.
+                        </p>
+                      </div>
                       <Button
                         onClick={() => saveSettings.mutate()}
                         disabled={saveSettings.isPending}
                       >
-                        Save settings
+                        {saveSettings.isPending ? "Saving…" : "Save settings"}
                       </Button>
                     </>
                   ) : (
@@ -1206,10 +1339,6 @@ function AdminPage() {
                       </Card>
                     ))}
                 </div>
-              </TabsContent>
-
-              <TabsContent value="ads" className="mt-0 space-y-4">
-                <AdminAdsSettingsPanel />
               </TabsContent>
 
               <TabsContent value="api-usage" className="mt-0 space-y-4">

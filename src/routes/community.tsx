@@ -32,11 +32,11 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/community")({
   head: () => ({
     meta: [
-      { title: "ExpertsTeam Community — Creators, builders & ideas" },
+      { title: "ExpertsTeam Community — Ask questions, get answers and solutions" },
       {
         name: "description",
         content:
-          "Join the ExpertsTeam live community feed. Share projects, coding ideas, questions, photos and useful links.",
+          "Ask any question and get help, answers and practical solutions from the ExpertsTeam community. Share coding questions, ideas, projects and useful links.",
       },
     ],
   }),
@@ -344,10 +344,10 @@ function CommunityPage() {
             <Card className="gap-2 p-4">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <Sparkles className="h-4 w-4 text-primary" />
-                Build together
+                Get your question solved
               </div>
               <p className="text-xs leading-5 text-muted-foreground">
-                Share what you're creating, ask for help and discover other builders.
+                Ask a question, get practical help and grow with other creators and coders.
               </p>
               <Link to="/projects" className="text-xs font-semibold text-primary hover:underline">
                 Explore projects →
@@ -362,9 +362,9 @@ function CommunityPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
                 ExpertsTeam social
               </p>
-              <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">Community</h1>
+              <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">Ask anything. Get answers.</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                What builders are sharing right now.
+                Get help with any question, share what you're building and learn from the community.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 lg:hidden">
@@ -797,6 +797,45 @@ function PostCard({
       return data ?? [];
     },
   });
+  const { data: commentCount = 0 } = useQuery({
+    queryKey: ["community-comment-count", post.id],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("community_comments")
+        .select("id", { count: "exact", head: true })
+        .eq("post_id", post.id);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+  const [profileOpen, setProfileOpen] = useState(false);
+  const { data: authorProfile } = useQuery({
+    queryKey: ["community-author-profile", post.user_id],
+    enabled: profileOpen,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id,username,display_name,avatar_url,bio")
+        .eq("id", post.user_id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const { data: authorPosts = [] } = useQuery({
+    queryKey: ["community-author-posts", post.user_id],
+    enabled: profileOpen,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("community_posts")
+        .select("id,title,body,kind,created_at")
+        .eq("user_id", post.user_id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
   const liked = likes.some((item) => item.user_id === userId);
   const like = useMutation({
     mutationFn: async () => {
@@ -846,7 +885,9 @@ function PostCard({
             <AvatarFallback>{author.slice(0, 1).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{author}</p>
+            <button type="button" onClick={() => setProfileOpen(true)} className="block max-w-full truncate text-left text-sm font-semibold hover:text-primary hover:underline">
+              {author}
+            </button>
             <p className="text-xs text-muted-foreground">
               {new Date(post.created_at).toLocaleString()} ·{" "}
               <span className="capitalize">{post.kind}</span>
@@ -903,7 +944,7 @@ function PostCard({
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"
           >
             <MessageCircle className="h-5 w-5" />
-            {showComments ? "Hide comments" : "Comments"}
+            {commentCount} comments
           </button>
         </div>
         {showComments && (
@@ -948,6 +989,36 @@ function PostCard({
           </div>
         )}
       </div>
+      <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
+        <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Developer profile</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center gap-3 rounded-xl bg-secondary/40 p-4">
+            <Avatar className="h-14 w-14">
+              <AvatarImage src={authorProfile?.avatar_url ?? post.profiles?.avatar_url ?? undefined} />
+              <AvatarFallback>{author.slice(0, 1).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="font-semibold">{authorProfile?.display_name || author}</p>
+              <p className="text-xs text-muted-foreground">@{authorProfile?.username || post.profiles?.username || "member"}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{authorPosts.length} recent posts</p>
+            </div>
+          </div>
+          {authorProfile?.bio && <p className="text-sm leading-6">{authorProfile.bio}</p>}
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">Recent community posts</h3>
+            {authorPosts.length ? authorPosts.map((item) => (
+              <div key={item.id} className="rounded-xl border border-border/70 p-3">
+                <p className="text-xs font-semibold capitalize text-primary">{item.kind}</p>
+                <p className="mt-1 text-sm font-medium">{item.title}</p>
+                {item.body && <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-xs text-muted-foreground">{item.body}</p>}
+                <p className="mt-2 text-[10px] text-muted-foreground">{new Date(item.created_at).toLocaleDateString()}</p>
+              </div>
+            )) : <p className="text-sm text-muted-foreground">No posts to show yet.</p>}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

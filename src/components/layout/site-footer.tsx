@@ -3,6 +3,16 @@ import { Instagram, Mail, Youtube } from "lucide-react";
 
 import { useSiteSettings } from "@/hooks/use-site-settings";
 
+function socialLabel(value: string, fallback: string) {
+  try {
+    const path = new URL(value).pathname.split("/").filter(Boolean).join("/");
+    if (!path) return fallback;
+    return path.startsWith("@") ? path : `@${path}`;
+  } catch {
+    return fallback;
+  }
+}
+
 export function SiteFooter() {
   const settings = useSiteSettings();
 
@@ -19,7 +29,7 @@ export function SiteFooter() {
             Video archive
           </Link>
           <Link to="/entertainment" className="block text-muted-foreground hover:text-foreground">
-            Entertainment
+            Games, Apps & Files
           </Link>
           <Link to="/learn" className="block text-muted-foreground hover:text-foreground">
             Learn to code
@@ -42,7 +52,7 @@ export function SiteFooter() {
             rel="noreferrer"
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
           >
-            <Youtube className="h-4 w-4" /> @expertchris
+            <Youtube className="h-4 w-4" /> {socialLabel(settings.youtube_url, "YouTube channel")}
           </a>
           <a
             href={settings.instagram_url}
@@ -50,7 +60,7 @@ export function SiteFooter() {
             rel="noreferrer"
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
           >
-            <Instagram className="h-4 w-4" /> @m.chris_t2011
+            <Instagram className="h-4 w-4" /> {socialLabel(settings.instagram_url, "Instagram")}
           </a>
           <a
             href={`mailto:${settings.owner_email}`}
@@ -61,7 +71,15 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="border-t border-border/70 px-4 py-5 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} {settings.site_name}. Built by Chris.
+        <p>© {new Date().getFullYear()} {settings.site_name}. Built by <span className="font-semibold text-foreground">Chris Expert</span>.</p>
+        <div className="mt-2 flex items-center justify-center gap-4">
+          <a href={settings.instagram_url} target="_blank" rel="noreferrer" aria-label="Chris Expert on Instagram" className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground">
+            <Instagram className="h-3.5 w-3.5" /> Instagram
+          </a>
+          <a href={settings.youtube_url} target="_blank" rel="noreferrer" aria-label="Chris Expert on YouTube" className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground">
+            <Youtube className="h-3.5 w-3.5" /> YouTube
+          </a>
+        </div>
       </div>
     </footer>
   );

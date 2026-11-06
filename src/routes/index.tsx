@@ -33,13 +33,13 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Expertsteam802 is the official ExpertsTeam website for AI app building, coding tutorials, creator videos, developer projects and community learning.",
+          "Expertsteam802 is the official ExpertsTeam website to ask any question and get help, learn to code and become a pro coder, build apps with AI, and explore creator videos and developer projects.",
       },
       { property: "og:title", content: "Expertsteam802 | ExpertsTeam Coding & AI Studio" },
       {
         property: "og:description",
         content:
-          "Visit Expertsteam802, the ExpertsTeam home for Chris Expert, coding lessons, AI-assisted app creation and developer resources.",
+          "Visit Expertsteam802 to get community answers, learn to code and become a pro coder, build with ExpertAI and explore developer resources.",
       },
     ],
   }),
@@ -71,8 +71,8 @@ const CAPABILITIES = [
   {
     icon: Users,
     number: "04",
-    title: "Learn and share together.",
-    body: "Explore creator videos, useful resources and community conversations in one place.",
+    title: "Ask anything. Get answers.",
+    body: "Get help with any question, find practical solutions and grow with creators, learners and developers in the ExpertsTeam community.",
     tag: "CREATOR COMMUNITY",
   },
 ];
@@ -417,7 +417,7 @@ function Index() {
           <p className="mt-3 text-sm leading-7 text-muted-foreground sm:text-base">
             Find the platform through searches for Expertsteam802, ExpertsTeam, Chris Expert,
             ChrisPrograms, AngeloCodes, Dismas, ExpertsTeamCoders, CodeWithExperts and
-            LearnCodingWithChris. Start with the{" "}
+            LearnCodingWithChris. Ask any question in our community and get help, or start with the{" "}
             <Link to="/learn" className="font-medium text-primary hover:underline">
               coding lessons
             </Link>

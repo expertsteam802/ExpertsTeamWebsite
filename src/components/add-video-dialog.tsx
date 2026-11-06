@@ -32,6 +32,7 @@ export function AddVideoDialog({ category, triggerLabel = "Add a YouTube video" 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [link, setLink] = useState("");
+  const [thumbnailUrl, setThumbnailUrl] = useState("");
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -39,6 +40,11 @@ export function AddVideoDialog({ category, triggerLabel = "Add a YouTube video" 
       if (title.trim().length < 2) throw new Error("Give the video a title.");
       const youtubeId = parseYouTubeId(link);
       if (!youtubeId) throw new Error("Paste the full YouTube share link (not just an id).");
+      if (thumbnailUrl.trim()) {
+        let parsedThumbnail: URL;
+        try { parsedThumbnail = new URL(thumbnailUrl.trim()); } catch { throw new Error("Enter a valid thumbnail URL."); }
+        if (parsedThumbnail.protocol !== "https:") throw new Error("Thumbnail URLs must use HTTPS.");
+      }
 
       const { error } = await supabase.from("videos").insert({
         user_id: user.id,
@@ -46,6 +52,7 @@ export function AddVideoDialog({ category, triggerLabel = "Add a YouTube video" 
         description: description.trim().slice(0, 1000) || null,
         youtube_url: link.trim(),
         youtube_id: youtubeId,
+        thumbnail_url: thumbnailUrl.trim() || null,
         category,
       });
       if (error) throw error;
@@ -55,6 +62,7 @@ export function AddVideoDialog({ category, triggerLabel = "Add a YouTube video" 
       setTitle("");
       setDescription("");
       setLink("");
+      setThumbnailUrl("");
       setOpen(false);
       void queryClient.invalidateQueries({ queryKey: ["videos"] });
     },
@@ -85,6 +93,16 @@ export function AddVideoDialog({ category, triggerLabel = "Add a YouTube video" 
               placeholder="https://www.youtube.com/watch?v=..."
               value={link}
               onChange={(event) => setLink(event.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="video-thumbnail">Custom thumbnail URL (optional)</Label>
+            <Input
+              id="video-thumbnail"
+              type="url"
+              placeholder="https://example.com/video-cover.jpg"
+              value={thumbnailUrl}
+              onChange={(event) => setThumbnailUrl(event.target.value)}
             />
           </div>
           <div className="space-y-2">

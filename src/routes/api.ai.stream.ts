@@ -57,75 +57,117 @@ export const Route = createFileRoute("/api/ai/stream")({
         try {
           const authorization = request.headers.get("authorization") ?? "";
           const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
-          if (!token || token.split(".").length !== 3) {
-            return Response.json(
-              { error: "Please sign in again to use ExpertAI." },
-              { status: 401 },
-            );
+          const isGuest = !token;
+          if (token && token.split(".").length !== 3) {
+            return Response.json({ error: "Your session is invalid. Please sign in again." }, { status: 401 });
+          }
+          if (isGuest) {
+            const origin = request.headers.get("origin");
+            if (origin && origin !== new URL(request.url).origin) {
+              return Response.json({ error: "Guest chat requests must come from this website." }, { status: 403 });
+            }
+          }
+
+          let guestSessionId = "";
+          if (isGuest) {
+            guestSessionId = request.headers.get("x-guest-session") || "";
+            if (!/^[0-9a-f-]{36}$/i.test(guestSessionId)) {
+              return Response.json({ error: "A valid guest session is required." }, { status: 400 });
+            }
           }
 
           const supabaseUrl = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
           const supabaseKey =
             process.env["SUPABASE_PUBLISHABLE_KEY"] || process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
           if (!supabaseUrl || !supabaseKey) {
-            return Response.json(
-              { error: "Supabase server configuration is missing." },
-              { status: 500 },
-            );
+            return Response.json({ error: "Supabase server configuration is missing." }, { status: 500 });
           }
 
           const supabase = createClient(supabaseUrl, supabaseKey, {
             auth: { persistSession: false, autoRefreshToken: false },
-            // Forward the already-validated user's JWT to PostgREST so RPCs run
-            // with the authenticated role rather than the anonymous role.
-            global: { headers: { Authorization: `Bearer ${token}` } },
+            global: token ? { headers: { Authorization: `Bearer ${token}` } } : {},
           });
-          const { data: authData, error: authError } = await supabase.auth.getUser(token);
-          if (authError || !authData.user) {
-            return Response.json(
-              { error: "Your session is invalid. Please sign in again." },
-              { status: 401 },
-            );
+          let isAdmin = false;
+          let profileCredits = 0;
+          if (!isGuest) {
+            const { data: authData, error: authError } = await supabase.auth.getUser(token);
+            if (authError || !authData.user) {
+              return Response.json({ error: "Your session is invalid. Please sign in again." }, { status: 401 });
+            }
+            const { data: profile, error: profileError } = await supabase
+              .from("profiles")
+              .select("ai_credits")
+              .eq("id", authData.user.id)
+              .single();
+            if (profileError) {
+              return Response.json({ error: "Could not check your AI credit balance." }, { status: 500 });
+            }
+            profileCredits = profile.ai_credits;
+            const { data: adminRole, error: roleError } = await supabase.rpc("has_role", {
+              _user_id: authData.user.id,
+              _role: "admin",
+            });
+            if (roleError) {
+              return Response.json({ error: "Could not verify your account permissions." }, { status: 500 });
+            }
+            isAdmin = Boolean(adminRole);
+            if (!isAdmin && profileCredits < 1) {
+              return Response.json({
+                error: "You have no AI credits remaining. Upgrade your Studio plan or watch a reward ad when available.",
+              }, { status: 402 });
+            }
           }
 
           const parsed = requestSchema.safeParse(await request.json());
           if (!parsed.success) {
-            return Response.json(
-              { error: "The message or attachments are invalid or too large." },
-              { status: 400 },
-            );
+            return Response.json({ error: "The message or attachments are invalid or too large." }, { status: 400 });
           }
 
-          const { data: profile, error: profileError } = await supabase
-            .from("profiles")
-            .select("ai_credits")
-            .eq("id", authData.user.id)
-            .single();
-          if (profileError) {
-            return Response.json(
-              { error: "Could not check your AI credit balance." },
-              { status: 500 },
+          let guestServiceClient: ReturnType<typeof createClient> | null = null;
+          let guestIpHash = "";
+          if (isGuest) {
+            const serviceRoleKey = process.env["SUPABASE_SECRET_KEY"] || process.env["SUPABASE_SERVICE_ROLE_KEY"] || process.env["SERVICE_ROLE_KEY"];
+            if (!serviceRoleKey) {
+              return Response.json({ error: "Guest chat is not configured yet. Please sign in to use ExpertAI." }, { status: 503 });
+            }
+            const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+            const ip = forwarded || request.headers.get("x-real-ip") || "unknown";
+            const digest = await crypto.subtle.digest(
+              "SHA-256",
+              new TextEncoder().encode(`${ip}:${guestSessionId}:${serviceRoleKey}`),
             );
-          }
-          const { data: isAdmin, error: roleError } = await supabase.rpc("has_role", {
-            _user_id: authData.user.id,
-            _role: "admin",
-          });
-          if (roleError) {
-            return Response.json(
-              { error: "Could not verify your account permissions." },
-              { status: 500 },
+            guestIpHash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+            guestServiceClient = createClient(supabaseUrl, serviceRoleKey, {
+              auth: { persistSession: false, autoRefreshToken: false },
+            });
+            const { data: canUseCredits, error: guestCheckError } = await guestServiceClient.rpc(
+              "can_use_guest_ai_credit",
+              { p_ip_hash: guestIpHash },
             );
+            if (guestCheckError) {
+              return Response.json({ error: "Guest chat credits could not be checked. Please try again later." }, { status: 503 });
+            }
+            if (!canUseCredits) {
+              return Response.json({
+                error: "You've used your 15 free guest credits for this 24-hour period. Create an account for more AI credits.",
+              }, { status: 402 });
+            }
           }
-          if (!isAdmin && profile.ai_credits < 1) {
-            return Response.json(
-              {
-                error:
-                  "You have no AI credits remaining. Upgrade your Studio plan or watch a reward ad when available.",
-              },
-              { status: 402 },
-            );
-          }
+
+          const consumeCredit = async (): Promise<string | null> => {
+            if (isAdmin) return null;
+            if (isGuest) {
+              if (!guestServiceClient || !guestIpHash) return "Guest chat is not configured yet. Please sign in to use ExpertAI.";
+              const { data: allowed, error } = await guestServiceClient.rpc("consume_guest_ai_credit", {
+                p_ip_hash: guestIpHash,
+              });
+              if (error) return "Guest chat credits could not be checked. Please try again later.";
+              if (!allowed) return "You've used your 15 free guest credits for this 24-hour period. Create an account for more AI credits.";
+              return null;
+            }
+            const { error } = await supabase.rpc("consume_ai_credit");
+            return error?.message ?? null;
+          };
 
           const { prompt, history = [], attachments = [] } = parsed.data;
           const attachmentParts = attachments.flatMap((file): SmartPart[] => {
@@ -165,11 +207,12 @@ export const Route = createFileRoute("/api/ai/stream")({
 
           const compactedContents = compactSmartContents(contents);
           const systemText =
-            "You are ExpertAI.";
-          const providerOrder = (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
+            "You are ExpertAI, a practical assistant for developers and creators on ExpertsTeam. Answer the exact question first. Keep ordinary answers brief: usually 1–5 short sentences or a few bullets. Expand only when the user asks for detail, a tutorial, a plan, or code. Avoid long introductions, repeated conclusions, filler, and unnecessary jargon. For code requests, provide complete usable code and explain only the key integration steps. Ask one focused clarification only when essential. Be friendly, accurate, and honest about what you have not tested.";
+          const configuredProviderOrder = (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
             .split(",")
             .map((item) => item.trim().toLowerCase())
-            .filter(Boolean);
+            .filter((item) => ["groq", "gemini", "openrouter"].includes(item));
+          const providerOrder = [...new Set(["groq", ...configuredProviderOrder.filter((item) => item !== "groq"), "gemini", "openrouter"])];
           const geminiKey = process.env["GEMINI_API_KEY"]?.trim();
           const hasImageAttachments = attachments.some((file) => Boolean(file.dataUrl));
           const orderedProviders = hasImageAttachments
@@ -195,12 +238,10 @@ export const Route = createFileRoute("/api/ai/stream")({
                 },
               );
               if (upstream.ok && upstream.body) {
-                if (!isAdmin) {
-                  const { error: creditError } = await supabase.rpc("consume_ai_credit");
-                  if (creditError) {
-                    await upstream.body.cancel();
-                    return Response.json({ error: creditError.message }, { status: 402 });
-                  }
+                const creditError = await consumeCredit();
+                if (creditError) {
+                  await upstream.body.cancel();
+                  return Response.json({ error: creditError }, { status: 402 });
                 }
                 return new Response(upstream.body, {
                   headers: {
@@ -225,10 +266,10 @@ export const Route = createFileRoute("/api/ai/stream")({
             }
           }
 
-          const fallbackOrder =
-            geminiKey && orderedProviders[0] === "gemini"
-              ? orderedProviders.slice(1)
-              : orderedProviders;
+          // Guest and signed-in chats share this exact provider chain. If the
+          // optional Gemini streaming attempt fails, let the standard adapter
+          // retry/fallback across the same configured providers.
+          const fallbackOrder = orderedProviders;
           const result = await generateGeminiContent(
             {
               systemInstruction: { parts: [{ text: systemText }] },
@@ -244,11 +285,9 @@ export const Route = createFileRoute("/api/ai/stream")({
             fallbackOrder,
           );
 
-          if (!isAdmin) {
-            const { error: creditError } = await supabase.rpc("consume_ai_credit");
-            if (creditError) {
-              return Response.json({ error: creditError.message }, { status: 402 });
-            }
+          const creditError = await consumeCredit();
+          if (creditError) {
+            return Response.json({ error: creditError }, { status: 402 });
           }
 
           const answerText =
