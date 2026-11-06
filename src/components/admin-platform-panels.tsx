@@ -8,9 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
 type AdSettings = {
-  myBidActiveFormat: "vast" | "overlay";
-  myBidOverlayEnabled: boolean;
-  myBidOverlayAdCodeId: string;
   myBidVastEnabled: boolean;
   myBidVastUrl: string;
   myBidAdCodeId: string;
@@ -19,9 +16,6 @@ type AdSettings = {
 };
 
 const DEFAULT_AD_SETTINGS: AdSettings = {
-  myBidActiveFormat: "vast",
-  myBidOverlayEnabled: true,
-  myBidOverlayAdCodeId: "470837",
   myBidVastEnabled: true,
   myBidVastUrl: "https://vast.vstserv.com/vast?spot_id=2030847",
   myBidAdCodeId: "470834",
@@ -33,13 +27,6 @@ function normalizeAdSettings(value: Json | null | undefined): AdSettings {
   if (!value || typeof value !== "object" || Array.isArray(value)) return DEFAULT_AD_SETTINGS;
   const raw = value as Record<string, Json | undefined>;
   return {
-    myBidActiveFormat: raw.myBidActiveFormat === "overlay" ? "overlay" : "vast",
-    myBidOverlayEnabled:
-      typeof raw.myBidOverlayEnabled === "boolean" ? raw.myBidOverlayEnabled : true,
-    myBidOverlayAdCodeId:
-      typeof raw.myBidOverlayAdCodeId === "string"
-        ? raw.myBidOverlayAdCodeId
-        : DEFAULT_AD_SETTINGS.myBidOverlayAdCodeId,
     myBidVastEnabled: typeof raw.myBidVastEnabled === "boolean" ? raw.myBidVastEnabled : true,
     myBidVastUrl:
       typeof raw.myBidVastUrl === "string" && raw.myBidVastUrl.trim()
@@ -115,9 +102,8 @@ export function AdminAdsSettingsPanel() {
       const { error } = await supabase
         .from("site_settings")
         .update({
-          // VAST is the supported, measurable video-ad path. Keep legacy overlay
-          // values stored for reference, but do not select them for playback.
-          ad_settings: { ...draft, myBidActiveFormat: "vast" } as unknown as Json,
+          // Persist only the single supported provider and format.
+          ad_settings: { ...draft } as unknown as Json,
           error_dialog_enabled: errorDialogEnabled,
         })
         .eq("id", 1);
@@ -143,7 +129,7 @@ export function AdminAdsSettingsPanel() {
         <h2 className="font-display text-xl font-semibold">Video advertising</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Lesson videos use the MyBid VAST pre-roll. It reports ad-start, completion, and no-fill
-          events, so visitors can continue safely when MyBid has no available ad.
+          events. Lessons stay locked when no ad is actually played; visitors can retry.
         </p>
       </div>
 
@@ -151,8 +137,7 @@ export function AdminAdsSettingsPanel() {
         <div className="rounded-lg border border-border/70 bg-muted/40 p-3">
           <p className="text-sm font-medium">Active format: MyBid VAST pre-roll</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            VAST provides reliable playback and no-fill events. The legacy overlay values below are
-            retained for reference but are not loaded by the video player.
+            Only the MyBid VAST pre-roll is enabled. No banner, popunder, or overlay provider is loaded.
           </p>
         </div>
         <div className="flex items-center justify-between gap-4">
@@ -203,52 +188,7 @@ export function AdminAdsSettingsPanel() {
           </label>
         </div>
         <p className="text-xs text-muted-foreground">
-          The VAST tag is requested through Google IMA. The lesson video starts after the ad
-          completes or MyBid reports no fill.
-        </p>
-      </Card>
-
-      <Card className="space-y-4 p-5">
-        <div>
-          <h3 className="font-semibold">MyBid Video Overlay</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            New overlay format · Ad code ID #{draft.myBidOverlayAdCodeId}
-          </p>
-        </div>
-        <ToggleRow
-          title="Enable Video Overlay"
-          description="Legacy setting retained for reference. The overlay script is not loaded; lesson videos use the VAST placement above."
-          checked={draft.myBidOverlayEnabled}
-          onChange={(checked) =>
-            setDraft((current) => ({ ...current, myBidOverlayEnabled: checked }))
-          }
-        />
-        <label className="block space-y-2">
-          <span className="text-sm font-medium">Overlay ad code ID</span>
-          <input
-            value={draft.myBidOverlayAdCodeId}
-            onChange={(event) =>
-              setDraft((current) => ({ ...current, myBidOverlayAdCodeId: event.target.value }))
-            }
-            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            inputMode="numeric"
-          />
-        </label>
-        <div className="rounded-lg border border-border/70 bg-muted/40 p-3">
-          <p className="text-xs font-medium">MyBid installation script</p>
-          <code className="mt-2 block break-all text-xs">
-            {'<script async src="https://js.mbidadm.com/static/scripts.js" data-admpid="'}
-            {draft.myBidOverlayAdCodeId}
-            {'"></script>'}
-          </code>
-          <p className="mt-2 text-xs text-muted-foreground">
-            The script is added automatically when Video Overlay is selected and enabled.
-          </p>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          In your MyBid Video Overlay settings, set the CSS selector to
-          <code className="mx-1 rounded bg-muted px-1 py-0.5">.expertsteam-video-player</code>
-          to target the lesson player wrapper.
+          The VAST tag is requested through Google IMA. A no-fill, timeout, or playback error does not unlock the lesson.
         </p>
       </Card>
 
