@@ -363,16 +363,74 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
   );
 }
 
-/**
- * Page display placements need a separate MyBid display/banner placement ID.
- * The configured 2030847 placement is a VAST video tag and must not be reused
- * as a banner. Keep this slot visually absent until a valid display tag exists.
- */
-export function AdSlot(_props: { slot: string }) {
-  return null;
+const ADSTERRA_BANNER_KEY = "502debf88d7d96769c683f2ec09cb70b";
+const ADSTERRA_BANNER_SCRIPT = "https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b";
+
+/** Responsive Adsterra 728×90 display placement used on learning pages. */
+export function AdSlot({ slot }: { slot: string }) {
+  const slotRef = useRef<HTMLDivElement>(null);
+  const [loadState, setLoadState] = useState<"loading" | "loaded" | "blocked">("loading");
+
+  useEffect(() => {
+    const node = slotRef.current;
+    if (!node) return;
+    node.replaceChildren();
+    setLoadState("loading");
+
+    const creative = document.createElement("div");
+    creative.dataset.expertsteamAdsterra = slot;
+    Object.assign(creative.style, {
+      width: "728px",
+      height: "90px",
+      maxWidth: "none",
+      margin: "0 auto",
+      transformOrigin: "top left",
+    });
+    node.appendChild(creative);
+
+    const fit = () => {
+      const scale = Math.min(1, node.clientWidth / 728);
+      creative.style.transform = `scale(${scale})`;
+      creative.style.height = `${90 * scale}px`;
+      node.style.height = `${90 * scale}px`;
+    };
+
+    const config = document.createElement("script");
+    config.type = "text/javascript";
+    config.text = `atOptions = { 'key' : '${ADSTERRA_BANNER_KEY}', 'format' : 'iframe', 'height' : 90, 'width' : 728, 'params' : {} };`;
+    const script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src = ADSTERRA_BANNER_SCRIPT;
+    script.async = false;
+    script.onload = () => setLoadState("loaded");
+    script.onerror = () => setLoadState("blocked");
+    creative.append(config, script);
+
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(node);
+    const timeout = window.setTimeout(() => {
+      setLoadState((current) => current === "loading" ? "blocked" : current);
+    }, 12000);
+
+    return () => {
+      window.clearTimeout(timeout);
+      observer.disconnect();
+      node.replaceChildren();
+    };
+  }, [slot]);
+
+  return (
+    <aside className="mx-auto my-5 w-full max-w-[728px]" aria-label="Sponsored banner">
+      <div ref={slotRef} className="mx-auto w-full max-w-[728px] overflow-hidden" style={{ height: 90 }} />
+      <p className="mt-1 text-center text-[10px] text-muted-foreground">
+        {loadState === "blocked" ? "Sponsored placement unavailable" : "Sponsored"}
+      </p>
+    </aside>
+  );
 }
 
-/** Adsterra global scripts have been retired. */
+/** No global popup scripts: publisher ads are mounted only in their assigned slots. */
 export function GlobalAdScripts() {
   return null;
 }
