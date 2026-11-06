@@ -62,6 +62,10 @@ export const runCodingAgent = createServerFn({ method: "POST" })
       ? (settingsRoot as Record<string, unknown>).siteBranding : null;
     const candidateUrl = siteBranding && typeof siteBranding === "object" && !Array.isArray(siteBranding)
       ? (siteBranding as Record<string, unknown>).ollama_url : null;
+    const configuredProvider = siteBranding && typeof siteBranding === "object" && !Array.isArray(siteBranding)
+      ? (siteBranding as Record<string, unknown>).ai_provider : null;
+    const aiProvider = typeof configuredProvider === "string" && ["ollama", "groq", "gemini", "openrouter", "mistral", "cloudflare"].includes(configuredProvider)
+      ? configuredProvider : "ollama";
     let ollamaBaseUrl = "";
     if (typeof candidateUrl === "string" && candidateUrl.trim()) {
       try {
@@ -70,7 +74,7 @@ export const runCodingAgent = createServerFn({ method: "POST" })
       } catch { ollamaBaseUrl = ""; }
     }
     const { runAgent } = await import("./agent.server");
-    const result = await runAgent(data, process.env["GEMINI_API_KEY"], ollamaBaseUrl);
+    const result = await runAgent(data, process.env["GEMINI_API_KEY"], ollamaBaseUrl, aiProvider);
     if (!isAdmin) {
       const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
       if (creditError) throw new Error(creditError.message);
