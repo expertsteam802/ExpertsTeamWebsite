@@ -181,7 +181,11 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
       .catch((error: unknown) => {
         if (cancelled) return;
         setStatus("unavailable");
-        setMessage(error instanceof Error ? `${error.message} The lesson remains locked; please retry.` : "The video ad player could not load. The lesson remains locked; please retry.");
+        setMessage(
+          error instanceof Error
+            ? `${error.message} The lesson remains locked; please retry.`
+            : "The video ad player could not load. The lesson remains locked; please retry.",
+        );
       });
     return () => {
       cancelled = true;
@@ -245,7 +249,9 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
           if (requestTimeoutRef.current !== undefined)
             window.clearTimeout(requestTimeoutRef.current);
           setStatus("unavailable");
-          setMessage("MyBid did not return a playable ad. The lesson remains locked; retry the ad.");
+          setMessage(
+            "MyBid did not return a playable ad. The lesson remains locked; retry the ad.",
+          );
           manager.destroy();
           managerRef.current = null;
         });
@@ -280,7 +286,9 @@ export function VideoVastAd({ onFinished }: { onFinished?: () => void }) {
       request.linearAdSlotHeight = container.clientHeight || 360;
       loader.requestAds(request);
       requestTimeoutRef.current = window.setTimeout(() => {
-        setMessage("The ad request timed out. No ad was shown, so the lesson remains locked. Retry the ad.");
+        setMessage(
+          "The ad request timed out. No ad was shown, so the lesson remains locked. Retry the ad.",
+        );
         setStatus("unavailable");
         managerRef.current?.destroy();
         managerRef.current = null;

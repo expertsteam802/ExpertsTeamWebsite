@@ -137,7 +137,8 @@ export function AdminAdsSettingsPanel() {
         <div className="rounded-lg border border-border/70 bg-muted/40 p-3">
           <p className="text-sm font-medium">Active format: MyBid VAST pre-roll</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Only the MyBid VAST pre-roll is enabled. No banner, popunder, or overlay provider is loaded.
+            Only the MyBid VAST pre-roll is enabled. No banner, popunder, or overlay provider is
+            loaded.
           </p>
         </div>
         <div className="flex items-center justify-between gap-4">
@@ -188,7 +189,8 @@ export function AdminAdsSettingsPanel() {
           </label>
         </div>
         <p className="text-xs text-muted-foreground">
-          The VAST tag is requested through Google IMA. A no-fill, timeout, or playback error does not unlock the lesson.
+          The VAST tag is requested through Google IMA. A no-fill, timeout, or playback error does
+          not unlock the lesson.
         </p>
       </Card>
 
