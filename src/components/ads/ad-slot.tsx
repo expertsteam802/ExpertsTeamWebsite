@@ -88,8 +88,8 @@ export function AdsterraBannerAd({ onFinished }: { onFinished?: () => void }) {
 
   const srcDoc = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;padding:0;width:100%;height:90px;overflow:hidden;background:transparent}body{display:flex;align-items:center;justify-content:center}</style></head><body><script>window.atOptions={key:'502debf88d7d96769c683f2ec09cb70b',format:'iframe',height:90,width:728,params:{}};</script><script async src="${settings.adsterraBannerScript}" data-cfasync="false"></script><script>(function(){var sent=false;function check(){if(sent)return;var creative=document.querySelector('iframe,img, a img, video');if(creative){sent=true;window.parent.postMessage({type:'EXPERTSTEAM_ADSTERRA_CREATIVE_READY'},'*');}}var observer=new MutationObserver(check);observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true});window.addEventListener('message',function(e){if(e.data&&e.data.type==='EXPERTSTEAM_ADSTERRA_PARENT_READY')check();});setInterval(check,300);setTimeout(function(){observer.disconnect();},17000);})();</script></body></html>`;
 
-  if (!isFetched || (isFetched && !isError && !settings.adsterraEnabled)) {
-    return <div className="rounded-xl border border-border p-4 text-sm text-muted-foreground">Ad settings are unavailable. The lesson remains locked.</div>;
+  if (!isFetched || isError || !settings.adsterraEnabled) {
+    return <div className="rounded-xl border border-border p-4 text-sm text-muted-foreground">Ad settings are unavailable or disabled. The lesson remains locked.</div>;
   }
 
   return (
