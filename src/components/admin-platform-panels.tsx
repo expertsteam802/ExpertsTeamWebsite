@@ -153,7 +153,7 @@ export function AdminAdsSettingsPanel() {
         </div>
         <ToggleRow
           title="Enable VAST pre-roll"
-          description="Keep this format ready when selected above. The lesson continues if MyBid has no ad available."
+          description="The lesson unlocks only after MyBid confirms ad completion."
           checked={draft.myBidVastEnabled}
           onChange={(checked) => setDraft((current) => ({ ...current, myBidVastEnabled: checked }))}
         />
