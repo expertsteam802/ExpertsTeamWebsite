@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { VideoVastAd } from "@/components/ads/ad-slot";
+import { AdsterraBannerAd } from "@/components/ads/ad-slot";
 
 type YouTubePlayer = { destroy: () => void; getIframe: () => HTMLIFrameElement };
 type YouTubeApi = {
@@ -247,12 +247,12 @@ export function VideoPlayerDialog({ videoId, title, onClose }: Props) {
               <div>
                 <p className="font-display text-lg font-semibold">Support ExpertsTeam</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Watch the sponsored video to support ExpertsTeam, then continue to your lesson.
+                  View the sponsored banner to support ExpertsTeam, then continue to your lesson.
                 </p>
               </div>
-              <VideoVastAd onFinished={handleAdFinished} />
+              <AdsterraBannerAd onFinished={handleAdFinished} />
               <p className="text-xs text-muted-foreground">
-                Your lesson unlocks automatically after the sponsored video finishes.
+                Your lesson unlocks after the Adsterra banner has displayed.
               </p>
             </div>
           ) : (
