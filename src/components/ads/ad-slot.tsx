@@ -42,7 +42,7 @@ export function AdSlot({ slot }: { slot: string }) {
           sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms"
           referrerPolicy="strict-origin-when-cross-origin"
           scrolling="no"
-          style={{ display: "block", width: "728px", height: "90px", border: 0, transform: "scale(min(1, 100vw / 728))", transformOrigin: "top left" }}
+          style={{ display: "block", width: "100%", height: 90, border: 0 }}
         />
       </div>
       <p className="mt-1 text-center text-[10px] text-muted-foreground">Sponsored</p>
