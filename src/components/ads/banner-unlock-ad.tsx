@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Clock3, ShieldCheck } from "lucide-react";
 
-const POPUNDER_SCRIPT_ID = "expertsteam-adsterra-popunder";
-const POPUNDER_SCRIPT_URL = "https://abscloud.org/1/8a9d4492df70b9208cb7428f8f5544f6";
 function mountAdsterraBanner(container: HTMLDivElement) {
   container.replaceChildren();
   const options = document.createElement("script");
-  options.text = `window.atOptions = {
+  options.text = `var atOptions = {
     'key' : '502debf88d7d96769c683f2ec09cb70b',
     'format' : 'iframe',
     'height' : 90,
@@ -14,19 +12,9 @@ function mountAdsterraBanner(container: HTMLDivElement) {
     'params' : {}
   };`;
   const adScript = document.createElement("script");
-  adScript.async = true;
+  adScript.async = false;
   adScript.src = "https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b";
   container.append(options, adScript);
-}
-
-function loadAdsterraPopunder() {
-  if (typeof document === "undefined" || document.getElementById(POPUNDER_SCRIPT_ID)) return;
-  const script = document.createElement("script");
-  script.id = POPUNDER_SCRIPT_ID;
-  script.async = true;
-  script.setAttribute("data-cfasync", "false");
-  script.src = POPUNDER_SCRIPT_URL;
-  document.body.appendChild(script);
 }
 
 export function BannerUnlockAd({
@@ -49,7 +37,6 @@ export function BannerUnlockAd({
   }, [onUnlocked]);
 
   useEffect(() => {
-    loadAdsterraPopunder();
     if (bannerRef.current) mountAdsterraBanner(bannerRef.current);
   }, []);
 
