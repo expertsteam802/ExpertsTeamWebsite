@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fileIconFor } from "@/lib/file-icons";
 import { formatBytes, formatDate } from "@/lib/format";
 import { signedUrlFor } from "@/lib/upload";
+import { AdsterraGateDialog } from "@/components/ads/adsterra-gate-dialog";
 
 export type CommunityFile = {
   id: string;
@@ -48,6 +49,8 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
   const [price, setPrice] = useState("0");
   const [editSourceUrl, setEditSourceUrl] = useState("");
   const [editThumbnailUrl, setEditThumbnailUrl] = useState("");
+  const [gateOpen, setGateOpen] = useState(false);
+  const [pendingDownloadUrl, setPendingDownloadUrl] = useState<string | null>(null);
 
   const saveEdit = useMutation({
     mutationFn: async () => {
@@ -99,13 +102,16 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  async function download(file: CommunityFile) {
+  async function requestDownload(file: CommunityFile) {
     try {
       const url = file.source_url || (file.storage_path ? await signedUrlFor(file.storage_path) : null);
       if (!url) throw new Error("This resource has no download source.");
-      window.open(url, "_blank", "noopener,noreferrer");
+      // Resolve signed URLs before the gate. The final click then opens the
+      // prepared URL directly from a user gesture, avoiding popup blockers.
+      setPendingDownloadUrl(url);
+      setGateOpen(true);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not open that file");
+      toast.error(error instanceof Error ? error.message : "Could not prepare that download");
     }
   }
 
@@ -119,6 +125,17 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
 
   return (
     <>
+      <AdsterraGateDialog
+        open={gateOpen}
+        title="Before you open this resource"
+        description="Please view the sponsor placement while the short countdown runs. Your shared file will open when you continue."
+        onContinue={() => {
+          const url = pendingDownloadUrl;
+          setGateOpen(false);
+          setPendingDownloadUrl(null);
+          if (url) window.open(url, "_blank", "noopener,noreferrer");
+        }}
+      />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {files.map((file) => {
           const { Icon, tone, ext } = fileIconFor(file.file_name);
@@ -159,7 +176,7 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
               </p>
 
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="secondary" onClick={() => void download(file)}>
+                <Button size="sm" variant="secondary" onClick={() => void requestDownload(file)}>
                   <Download className="mr-2 h-4 w-4" /> {file.source_url ? "Open source" : "Download"}
                 </Button>
                 {canManage && (
