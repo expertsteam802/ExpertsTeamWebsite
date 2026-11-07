@@ -1,20 +1,8 @@
 import { useEffect, useRef } from "react";
 
-declare global {
-  interface Window {
-    atOptions?: {
-      key: string;
-      format: string;
-      height: number;
-      width: number;
-      params: Record<string, never>;
-    };
-  }
-}
-
 /**
- * Adsterra 728x90 banner. Mounted in normal page flow (never a popup,
- * unlock gate, redirect, or timed overlay).
+ * The Adsterra tag is inserted as two ordered script elements, matching the
+ * provider's supplied snippet: configuration first, then its loader.
  */
 export function AdsterraBanner() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -23,23 +11,35 @@ export function AdsterraBanner() {
     const container = containerRef.current;
     if (!container) return;
 
-    // Keep this configuration immediately before the exact Adsterra loader.
-    window.atOptions = {
-      key: "502debf88d7d96769c683f2ec09cb70b",
-      format: "iframe",
-      height: 90,
-      width: 728,
-      params: {},
-    };
+    // Adsterra reads the global atOptions object when its loader executes.
+    const configuration = document.createElement("script");
+    configuration.textContent = `
+      var atOptions = {
+        'key': '502debf88d7d96769c683f2ec09cb70b',
+        'format': 'iframe',
+        'height': 90,
+        'width': 728,
+        'params': {}
+      };
+    `;
 
+    // Keep execution ordered after the configuration script.
     const loader = document.createElement("script");
-    loader.async = true;
+    loader.async = false;
     loader.src = "https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b";
     loader.dataset.adsterraBanner = "expertsteam-728x90";
-    container.appendChild(loader);
+    loader.addEventListener("load", () => {
+      container.dataset.adsterraStatus = "loaded";
+    });
+    loader.addEventListener("error", () => {
+      container.dataset.adsterraStatus = "failed";
+    });
+
+    container.append(configuration, loader);
 
     return () => {
       container.replaceChildren();
+      delete container.dataset.adsterraStatus;
     };
   }, []);
 
