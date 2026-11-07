@@ -23,7 +23,7 @@ export function mountAdsterraBanner(container: HTMLDivElement, scriptUrl: string
   frame.referrerPolicy = "strict-origin-when-cross-origin";
   frame.setAttribute("scrolling", "no");
   frame.setAttribute("frameborder", "0");
-  frame.setAttribute("sandbox", "allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation");
+  // Do not sandbox the ad document: Adsterra's tag creates a nested creative iframe.
   frame.style.display = "block";
   frame.style.width = "728px";
   frame.style.maxWidth = "100%";
