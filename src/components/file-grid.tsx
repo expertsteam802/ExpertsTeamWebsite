@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Download, ExternalLink, FileDown, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { BannerUnlockAd } from "@/components/ads/banner-unlock-ad";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -49,8 +48,6 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
   const [price, setPrice] = useState("0");
   const [editSourceUrl, setEditSourceUrl] = useState("");
   const [editThumbnailUrl, setEditThumbnailUrl] = useState("");
-  const [unlocking, setUnlocking] = useState<CommunityFile | null>(null);
-  const [isUnlocked, setIsUnlocked] = useState(false);
 
   const saveEdit = useMutation({
     mutationFn: async () => {
@@ -162,7 +159,7 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
               </p>
 
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="secondary" onClick={() => { setUnlocking(file); setIsUnlocked(false); }}>
+                <Button size="sm" variant="secondary" onClick={() => void download(file)}>
                   <Download className="mr-2 h-4 w-4" /> {file.source_url ? "Open source" : "Download"}
                 </Button>
                 {canManage && (
@@ -191,29 +188,6 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
           );
         })}
       </div>
-
-      <Dialog open={!!unlocking} onOpenChange={(open) => { if (!open) { setUnlocking(null); setIsUnlocked(false); } }}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>{isUnlocked ? "Your resource is ready" : "A quick message from our sponsor"}</DialogTitle>
-          </DialogHeader>
-          {unlocking && (
-            <div className="space-y-4">
-              {!isUnlocked ? (
-                <BannerUnlockAd onUnlocked={() => setIsUnlocked(true)} />
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">Thanks for supporting ExpertsTeam. Continue when you're ready.</p>
-                  <Button className="w-full sm:w-auto" onClick={() => void download(unlocking)}>
-                    {unlocking.source_url ? <ExternalLink className="mr-2 h-4 w-4" /> : <FileDown className="mr-2 h-4 w-4" />}
-                    {unlocking.source_url ? "Open source link" : "Download file"}
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent>
