@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { AdsterraGateDialog } from "@/components/ads/adsterra-gate-dialog";
 
 type YouTubePlayer = { destroy: () => void; getIframe: () => HTMLIFrameElement };
 type YouTubeApi = {
@@ -136,12 +137,14 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [useNativeEmbed, setUseNativeEmbed] = useState(false);
-  const shouldLoadLesson = !!videoId;
+  const [gateComplete, setGateComplete] = useState(false);
+  const shouldLoadLesson = !!videoId && gateComplete;
 
   useEffect(() => {
     setPlaybackError(null);
     setLoading(false);
     setUseNativeEmbed(false);
+    setGateComplete(false);
   }, [videoId]);
 
   useEffect(() => {
@@ -232,7 +235,14 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
   }, [videoId, shouldLoadLesson, title]);
 
   return (
-    <Dialog open={!!videoId} onOpenChange={(open) => !open && onClose()}>
+    <>
+    <AdsterraGateDialog
+      open={!!videoId && !gateComplete}
+      title="Before your lesson starts"
+      description="Please view the sponsor placement while the short countdown runs. Your lesson will start when you continue."
+      onContinue={() => setGateComplete(true)}
+    />
+    <Dialog open={!!videoId && gateComplete} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[94vh] w-[min(96vw,1280px)] max-w-[1280px] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="pr-8 text-left">{title}</DialogTitle>
@@ -278,5 +288,6 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
         </p>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
