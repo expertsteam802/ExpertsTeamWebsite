@@ -4,7 +4,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { BookOpen, FileText, GraduationCap, Video } from "lucide-react";
 
 import { AddVideoDialog } from "@/components/add-video-dialog";
-import { AdSlot } from "@/components/ads/ad-slot";
 import { FileGrid, type CommunityFile } from "@/components/file-grid";
 import { PageShell } from "@/components/layout/page-shell";
 import { UploadDialog } from "@/components/upload-dialog";
@@ -69,7 +68,6 @@ function LearnPage() {
           <p className="mt-3 max-w-2xl text-muted-foreground">Start as a beginner, practise step by step and grow into a pro coder with coding lessons, books, downloadable files and tutorial videos.</p>
         </div>
       </section>
-      <AdSlot slot="learn-top" />
       <section className="mx-auto grid max-w-7xl gap-5 px-4 py-8 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="h-fit rounded-2xl border border-border/70 bg-card p-3 lg:sticky lg:top-24">
           <p className="px-3 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Learn menu</p>
@@ -116,7 +114,6 @@ function LearnPage() {
           )}
         </div>
       </section>
-      <AdSlot slot="learn-bottom" />
     </PageShell>
   );
 }
