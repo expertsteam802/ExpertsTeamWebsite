@@ -4,7 +4,6 @@ import { CheckCircle2, Clock, XCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { AdSlot } from "@/components/ads/ad-slot";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -234,9 +233,6 @@ function ProjectsPage() {
           </a>
         </div>
       </section>
-
-      <AdSlot slot="projects-top" />
-
       {user && isMember ? (
         <section className="mx-auto max-w-6xl px-4 py-10">
           <WorkspaceChat />
@@ -248,7 +244,6 @@ function ProjectsPage() {
       ) : (
         <ApplicationPanel />
       )}
-      <AdSlot slot="projects-bottom" />
     </PageShell>
   );
 }
