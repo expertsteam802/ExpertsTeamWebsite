@@ -1,20 +1,55 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Clock3, ShieldCheck } from "lucide-react";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 
-function mountAdsterraBanner(container: HTMLDivElement) {
+const DEFAULT_ADSTERRA_SCRIPT =
+  "https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b";
+const DEFAULT_ADSTERRA_KEY = "502debf88d7d96769c683f2ec09cb70b";
+
+function mountAdsterraBanner(container: HTMLDivElement, scriptUrl: string) {
   container.replaceChildren();
-  const options = document.createElement("script");
-  options.text = `var atOptions = {
-    'key' : '502debf88d7d96769c683f2ec09cb70b',
-    'format' : 'iframe',
-    'height' : 90,
-    'width' : 728,
-    'params' : {}
-  };`;
+
+  // Adsterra's zone script reads the global atOptions object. Defining it on
+  // window before loading the remote script avoids relying on inline-script
+  // execution order inside a dynamically rendered React subtree.
+  const key = scriptUrl.match(/\/22\/([a-f0-9]{32})/i)?.[1] ?? DEFAULT_ADSTERRA_KEY;
+  (window as Window & {
+    atOptions?: { key: string; format: string; height: number; width: number; params: Record<string, never> };
+  }).atOptions = {
+    key,
+    format: "iframe",
+    height: 90,
+    width: 728,
+    params: {},
+  };
+
   const adScript = document.createElement("script");
-  adScript.async = false;
-  adScript.src = "https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b";
-  container.append(options, adScript);
+  adScript.type = "text/javascript";
+  adScript.async = true;
+  adScript.src = scriptUrl;
+  adScript.dataset.expertsteamAdsterra = "banner728";
+  container.appendChild(adScript);
+
+  // Keep the 728px creative centered and visible on narrow screens.
+  const resizeFrame = (node: Node) => {
+    if (node instanceof HTMLIFrameElement) {
+      node.style.display = "block";
+      node.style.maxWidth = "100%";
+      node.style.marginInline = "auto";
+    }
+    if (node instanceof HTMLElement) {
+      node.querySelectorAll("iframe").forEach((frame) => {
+        frame.style.display = "block";
+        frame.style.maxWidth = "100%";
+        frame.style.marginInline = "auto";
+      });
+    }
+  };
+  const observer = new MutationObserver((records) => {
+    records.forEach((record) => record.addedNodes.forEach(resizeFrame));
+  });
+  observer.observe(container, { childList: true, subtree: true });
+  return () => observer.disconnect();
 }
 
 export function BannerUnlockAd({
@@ -28,6 +63,16 @@ export function BannerUnlockAd({
 }) {
   const bannerRef = useRef<HTMLDivElement>(null);
   const callbackRef = useRef(onUnlocked);
+  const siteSettings = useSiteSettings();
+  const adSettings =
+    siteSettings.ad_settings && typeof siteSettings.ad_settings === "object" && !Array.isArray(siteSettings.ad_settings)
+      ? (siteSettings.ad_settings as Record<string, unknown>)
+      : {};
+  const adEnabled = adSettings.adsterraEnabled !== false;
+  const adScriptUrl =
+    typeof adSettings.adsterraBannerScript === "string" && adSettings.adsterraBannerScript.startsWith("https://")
+      ? adSettings.adsterraBannerScript
+      : DEFAULT_ADSTERRA_SCRIPT;
   const completedRef = useRef(false);
   const [remaining, setRemaining] = useState(seconds);
   const [finished, setFinished] = useState(false);
@@ -37,8 +82,12 @@ export function BannerUnlockAd({
   }, [onUnlocked]);
 
   useEffect(() => {
-    if (bannerRef.current) mountAdsterraBanner(bannerRef.current);
-  }, []);
+    if (!bannerRef.current || !adEnabled) {
+      bannerRef.current?.replaceChildren();
+      return;
+    }
+    return mountAdsterraBanner(bannerRef.current, adScriptUrl);
+  }, [adEnabled, adScriptUrl]);
 
   useEffect(() => {
     if (finished) return;
