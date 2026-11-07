@@ -3,21 +3,21 @@ import { CheckCircle2, Clock3, ShieldCheck } from "lucide-react";
 
 const POPUNDER_SCRIPT_ID = "expertsteam-adsterra-popunder";
 const POPUNDER_SCRIPT_URL = "https://abscloud.org/1/8a9d4492df70b9208cb7428f8f5544f6";
-const BANNER_DOCUMENT = `<!doctype html>
-<html><head><meta charset="utf-8"></head>
-<body style="margin:0;width:728px;height:90px;overflow:hidden">
-<script>
-var atOptions = {
-  'key' : '502debf88d7d96769c683f2ec09cb70b',
-  'format' : 'iframe',
-  'height' : 90,
-  'width' : 728,
-  'params' : {}
-};
-window.atOptions = atOptions;
-</script>
-<script src="https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b"></script>
-</body></html>`;
+function mountAdsterraBanner(container: HTMLDivElement) {
+  container.replaceChildren();
+  const options = document.createElement("script");
+  options.text = `window.atOptions = {
+    'key' : '502debf88d7d96769c683f2ec09cb70b',
+    'format' : 'iframe',
+    'height' : 90,
+    'width' : 728,
+    'params' : {}
+  };`;
+  const adScript = document.createElement("script");
+  adScript.async = true;
+  adScript.src = "https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b";
+  container.append(options, adScript);
+}
 
 function loadAdsterraPopunder() {
   if (typeof document === "undefined" || document.getElementById(POPUNDER_SCRIPT_ID)) return;
@@ -38,6 +38,7 @@ export function BannerUnlockAd({
   seconds?: number;
   compact?: boolean;
 }) {
+  const bannerRef = useRef<HTMLDivElement>(null);
   const callbackRef = useRef(onUnlocked);
   const completedRef = useRef(false);
   const [remaining, setRemaining] = useState(seconds);
@@ -49,6 +50,7 @@ export function BannerUnlockAd({
 
   useEffect(() => {
     loadAdsterraPopunder();
+    if (bannerRef.current) mountAdsterraBanner(bannerRef.current);
   }, []);
 
   useEffect(() => {
@@ -72,16 +74,7 @@ export function BannerUnlockAd({
         </div>
         <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Sponsored</span>
       </div>
-      <div className="mx-auto w-full max-w-[728px] overflow-hidden">
-        <iframe
-          title="Adsterra sponsored banner"
-          srcDoc={BANNER_DOCUMENT}
-          sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms"
-          referrerPolicy="strict-origin-when-cross-origin"
-          scrolling="no"
-          style={{ display: "block", width: "100%", height: 90, border: 0 }}
-        />
-      </div>
+      <div ref={bannerRef} className="mx-auto min-h-[90px] w-full max-w-[728px] overflow-hidden" />
       <div className="mt-3 flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
           {finished ? "Your content is ready." : "Thanks for supporting ExpertsTeam."}
