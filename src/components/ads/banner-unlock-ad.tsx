@@ -14,7 +14,7 @@ export function mountAdsterraBanner(container: HTMLDivElement, scriptUrl: string
   // asynchronously into an already-mounted React page. Run the unchanged tag
   // inside a small, isolated iframe so document.write targets that iframe's
   // own parser instead of the parent application document.
-  const key = scriptUrl.match(/\\/22\\/([a-f0-9]{32})/i)?.[1] ?? DEFAULT_ADSTERRA_KEY;
+  const key = scriptUrl.match(/\/22\/([a-f0-9]{32})/i)?.[1] ?? DEFAULT_ADSTERRA_KEY;
   const frame = document.createElement("iframe");
   frame.title = "ExpertsTeam sponsored banner";
   frame.width = "728";
