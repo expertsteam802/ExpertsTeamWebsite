@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { AppWindow, FolderOpen, Gamepad2 } from "lucide-react";
 
-import { AdSlot } from "@/components/ads/ad-slot";
 import { FileGrid, type CommunityFile } from "@/components/file-grid";
 import { PageShell } from "@/components/layout/page-shell";
 import { UploadDialog } from "@/components/upload-dialog";
@@ -51,7 +50,6 @@ function EntertainmentPage() {
           <p className="mt-3 max-w-2xl text-muted-foreground">A dedicated space for community games, apps and useful downloads. Choose a section from the side panel.</p>
         </div>
       </section>
-      <AdSlot slot="entertainment-top" />
       <section className="mx-auto grid max-w-7xl gap-5 px-4 py-8 lg:grid-cols-[250px_minmax(0,1fr)]">
         <aside className="h-fit rounded-2xl border border-border/70 bg-card p-3 lg:sticky lg:top-24">
           <p className="px-3 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Explore library</p>
@@ -74,7 +72,6 @@ function EntertainmentPage() {
           <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground"><FolderOpen className="h-4 w-4" /> Members can share their own games, apps and useful files.</div>
         </div>
       </section>
-      <AdSlot slot="entertainment-bottom" />
     </PageShell>
   );
 }
