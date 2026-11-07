@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -135,11 +135,13 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
   const countedRef = useRef(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [useNativeEmbed, setUseNativeEmbed] = useState(false);
   const shouldLoadLesson = !!videoId;
 
   useEffect(() => {
     setPlaybackError(null);
     setLoading(false);
+    setUseNativeEmbed(false);
   }, [videoId]);
 
   useEffect(() => {
@@ -173,7 +175,6 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
               setLoading(false);
               const iframe = event.target.getIframe();
               iframe.title = title;
-              iframe.referrerPolicy = "strict-origin-when-cross-origin";
               iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
               iframe.allowFullscreen = true;
               iframe.className = "h-full w-full";
@@ -195,7 +196,11 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
             onError: (event) => {
               if (readyTimeout !== undefined) window.clearTimeout(readyTimeout);
               setLoading(false);
-              setPlaybackError(playerErrorMessage(event.data));
+              if (event.data === 153) {
+                setUseNativeEmbed(true);
+              } else {
+                setPlaybackError(playerErrorMessage(event.data));
+              }
             },
           },
         });
@@ -206,18 +211,15 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
           playerRef.current?.destroy();
           playerRef.current = null;
           setLoading(false);
-          setPlaybackError(
-            "YouTube did not finish opening this video. Check your connection or browser extensions, then try again.",
-          );
+          setUseNativeEmbed(true);
         }, 12000);
       })
       .catch((error: unknown) => {
         if (readyTimeout !== undefined) window.clearTimeout(readyTimeout);
         if (!cancelled) {
           setLoading(false);
-          setPlaybackError(
-            error instanceof Error ? error.message : "Could not load the video player.",
-          );
+          console.warn("[Video player] IFrame API unavailable; using standard embed:", error);
+          setUseNativeEmbed(true);
         }
       });
     return () => {
@@ -236,7 +238,19 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
           <DialogTitle className="pr-8 text-left">{title}</DialogTitle>
         </DialogHeader>
         <div className={`expertsteam-video-player relative aspect-video max-h-[72vh] w-[92%] max-w-[1200px] overflow-hidden rounded-xl bg-secondary ${alignment === "left" ? "mr-auto" : alignment === "right" ? "ml-auto" : "mx-auto"}`}>
-          {videoId && <div ref={playerContainerRef} className="h-full w-full" />}
+          {videoId && (useNativeEmbed ? (
+            <iframe
+              key={videoId}
+              title={title}
+              src={`https://www.youtube.com/embed/${encodeURIComponent(videoId)}?playsinline=1&rel=0`}
+              className="h-full w-full border-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+          ) : (
+            <div ref={playerContainerRef} className="h-full w-full" />
+          ))}
           {videoId && loading && !playbackError && (
             <div className="absolute inset-0 grid place-items-center bg-background/70 text-sm text-muted-foreground">
               Loading video…
