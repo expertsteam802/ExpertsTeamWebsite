@@ -839,7 +839,8 @@ function AdminPage() {
                     </p>
                   </div>
                   {form ? (
-                    <div className="space-y-3 rounded-xl border border-border/70 p-4">
+                    <>
+                      <div className="space-y-3 rounded-xl border border-border/70 p-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
                             <Label htmlFor="background-image-upload">Website background image</Label>
@@ -906,7 +907,6 @@ function AdminPage() {
                           </div>
                         )}
                       </div>
-                    <>
                       {(
                         [
                           ["site_name", "Website name"],
