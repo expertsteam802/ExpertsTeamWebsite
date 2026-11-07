@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Compass, Gamepad2, GraduationCap, MessageCircle, Sparkles, Users, Video, Wrench } from "lucide-react";
 
-import { AdSlot } from "@/components/ads/ad-slot";
 import { PageShell } from "@/components/layout/page-shell";
 import { Card } from "@/components/ui/card";
 
@@ -35,7 +34,6 @@ function ExplorePage() {
           <p className="mt-3 max-w-2xl text-muted-foreground">Every destination has its own space. Choose where you want to go instead of digging through nested menus.</p>
         </div>
       </section>
-      <AdSlot slot="explore-top" />
       <section className="mx-auto max-w-7xl px-4 py-10">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {DESTINATIONS.map((item) => (
@@ -51,7 +49,6 @@ function ExplorePage() {
           ))}
         </div>
       </section>
-      <AdSlot slot="explore-bottom" />
     </PageShell>
   );
 }
