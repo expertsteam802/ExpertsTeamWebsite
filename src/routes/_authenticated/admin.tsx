@@ -68,8 +68,8 @@ type SettingsForm = {
   ai_subscription_credits: string;
   ai_free_credits: string;
   payout_account: string;
-  popunder_enabled: boolean;
-  popunder_script_url: string;
+  adsterra_enabled: boolean;
+  adsterra_banner_script_url: string;
 };
 
 function AdminPage() {
@@ -288,19 +288,19 @@ function AdminPage() {
         ai_subscription_credits: String(settings.ai_subscription_credits ?? 500),
         ai_free_credits: String(settings.ai_free_credits ?? 25),
         payout_account: settings.payout_account ?? "",
-        popunder_enabled: (() => {
+        adsterra_enabled: (() => {
           const ads = settings.ad_settings && typeof settings.ad_settings === "object" && !Array.isArray(settings.ad_settings)
             ? settings.ad_settings as Record<string, unknown>
             : {};
-          return ads.popunderEnabled === true;
+          return ads.adsterraEnabled !== false;
         })(),
-        popunder_script_url: (() => {
+        adsterra_banner_script_url: (() => {
           const ads = settings.ad_settings && typeof settings.ad_settings === "object" && !Array.isArray(settings.ad_settings)
             ? settings.ad_settings as Record<string, unknown>
             : {};
-          return typeof ads.popunderScriptUrl === "string"
-            ? ads.popunderScriptUrl
-            : "https://abscloud.org/1/8a9d4492df70b9208cb7428f8f5544f6";
+          return typeof ads.adsterraBannerScript === "string" && ads.adsterraBannerScript.startsWith("https://")
+            ? ads.adsterraBannerScript
+            : "https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b";
         })(),
       });
     }
@@ -318,8 +318,8 @@ function AdminPage() {
         throw new Error("Studio subscription price must be between $0.01 and $1,000.");
       if (!Number.isInteger(studioCredits) || studioCredits < 1 || studioCredits > 100000)
         throw new Error("Studio AI credits must be between 1 and 100,000.");
-      if (form.popunder_enabled && !form.popunder_script_url.trim().startsWith("https://"))
-        throw new Error("The popunder script URL must use HTTPS.");
+      if (form.adsterra_enabled && !form.adsterra_banner_script_url.trim().startsWith("https://"))
+        throw new Error("The Adsterra banner script URL must use HTTPS.");
       const { error } = await supabase
         .from("site_settings")
         .update({
@@ -329,8 +329,12 @@ function AdminPage() {
             ...(settings.ad_settings && typeof settings.ad_settings === "object" && !Array.isArray(settings.ad_settings)
               ? settings.ad_settings as Record<string, unknown>
               : {}),
-            popunderEnabled: form.popunder_enabled,
-            popunderScriptUrl: form.popunder_script_url.trim(),
+            adsterraEnabled: form.adsterra_enabled,
+            adsterraBannerScript: form.adsterra_banner_script_url.trim(),
+            banner728Enabled: true,
+            nativeBannerEnabled: false,
+            popunderEnabled: false,
+            placements: { "home-bottom": "banner728", "video-before": "banner728" },
             siteBranding: {
               background_image_url: form.background_image_url.trim(),
               banner_image_url: form.banner_image_url.trim(),
@@ -876,8 +880,8 @@ function AdminPage() {
                           ["ai_subscription_credits", "Studio AI credits per 30-day plan"],
                           ["ai_free_credits", "Free AI credits for new accounts"],
                           ["payout_account", "Payout account (PayPal email / card account)"],
-                          ["popunder_script_url", "Adsterra popunder script URL"],
-                        ] as Array<[Exclude<keyof SettingsForm, "popunder_enabled">, string]>
+                          ["adsterra_banner_script_url", "Adsterra 728×90 banner script URL"],
+                        ] as Array<[Exclude<keyof SettingsForm, "adsterra_enabled">, string]>
                       ).map(([key, label]) => (
                         <div key={key} className="space-y-2">
                           <Label htmlFor={key}>{label}</Label>
@@ -899,21 +903,21 @@ function AdminPage() {
                       <div className="rounded-xl border border-border p-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
-                            <p className="font-semibold">Adsterra popunder</p>
+                            <p className="font-semibold">Adsterra 728×90 banner</p>
                             <p className="text-xs text-muted-foreground">
-                              Load one popunder script per page. Turn it off immediately if the ads are unsuitable.
+                              Only the banner format is enabled. Popunders and native banners are disabled.
                             </p>
                           </div>
                           <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
                             <input
                               type="checkbox"
-                              checked={form.popunder_enabled}
+                              checked={form.adsterra_enabled}
                               onChange={(event) =>
-                                setForm({ ...form, popunder_enabled: event.target.checked })
+                                setForm({ ...form, adsterra_enabled: event.target.checked })
                               }
                               className="h-4 w-4 accent-primary"
                             />
-                            {form.popunder_enabled ? "Enabled" : "Disabled"}
+                            {form.adsterra_enabled ? "Enabled" : "Disabled"}
                           </label>
                         </div>
                         <p className="mt-2 text-xs text-muted-foreground">
