@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
-import { BannerUnlockAd } from "@/components/ads/banner-unlock-ad";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -40,7 +39,6 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const signupFlow = useRef(false);
   const [signupResult, setSignupResult] = useState<{ email: string; needsConfirmation: boolean } | null>(null);
-  const [signupAdFinished, setSignupAdFinished] = useState(false);
 
   useEffect(() => {
     if (user && !signupFlow.current) void navigate({ to: "/dashboard", replace: true });
@@ -237,38 +235,30 @@ function AuthPage() {
         </Card>
       </div>
       <Dialog open={!!signupResult} onOpenChange={(open) => {
-        if (!open && signupAdFinished) {
+        if (!open) {
           const shouldGoToDashboard = !signupResult?.needsConfirmation;
           setSignupResult(null);
-          setSignupAdFinished(false);
           signupFlow.current = false;
           if (shouldGoToDashboard) void navigate({ to: "/dashboard", replace: true });
         }
       }}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{signupAdFinished ? (signupResult?.needsConfirmation ? "Check your email" : "Your account is ready!") : "Welcome to ExpertsTeam"}</DialogTitle>
+            <DialogTitle>{signupResult?.needsConfirmation ? "Check your email" : "Your account is ready!"}</DialogTitle>
             <DialogDescription>
-              {signupAdFinished
-                ? signupResult?.needsConfirmation
-                  ? `We created your account. Follow the confirmation link sent to ${signupResult.email} to finish signing in.`
-                  : "Your ExpertsTeam account was created successfully. You can now explore your dashboard."
-                : "Please view this short sponsor banner while we prepare your new account."}
+              {signupResult?.needsConfirmation
+                ? `We created your account. Follow the confirmation link sent to ${signupResult.email} to finish signing in.`
+                : "Your ExpertsTeam account was created successfully. You can now explore your dashboard."}
             </DialogDescription>
           </DialogHeader>
-          {!signupAdFinished ? (
-            <BannerUnlockAd onUnlocked={() => setSignupAdFinished(true)} />
-          ) : (
-            <Button className="w-full sm:w-auto" onClick={() => {
-              const shouldGoToDashboard = !signupResult?.needsConfirmation;
-              setSignupResult(null);
-              setSignupAdFinished(false);
-              signupFlow.current = false;
-              if (shouldGoToDashboard) void navigate({ to: "/dashboard", replace: true });
-            }}>
-              {signupResult?.needsConfirmation ? "Back to sign in" : "Open my dashboard"}
-            </Button>
-          )}
+          <Button className="w-full sm:w-auto" onClick={() => {
+            const shouldGoToDashboard = !signupResult?.needsConfirmation;
+            setSignupResult(null);
+            signupFlow.current = false;
+            if (shouldGoToDashboard) void navigate({ to: "/dashboard", replace: true });
+          }}>
+            {signupResult?.needsConfirmation ? "Back to sign in" : "Open my dashboard"}
+          </Button>
         </DialogContent>
       </Dialog>
     </PageShell>
