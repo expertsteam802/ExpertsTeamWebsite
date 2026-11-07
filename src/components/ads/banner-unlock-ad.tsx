@@ -6,7 +6,7 @@ const DEFAULT_ADSTERRA_SCRIPT =
   "https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b";
 const DEFAULT_ADSTERRA_KEY = "502debf88d7d96769c683f2ec09cb70b";
 
-function mountAdsterraBanner(container: HTMLDivElement, scriptUrl: string) {
+export function mountAdsterraBanner(container: HTMLDivElement, scriptUrl: string) {
   container.replaceChildren();
 
   // Adsterra's zone script reads the global atOptions object. Defining it on
