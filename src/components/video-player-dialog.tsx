@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { BannerUnlockAd } from "@/components/ads/banner-unlock-ad";
 
 type YouTubePlayer = { destroy: () => void; getIframe: () => HTMLIFrameElement };
 type YouTubeApi = {
@@ -136,14 +135,9 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
   const countedRef = useRef(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [unlockedVideoId, setUnlockedVideoId] = useState<string | null>(null);
-  const shouldLoadLesson = unlockedVideoId === videoId;
-  const handleAdFinished = useCallback(() => {
-    if (videoId) setUnlockedVideoId(videoId);
-  }, [videoId]);
+  const shouldLoadLesson = !!videoId;
 
   useEffect(() => {
-    setUnlockedVideoId(null);
     setPlaybackError(null);
     setLoading(false);
   }, [videoId]);
@@ -242,28 +236,13 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
           <DialogTitle className="pr-8 text-left">{title}</DialogTitle>
         </DialogHeader>
         <div className={`expertsteam-video-player relative aspect-video max-h-[72vh] w-[92%] max-w-[1200px] overflow-hidden rounded-xl bg-secondary ${alignment === "left" ? "mr-auto" : alignment === "right" ? "ml-auto" : "mx-auto"}`}>
-          {videoId && !shouldLoadLesson ? (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-4 overflow-y-auto bg-background p-4 text-center sm:p-6">
-              <div>
-                <p className="font-display text-lg font-semibold">Support ExpertsTeam</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  View this quick sponsor banner to support ExpertsTeam, then continue to your lesson.
-                </p>
-              </div>
-              <BannerUnlockAd onUnlocked={handleAdFinished} compact />
-              <p className="text-xs text-muted-foreground">
-                Your lesson unlocks automatically after the short sponsor message.
-              </p>
-            </div>
-          ) : (
-            videoId && <div ref={playerContainerRef} className="h-full w-full" />
-          )}
-          {unlockedVideoId === videoId && loading && !playbackError && (
+          {videoId && <div ref={playerContainerRef} className="h-full w-full" />}
+          {videoId && loading && !playbackError && (
             <div className="absolute inset-0 grid place-items-center bg-background/70 text-sm text-muted-foreground">
               Loading video…
             </div>
           )}
-          {unlockedVideoId === videoId && playbackError && (
+          {videoId && playbackError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center">
               <p className="max-w-xl text-sm text-destructive">{playbackError}</p>
               {videoId && (
