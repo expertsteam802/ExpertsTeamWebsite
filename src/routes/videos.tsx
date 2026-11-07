@@ -3,7 +3,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Youtube } from "lucide-react";
 
 import { AddVideoDialog } from "@/components/add-video-dialog";
-import { AdSlot } from "@/components/ads/ad-slot";
 import { PageShell } from "@/components/layout/page-shell";
 import { VideoGrid, type VideoItem } from "@/components/video-grid";
 import { Button } from "@/components/ui/button";
@@ -65,9 +64,6 @@ function VideosPage() {
           </div>
         </div>
       </section>
-
-      <AdSlot slot="videos-top" />
-
       <section className="mx-auto max-w-7xl px-4 py-12">
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading videos…</p>
@@ -75,7 +71,6 @@ function VideosPage() {
           <VideoGrid videos={videos ?? []} />
         )}
       </section>
-      <AdSlot slot="videos-bottom" />
     </PageShell>
   );
 }
