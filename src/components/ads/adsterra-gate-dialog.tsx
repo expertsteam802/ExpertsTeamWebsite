@@ -122,7 +122,7 @@ export function AdsterraGateDialog({
             {remaining > 0 ? `Continue in ${remaining}s` : "Continue to ExpertsTeam"}
           </Button>
           <p className="text-center text-[11px] leading-5 text-muted-foreground">
-            The timer confirms the sponsor panel was displayed for this period. Ad availability is controlled by the advertising provider.
+            The countdown measures how long this gate stays open; it cannot verify an ad impression. Ad availability is controlled by the advertising provider.
           </p>
         </div>
       </DialogContent>
