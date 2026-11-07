@@ -18,7 +18,7 @@ export type SiteSettings = {
   ai_subscription_price: number;
   ai_subscription_credits: number;
   payout_account: string | null;
-  ad_settings: Json;
+  site_branding_settings: Json;
   error_dialog_enabled: boolean;
 };
 
@@ -40,8 +40,8 @@ export const siteSettingsQuery = {
 
 export function useSiteSettings() {
   const { data } = useQuery(siteSettingsQuery);
-  const branding = data?.ad_settings && typeof data.ad_settings === "object" && !Array.isArray(data.ad_settings)
-    ? (data.ad_settings as Record<string, Json>).siteBranding
+  const branding = data?.site_branding_settings && typeof data.site_branding_settings === "object" && !Array.isArray(data.site_branding_settings)
+    ? (data.site_branding_settings as Record<string, Json>).siteBranding
     : null;
   const brandingRecord = branding && typeof branding === "object" && !Array.isArray(branding)
     ? branding as Record<string, Json>
@@ -66,7 +66,7 @@ export function useSiteSettings() {
       ai_subscription_price: 1,
       ai_subscription_credits: 500,
       payout_account: null,
-      ad_settings: {},
+      site_branding_settings: {},
       error_dialog_enabled: true,
     }
   );
