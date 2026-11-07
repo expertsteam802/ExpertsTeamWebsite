@@ -9,47 +9,50 @@ const DEFAULT_ADSTERRA_KEY = "502debf88d7d96769c683f2ec09cb70b";
 export function mountAdsterraBanner(container: HTMLDivElement, scriptUrl: string) {
   container.replaceChildren();
 
-  // Adsterra's zone script reads the global atOptions object. Defining it on
-  // window before loading the remote script avoids relying on inline-script
-  // execution order inside a dynamically rendered React subtree.
-  const key = scriptUrl.match(/\/22\/([a-f0-9]{32})/i)?.[1] ?? DEFAULT_ADSTERRA_KEY;
-  (window as Window & {
-    atOptions?: { key: string; format: string; height: number; width: number; params: Record<string, never> };
-  }).atOptions = {
-    key,
-    format: "iframe",
-    height: 90,
-    width: 728,
-    params: {},
-  };
+  // Adsterra's standard atOptions tag is a parser-executed script snippet.
+  // Some zone scripts use document.write(), which is unreliable when loaded
+  // asynchronously into an already-mounted React page. Run the unchanged tag
+  // inside a small, isolated iframe so document.write targets that iframe's
+  // own parser instead of the parent application document.
+  const key = scriptUrl.match(/\\/22\\/([a-f0-9]{32})/i)?.[1] ?? DEFAULT_ADSTERRA_KEY;
+  const frame = document.createElement("iframe");
+  frame.title = "ExpertsTeam sponsored banner";
+  frame.width = "728";
+  frame.height = "90";
+  frame.loading = "eager";
+  frame.referrerPolicy = "strict-origin-when-cross-origin";
+  frame.setAttribute("scrolling", "no");
+  frame.setAttribute("frameborder", "0");
+  frame.setAttribute("sandbox", "allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation");
+  frame.style.display = "block";
+  frame.style.width = "728px";
+  frame.style.maxWidth = "100%";
+  frame.style.height = "90px";
+  frame.style.border = "0";
+  frame.style.marginInline = "auto";
 
-  const adScript = document.createElement("script");
-  adScript.type = "text/javascript";
-  adScript.async = true;
-  adScript.src = scriptUrl;
-  adScript.dataset.expertsteamAdsterra = "banner728";
-  container.appendChild(adScript);
-
-  // Keep the 728px creative centered and visible on narrow screens.
-  const resizeFrame = (node: Node) => {
-    if (node instanceof HTMLIFrameElement) {
-      node.style.display = "block";
-      node.style.maxWidth = "100%";
-      node.style.marginInline = "auto";
-    }
-    if (node instanceof HTMLElement) {
-      node.querySelectorAll("iframe").forEach((frame) => {
-        frame.style.display = "block";
-        frame.style.maxWidth = "100%";
-        frame.style.marginInline = "auto";
-      });
-    }
+  const safeScriptUrl = scriptUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  frame.srcdoc = `<!doctype html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;width:100%;height:90px;overflow:hidden;display:flex;justify-content:center">
+<script type="text/javascript">
+  atOptions = {
+    'key' : '${key}',
+    'format' : 'iframe',
+    'height' : 90,
+    'width' : 728,
+    'params' : {}
   };
-  const observer = new MutationObserver((records) => {
-    records.forEach((record) => record.addedNodes.forEach(resizeFrame));
-  });
-  observer.observe(container, { childList: true, subtree: true });
-  return () => observer.disconnect();
+</script>
+<script type="text/javascript" src="${safeScriptUrl}"></script>
+</body>
+</html>`;
+  container.appendChild(frame);
+
+  return () => {
+    frame.remove();
+  };
 }
 
 export function BannerUnlockAd({
