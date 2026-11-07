@@ -266,14 +266,14 @@ function AdminPage() {
         site_name: settings.site_name,
         logo_url: settings.logo_url ?? "",
         background_image_url: (() => {
-          const branding = settings.ad_settings && typeof settings.ad_settings === "object" && !Array.isArray(settings.ad_settings)
-            ? (settings.ad_settings as Record<string, unknown>).siteBranding as Record<string, unknown> | undefined
+          const branding = settings.site_branding_settings && typeof settings.site_branding_settings === "object" && !Array.isArray(settings.site_branding_settings)
+            ? (settings.site_branding_settings as Record<string, unknown>).siteBranding as Record<string, unknown> | undefined
             : undefined;
           return typeof branding?.background_image_url === "string" ? branding.background_image_url : "";
         })(),
         banner_image_url: (() => {
-          const branding = settings.ad_settings && typeof settings.ad_settings === "object" && !Array.isArray(settings.ad_settings)
-            ? (settings.ad_settings as Record<string, unknown>).siteBranding as Record<string, unknown> | undefined
+          const branding = settings.site_branding_settings && typeof settings.site_branding_settings === "object" && !Array.isArray(settings.site_branding_settings)
+            ? (settings.site_branding_settings as Record<string, unknown>).siteBranding as Record<string, unknown> | undefined
             : undefined;
           return typeof branding?.banner_image_url === "string" ? branding.banner_image_url : "";
         })(),
@@ -307,7 +307,7 @@ function AdminPage() {
         .update({
           site_name: form.site_name.trim().slice(0, 60),
           logo_url: form.logo_url.trim() || null,
-          ad_settings: {
+          site_branding_settings: {
             siteBranding: {
               background_image_url: form.background_image_url.trim(),
               banner_image_url: form.banner_image_url.trim(),
