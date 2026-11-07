@@ -18,7 +18,6 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { AdSlot } from "@/components/ads/ad-slot";
 import { PageShell } from "@/components/layout/page-shell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -320,7 +319,6 @@ function CommunityPage() {
 
   return (
     <PageShell>
-      <AdSlot slot="community-top" />
       <section className="mx-auto grid max-w-7xl gap-6 px-4 py-7 lg:grid-cols-[220px_minmax(0,1fr)_260px] lg:py-10">
         <aside className="hidden lg:block">
           <div className="sticky top-24 space-y-5">
@@ -750,7 +748,6 @@ function CommunityPage() {
           )}
         </DialogContent>
       </Dialog>
-      <AdSlot slot="community-bottom" />
     </PageShell>
   );
 }
