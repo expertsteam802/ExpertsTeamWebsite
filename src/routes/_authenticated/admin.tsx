@@ -9,6 +9,7 @@ import {
   Database,
   HardDrive,
   Inbox,
+  ImagePlus,
   LayoutDashboard,
   Mail,
   RefreshCw,
@@ -77,6 +78,7 @@ function AdminPage() {
   const [form, setForm] = useState<SettingsForm | null>(null);
   const [memberSearch, setMemberSearch] = useState("");
   const [contactSearch, setContactSearch] = useState("");
+  const [backgroundUploadPending, setBackgroundUploadPending] = useState(false);
 
   const { data: settings } = useQuery({
     queryKey: ["site-settings"],
@@ -833,10 +835,78 @@ function AdminPage() {
                   <div>
                     <h2 className="font-display text-lg font-semibold">Website branding and appearance</h2>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Update the logo, background and top banner with image URLs. To change the site colour theme, use the palette button in the website's top bar.
+                      Upload a background image from your device or paste an image URL. Uploaded images are stored in Supabase and remain available after refreshes and deployments.
                     </p>
                   </div>
                   {form ? (
+                    <>
+                      <div className="space-y-3 rounded-xl border border-border/70 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <Label htmlFor="background-image-upload">Website background image</Label>
+                            <p className="mt-1 text-xs text-muted-foreground">JPG, PNG, WebP or GIF · maximum 10 MB</p>
+                          </div>
+                          <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                            <ImagePlus className="mr-2 h-4 w-4" />
+                            {backgroundUploadPending ? "Uploading…" : "Choose image"}
+                            <input
+                              id="background-image-upload"
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp,image/gif"
+                              className="sr-only"
+                              disabled={backgroundUploadPending}
+                              onChange={async (event) => {
+                                const file = event.target.files?.[0];
+                                if (!file) return;
+                                try {
+                                  if (!file.type.startsWith("image/")) throw new Error("Choose a valid image file.");
+                                  if (file.size > 10 * 1024 * 1024) throw new Error("Image must be 10 MB or smaller.");
+                                  setBackgroundUploadPending(true);
+                                  const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+                                  const filePath = "site-branding/background-" + Date.now() + "." + extension;
+                                  const { error: uploadError } = await supabase.storage
+                                    .from("site-assets")
+                                    .upload(filePath, file, {
+                                      cacheControl: "31536000",
+                                      contentType: file.type,
+                                      upsert: true,
+                                    });
+                                  if (uploadError) throw uploadError;
+                                  const { data } = supabase.storage.from("site-assets").getPublicUrl(filePath);
+                                  setForm((current) => current ? { ...current, background_image_url: data.publicUrl } : current);
+                                  toast.success("Background uploaded. Click Save settings to publish it.");
+                                } catch (error) {
+                                  toast.error(error instanceof Error ? error.message : "Image upload failed.");
+                                } finally {
+                                  setBackgroundUploadPending(false);
+                                  event.target.value = "";
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                        {form.background_image_url ? (
+                          <div className="space-y-2">
+                            <img
+                              src={form.background_image_url}
+                              alt="Website background preview"
+                              className="max-h-64 w-full rounded-lg border border-border/70 object-cover"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setForm({ ...form, background_image_url: "" })}
+                            >
+                              Remove background
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                            No background image selected. Choose an image to see its preview here.
+                          </div>
+                        )}
+                      </div>
                     <>
                       {(
                         [
