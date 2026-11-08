@@ -1,6 +1,8 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Sandbox } from "@vercel/sandbox";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
 import { repairMissingStylesheetImports } from "./agent.server";
 
@@ -650,6 +652,8 @@ export async function publishCloudProject(
   projectId: string,
   sourceFiles: AgentProjectFiles,
   slug: string,
+  userId: string,
+  storageClient: SupabaseClient<Database>,
 ) {
   if (!/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(slug))
     throw new Error("The public app address is invalid.");
@@ -742,18 +746,18 @@ export async function publishCloudProject(
     throw new Error("The production build does not contain index.html.");
 
   const releaseId = randomUUID();
-  const prefix = `${slug}/${releaseId}`;
+  const prefix = `${userId}/${slug}/${releaseId}`;
   for (let offset = 0; offset < outputFiles.length; offset += 8) {
     const batch = outputFiles.slice(offset, offset + 8);
     const results = await Promise.all(
       batch.map(async (file) => {
         const path = `${prefix}/${file.path}`;
-        const { error } = await supabaseAdmin.storage
+        const { error } = await storageClient.storage
           .from("published-apps")
           .upload(path, file.content, {
             contentType: publishedContentType(file.path),
             cacheControl: "31536000",
-            upsert: true,
+            upsert: false,
           });
         if (error) throw new Error(`Could not publish ${file.path}: ${error.message}`);
       }),
@@ -761,7 +765,7 @@ export async function publishCloudProject(
     void results;
   }
 
-  const { data } = supabaseAdmin.storage
+  const { data } = storageClient.storage
     .from("published-apps")
     .getPublicUrl(`${prefix}/index.html`);
   return { url: data.publicUrl, slug, releaseId, fileCount: outputFiles.length };
