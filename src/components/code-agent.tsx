@@ -59,6 +59,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import {
   pushProjectToGithub,
+  importGitHubProject,
   publishAgentProject,
   runCodingAgent,
   startAgentTerminal,
@@ -220,6 +221,7 @@ export function CodeAgent() {
   const queryClient = useQueryClient();
   const run = useServerFn(runCodingAgent);
   const push = useServerFn(pushProjectToGithub);
+  const importGithub = useServerFn(importGitHubProject);
   const publish = useServerFn(publishAgentProject);
   const startPreview = useServerFn(startAgentPreview);
   const connectTerminal = useServerFn(startAgentTerminal);
@@ -241,6 +243,10 @@ export function CodeAgent() {
   const [logs, setLogs] = useState<{ type: string; message: string }[]>([]);
   const [previewKey, setPreviewKey] = useState(0);
   const [githubOpen, setGithubOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importRepoUrl, setImportRepoUrl] = useState("");
+  const [importToken, setImportToken] = useState("");
+  const [importingRepo, setImportingRepo] = useState(false);
   const [githubToken, setGithubToken] = useState("");
   const [githubRepo, setGithubRepo] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -780,6 +786,57 @@ export function CodeAgent() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  async function cloneGithubRepository() {
+    if (!user || importingRepo) return;
+    const repoUrl = importRepoUrl.trim();
+    if (!repoUrl) {
+      toast.error("Paste a GitHub repository URL.");
+      return;
+    }
+    setImportingRepo(true);
+    try {
+      // Preserve the workspace currently open before switching to the imported repository.
+      if (!projectId || dirty) await persist();
+      const imported = await importGithub({
+        data: { repoUrl, token: importToken.trim() || undefined },
+      });
+      const { data, error } = await supabase
+        .from("agent_projects")
+        .insert({
+          user_id: user.id,
+          name: imported.name,
+          files: imported.files as unknown as Json,
+          messages: [],
+          github_repo: imported.repoUrl,
+          published: false,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      resetRuntimeForProjectChange();
+      setProjectId(data.id);
+      setName(imported.name);
+      setFiles(imported.files);
+      setMessages([]);
+      setActiveFile(Object.keys(imported.files).sort()[0] ?? "README.md");
+      setGithubRepo(imported.repoUrl);
+      setLogs([]);
+      setPanel("code");
+      setDirty(false);
+      setImportOpen(false);
+      setImportRepoUrl("");
+      setImportToken("");
+      await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
+      toast.success(
+        'Imported "' + imported.name + '" as a project folder (' + imported.fileCount + " files).",
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not clone this GitHub repository.");
+    } finally {
+      setImportingRepo(false);
+    }
+  }
+
   async function sendPrompt() {
     if (CODING_AGENT_UNDER_DEVELOPMENT) return;
     const text = prompt.trim();
@@ -1165,18 +1222,29 @@ export function CodeAgent() {
               <div className="mb-2 flex items-center justify-between px-1">
                 <span className="flex items-center gap-2 text-xs font-semibold text-slate-300">
                   <Folder className="h-3.5 w-3.5 text-cyan-300" />
-                  Your projects
+                  Project Explorer
                 </span>
-                <button
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setImportOpen(true)}
+                    className="rounded p-1 text-slate-500 hover:bg-white/10 hover:text-white"
+                    aria-label="Clone from GitHub"
+                    title="Clone from GitHub"
+                  >
+                    <Github className="h-3.5 w-3.5" />
+                  </button>
+                  <button
                   onClick={createProject}
                   className="rounded p-1 text-slate-500 hover:bg-white/10 hover:text-cyan-300"
                   aria-label="Create project"
+                  title="New project folder"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                </button>
+                  </button>
+                </div>
               </div>
 
-              <div className="max-h-40 space-y-1 overflow-y-auto">
+              <div className="max-h-64 space-y-1 overflow-y-auto">
                 {projectsLoading && (
                   <p className="px-2 py-2 text-xs text-slate-500">Loading projects…</p>
                 )}
@@ -1200,8 +1268,11 @@ export function CodeAgent() {
                           : "text-slate-400 hover:text-white"
                       }`}
                     >
-                      <Code2 className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">{project.name}</span>
+                      <Folder className="h-3.5 w-3.5 shrink-0 text-amber-300" />
+                      <span className="min-w-0 flex-1 truncate">{project.name}</span>
+                      {project.github_repo && (
+                        <Github className="h-3 w-3 shrink-0 text-slate-500" aria-label="GitHub repository" />
+                      )}
                     </button>
                     <button
                       type="button"
@@ -2063,6 +2134,63 @@ export function CodeAgent() {
                 </button>
               );
             })}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clone repository dialog */}
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <DialogContent className="border-slate-700 bg-[#101a29] text-white sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Github className="h-5 w-5" />
+              Clone a GitHub repository
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm leading-6 text-slate-400">
+              Import a repository into your Project Explorer. It will become its own folder and open in the editor.
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="clone-repo-url">GitHub repository URL</Label>
+              <Input
+                id="clone-repo-url"
+                value={importRepoUrl}
+                onChange={(event) => setImportRepoUrl(event.target.value)}
+                placeholder="https://github.com/owner/repository"
+                className="border-white/10 bg-white/5"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="clone-github-token">GitHub access token <span className="font-normal text-slate-500">(private repositories only)</span></Label>
+              <Input
+                id="clone-github-token"
+                type="password"
+                autoComplete="off"
+                value={importToken}
+                onChange={(event) => setImportToken(event.target.value)}
+                placeholder="Optional token for private repositories"
+                className="border-white/10 bg-white/5"
+              />
+              <p className="text-[11px] leading-5 text-slate-500">
+                Public repositories can be imported without a token. A token is used only for this import and is never saved.
+              </p>
+            </div>
+            <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-3 text-xs leading-5 text-slate-400">
+              Imports up to 120 text files and 1 MB per project. Generated folders, binary assets and secret files are skipped. Your GitHub repository is not modified.
+            </div>
+            <Button
+              className="w-full bg-white text-slate-950 hover:bg-slate-200"
+              disabled={importingRepo || !importRepoUrl.trim()}
+              onClick={() => void cloneGithubRepository()}
+            >
+              {importingRepo ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Folder className="mr-2 h-4 w-4" />
+              )}
+              {importingRepo ? "Cloning repository…" : "Clone into Project Explorer"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
