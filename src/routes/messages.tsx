@@ -103,7 +103,10 @@ function MessagesPage() {
   const [attachmentPreview, setAttachmentPreview] = useState("");
   const [recording, setRecording] = useState(false);
   const [callState, setCallState] = useState<"idle" | "incoming" | "calling" | "connected">("idle");
-  const [incomingCall, setIncomingCall] = useState<{ from_user_id: string; payload: RTCSessionDescriptionInit } | null>(null);
+  const [incomingCall, setIncomingCall] = useState<{
+    from_user_id: string;
+    payload: RTCSessionDescriptionInit;
+  } | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [muted, setMuted] = useState(false);
@@ -187,13 +190,16 @@ function MessagesPage() {
     peerConnectionRef.current = pc;
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        void sendCallSignal("ice", { candidate: event.candidate.toJSON() }).catch((error: Error) => toast.error(error.message));
+        void sendCallSignal("ice", { candidate: event.candidate.toJSON() }).catch((error: Error) =>
+          toast.error(error.message),
+        );
       }
     };
     pc.ontrack = (event) => setRemoteStream(event.streams[0] ?? new MediaStream([event.track]));
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === "connected") setCallState("connected");
-      if (pc.connectionState === "failed") toast.error("The call could not connect. Your network may require a TURN relay.");
+      if (pc.connectionState === "failed")
+        toast.error("The call could not connect. Your network may require a TURN relay.");
       if (pc.connectionState === "failed" || pc.connectionState === "closed") {
         if (peerConnectionRef.current === pc) void endCall(false);
       }
@@ -290,8 +296,14 @@ function MessagesPage() {
           setRecording(false);
           return;
         }
-        const extension = blob.type.includes("ogg") ? "ogg" : blob.type.includes("mp4") ? "m4a" : "webm";
-        const file = new File([blob], "voice-message-" + Date.now() + "." + extension, { type: blob.type || "audio/webm" });
+        const extension = blob.type.includes("ogg")
+          ? "ogg"
+          : blob.type.includes("mp4")
+            ? "m4a"
+            : "webm";
+        const file = new File([blob], "voice-message-" + Date.now() + "." + extension, {
+          type: blob.type || "audio/webm",
+        });
         if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
         setAttachment(file);
         setAttachmentPreview(URL.createObjectURL(blob));
@@ -305,7 +317,9 @@ function MessagesPage() {
       recorder.start();
       setRecording(true);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Allow microphone access to record a voice note.");
+      toast.error(
+        error instanceof Error ? error.message : "Allow microphone access to record a voice note.",
+      );
     }
   }
 
@@ -331,7 +345,8 @@ function MessagesPage() {
   useEffect(() => {
     if (!userId || !activeConversationId) return;
     let cancelled = false;
-    let cursor = callCursorRef.current[activeConversationId] ?? new Date(Date.now() - 120_000).toISOString();
+    let cursor =
+      callCursorRef.current[activeConversationId] ?? new Date(Date.now() - 120_000).toISOString();
     const pollSignals = async () => {
       const { data, error } = await supabase
         .from("direct_call_signals")
@@ -374,7 +389,9 @@ function MessagesPage() {
               if (signal.signal_type === "reject") toast("The call was declined.");
             }
           } catch (error) {
-            toast.error(error instanceof Error ? error.message : "A call signal could not be processed.");
+            toast.error(
+              error instanceof Error ? error.message : "A call signal could not be processed.",
+            );
           }
         }
         await supabase.from("direct_call_signals").delete().eq("id", signal.id);
@@ -581,7 +598,8 @@ function MessagesPage() {
         media_path = path;
       }
       const body = draft.trim();
-      if (!body && !media_path) throw new Error("Write a message, share a photo or record a voice note.");
+      if (!body && !media_path)
+        throw new Error("Write a message, share a photo or record a voice note.");
       const { error } = await supabase.from("direct_messages").insert({
         conversation_id: activeConversation.id,
         sender_id: user.id,
@@ -987,36 +1005,99 @@ function MessagesPage() {
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <p className="text-sm font-semibold">Incoming video call</p>
-                          <p className="text-xs text-muted-foreground">{personName(recipient)} is calling you.</p>
+                          <p className="text-xs text-muted-foreground">
+                            {personName(recipient)} is calling you.
+                          </p>
                         </div>
                         <div className="flex gap-2">
-                          <Button size="sm" onClick={() => void acceptVideoCall()}>Accept</Button>
-                          <Button size="sm" variant="outline" onClick={() => { void sendCallSignal("reject").catch(() => undefined); void endCall(false); }}>Decline</Button>
+                          <Button size="sm" onClick={() => void acceptVideoCall()}>
+                            Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              void sendCallSignal("reject").catch(() => undefined);
+                              void endCall(false);
+                            }}
+                          >
+                            Decline
+                          </Button>
                         </div>
                       </div>
                     ) : (
                       <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-2">
                           <div className="relative overflow-hidden rounded-xl bg-black">
-                            <video ref={localVideoRef} autoPlay muted playsInline className="aspect-video w-full object-cover" />
-                            <span className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-1 text-[10px] text-white">You</span>
+                            <video
+                              ref={localVideoRef}
+                              autoPlay
+                              muted
+                              playsInline
+                              className="aspect-video w-full object-cover"
+                            />
+                            <span className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-1 text-[10px] text-white">
+                              You
+                            </span>
                           </div>
                           <div className="relative overflow-hidden rounded-xl bg-black">
-                            <video ref={remoteVideoRef} autoPlay playsInline className="aspect-video w-full object-cover" />
-                            {!remoteStream && <span className="absolute inset-0 grid place-items-center text-xs text-white/70">Connecting…</span>}
-                            <span className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-1 text-[10px] text-white">{personName(recipient)}</span>
+                            <video
+                              ref={remoteVideoRef}
+                              autoPlay
+                              playsInline
+                              className="aspect-video w-full object-cover"
+                            />
+                            {!remoteStream && (
+                              <span className="absolute inset-0 grid place-items-center text-xs text-white/70">
+                                Connecting…
+                              </span>
+                            )}
+                            <span className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-1 text-[10px] text-white">
+                              {personName(recipient)}
+                            </span>
                           </div>
                         </div>
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="text-xs text-muted-foreground">{callState === "connected" ? "Connected" : "Calling…"}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {callState === "connected" ? "Connected" : "Calling…"}
+                          </span>
                           <div className="flex gap-2">
-                            <Button size="sm" variant={muted ? "secondary" : "outline"} onClick={() => { const next = !muted; localStream?.getAudioTracks().forEach((track) => { track.enabled = !next; }); setMuted(next); }}>
+                            <Button
+                              size="sm"
+                              variant={muted ? "secondary" : "outline"}
+                              onClick={() => {
+                                const next = !muted;
+                                localStream?.getAudioTracks().forEach((track) => {
+                                  track.enabled = !next;
+                                });
+                                setMuted(next);
+                              }}
+                            >
                               {muted ? "Unmute" : "Mute"}
                             </Button>
-                            <Button size="sm" variant={cameraOff ? "secondary" : "outline"} onClick={() => { const next = !cameraOff; localStream?.getVideoTracks().forEach((track) => { track.enabled = !next; }); setCameraOff(next); }}>
-                              {cameraOff ? <Video className="mr-1 h-3.5 w-3.5" /> : <VideoOff className="mr-1 h-3.5 w-3.5" />} Camera
+                            <Button
+                              size="sm"
+                              variant={cameraOff ? "secondary" : "outline"}
+                              onClick={() => {
+                                const next = !cameraOff;
+                                localStream?.getVideoTracks().forEach((track) => {
+                                  track.enabled = !next;
+                                });
+                                setCameraOff(next);
+                              }}
+                            >
+                              {cameraOff ? (
+                                <Video className="mr-1 h-3.5 w-3.5" />
+                              ) : (
+                                <VideoOff className="mr-1 h-3.5 w-3.5" />
+                              )}{" "}
+                              Camera
                             </Button>
-                            <Button size="sm" variant="destructive" onClick={() => void endCall(true)}>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => void endCall(true)}
+                            >
                               <PhoneOff className="mr-1 h-3.5 w-3.5" /> End
                             </Button>
                           </div>
@@ -1046,7 +1127,8 @@ function MessagesPage() {
                       <Sparkles className="mx-auto h-6 w-6 text-primary" />
                       <p className="mt-2 text-sm font-semibold">Say hello</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        This is the beginning of your conversation. Send a message, share a photo or record a voice note.
+                        This is the beginning of your conversation. Send a message, share a photo or
+                        record a voice note.
                       </p>
                     </div>
                   )}
@@ -1060,17 +1142,23 @@ function MessagesPage() {
                         <div
                           className={`max-w-[min(82%,520px)] rounded-3xl px-4 py-3 shadow-sm ${mine ? "rounded-br-md bg-gradient-to-br from-primary to-primary/80 text-primary-foreground" : "rounded-bl-md border border-border/70 bg-card"}`}
                         >
-                          {message.media_url && (message.media_path?.match(/\.(webm|ogg|m4a|mp3|wav)$/i) ? (
-                            <audio controls preload="metadata" src={message.media_url} className="mb-2 max-w-full" />
-                          ) : (
-                            <a href={message.media_url} target="_blank" rel="noreferrer">
-                              <img
+                          {message.media_url &&
+                            (message.media_path?.match(/\.(webm|ogg|m4a|mp3|wav)$/i) ? (
+                              <audio
+                                controls
+                                preload="metadata"
                                 src={message.media_url}
-                                alt="Shared attachment"
-                                className="mb-2 max-h-80 rounded-2xl object-cover"
+                                className="mb-2 max-w-full"
                               />
-                            </a>
-                          ))}
+                            ) : (
+                              <a href={message.media_url} target="_blank" rel="noreferrer">
+                                <img
+                                  src={message.media_url}
+                                  alt="Shared attachment"
+                                  className="mb-2 max-h-80 rounded-2xl object-cover"
+                                />
+                              </a>
+                            ))}
                           {message.body && (
                             <p className="whitespace-pre-wrap break-words text-sm leading-6">
                               {message.body}
@@ -1121,7 +1209,11 @@ function MessagesPage() {
                       {attachment?.type.startsWith("audio/") ? (
                         <audio controls src={attachmentPreview} className="min-w-0 flex-1" />
                       ) : (
-                        <img src={attachmentPreview} alt="Attachment preview" className="h-14 w-14 rounded-lg object-cover" />
+                        <img
+                          src={attachmentPreview}
+                          alt="Attachment preview"
+                          className="h-14 w-14 rounded-lg object-cover"
+                        />
                       )}
                       <span className="min-w-0 flex-1 truncate text-xs">{attachment?.name}</span>
                       <Button
@@ -1157,7 +1249,9 @@ function MessagesPage() {
                       className="h-10 w-10 shrink-0 rounded-xl"
                       aria-label={recording ? "Stop voice recording" : "Record voice message"}
                       title={recording ? "Stop recording" : "Record voice message"}
-                      onClick={() => recording ? stopVoiceRecording() : void startVoiceRecording()}
+                      onClick={() =>
+                        recording ? stopVoiceRecording() : void startVoiceRecording()
+                      }
                       disabled={sendMessage.isPending || Boolean(attachment && !recording)}
                     >
                       {recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
@@ -1179,7 +1273,9 @@ function MessagesPage() {
                     <Button
                       type="submit"
                       size="icon"
-                      disabled={sendMessage.isPending || (!draft.trim() && !attachment) || recording}
+                      disabled={
+                        sendMessage.isPending || (!draft.trim() && !attachment) || recording
+                      }
                       className="h-10 w-10 shrink-0 rounded-xl"
                     >
                       <Send className="h-4 w-4" />
