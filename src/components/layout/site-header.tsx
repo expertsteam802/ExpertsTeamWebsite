@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Instagram, LogOut, Menu, Palette, Shield, Youtube } from "lucide-react";
+import { Instagram, LogOut, Menu, MoreHorizontal, Palette, Shield, Youtube } from "lucide-react";
 import { useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -26,6 +26,7 @@ const NAV_ITEMS = [
   { to: "/projects", label: "Workspace" },
   { to: "/ai", label: "ExpertAI" },
   { to: "/messages", label: "Messages" },
+  { to: "/vault", label: "Personal Vault" },
 ] as const;
 
 const ALIGN: Record<NavAlign, string> = {
@@ -56,7 +57,7 @@ export function SiteHeader() {
 
         <nav
           className={cn(
-            "hidden min-w-0 flex-1 grid-cols-9 items-stretch gap-1 lg:grid",
+            "hidden min-w-0 flex-1 grid-cols-10 items-stretch gap-1 lg:grid",
             ALIGN[navAlign],
           )}
         >
@@ -70,12 +71,20 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
-          <Link
-            to="/contact"
-            className="font-display flex min-w-0 items-center justify-center rounded-lg px-1.5 py-2 text-center text-sm font-semibold tracking-tight leading-tight text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:text-foreground"
-          >
-            Contact
-          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-full min-w-0 gap-1 px-2 text-xs font-semibold">
+                <MoreHorizontal className="h-4 w-4" /> More
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem asChild><Link to="/contact">Contact</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/pricing">Pricing</Link></DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild><Link to="/privacy">Privacy</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/terms">Terms of Use</Link></DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
@@ -197,13 +206,12 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
-          <Link
-            to="/contact"
-            onClick={() => setOpen(false)}
-            className="mt-2 block rounded-md px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
-          >
-            Contact
-          </Link>
+          <div className="mt-2 grid grid-cols-2 gap-2 border-t border-border/70 pt-3">
+            <Link to="/contact" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary">Contact</Link>
+            <Link to="/pricing" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary">Pricing</Link>
+            <Link to="/privacy" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary">Privacy</Link>
+            <Link to="/terms" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary">Terms of Use</Link>
+          </div>
         </nav>
       )}
     </header>
