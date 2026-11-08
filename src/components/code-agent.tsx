@@ -62,6 +62,7 @@ import {
   publishAgentProject,
   runCodingAgent,
   startAgentTerminal,
+  syncAgentTerminalFiles,
   startAgentPreview,
   stopAgentPreview,
 } from "@/lib/agent.functions";
@@ -210,6 +211,7 @@ export function CodeAgent() {
   const publish = useServerFn(publishAgentProject);
   const startPreview = useServerFn(startAgentPreview);
   const connectTerminal = useServerFn(startAgentTerminal);
+  const syncTerminalFiles = useServerFn(syncAgentTerminalFiles);
   const stopPreview = useServerFn(stopAgentPreview);
 
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -482,6 +484,24 @@ export function CodeAgent() {
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, []);
+
+  async function importTerminalChanges() {
+    if (!projectId) return;
+    try {
+      const result = await syncTerminalFiles({ data: { projectId } });
+      const importedFiles = result.files;
+      await persist({ files: importedFiles });
+      setFiles(importedFiles);
+      const nextActiveFile = Object.keys(importedFiles).includes(activeFile)
+        ? activeFile
+        : Object.keys(importedFiles)[0];
+      if (nextActiveFile) setActiveFile(nextActiveFile);
+      setDirty(false);
+      toast.success("Imported " + Object.keys(importedFiles).length + " project files from Linux");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not import terminal changes.");
+    }
+  }
 
   async function openTerminal() {
     if (terminalReady) return;
@@ -1540,6 +1560,14 @@ async function runProject() {
                         className="text-xs text-slate-500 hover:text-white disabled:opacity-30"
                       >
                         Clear
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!terminalReady}
+                        onClick={() => void importTerminalChanges()}
+                        className="rounded border border-cyan-400/20 px-2 py-1 text-[10px] text-cyan-200 hover:bg-cyan-400/10 disabled:opacity-30"
+                      >
+                        Import files
                       </button>
                       {!terminalReady && (
                         <button
