@@ -391,7 +391,7 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
     '  client.on("close", () => { try { shell.kill("SIGHUP"); } catch {} if (activeShell === shell) activeShell = null; });',
     "});",
     'server.listen(Number(process.env.TERMINAL_PORT || 4174), "0.0.0.0");',
-  ].join("\\n");
+  ].join("\n");
 
   await sandbox.writeFiles([
     { path: bridgeDir + "/package.json", content: Buffer.from(packageJson, "utf8") },
