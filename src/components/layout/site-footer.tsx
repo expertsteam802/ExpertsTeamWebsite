@@ -34,6 +34,12 @@ export function SiteFooter() {
           <Link to="/learn" className="block text-muted-foreground hover:text-foreground">
             Learn to code
           </Link>
+          <Link to="/explore" className="block text-muted-foreground hover:text-foreground">
+            Explore all
+          </Link>
+          <Link to="/about" className="block text-muted-foreground hover:text-foreground">
+            About ExpertsTeam
+          </Link>
         </div>
         <div className="space-y-2 text-sm">
           <p className="font-medium">Community</p>
@@ -42,6 +48,15 @@ export function SiteFooter() {
           </Link>
           <Link to="/auth" className="block text-muted-foreground hover:text-foreground">
             Join the community
+          </Link>
+          <Link to="/privacy" className="block text-muted-foreground hover:text-foreground">
+            Privacy policy
+          </Link>
+          <Link to="/terms" className="block text-muted-foreground hover:text-foreground">
+            Terms of service
+          </Link>
+          <Link to="/cookies" className="block text-muted-foreground hover:text-foreground">
+            Cookie notice
           </Link>
         </div>
         <div className="space-y-2 text-sm">
