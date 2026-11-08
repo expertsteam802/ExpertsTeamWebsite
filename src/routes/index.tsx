@@ -161,132 +161,22 @@ function Index() {
           </div>
 
           <div className="animate-float relative mx-auto w-full max-w-2xl">
-            <div className="absolute -inset-5 rounded-[2rem] bg-gradient-to-br from-primary/15 via-transparent to-accent/10 blur-2xl" />
-            <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#080d18] shadow-2xl shadow-black/40 ring-1 ring-white/10">
-              <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.035] px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-amber-300/80" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
-                  <span className="ml-2 text-[11px] font-medium tracking-wide text-slate-400">
-                    EXPERTSTEAM / STUDIO
-                  </span>
-                </div>
-                <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] text-emerald-300">
-                  WORKSPACE
-                </span>
-              </div>
-
-              <div className="grid min-h-[330px] grid-cols-[116px_1fr] sm:min-h-[390px] sm:grid-cols-[145px_1fr]">
-                <aside className="border-r border-white/10 bg-white/[0.02] p-3 sm:p-4">
-                  <div className="mb-6 flex items-center gap-2 text-xs font-bold text-white">
-                    <span className="grid h-6 w-6 place-items-center rounded-lg bg-gradient-to-br from-cyan-300 to-violet-400 text-[11px] text-slate-950">
-                      E
-                    </span>
-                    <span>Studio</span>
-                  </div>
-                  <div className="space-y-2 text-[10px] text-slate-400 sm:text-[11px]">
-                    <div className="flex items-center gap-2 rounded-lg bg-cyan-300/10 px-2 py-2 text-cyan-200">
-                      <WandSparkles className="h-3.5 w-3.5" /> Builder
-                    </div>
-                    <div className="flex items-center gap-2 px-2 py-2">
-                      <Code2 className="h-3.5 w-3.5" /> Editor
-                    </div>
-                    <div className="flex items-center gap-2 px-2 py-2">
-                      <TerminalSquare className="h-3.5 w-3.5" /> Terminal
-                    </div>
-                    <div className="mt-5 border-t border-white/10 pt-4 text-[9px] uppercase tracking-widest text-slate-600">
-                      Your projects
-                    </div>
-                    <div className="truncate px-2 py-2 text-slate-300">✦ Launchpad</div>
-                    <div className="truncate px-2 py-2">◈ Portfolio</div>
-                  </div>
-                </aside>
-
-                <div className="flex min-w-0 flex-col p-4 sm:p-6">
-                  <div className="mb-5 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-[0.2em] text-cyan-300">
-                        New project
-                      </p>
-                      <h2 className="mt-1 font-display text-lg font-semibold text-white sm:text-xl">
-                        What will you create?
-                      </h2>
-                    </div>
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/5 text-cyan-200">
-                      <Bot className="h-4 w-4" />
-                    </span>
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-[#0e1727] p-3 sm:p-4">
-                    <p className="text-xs leading-6 text-slate-300 sm:text-sm">
-                      Build a clean website for a creative studio with a project gallery, contact
-                      form and a bold dark theme.
-                    </p>
-                    <div className="mt-4 flex items-center justify-between gap-2 border-t border-white/10 pt-3">
-                      <span className="text-[10px] text-slate-500">
-                        Describe your idea in your own words…
-                      </span>
-                      <span className="grid h-8 w-8 place-items-center rounded-lg bg-cyan-300 text-slate-950">
-                        <ArrowRight className="h-4 w-4" />
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="my-5 flex items-center gap-3 text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                    <span className="h-px flex-1 bg-white/10" /> BUILD PROGRESS{" "}
-                    <span className="h-px flex-1 bg-white/10" />
-                  </div>
-
-                  <div className="space-y-3">
-                    {[
-                      ["01", "Understand the idea", "Map pages and key features"],
-                      ["02", "Create the experience", "Build the layout and components"],
-                      ["03", "Preview and refine", "Test it, then polish the details"],
-                    ].map(([number, title, detail], index) => (
-                      <div
-                        key={number}
-                        className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] p-3"
-                      >
-                        <span
-                          className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[10px] font-bold ${index === 0 ? "bg-cyan-300/15 text-cyan-200" : "bg-white/5 text-slate-500"}`}
-                        >
-                          {number}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-slate-200">{title}</p>
-                          <p className="mt-0.5 text-[10px] text-slate-500">{detail}</p>
-                        </div>
-                        {index === 0 ? (
-                          <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
-                        ) : (
-                          <span className="text-[10px] text-slate-600">NEXT</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-auto flex items-center gap-2 pt-5 text-[10px] text-slate-500">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> A plan you can
-                    review before the build begins
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center justify-between border-t border-white/10 bg-white/[0.025] px-4 py-3 text-[10px] text-slate-500">
-                <span>IDEAS → BUILD → PREVIEW</span>
-                <span className="inline-flex items-center gap-1.5 text-cyan-300">
-                  <Sparkles className="h-3 w-3" /> Made to create
-                </span>
-              </div>
+            <div className="absolute -inset-5 rounded-[2rem] bg-gradient-to-br from-primary/20 via-transparent to-amber-400/10 blur-2xl" />
+            <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#081426] shadow-2xl shadow-black/40 ring-1 ring-white/10">
+              <img
+                src="/experts-team-platform-visual.svg"
+                alt="ExpertsTeam platform overview showing developer projects, learning, community and personal files"
+                className="block h-auto w-full"
+                loading="eager"
+              />
             </div>
             <div className="absolute -bottom-5 -left-3 hidden items-center gap-2 rounded-2xl border border-border bg-card/95 px-4 py-3 shadow-xl backdrop-blur sm:flex">
               <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary">
-                <Rocket className="h-4 w-4" />
+                <Users className="h-4 w-4" />
               </span>
               <span>
-                <span className="block text-xs font-semibold">From thought to launch</span>
-                <span className="block text-[10px] text-muted-foreground">
-                  One workspace. Your next move.
-                </span>
+                <span className="block text-xs font-semibold">More than an AI studio</span>
+                <span className="block text-[10px] text-muted-foreground">Learn · Connect · Create · Share</span>
               </span>
             </div>
           </div>
