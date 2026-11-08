@@ -500,36 +500,7 @@ export function CodeAgent() {
     }
   }
 
-  async function submitTerminalCommand(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const command = terminalInput.trim();
-    if (!command || !projectId) return;
-    setTerminalInput("");
-    if (command === "clear") {
-      setTerminalOutput("");
-      return;
-    }
-    setTerminalOutput((current) => (current + `\r\n${terminalCwd}$ ${command}\r\n`).slice(-40000));
-    try {
-      const result = await terminalCommand({ data: { projectId, command } });
-      setTerminalCwd(result.cwd || terminalCwd);
-      setTerminalOutput((current) =>
-        (
-          current +
-          result.stdout +
-          (result.stderr ? `\r\n${result.stderr}` : "") +
-          `\r\n[exit ${result.exitCode}]\r\n`
-        ).slice(-40000),
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Command failed.";
-      setTerminalOutput((current) =>
-        (current + `\r\n[terminal error] ${message}\r\n`).slice(-40000),
-      );
-    }
-  }
-
-  async function runProject() {
+async function runProject() {
     if (runtimeBusy) return;
     setRuntimeBusy(true);
     setRuntimeStatus("Preparing cloud sandbox…");
