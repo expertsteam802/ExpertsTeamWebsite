@@ -65,6 +65,107 @@ export const runCodingAgent = createServerFn({ method: "POST" })
     return result;
   });
 
+export const importGitHubProject = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z.object({
+      repoUrl: z.string().trim().min(1).max(500),
+      token: z.string().trim().max(500).optional().default(""),
+    }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    let parsed: URL;
+    try {
+      parsed = new URL(data.repoUrl);
+    } catch {
+      throw new Error("Enter a valid GitHub repository URL.");
+    }
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    if (parsed.hostname.toLowerCase() !== "github.com" || parts.length < 2)
+      throw new Error("Use a repository URL like https://github.com/owner/repository.");
+    const owner = parts[0];
+    const repo = parts[1].replace(/\.git$/i, "");
+    if (!/^[A-Za-z0-9_.-]{1,100}$/.test(owner) || !/^[A-Za-z0-9_.-]{1,100}$/.test(repo))
+      throw new Error("The GitHub owner or repository name is invalid.");
+
+    const headers: Record<string, string> = {
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "ExpertsTeam-Project-Explorer",
+    };
+    if (data.token) headers.Authorization = "Bearer " + data.token;
+    const request = async (url: string, accept = "application/vnd.github+json") => {
+      const response = await fetch(url, { headers: { ...headers, Accept: accept }, signal: AbortSignal.timeout(20000) });
+      if (!response.ok) {
+        if (response.status === 404) throw new Error("Repository not found, or it is private. Check the URL and access token.");
+        if (response.status === 401 || response.status === 403) throw new Error("GitHub rejected access. Check your token and repository permissions or rate limit.");
+        throw new Error("GitHub request failed (" + response.status + ").");
+      }
+      return response;
+    };
+
+    const apiBase = "https://api.github.com/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo);
+    const metadataResponse = await request(apiBase);
+    const metadata = await metadataResponse.json() as { name?: string; default_branch?: string; html_url?: string };
+    const defaultBranch = metadata.default_branch;
+    if (!defaultBranch) throw new Error("GitHub did not return the repository's default branch.");
+    const treeResponse = await request(apiBase + "/git/trees/" + encodeURIComponent(defaultBranch) + "?recursive=1");
+    const tree = await treeResponse.json() as { truncated?: boolean; tree?: Array<{ path?: string; type?: string; size?: number }> };
+    if (tree.truncated) throw new Error("This repository is too large for a complete project import. Try a smaller repository.");
+    const ignoredDirectories = new Set([".git", "node_modules", "dist", "build", "out", ".next", ".vercel", "coverage", ".turbo", ".cache", "vendor"]);
+    const binaryExtensions = /\.(?:png|jpe?g|gif|webp|ico|pdf|zip|gz|tar|woff2?|ttf|otf|mp4|mp3|wav|mov|avi|exe|dll|so|dylib|class|jar|wasm|lockb)$/i;
+    const secretName = /^(?:\.env(?:\..*)?|\.npmrc|\.netrc|\.pypirc|id_rsa|id_ed25519|credentials?(?:\..*)?|secrets?(?:\..*)?)$/i;
+    const candidates = (tree.tree ?? [])
+      .filter((entry) => entry.type === "blob" && typeof entry.path === "string")
+      .filter((entry) => {
+        const path = entry.path!;
+        const segments = path.split("/");
+        const filename = segments.at(-1) ?? "";
+        return path.length <= 512 &&
+          /^[A-Za-z0-9_@./+ -]+$/.test(path) &&
+          !segments.some((part) => !part || part === "." || part === ".." || ignoredDirectories.has(part)) &&
+          !segments.some((part) => part.startsWith(".experts-")) &&
+          !secretName.test(filename) &&
+          !binaryExtensions.test(filename) &&
+          (entry.size ?? 0) <= 150000;
+      })
+      .sort((left, right) => {
+        const priority = (path: string) => /^(package\.json|index\.html|vite\.config\.[^/]+|README(?:\.md)?|src\/)/i.test(path) ? 0 : 1;
+        return priority(left.path!) - priority(right.path!) || left.path!.localeCompare(right.path!);
+      });
+    if (!candidates.length) throw new Error("No supported text source files were found in this repository.");
+    if (candidates.length > 120) throw new Error("This repository contains more than 120 supported text files. Reduce the repository size and try again.");
+
+    const files: Record<string, string> = {};
+    let totalBytes = 0;
+    for (let offset = 0; offset < candidates.length; offset += 6) {
+      const batch = candidates.slice(offset, offset + 6);
+      const downloaded = await Promise.all(batch.map(async (entry) => {
+        const path = entry.path!;
+        const rawUrl = "https://raw.githubusercontent.com/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo) + "/" + encodeURIComponent(defaultBranch) + "/" + path.split("/").map(encodeURIComponent).join("/");
+        const response = await request(rawUrl, "text/plain");
+        const buffer = Buffer.from(await response.arrayBuffer());
+        if (buffer.byteLength > 150000 || buffer.includes(0)) return null;
+        return { path, content: buffer.toString("utf8"), size: buffer.byteLength };
+      }));
+      for (const file of downloaded) {
+        if (!file) continue;
+        totalBytes += file.size;
+        if (totalBytes > 1_000_000)
+          throw new Error("The repository's text files exceed the current 1 MB project import limit. Use a smaller repository or remove generated files.");
+        files[file.path] = file.content;
+      }
+    }
+    if (!Object.keys(files).length) throw new Error("No readable source files could be imported.");
+    return {
+      name: metadata.name || repo,
+      repoUrl: metadata.html_url || "https://github.com/" + owner + "/" + repo,
+      branch: defaultBranch,
+      files,
+      fileCount: Object.keys(files).length,
+    };
+  });
+
 export const pushProjectToGithub = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: { token: string; repo: string; files: Record<string, string> }) => {
