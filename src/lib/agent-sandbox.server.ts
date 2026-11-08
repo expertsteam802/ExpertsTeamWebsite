@@ -10,8 +10,8 @@ const META_FILE = ".experts-agent-files.json";
 const PACKAGE_HASH_FILE = ".experts-agent-package-hash";
 
 function sandboxName(projectId: string) {
-  return `experts-agent-${projectId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 36)}`;
-}
+    .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "")
+    .replace(/\x1B\][^\x07]*(?:\x07|\x1B\\)/g, "")
 
 function validateFiles(files: AgentProjectFiles) {
   const entries = Object.entries(files);
