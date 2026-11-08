@@ -273,9 +273,9 @@ function shellQuote(value: string) {
 
 function cleanTerminalOutput(value: string) {
   return value
-    .replace(/\\x1B\\[[0-?]*[ -/]*[@-~]/g, "")
-    .replace(/\\x1B\\][^\\x07]*(?:\\x07|\\x1B\\\\)/g, "")
-    .replace(/\\r\\n?/g, "\\n")
+    .replace(/\x1B\\[[0-?]*[ -/]*[@-~]/g, "")
+    .replace(/\x1B\\][^\x07]*(?:\x07|\x1B\\\\)/g, "")
+    .replace(/\r\n?/g, "\n")
     .slice(-30_000);
 }
 
@@ -297,7 +297,7 @@ export async function runCloudProjectCommand(projectId: string, command: string)
     `export -p > ${shellQuote(envPath)}`,
     'exit "$command_status"',
     "",
-  ].join("\\n");
+  ].join("\n");
   await sandbox.writeFiles([
     { path: commandPath, content: Buffer.from(script, "utf8") },
   ]);
