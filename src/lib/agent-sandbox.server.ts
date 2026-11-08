@@ -416,7 +416,9 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
     timeoutMs: 10_000,
   });
   if (scriptCheck.exitCode !== 0)
-    throw new Error("This Vercel Sandbox image does not include the util-linux script command required to allocate a terminal.");
+    throw new Error(
+      "This Vercel Sandbox image does not include the util-linux script command required to allocate a terminal.",
+    );
   const installed = await sandbox.runCommand({
     cmd: "test",
     args: ["-d", bridgeDir + "/node_modules/ws"],
@@ -431,7 +433,8 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
     });
     if (install.exitCode !== 0)
       throw new Error(
-        "Could not install the JavaScript-only terminal runtime: " + (await install.stderr()).slice(-3000),
+        "Could not install the JavaScript-only terminal runtime: " +
+          (await install.stderr()).slice(-3000),
       );
   }
 
