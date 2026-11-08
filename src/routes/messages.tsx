@@ -1052,7 +1052,7 @@ function MessagesPage() {
                         <div
                           className={`max-w-[min(82%,520px)] rounded-3xl px-4 py-3 shadow-sm ${mine ? "rounded-br-md bg-gradient-to-br from-primary to-primary/80 text-primary-foreground" : "rounded-bl-md border border-border/70 bg-card"}`}
                         >
-                          {message.media_url && (message.media_path?.match(/\\.(webm|ogg|m4a|mp3|wav)$/i) ? (
+                          {message.media_url && (message.media_path?.match(/\.(webm|ogg|m4a|mp3|wav)$/i) ? (
                             <audio controls preload="metadata" src={message.media_url} className="mb-2 max-w-full" />
                           ) : (
                             <a href={message.media_url} target="_blank" rel="noreferrer">
