@@ -377,6 +377,61 @@ export async function startCloudProjectTerminal(projectId: string) {
   return { url: sandbox.domain(4174).replace(/^https:/, "wss:") + "/terminal", token };
 }
 
+export async function readCloudProjectFiles(projectId: string) {
+  const sandbox = await Sandbox.get({ name: sandboxName(projectId) });
+  const listing = await sandbox.runCommand({
+    cmd: "find",
+    args: [
+      ".",
+      "(",
+      "-path", "./node_modules",
+      "-o", "-path", "./.git",
+      "-o", "-path", "./dist",
+      "-o", "-path", "./build",
+      "-o", "-path", "./out",
+      "-o", "-path", "./.next",
+      "-o", "-path", "./.vercel",
+      "-o", "-path", "./coverage",
+      "-o", "-path", "./.experts-terminal-bridge",
+      ")",
+      "-prune",
+      "-o",
+      "-type", "f",
+      "-print",
+    ],
+    cwd: WORKDIR,
+    timeoutMs: 30_000,
+  });
+  if (listing.exitCode !== 0) throw new Error("Could not scan the sandbox project files.");
+  const paths = (await listing.stdout())
+    .split("\n")
+    .map((path) => path.trim().replace(/^\.\//, ""))
+    .filter((path) => {
+      const filename = path.split("/").at(-1) ?? "";
+      return (
+        path &&
+        /^[a-zA-Z0-9_@./-]+$/.test(path) &&
+        !path.split("/").some((part) => !part || part === "." || part === "..") &&
+        !/^\.env(?:\.|$)/i.test(filename) &&
+        !/^(?:id_rsa|id_ed25519|credentials?|secrets?)(?:\.|$)/i.test(filename) &&
+        !/\.(?:pem|key|p12|pfx)$/i.test(filename)
+      );
+    });
+  if (paths.length > 120) throw new Error("The project has more than 120 files; remove generated files before importing.");
+  const files: AgentProjectFiles = {};
+  let totalBytes = 0;
+  for (const path of paths) {
+    const buffer = await sandbox.readFileToBuffer({ path: WORKDIR + "/" + path });
+    if (!buffer) continue;
+    totalBytes += buffer.byteLength;
+    if (buffer.byteLength > 150_000 || totalBytes > 1_000_000)
+      throw new Error("The project files exceed the 1 MB import limit.");
+    files[path] = buffer.toString("utf8");
+  }
+  validateFiles(files);
+  return { files };
+}
+
 export async function runCloudProjectCommand(projectId: string, command: string) {
   if (!command.trim() || command.length > 3000)
     throw new Error("Enter a command under 3,000 characters.");
