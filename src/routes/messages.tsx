@@ -334,7 +334,10 @@ function MessagesPage() {
 
   useEffect(() => {
     return () => {
-      if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+      if (recorderRef.current?.state === "recording") {
+        recorderRef.current.onstop = null;
+        recorderRef.current.stop();
+      }
       recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
       peerConnectionRef.current?.getSenders().forEach((sender) => sender.track?.stop());
       peerConnectionRef.current?.close();
