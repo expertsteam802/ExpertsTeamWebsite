@@ -167,7 +167,7 @@ function MessagesPage() {
       from_user_id: user.id,
       to_user_id: recipient.id,
       signal_type,
-      payload: JSON.parse(JSON.stringify(payload)),
+      payload: JSON.parse(JSON.stringify(payload) ?? "{}"),
     });
     if (error) throw error;
   }
