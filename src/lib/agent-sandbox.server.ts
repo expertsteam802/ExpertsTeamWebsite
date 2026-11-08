@@ -274,7 +274,9 @@ function shellQuote(value: string) {
 
 function cleanTerminalOutput(value: string) {
   return value
+    // eslint-disable-next-line no-control-regex
     .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "")
+    // eslint-disable-next-line no-control-regex
     .replace(/\x1B\][^\x07]*(?:\x07|\x1B\\)/g, "")
     .replace(/\r\n?/g, "\n")
     .slice(-30_000);
