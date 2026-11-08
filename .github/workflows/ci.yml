@@ -31,7 +31,7 @@ jobs:
       - name: Build production app
         run: npm run build
       - name: Commit synchronized lockfile
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/work/production-hardening-2026-11')
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
           if ! git diff --quiet; then
             git config user.name "github-actions[bot]"
