@@ -58,6 +58,9 @@ export function SiteFooter() {
           <Link to="/terms" className="block text-muted-foreground hover:text-foreground">
             Terms of service
           </Link>
+          <Link to="/pricing" className="block text-muted-foreground hover:text-foreground">
+            Plans & limits
+          </Link>
           <Link to="/cookies" className="block text-muted-foreground hover:text-foreground">
             Cookie notice
           </Link>
