@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Sandbox } from "@vercel/sandbox";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
@@ -11,7 +11,7 @@ const META_FILE = ".experts-agent-files.json";
 const PACKAGE_HASH_FILE = ".experts-agent-package-hash";
 
 function sandboxName(projectId: string) {
-  return "experts-agent-" + projectId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 36);
+  return "experts-agent-pty-" + projectId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 36);
 }
 
 function validateFiles(files: AgentProjectFiles) {
@@ -121,7 +121,7 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
     runtime: "node24",
     resources: { vcpus: 1 },
     timeout: 45 * 60 * 1000,
-    ports: [port],
+    ports: [port, 4174],
     resume: true,
   });
 
@@ -278,6 +278,101 @@ function cleanTerminalOutput(value: string) {
     .replace(/\x1B\][^\x07]*(?:\x07|\x1B\\)/g, "")
     .replace(/\r\n?/g, "\n")
     .slice(-30_000);
+}
+
+export async function startCloudProjectTerminal(projectId: string) {
+  const sandbox = await Sandbox.get({ name: sandboxName(projectId) });
+  const bridgeDir = WORKDIR + "/.experts-terminal-bridge";
+  const tokenPath = WORKDIR + "/.experts-terminal-token";
+  await sandbox.runCommand({ cmd: "mkdir", args: ["-p", bridgeDir], cwd: WORKDIR });
+  const token = (await readText(sandbox, tokenPath))?.trim() || randomBytes(32).toString("hex");
+  const packageJson = JSON.stringify({
+    private: true,
+    type: "commonjs",
+    dependencies: { "node-pty": "^1.1.0", ws: "^8.18.3" },
+  });
+  const serverSource = [
+    'const http = require("node:http");',
+    'const { WebSocketServer } = require("ws");',
+    'const pty = require("node-pty");',
+    'let activeShell = null;',
+    'const server = http.createServer((request, response) => {',
+    '  if (request.url === "/health") { response.writeHead(200, { "content-type": "text/plain", "cache-control": "no-store" }); response.end("ok"); return; }',
+    '  response.writeHead(404); response.end();',
+    '});',
+    'const sockets = new WebSocketServer({ noServer: true, maxPayload: 65536, perMessageDeflate: false });',
+    'server.on("upgrade", (request, socket, head) => {',
+    '  if (request.url !== "/terminal") { socket.destroy(); return; }',
+    '  const protocols = String(request.headers["sec-websocket-protocol"] || "").split(",").map((value) => value.trim());',
+    '  if (!process.env.TERMINAL_TOKEN || !protocols.includes(process.env.TERMINAL_TOKEN)) { socket.write("HTTP/1.1 401 Unauthorized\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n"); socket.destroy(); return; }',
+    '  sockets.handleUpgrade(request, socket, head, (client) => sockets.emit("connection", client));',
+    '});',
+    'sockets.on("connection", (client) => {',
+    '  if (activeShell) { try { activeShell.kill(); } catch {} activeShell = null; }',
+    '  const shell = pty.spawn("/bin/bash", ["--login"], { name: "xterm-256color", cols: 100, rows: 30, cwd: process.env.TERMINAL_CWD || "/vercel/sandbox", env: { ...process.env, TERM: "xterm-256color", COLORTERM: "truecolor" } });',
+    '  activeShell = shell;',
+    '  shell.onData((data) => { if (client.readyState === 1) client.send(data); });',
+    '  shell.onExit(() => { if (activeShell === shell) activeShell = null; if (client.readyState === 1) client.close(); });',
+    '  client.on("message", (buffer) => {',
+    '    const value = buffer.toString();',
+    '    if (value.charCodeAt(0) === 0) { try { const control = JSON.parse(value.slice(1)); if (control.type === "resize") shell.resize(Math.max(20, Math.min(300, Number(control.cols) || 100)), Math.max(5, Math.min(100, Number(control.rows) || 30))); } catch {} return; }',
+    '    shell.write(value);',
+    '  });',
+    '  client.on("close", () => { try { shell.kill(); } catch {} if (activeShell === shell) activeShell = null; });',
+    '});',
+    'server.listen(Number(process.env.TERMINAL_PORT || 4174), "0.0.0.0");',
+  ].join("\n");
+
+  await sandbox.writeFiles([
+    { path: bridgeDir + "/package.json", content: Buffer.from(packageJson, "utf8") },
+    { path: bridgeDir + "/server.cjs", content: Buffer.from(serverSource, "utf8") },
+    { path: tokenPath, content: Buffer.from(token, "utf8"), mode: 0o600 },
+  ]);
+  const installed = await sandbox.runCommand({
+    cmd: "test",
+    args: ["-d", bridgeDir + "/node_modules/node-pty"],
+    cwd: WORKDIR,
+  });
+  if (installed.exitCode !== 0) {
+    const install = await sandbox.runCommand({
+      cmd: "npm",
+      args: ["install", "--no-audit", "--no-fund"],
+      cwd: bridgeDir,
+      timeoutMs: 180_000,
+    });
+    if (install.exitCode !== 0)
+      throw new Error("Could not install the isolated terminal runtime: " + (await install.stderr()).slice(-3000));
+  }
+
+  const ping = () =>
+    sandbox.runCommand({
+      cmd: "curl",
+      args: ["-fsS", "http://127.0.0.1:4174/health"],
+      cwd: WORKDIR,
+      timeoutMs: 5000,
+    });
+  const health = await ping();
+  if (health.exitCode !== 0) {
+    await sandbox.runCommand({
+      cmd: "node",
+      args: ["server.cjs"],
+      cwd: bridgeDir,
+      env: { TERMINAL_TOKEN: token, TERMINAL_CWD: WORKDIR, TERMINAL_PORT: "4174" },
+      detached: true,
+    });
+  }
+
+  let ready = false;
+  for (let attempt = 0; attempt < 25; attempt++) {
+    const check = await ping();
+    if (check.exitCode === 0 && (await check.stdout()).trim() === "ok") {
+      ready = true;
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+  if (!ready) throw new Error("The interactive Linux terminal did not start inside the sandbox.");
+  return { url: sandbox.domain(4174).replace(/^https:/, "wss:") + "/terminal", token };
 }
 
 export async function runCloudProjectCommand(projectId: string, command: string) {
