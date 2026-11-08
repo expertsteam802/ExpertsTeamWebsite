@@ -541,11 +541,9 @@ export function CodeAgent() {
     if (terminalReady) return;
     try {
       const activeProjectId = projectId ?? (await persist());
-      const preview = await startPreview({ data: { projectId: activeProjectId, files } });
-      setRuntimeUrl(preview.url);
-      setRuntimeStatus("Running in Vercel Sandbox");
-      runtimeFilesRef.current = { ...files };
-      const connection = await connectTerminal({ data: { projectId: activeProjectId } });
+      const connection = await connectTerminal({
+        data: { projectId: activeProjectId, files },
+      });
       setTerminalConnection(connection);
     } catch (error) {
       const message =
