@@ -159,8 +159,11 @@ export const Route = createFileRoute("/api/ai/stream")({
               process.env["SUPABASE_SERVICE_ROLE_KEY"] ||
               process.env["SERVICE_ROLE_KEY"];
             if (!serviceRoleKey) {
+              console.error(
+                "[ExpertAI] Guest access is disabled: configure SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY as a server-only Vercel environment variable.",
+              );
               return Response.json(
-                { error: "Guest chat is not configured yet. Please sign in to use ExpertAI." },
+                { error: "Guest access is temporarily unavailable. Sign in to continue or try again later." },
                 { status: 503 },
               );
             }
@@ -201,7 +204,7 @@ export const Route = createFileRoute("/api/ai/stream")({
             if (isAdmin) return null;
             if (isGuest) {
               if (!guestServiceClient || !guestIpHash)
-                return "Guest chat is not configured yet. Please sign in to use ExpertAI.";
+                return "Guest access is temporarily unavailable. Sign in to continue or try again later.";
               const { data: allowed, error } = await guestServiceClient.rpc(
                 "consume_guest_ai_credit",
                 {
