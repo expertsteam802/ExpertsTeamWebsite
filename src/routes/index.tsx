@@ -122,7 +122,9 @@ function Index() {
                 Make it real.
               </h1>
               <p className="max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
-                {settings.site_name} is your place to learn, build projects, share ideas, discover useful resources and connect with other creators. ExpertAI is here when you need a hand.
+                {settings.site_name} is your place to learn, build projects, share ideas, discover
+                useful resources and connect with other creators. ExpertAI is here when you need a
+                hand.
               </p>
             </div>
 

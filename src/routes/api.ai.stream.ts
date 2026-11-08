@@ -163,7 +163,10 @@ export const Route = createFileRoute("/api/ai/stream")({
                 "[ExpertAI] Guest access is disabled: configure SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY as a server-only Vercel environment variable.",
               );
               return Response.json(
-                { error: "Guest access is temporarily unavailable. Sign in to continue or try again later." },
+                {
+                  error:
+                    "Guest access is temporarily unavailable. Sign in to continue or try again later.",
+                },
                 { status: 503 },
               );
             }
