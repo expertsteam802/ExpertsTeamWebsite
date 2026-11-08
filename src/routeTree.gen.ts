@@ -27,6 +27,7 @@ import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ShowcaseRouteImport } from './routes/showcase'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as VideosRouteImport } from './routes/videos'
+import { Route as VaultRouteImport } from './routes/vault'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AppsSlugRouteImport } from './routes/apps.$slug'
@@ -121,6 +122,11 @@ const VideosRoute = VideosRouteImport.update({
   path: '/videos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VaultRoute = VaultRouteImport.update({
+  id: '/vault',
+  path: '/vault',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -160,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/showcase': typeof ShowcaseRoute
   '/terms': typeof TermsRoute
   '/videos': typeof VideosRoute
+  '/vault': typeof VaultRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/apps/$slug': typeof AppsSlugRoute
@@ -233,6 +240,7 @@ export interface FileRouteTypes {
     | '/showcase'
     | '/terms'
     | '/videos'
+    | '/vault'
     | '/admin'
     | '/dashboard'
     | '/apps/$slug'
@@ -305,6 +313,7 @@ export interface RootRouteChildren {
   ShowcaseRoute: typeof ShowcaseRoute
   TermsRoute: typeof TermsRoute
   VideosRoute: typeof VideosRoute
+  VaultRoute: typeof VaultRoute
   AppsSlugRoute: typeof AppsSlugRoute
   ApiAiStreamRoute: typeof ApiAiStreamRoute
 }
@@ -437,6 +446,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VideosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vault': {
+      id: '/vault'
+      path: '/vault'
+      fullPath: '/vault'
+      preLoaderRoute: typeof VaultRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -500,6 +516,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShowcaseRoute: ShowcaseRoute,
   TermsRoute: TermsRoute,
   VideosRoute: VideosRoute,
+  VaultRoute: VaultRoute,
   AppsSlugRoute: AppsSlugRoute,
   ApiAiStreamRoute: ApiAiStreamRoute,
 }
