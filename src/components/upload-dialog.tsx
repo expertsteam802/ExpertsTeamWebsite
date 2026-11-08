@@ -56,25 +56,40 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
     mutationFn: async () => {
       if (!user) throw new Error("Sign in to upload.");
       const cleanSourceUrl = sourceUrl.trim();
-      if (!file && !cleanSourceUrl) throw new Error("Choose a file or paste a download/source link.");
-      if (file && cleanSourceUrl) throw new Error("Choose either an uploaded file or an external link, not both.");
+      if (!file && !cleanSourceUrl)
+        throw new Error("Choose a file or paste a download/source link.");
+      if (file && cleanSourceUrl)
+        throw new Error("Choose either an uploaded file or an external link, not both.");
       if (cleanSourceUrl) {
         let parsed: URL;
-        try { parsed = new URL(cleanSourceUrl); } catch { throw new Error("Enter a valid source URL."); }
+        try {
+          parsed = new URL(cleanSourceUrl);
+        } catch {
+          throw new Error("Enter a valid source URL.");
+        }
         if (parsed.protocol !== "https:") throw new Error("External source links must use HTTPS.");
       }
       if (thumbnailUrl.trim()) {
         let parsedThumbnail: URL;
-        try { parsedThumbnail = new URL(thumbnailUrl.trim()); } catch { throw new Error("Enter a valid thumbnail URL."); }
-        if (parsedThumbnail.protocol !== "https:") throw new Error("Thumbnail URLs must use HTTPS.");
+        try {
+          parsedThumbnail = new URL(thumbnailUrl.trim());
+        } catch {
+          throw new Error("Enter a valid thumbnail URL.");
+        }
+        if (parsedThumbnail.protocol !== "https:")
+          throw new Error("Thumbnail URLs must use HTTPS.");
       }
       if (file && file.size > MAX_UPLOAD_BYTES) throw new Error("Files must be 200MB or smaller.");
       if (file && profile && file.size > profile.storage_quota_bytes) {
         throw new Error("This file is bigger than your remaining space — upgrade for more room.");
       }
       setPercent(0);
-      const path = file ? await uploadWithProgress({ file, userId: user.id, onProgress: setPercent }) : null;
-      const linkedName = cleanSourceUrl ? (new URL(cleanSourceUrl).pathname.split("/").filter(Boolean).pop() || "external-resource") : null;
+      const path = file
+        ? await uploadWithProgress({ file, userId: user.id, onProgress: setPercent })
+        : null;
+      const linkedName = cleanSourceUrl
+        ? new URL(cleanSourceUrl).pathname.split("/").filter(Boolean).pop() || "external-resource"
+        : null;
 
       const { error } = await supabase.from("files").insert({
         user_id: user.id,
@@ -124,7 +139,8 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
         <DialogHeader>
           <DialogTitle>Share something with the community</DialogTitle>
           <DialogDescription>
-            Upload a file or share an HTTPS source link. A copy is not required when you already have a download link.
+            Upload a file or share an HTTPS source link. A copy is not required when you already
+            have a download link.
           </DialogDescription>
         </DialogHeader>
 
@@ -156,9 +172,14 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
               placeholder="https://example.com/my-file.zip"
               value={sourceUrl}
               disabled={Boolean(file)}
-              onChange={(event) => { setSourceUrl(event.target.value); if (event.target.value) setFile(null); }}
+              onChange={(event) => {
+                setSourceUrl(event.target.value);
+                if (event.target.value) setFile(null);
+              }}
             />
-            <p className="text-xs text-muted-foreground">No upload is required when you already have a public link.</p>
+            <p className="text-xs text-muted-foreground">
+              No upload is required when you already have a public link.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="upload-thumbnail-url">Thumbnail image URL (optional)</Label>
@@ -235,8 +256,17 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
         </div>
 
         <DialogFooter>
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || (!file && !sourceUrl.trim())}>
-            {mutation.isPending ? (file ? `Uploading ${percent}%` : "Saving link…") : file ? "Upload file" : "Share link"}
+          <Button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending || (!file && !sourceUrl.trim())}
+          >
+            {mutation.isPending
+              ? file
+                ? `Uploading ${percent}%`
+                : "Saving link…"
+              : file
+                ? "Upload file"
+                : "Share link"}
           </Button>
         </DialogFooter>
       </DialogContent>

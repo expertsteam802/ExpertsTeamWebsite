@@ -61,9 +61,12 @@ Rules:
  * If the app already has a stylesheet (commonly /style.css), wire the missing
  * entry stylesheet to it instead of silently dropping the app's styling.
  */
-export function repairMissingStylesheetImports<T extends Record<string, string | null>>(sourceFiles: T): T {
+export function repairMissingStylesheetImports<T extends Record<string, string | null>>(
+  sourceFiles: T,
+): T {
   const files = { ...sourceFiles } as Record<string, string | null>;
-  const importPattern = /\bimport\s+(?:[^"'\n;]*?\s+from\s*)?["'](\.{1,2}\/[^"']+\.css(?:\?[^"']*)?)["']/g;
+  const importPattern =
+    /\bimport\s+(?:[^"'\n;]*?\s+from\s*)?["'](\.{1,2}\/[^"']+\.css(?:\?[^"']*)?)["']/g;
 
   for (const [importer, content] of Object.entries(files)) {
     if (typeof content !== "string") continue;
@@ -73,17 +76,20 @@ export function repairMissingStylesheetImports<T extends Record<string, string |
       const target = path.normalize(path.join(path.dirname(importer), specifier));
       if (target === ".." || target.startsWith("../") || files[target] !== undefined) continue;
 
-      const availableStylesheet = Object.keys(files).find((candidate) =>
-        typeof files[candidate] === "string" &&
-        candidate.toLowerCase().endsWith(".css") &&
-        path.basename(candidate).toLowerCase() === "style.css"
+      const availableStylesheet = Object.keys(files).find(
+        (candidate) =>
+          typeof files[candidate] === "string" &&
+          candidate.toLowerCase().endsWith(".css") &&
+          path.basename(candidate).toLowerCase() === "style.css",
       );
       if (availableStylesheet) {
         let relative = path.relative(path.dirname(target), availableStylesheet);
         if (!relative.startsWith(".")) relative = "./" + relative;
-        files[target] = `/* Recovered missing stylesheet entry; original styles are kept in ${availableStylesheet}. */\n@import "${relative}";\n`;
+        files[target] =
+          `/* Recovered missing stylesheet entry; original styles are kept in ${availableStylesheet}. */\n@import "${relative}";\n`;
       } else {
-        files[target] = `/* Recovered missing stylesheet entry. */\n:root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }\n* { box-sizing: border-box; }\nhtml, body, #root { min-height: 100%; margin: 0; }\nbody { min-width: 320px; }\n`;
+        files[target] =
+          `/* Recovered missing stylesheet entry. */\n:root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }\n* { box-sizing: border-box; }\nhtml, body, #root { min-height: 100%; margin: 0; }\nbody { min-width: 320px; }\n`;
       }
     }
   }

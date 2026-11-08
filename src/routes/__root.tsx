@@ -282,21 +282,22 @@ function RootContent() {
         </DialogContent>
       </Dialog>
 
-      {!isPublishedApp && (aiChatOpen ? (
-        <div className="fixed bottom-4 right-4 z-[100] h-[min(680px,calc(100dvh-2rem))] w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
-          <ChrisAiChat onMinimize={() => setAiChatOpen(false)} />
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setAiChatOpen(true)}
-          aria-label="Open ExpertAI"
-          title="Open ExpertAI"
-          className="fixed bottom-5 right-5 z-[100] flex h-14 w-14 items-center justify-center rounded-full border border-primary/40 bg-primary text-primary-foreground shadow-2xl transition-all hover:scale-105 hover:bg-primary/90"
-        >
-          <Bot className="h-7 w-7" />
-        </button>
-      ))}
+      {!isPublishedApp &&
+        (aiChatOpen ? (
+          <div className="fixed bottom-4 right-4 z-[100] h-[min(680px,calc(100dvh-2rem))] w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
+            <ChrisAiChat onMinimize={() => setAiChatOpen(false)} />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAiChatOpen(true)}
+            aria-label="Open ExpertAI"
+            title="Open ExpertAI"
+            className="fixed bottom-5 right-5 z-[100] flex h-14 w-14 items-center justify-center rounded-full border border-primary/40 bg-primary text-primary-foreground shadow-2xl transition-all hover:scale-105 hover:bg-primary/90"
+          >
+            <Bot className="h-7 w-7" />
+          </button>
+        ))}
     </>
   );
 }

@@ -108,11 +108,7 @@
       color-mix(in oklab, var(--accent) 7%, transparent),
       transparent 78%
     ),
-    linear-gradient(
-      180deg,
-      color-mix(in oklab, var(--surface) 22%, transparent),
-      transparent 78%
-    );
+    linear-gradient(180deg, color-mix(in oklab, var(--surface) 22%, transparent), transparent 78%);
   --gradient-brand: linear-gradient(120deg, var(--primary), var(--accent));
   --shadow-glow:
     0 0 0 1px color-mix(in oklab, var(--primary) 24%, transparent),

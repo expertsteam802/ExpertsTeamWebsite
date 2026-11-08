@@ -60,10 +60,17 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
       if (!cleanSource && !editing.storage_path) {
         throw new Error("Keep a download/source link for this external resource.");
       }
-      for (const [label, value] of [["Source link", cleanSource], ["Thumbnail URL", cleanThumbnail]] as const) {
+      for (const [label, value] of [
+        ["Source link", cleanSource],
+        ["Thumbnail URL", cleanThumbnail],
+      ] as const) {
         if (!value) continue;
         let parsed: URL;
-        try { parsed = new URL(value); } catch { throw new Error(`${label} must be a valid URL.`); }
+        try {
+          parsed = new URL(value);
+        } catch {
+          throw new Error(`${label} must be a valid URL.`);
+        }
         if (parsed.protocol !== "https:") throw new Error(`${label} must use HTTPS.`);
       }
       const { error } = await supabase
@@ -89,7 +96,9 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
   const remove = useMutation({
     mutationFn: async (file: CommunityFile) => {
       if (file.storage_path) {
-        const { error: storageError } = await supabase.storage.from("uploads").remove([file.storage_path]);
+        const { error: storageError } = await supabase.storage
+          .from("uploads")
+          .remove([file.storage_path]);
         if (storageError) throw storageError;
       }
       const { error } = await supabase.from("files").delete().eq("id", file.id);
@@ -104,7 +113,8 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
 
   async function requestDownload(file: CommunityFile) {
     try {
-      const url = file.source_url || (file.storage_path ? await signedUrlFor(file.storage_path) : null);
+      const url =
+        file.source_url || (file.storage_path ? await signedUrlFor(file.storage_path) : null);
       if (!url) throw new Error("This resource has no download source.");
       // Resolve signed URLs before the gate. The final click then opens the
       // prepared URL directly from a user gesture, avoiding popup blockers.
@@ -146,7 +156,12 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
               className="animate-rise group flex flex-col gap-3 p-5 transition-transform duration-300 hover:-translate-y-1 hover:glow-panel"
             >
               {file.thumbnail_url && (
-                <img src={file.thumbnail_url} alt="" loading="lazy" className="max-h-36 w-full rounded-xl border border-border/60 object-cover" />
+                <img
+                  src={file.thumbnail_url}
+                  alt=""
+                  loading="lazy"
+                  className="max-h-36 w-full rounded-xl border border-border/60 object-cover"
+                />
               )}
               <div className="flex items-start gap-3">
                 <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-secondary">
@@ -155,7 +170,8 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
                 <div className="min-w-0">
                   <h3 className="truncate font-display font-semibold">{file.title}</h3>
                   <p className="text-xs text-muted-foreground">
-                    {ext.toUpperCase() || "FILE"} · {file.source_url ? "External link" : formatBytes(file.size_bytes)}
+                    {ext.toUpperCase() || "FILE"} ·{" "}
+                    {file.source_url ? "External link" : formatBytes(file.size_bytes)}
                   </p>
                 </div>
                 <Badge
@@ -177,7 +193,8 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
 
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="secondary" onClick={() => void requestDownload(file)}>
-                  <Download className="mr-2 h-4 w-4" /> {file.source_url ? "Open source" : "Download"}
+                  <Download className="mr-2 h-4 w-4" />{" "}
+                  {file.source_url ? "Open source" : "Download"}
                 </Button>
                 {canManage && (
                   <>
@@ -230,11 +247,23 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-source-url">Source / download link</Label>
-              <Input id="edit-source-url" type="url" placeholder="https://example.com/file.zip" value={editSourceUrl} onChange={(event) => setEditSourceUrl(event.target.value)} />
+              <Input
+                id="edit-source-url"
+                type="url"
+                placeholder="https://example.com/file.zip"
+                value={editSourceUrl}
+                onChange={(event) => setEditSourceUrl(event.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-thumbnail-url">Thumbnail image URL</Label>
-              <Input id="edit-thumbnail-url" type="url" placeholder="https://example.com/preview.jpg" value={editThumbnailUrl} onChange={(event) => setEditThumbnailUrl(event.target.value)} />
+              <Input
+                id="edit-thumbnail-url"
+                type="url"
+                placeholder="https://example.com/preview.jpg"
+                value={editThumbnailUrl}
+                onChange={(event) => setEditThumbnailUrl(event.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-price">Price (USD)</Label>

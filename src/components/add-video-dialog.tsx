@@ -42,8 +42,13 @@ export function AddVideoDialog({ category, triggerLabel = "Add a YouTube video" 
       if (!youtubeId) throw new Error("Paste the full YouTube share link (not just an id).");
       if (thumbnailUrl.trim()) {
         let parsedThumbnail: URL;
-        try { parsedThumbnail = new URL(thumbnailUrl.trim()); } catch { throw new Error("Enter a valid thumbnail URL."); }
-        if (parsedThumbnail.protocol !== "https:") throw new Error("Thumbnail URLs must use HTTPS.");
+        try {
+          parsedThumbnail = new URL(thumbnailUrl.trim());
+        } catch {
+          throw new Error("Enter a valid thumbnail URL.");
+        }
+        if (parsedThumbnail.protocol !== "https:")
+          throw new Error("Thumbnail URLs must use HTTPS.");
       }
 
       const { error } = await supabase.from("videos").insert({

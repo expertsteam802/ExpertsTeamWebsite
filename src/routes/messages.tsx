@@ -120,7 +120,9 @@ function MessagesPage() {
         .eq("user_id", user!.id);
       if (hiddenError) throw hiddenError;
       const hiddenIds = new Set((hiddenRows ?? []).map((row) => row.conversation_id));
-      return ((data ?? []) as Conversation[]).filter((conversation) => !hiddenIds.has(conversation.id));
+      return ((data ?? []) as Conversation[]).filter(
+        (conversation) => !hiddenIds.has(conversation.id),
+      );
     },
   });
 
@@ -347,7 +349,8 @@ function MessagesPage() {
 
   const unsendMessage = useMutation({
     mutationFn: async (message: DirectMessage) => {
-      if (!user || message.sender_id !== user.id) throw new Error("You can only unsend your own messages.");
+      if (!user || message.sender_id !== user.id)
+        throw new Error("You can only unsend your own messages.");
       const { error } = await supabase
         .from("direct_messages")
         .delete()
@@ -762,8 +765,11 @@ function MessagesPage() {
                             </p>
                           )}
                           <div className="mt-1 flex items-center justify-end gap-2">
-                            <span className={`flex items-center gap-1 text-[10px] ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                              {shortTime(message.created_at)} {mine && <Check className="h-3 w-3" />}
+                            <span
+                              className={`flex items-center gap-1 text-[10px] ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}
+                            >
+                              {shortTime(message.created_at)}{" "}
+                              {mine && <Check className="h-3 w-3" />}
                             </span>
                             {mine && (
                               <button

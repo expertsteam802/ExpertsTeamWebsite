@@ -129,7 +129,12 @@ function playerErrorMessage(code: number) {
     return "YouTube did not receive the required referrer information. Check the site's domain and referrer policy.";
   return `YouTube player error (${code}). Try opening the video on YouTube.`;
 }
-type Props = { videoId: string | null; title: string; alignment?: "left" | "center" | "right"; onClose: () => void };
+type Props = {
+  videoId: string | null;
+  title: string;
+  alignment?: "left" | "center" | "right";
+  onClose: () => void;
+};
 export function VideoPlayerDialog({ videoId, title, alignment = "center", onClose }: Props) {
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YouTubePlayer | null>(null);
@@ -236,58 +241,66 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
 
   return (
     <>
-    <AdsterraGateDialog
-      open={!!videoId && gateVideoId !== videoId}
-      title="Before your lesson starts"
-      description="Please view the sponsor placement while the short countdown runs. Your lesson will start when you continue."
-      onContinue={() => { if (videoId) setGateVideoId(videoId); }}
-    />
-    <Dialog open={!!videoId && gateVideoId === videoId} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[94vh] w-[min(96vw,1280px)] max-w-[1280px] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="pr-8 text-left">{title}</DialogTitle>
-        </DialogHeader>
-        <div className={`expertsteam-video-player relative aspect-video max-h-[72vh] w-[92%] max-w-[1200px] overflow-hidden rounded-xl bg-secondary ${alignment === "left" ? "mr-auto" : alignment === "right" ? "ml-auto" : "mx-auto"}`}>
-          {videoId && (useNativeEmbed ? (
-            <iframe
-              key={videoId}
-              title={title}
-              src={`https://www.youtube.com/embed/${encodeURIComponent(videoId)}?playsinline=1&rel=0`}
-              className="h-full w-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-            />
-          ) : (
-            <div ref={playerContainerRef} className="h-full w-full" />
-          ))}
-          {videoId && loading && !playbackError && (
-            <div className="absolute inset-0 grid place-items-center bg-background/70 text-sm text-muted-foreground">
-              Loading video…
-            </div>
-          )}
-          {videoId && playbackError && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center">
-              <p className="max-w-xl text-sm text-destructive">{playbackError}</p>
-              {videoId && (
-                <Button asChild>
-                  <a
-                    href={`https://www.youtube.com/watch?v=${videoId}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Open on YouTube
-                  </a>
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          A view is counted only after YouTube confirms that playback has started.
-        </p>
-      </DialogContent>
-    </Dialog>
+      <AdsterraGateDialog
+        open={!!videoId && gateVideoId !== videoId}
+        title="Before your lesson starts"
+        description="Please view the sponsor placement while the short countdown runs. Your lesson will start when you continue."
+        onContinue={() => {
+          if (videoId) setGateVideoId(videoId);
+        }}
+      />
+      <Dialog
+        open={!!videoId && gateVideoId === videoId}
+        onOpenChange={(open) => !open && onClose()}
+      >
+        <DialogContent className="max-h-[94vh] w-[min(96vw,1280px)] max-w-[1280px] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="pr-8 text-left">{title}</DialogTitle>
+          </DialogHeader>
+          <div
+            className={`expertsteam-video-player relative aspect-video max-h-[72vh] w-[92%] max-w-[1200px] overflow-hidden rounded-xl bg-secondary ${alignment === "left" ? "mr-auto" : alignment === "right" ? "ml-auto" : "mx-auto"}`}
+          >
+            {videoId &&
+              (useNativeEmbed ? (
+                <iframe
+                  key={videoId}
+                  title={title}
+                  src={`https://www.youtube.com/embed/${encodeURIComponent(videoId)}?playsinline=1&rel=0`}
+                  className="h-full w-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  referrerPolicy="strict-origin-when-cross-origin"
+                />
+              ) : (
+                <div ref={playerContainerRef} className="h-full w-full" />
+              ))}
+            {videoId && loading && !playbackError && (
+              <div className="absolute inset-0 grid place-items-center bg-background/70 text-sm text-muted-foreground">
+                Loading video…
+              </div>
+            )}
+            {videoId && playbackError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center">
+                <p className="max-w-xl text-sm text-destructive">{playbackError}</p>
+                {videoId && (
+                  <Button asChild>
+                    <a
+                      href={`https://www.youtube.com/watch?v=${videoId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open on YouTube
+                    </a>
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            A view is counted only after YouTube confirms that playback has started.
+          </p>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

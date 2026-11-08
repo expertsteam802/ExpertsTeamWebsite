@@ -82,7 +82,9 @@ function ApplicationPanel() {
       if (!user) throw new Error("Sign in to apply.");
       if (title.trim().length < 3) throw new Error("Give your application a title.");
       if (summary.trim().length < 20)
-        throw new Error("Tell the team a bit more about your experience or the work you want to contribute (20+ characters).");
+        throw new Error(
+          "Tell the team a bit more about your experience or the work you want to contribute (20+ characters).",
+        );
       const { error } = await supabase.from("project_requests").insert({
         user_id: user.id,
         title: title.trim().slice(0, 120),
@@ -105,11 +107,15 @@ function ApplicationPanel() {
   });
 
   return (
-    <section id="developer-application" className="mx-auto grid max-w-5xl gap-6 px-4 py-10 lg:grid-cols-[1.1fr_1fr]">
+    <section
+      id="developer-application"
+      className="mx-auto grid max-w-5xl gap-6 px-4 py-10 lg:grid-cols-[1.1fr_1fr]"
+    >
       <Card className="animate-rise gap-4 p-6 glow-panel">
         <h2 className="font-display text-xl font-semibold">Apply to join the developer team</h2>
         <p className="text-sm text-muted-foreground">
-          Join the people building ExpertsTeam. Send your skills and interests; the team reviews every application before granting workspace access.
+          Join the people building ExpertsTeam. Send your skills and interests; the team reviews
+          every application before granting workspace access.
         </p>
         {user ? (
           <>
@@ -178,7 +184,9 @@ function ApplicationPanel() {
               <p className="text-sm text-muted-foreground">{request.summary}</p>
               <p className="text-xs text-muted-foreground">Sent {formatDate(request.created_at)}</p>
               {request.admin_note && (
-                <p className="rounded-md bg-secondary p-2 text-xs">Team review: {request.admin_note}</p>
+                <p className="rounded-md bg-secondary p-2 text-xs">
+                  Team review: {request.admin_note}
+                </p>
               )}
             </Card>
           );
@@ -225,10 +233,18 @@ function ProjectsPage() {
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-2">
             {["Chris Expert", "Angelo Codes", "Dismas"].map((member) => (
-              <span key={member} className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-semibold">{member}</span>
+              <span
+                key={member}
+                className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-semibold"
+              >
+                {member}
+              </span>
             ))}
           </div>
-          <a href="#developer-application" className="mt-5 inline-flex items-center rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90">
+          <a
+            href="#developer-application"
+            className="mt-5 inline-flex items-center rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+          >
             Apply to become a developer
           </a>
         </div>

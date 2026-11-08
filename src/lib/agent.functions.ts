@@ -183,7 +183,8 @@ export const publishAgentProject = createServerFn({ method: "POST" })
         .eq("user_id", context.userId)
         .select("id")
         .maybeSingle();
-      if (saveError) throw new Error("The app was built, but its published URL could not be saved.");
+      if (saveError)
+        throw new Error("The app was built, but its published URL could not be saved.");
       if (!saved) throw new Error("The app was built, but the project is no longer available.");
       return result;
     } catch (error) {

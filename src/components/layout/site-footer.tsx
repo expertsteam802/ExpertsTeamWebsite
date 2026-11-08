@@ -86,12 +86,27 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="border-t border-border/70 px-4 py-5 text-center text-xs text-muted-foreground">
-        <p>© {new Date().getFullYear()} {settings.site_name}. Built by <span className="font-semibold text-foreground">Chris Expert</span>.</p>
+        <p>
+          © {new Date().getFullYear()} {settings.site_name}. Built by{" "}
+          <span className="font-semibold text-foreground">Chris Expert</span>.
+        </p>
         <div className="mt-2 flex items-center justify-center gap-4">
-          <a href={settings.instagram_url} target="_blank" rel="noreferrer" aria-label="Chris Expert on Instagram" className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground">
+          <a
+            href={settings.instagram_url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Chris Expert on Instagram"
+            className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+          >
             <Instagram className="h-3.5 w-3.5" /> Instagram
           </a>
-          <a href={settings.youtube_url} target="_blank" rel="noreferrer" aria-label="Chris Expert on YouTube" className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground">
+          <a
+            href={settings.youtube_url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Chris Expert on YouTube"
+            className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+          >
             <Youtube className="h-3.5 w-3.5" /> YouTube
           </a>
         </div>

@@ -40,34 +40,44 @@ export const siteSettingsQuery = {
 
 export function useSiteSettings() {
   const { data } = useQuery(siteSettingsQuery);
-  const branding = data?.site_branding_settings && typeof data.site_branding_settings === "object" && !Array.isArray(data.site_branding_settings)
-    ? (data.site_branding_settings as Record<string, Json>).siteBranding
-    : null;
-  const brandingRecord = branding && typeof branding === "object" && !Array.isArray(branding)
-    ? branding as Record<string, Json>
-    : {};
-  return (
-    data ? {
-      ...data,
-      background_image_url: typeof brandingRecord.background_image_url === "string" ? brandingRecord.background_image_url : null,
-      banner_image_url: typeof brandingRecord.banner_image_url === "string" ? brandingRecord.banner_image_url : null,
-    } : {
-      id: 1,
-      site_name: "ExpertsTeam",
-      tagline: "Code. Create. Community.",
-      logo_url: null,
-      background_image_url: null,
-      banner_image_url: null,
-      owner_email: "mucyochristhecla@gmail.com",
-      youtube_url: "https://www.youtube.com/@expertchris",
-      instagram_url: "https://instagram.com/m.chris_t2011",
-      subscription_price: 0.2,
-      subscription_quota_bytes: 2147483648,
-      ai_subscription_price: 1,
-      ai_subscription_credits: 500,
-      payout_account: null,
-      site_branding_settings: {},
-      error_dialog_enabled: true,
-    }
-  );
+  const branding =
+    data?.site_branding_settings &&
+    typeof data.site_branding_settings === "object" &&
+    !Array.isArray(data.site_branding_settings)
+      ? (data.site_branding_settings as Record<string, Json>).siteBranding
+      : null;
+  const brandingRecord =
+    branding && typeof branding === "object" && !Array.isArray(branding)
+      ? (branding as Record<string, Json>)
+      : {};
+  return data
+    ? {
+        ...data,
+        background_image_url:
+          typeof brandingRecord.background_image_url === "string"
+            ? brandingRecord.background_image_url
+            : null,
+        banner_image_url:
+          typeof brandingRecord.banner_image_url === "string"
+            ? brandingRecord.banner_image_url
+            : null,
+      }
+    : {
+        id: 1,
+        site_name: "ExpertsTeam",
+        tagline: "Code. Create. Community.",
+        logo_url: null,
+        background_image_url: null,
+        banner_image_url: null,
+        owner_email: "mucyochristhecla@gmail.com",
+        youtube_url: "https://www.youtube.com/@expertchris",
+        instagram_url: "https://instagram.com/m.chris_t2011",
+        subscription_price: 0.2,
+        subscription_quota_bytes: 2147483648,
+        ai_subscription_price: 1,
+        ai_subscription_credits: 500,
+        payout_account: null,
+        site_branding_settings: {},
+        error_dialog_enabled: true,
+      };
 }

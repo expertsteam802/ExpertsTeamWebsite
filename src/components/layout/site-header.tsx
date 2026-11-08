@@ -54,7 +54,12 @@ export function SiteHeader() {
           </span>
         </Link>
 
-        <nav className={cn("hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto md:flex", ALIGN[navAlign])}>
+        <nav
+          className={cn(
+            "hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto md:flex",
+            ALIGN[navAlign],
+          )}
+        >
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.to}
@@ -132,9 +137,15 @@ export function SiteHeader() {
                 <Button variant="secondary" className="max-w-48 gap-2 truncate">
                   <Avatar className="h-7 w-7">
                     <AvatarImage src={profile?.avatar_url ?? undefined} />
-                    <AvatarFallback>{(profile?.display_name || profile?.username || "A").slice(0, 1).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback>
+                      {(profile?.display_name || profile?.username || "A")
+                        .slice(0, 1)
+                        .toUpperCase()}
+                    </AvatarFallback>
                   </Avatar>
-                  <span className="truncate">{profile?.display_name || profile?.username || "Account"}</span>
+                  <span className="truncate">
+                    {profile?.display_name || profile?.username || "Account"}
+                  </span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">

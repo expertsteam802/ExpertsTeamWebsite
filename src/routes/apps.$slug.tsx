@@ -45,7 +45,9 @@ function LiveApp() {
   return (
     <main className="min-h-screen w-screen overflow-hidden bg-white text-slate-900">
       {isLoading ? (
-        <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Loading published app…</div>
+        <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">
+          Loading published app…
+        </div>
       ) : data ? (
         <iframe
           title={data.name}
@@ -57,7 +59,9 @@ function LiveApp() {
       ) : (
         <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
           <h1 className="text-2xl font-semibold">This app is not published</h1>
-          <p className="max-w-md text-sm text-slate-600">The owner may have unpublished it or the link may be incorrect.</p>
+          <p className="max-w-md text-sm text-slate-600">
+            The owner may have unpublished it or the link may be incorrect.
+          </p>
         </div>
       )}
     </main>

@@ -173,12 +173,20 @@ async function compressReferenceImage(file: File): Promise<ReferenceImage> {
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
     let quality = 0.78;
     let blob = await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not compress image.")), "image/jpeg", quality),
+      canvas.toBlob(
+        (value) => (value ? resolve(value) : reject(new Error("Could not compress image."))),
+        "image/jpeg",
+        quality,
+      ),
     );
     while (blob.size > 520_000 && quality > 0.48) {
       quality -= 0.08;
       blob = await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not compress image.")), "image/jpeg", quality),
+        canvas.toBlob(
+          (value) => (value ? resolve(value) : reject(new Error("Could not compress image."))),
+          "image/jpeg",
+          quality,
+        ),
       );
     }
     if (blob.size > 650_000) throw new Error(file.name + " is too large after compression.");
@@ -188,7 +196,11 @@ async function compressReferenceImage(file: File): Promise<ReferenceImage> {
       reader.onerror = () => reject(new Error("Could not read compressed " + file.name + "."));
       reader.readAsDataURL(blob);
     });
-    return { name: file.name.replace(/\.[^.]+$/, "") + ".jpg", mimeType: "image/jpeg", data: dataUrl.split(",")[1] ?? "" };
+    return {
+      name: file.name.replace(/\.[^.]+$/, "") + ".jpg",
+      mimeType: "image/jpeg",
+      data: dataUrl.split(",")[1] ?? "",
+    };
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
@@ -249,7 +261,10 @@ export function CodeAgent() {
   const [runtimeUrl, setRuntimeUrl] = useState<string | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState("Not started");
   const [terminalReady, setTerminalReady] = useState(false);
-  const [terminalConnection, setTerminalConnection] = useState<{ url: string; token: string } | null>(null);
+  const [terminalConnection, setTerminalConnection] = useState<{
+    url: string;
+    token: string;
+  } | null>(null);
   const [fileLanguage, setFileLanguage] = useState<Extension[]>([]);
   const runtimeFilesRef = useRef<ProjectFiles>({});
   const runtimeSyncQueueRef = useRef<Promise<void>>(Promise.resolve());
@@ -266,14 +281,21 @@ export function CodeAgent() {
     const language = LanguageDescription.matchFilename(languages, activeFile);
     if (!language) {
       setFileLanguage([]);
-      return () => { cancelled = true; };
+      return () => {
+        cancelled = true;
+      };
     }
-    void language.load().then((support) => {
-      if (!cancelled) setFileLanguage([support]);
-    }).catch(() => {
-      if (!cancelled) setFileLanguage([]);
-    });
-    return () => { cancelled = true; };
+    void language
+      .load()
+      .then((support) => {
+        if (!cancelled) setFileLanguage([support]);
+      })
+      .catch(() => {
+        if (!cancelled) setFileLanguage([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [activeFile]);
 
   const editorExtensions = useMemo(
@@ -320,7 +342,9 @@ export function CodeAgent() {
       setTerminalReady(true);
       terminal.focus();
       terminal.write("\r\nConnected to the isolated Linux shell.\r\n");
-      socket.send("\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
+      socket.send(
+        "\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }),
+      );
     };
     socket.onmessage = (event) => {
       if (typeof event.data === "string") terminal.write(event.data);
@@ -342,7 +366,9 @@ export function CodeAgent() {
     const observer = new ResizeObserver(() => {
       fit.fit();
       if (socket.readyState === WebSocket.OPEN)
-        socket.send("\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
+        socket.send(
+          "\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }),
+        );
     });
     observer.observe(container);
 
@@ -357,7 +383,6 @@ export function CodeAgent() {
       setTerminalReady(false);
     };
   }, [terminalConnection]);
-
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["agent-projects", user?.id],
@@ -403,44 +428,53 @@ export function CodeAgent() {
     if (!runtimeUrl || !projectId) return;
     let active = true;
     let checking = false;
-    const heartbeat = window.setInterval(async () => {
-      if (checking || !active) return;
-      checking = true;
-      try {
-        let result: Awaited<ReturnType<typeof startPreview>> | null = null;
-        let lastError: unknown;
-        for (let attempt = 1; attempt <= 3 && active; attempt++) {
-          try {
-            result = await startPreview({ data: { projectId, files } });
-            break;
-          } catch (error) {
-            lastError = error;
-            if (attempt < 3) {
-              setRuntimeStatus("Preview reconnecting");
-              await new Promise((resolve) => window.setTimeout(resolve, attempt * 2500));
+    const heartbeat = window.setInterval(
+      async () => {
+        if (checking || !active) return;
+        checking = true;
+        try {
+          let result: Awaited<ReturnType<typeof startPreview>> | null = null;
+          let lastError: unknown;
+          for (let attempt = 1; attempt <= 3 && active; attempt++) {
+            try {
+              result = await startPreview({ data: { projectId, files } });
+              break;
+            } catch (error) {
+              lastError = error;
+              if (attempt < 3) {
+                setRuntimeStatus("Preview reconnecting");
+                await new Promise((resolve) => window.setTimeout(resolve, attempt * 2500));
+              }
             }
           }
+          if (!active) return;
+          if (!result)
+            throw lastError instanceof Error
+              ? lastError
+              : new Error("Preview health check failed.");
+          setRuntimeStatus("Running in Vercel Sandbox");
+          if (result.recovered) {
+            setRuntimeUrl(result.url);
+            setPreviewKey((value) => value + 1);
+            setLogs((current) => [
+              ...current.slice(-199),
+              {
+                type: "runtime",
+                message: "Preview automatically recovered after the sandbox stopped.",
+              },
+            ]);
+          }
+        } catch (error) {
+          if (!active) return;
+          const message = error instanceof Error ? error.message : "Preview health check failed.";
+          setRuntimeStatus("Preview reconnecting");
+          setLogs((current) => [...current.slice(-199), { type: "warn", message }]);
+        } finally {
+          checking = false;
         }
-        if (!active) return;
-        if (!result) throw lastError instanceof Error ? lastError : new Error("Preview health check failed.");
-        setRuntimeStatus("Running in Vercel Sandbox");
-        if (result.recovered) {
-          setRuntimeUrl(result.url);
-          setPreviewKey((value) => value + 1);
-          setLogs((current) => [
-            ...current.slice(-199),
-            { type: "runtime", message: "Preview automatically recovered after the sandbox stopped." },
-          ]);
-        }
-      } catch (error) {
-        if (!active) return;
-        const message = error instanceof Error ? error.message : "Preview health check failed.";
-        setRuntimeStatus("Preview reconnecting");
-        setLogs((current) => [...current.slice(-199), { type: "warn", message }]);
-      } finally {
-        checking = false;
-      }
-    }, 10 * 60 * 1000);
+      },
+      10 * 60 * 1000,
+    );
     return () => {
       active = false;
       window.clearInterval(heartbeat);
@@ -520,7 +554,7 @@ export function CodeAgent() {
     }
   }
 
-async function runProject() {
+  async function runProject() {
     if (runtimeBusy) return;
     setRuntimeBusy(true);
     setRuntimeStatus("Preparing cloud sandbox…");
@@ -574,13 +608,21 @@ async function runProject() {
     try {
       const activeProjectId = await persist();
       const existingSlug = projects.find((project) => project.id === activeProjectId)?.slug;
-      const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "my-app";
+      const baseSlug =
+        name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "")
+          .slice(0, 48) || "my-app";
       const slug = existingSlug || `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
       const result = await publish({ data: { projectId: activeProjectId, files, slug } });
       await queryClient.invalidateQueries({ queryKey: ["agent-projects", user?.id] });
       const url = `${window.location.origin}/apps/${result.slug}`;
       toast.success("Your app is built and published", {
-        action: { label: "Open app", onClick: () => window.open(url, "_blank", "noopener,noreferrer") },
+        action: {
+          label: "Open app",
+          onClick: () => window.open(url, "_blank", "noopener,noreferrer"),
+        },
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not publish this app.");
@@ -996,7 +1038,11 @@ async function runProject() {
       {/* Workspace top bar */}
       <header className="expert-agent-topbar flex min-h-[62px] flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#0d1523] px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
-          <img src="/agent-mark.svg" alt="ExpertAI coding agent" className="h-9 w-9 shrink-0 rounded-xl shadow-lg shadow-cyan-500/10" />
+          <img
+            src="/agent-mark.svg"
+            alt="ExpertAI coding agent"
+            className="h-9 w-9 shrink-0 rounded-xl shadow-lg shadow-cyan-500/10"
+          />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">
@@ -1244,7 +1290,8 @@ async function runProject() {
                   ExpertAI workspace
                 </div>
                 <p className="mt-2 text-[11px] leading-5 text-slate-500">
-                  Edit project files, run your app and use the Linux sandbox. AI prompt-based coding is under development.
+                  Edit project files, run your app and use the Linux sandbox. AI prompt-based coding
+                  is under development.
                 </p>
               </div>
             </div>
@@ -1529,67 +1576,79 @@ async function runProject() {
                 </>
               )}
 
-              <div className={panel === "terminal" ? "flex min-h-0 flex-1 flex-col bg-[#050a12]" : "hidden"}>
-                  <div className="flex min-h-10 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] px-3 py-2">
-                    <span className="flex items-center gap-2 text-xs text-slate-300">
-                      <Terminal className="h-3.5 w-3.5 text-emerald-300" />
-                      Linux Bash · interactive PTY
+              <div
+                className={
+                  panel === "terminal" ? "flex min-h-0 flex-1 flex-col bg-[#050a12]" : "hidden"
+                }
+              >
+                <div className="flex min-h-10 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] px-3 py-2">
+                  <span className="flex items-center gap-2 text-xs text-slate-300">
+                    <Terminal className="h-3.5 w-3.5 text-emerald-300" />
+                    Linux Bash · interactive PTY
+                  </span>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <span
+                      className={
+                        terminalReady
+                          ? "text-[10px] text-emerald-300"
+                          : "text-[10px] text-slate-500"
+                      }
+                    >
+                      {terminalReady ? "CONNECTED" : "OFFLINE"}
                     </span>
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                      <span className={terminalReady ? "text-[10px] text-emerald-300" : "text-[10px] text-slate-500"}>
-                        {terminalReady ? "CONNECTED" : "OFFLINE"}
-                      </span>
-                      {["ls", "pwd", "npm run dev", "npm run build"].map((command) => (
-                        <button
-                          key={command}
-                          type="button"
-                          disabled={!terminalReady}
-                          onClick={() => {
-                            if (terminalSocketRef.current?.readyState === WebSocket.OPEN)
-                              terminalSocketRef.current.send(command + "\r");
-                          }}
-                          className="rounded border border-white/10 px-2 py-1 font-mono text-[10px] text-slate-400 hover:border-emerald-400/40 hover:text-emerald-200 disabled:opacity-30"
-                        >
-                          {command}
-                        </button>
-                      ))}
+                    {["ls", "pwd", "npm run dev", "npm run build"].map((command) => (
                       <button
+                        key={command}
                         type="button"
                         disabled={!terminalReady}
-                        onClick={() => xtermRef.current?.clear()}
-                        className="text-xs text-slate-500 hover:text-white disabled:opacity-30"
+                        onClick={() => {
+                          if (terminalSocketRef.current?.readyState === WebSocket.OPEN)
+                            terminalSocketRef.current.send(command + "\r");
+                        }}
+                        className="rounded border border-white/10 px-2 py-1 font-mono text-[10px] text-slate-400 hover:border-emerald-400/40 hover:text-emerald-200 disabled:opacity-30"
                       >
-                        Clear
+                        {command}
                       </button>
+                    ))}
+                    <button
+                      type="button"
+                      disabled={!terminalReady}
+                      onClick={() => xtermRef.current?.clear()}
+                      className="text-xs text-slate-500 hover:text-white disabled:opacity-30"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!terminalReady}
+                      onClick={() => void importTerminalChanges()}
+                      className="rounded border border-cyan-400/20 px-2 py-1 text-[10px] text-cyan-200 hover:bg-cyan-400/10 disabled:opacity-30"
+                    >
+                      Import files
+                    </button>
+                    {!terminalReady && (
                       <button
                         type="button"
-                        disabled={!terminalReady}
-                        onClick={() => void importTerminalChanges()}
-                        className="rounded border border-cyan-400/20 px-2 py-1 text-[10px] text-cyan-200 hover:bg-cyan-400/10 disabled:opacity-30"
+                        onClick={() => void openTerminal()}
+                        className="rounded-md bg-emerald-400/15 px-2 py-1 text-xs text-emerald-200 hover:bg-emerald-400/25"
                       >
-                        Import files
+                        Start shell
                       </button>
-                      {!terminalReady && (
-                        <button
-                          type="button"
-                          onClick={() => void openTerminal()}
-                          className="rounded-md bg-emerald-400/15 px-2 py-1 text-xs text-emerald-200 hover:bg-emerald-400/25"
-                        >
-                          Start shell
-                        </button>
-                      )}
-                    </div>
+                    )}
                   </div>
-                  <div
-                    ref={terminalContainerRef}
-                    role="region"
-                    aria-label="Interactive Linux terminal"
-                    className="min-h-0 flex-1 overflow-hidden px-3 py-2"
-                  />
-                  <p className="border-t border-white/[0.06] px-4 py-2 text-[10px] text-slate-600">
-                    Persistent Bash session in an isolated Vercel Linux microVM. Supports terminal input, ANSI output, resizing and interactive CLI programs. Use network tools only on systems you own or are authorized to test.
-                  </p>
                 </div>
+                <div
+                  ref={terminalContainerRef}
+                  role="region"
+                  aria-label="Interactive Linux terminal"
+                  className="min-h-0 flex-1 overflow-hidden px-3 py-2"
+                />
+                <p className="border-t border-white/[0.06] px-4 py-2 text-[10px] text-slate-600">
+                  Persistent Bash session in an isolated Vercel Linux microVM. Supports terminal
+                  input, ANSI output, resizing and interactive CLI programs. Use network tools only
+                  on systems you own or are authorized to test.
+                </p>
+              </div>
 
               {panel === "console" && (
                 <>
@@ -1662,7 +1721,10 @@ async function runProject() {
                   </button>
                 </div>
 
-                <div className="mx-3 mt-3 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-[11px] leading-5 text-amber-100">ExpertAI prompt-based coding is under development. Your code editor, project files, save, run, preview and sandbox tools remain available.</div>
+                <div className="mx-3 mt-3 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-[11px] leading-5 text-amber-100">
+                  ExpertAI prompt-based coding is under development. Your code editor, project
+                  files, save, run, preview and sandbox tools remain available.
+                </div>
                 <div className="flex-1 space-y-4 overflow-y-auto p-4">
                   {messages.length === 0 && (
                     <div className="flex min-h-[400px] flex-col justify-center">
@@ -1778,7 +1840,9 @@ async function runProject() {
                           return false;
                         }
                         if (file.size > 12 * 1024 * 1024) {
-                          toast.error(file.name + ": choose an image under 12 MB before compression.");
+                          toast.error(
+                            file.name + ": choose an image under 12 MB before compression.",
+                          );
                           return false;
                         }
                         return true;
@@ -1789,7 +1853,11 @@ async function runProject() {
                           try {
                             return await compressReferenceImage(file);
                           } catch (error) {
-                            toast.error(error instanceof Error ? error.message : "Could not compress " + file.name + ".");
+                            toast.error(
+                              error instanceof Error
+                                ? error.message
+                                : "Could not compress " + file.name + ".",
+                            );
                             return null;
                           }
                         }),
@@ -1946,7 +2014,10 @@ async function runProject() {
             Enable lightweight built-in completion and snippet packs for the languages you use.
           </p>
           <p className="text-xs leading-5 text-slate-400">
-            Syntax highlighting and language modes load automatically from file extensions. Supported modes include JavaScript, TypeScript, JSX, TSX, HTML, CSS, JSON, Markdown, Python, Java, C, C++, C#, Go, Rust, PHP, SQL, YAML, XML, Vue, Svelte and more. These are editor language modes, not marketplace extensions or guaranteed runtimes.
+            Syntax highlighting and language modes load automatically from file extensions.
+            Supported modes include JavaScript, TypeScript, JSX, TSX, HTML, CSS, JSON, Markdown,
+            Python, Java, C, C++, C#, Go, Rust, PHP, SQL, YAML, XML, Vue, Svelte and more. These are
+            editor language modes, not marketplace extensions or guaranteed runtimes.
           </p>
           <div className="space-y-2">
             {[

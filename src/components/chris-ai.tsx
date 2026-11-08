@@ -112,12 +112,20 @@ async function compressImageForAi(file: File): Promise<UploadedFile> {
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
     let quality = 0.76;
     let blob = await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not compress image.")), "image/jpeg", quality),
+      canvas.toBlob(
+        (value) => (value ? resolve(value) : reject(new Error("Could not compress image."))),
+        "image/jpeg",
+        quality,
+      ),
     );
     while (blob.size > 420_000 && quality > 0.48) {
       quality -= 0.08;
       blob = await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not compress image.")), "image/jpeg", quality),
+        canvas.toBlob(
+          (value) => (value ? resolve(value) : reject(new Error("Could not compress image."))),
+          "image/jpeg",
+          quality,
+        ),
       );
     }
     if (blob.size > 520_000) throw new Error(`${file.name} is too large after compression.`);
@@ -127,7 +135,12 @@ async function compressImageForAi(file: File): Promise<UploadedFile> {
       reader.onerror = () => reject(new Error(`Could not read compressed ${file.name}.`));
       reader.readAsDataURL(blob);
     });
-    return { name: file.name.replace(/\.[^.]+$/, "") + ".jpg", mimeType: "image/jpeg", dataUrl, size: blob.size };
+    return {
+      name: file.name.replace(/\.[^.]+$/, "") + ".jpg",
+      mimeType: "image/jpeg",
+      dataUrl,
+      size: blob.size,
+    };
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
@@ -191,7 +204,9 @@ export function ChrisAiChat({
     try {
       const saved = window.localStorage.getItem(`experts-team:guest-ai-credits:${guestSessionId}`);
       return saved === null ? 15 : Math.max(0, Math.min(15, Number(saved) || 0));
-    } catch { return 15; }
+    } catch {
+      return 15;
+    }
   });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -283,7 +298,10 @@ export function ChrisAiChat({
         if (!current) {
           grouped.set(row.thread_id, {
             threadId: row.thread_id,
-            title: row.role === "user" ? String(row.content).replace(/\s+/g, " ").slice(0, 52) : "New conversation",
+            title:
+              row.role === "user"
+                ? String(row.content).replace(/\s+/g, " ").slice(0, 52)
+                : "New conversation",
             updatedAt: row.created_at,
           });
         } else if (row.role === "user") {
@@ -400,16 +418,26 @@ export function ChrisAiChat({
           throw new Error("ExpertAI replied, but the reply could not be saved. Please try again.");
         }
       } else {
-        setGuestMessages((current) => [...current, {
-          id: crypto.randomUUID(),
-          role: "ai",
-          content: reply,
-          created_at: new Date().toISOString(),
-          thread_id: activeThreadId,
-        }]);
+        setGuestMessages((current) => [
+          ...current,
+          {
+            id: crypto.randomUUID(),
+            role: "ai",
+            content: reply,
+            created_at: new Date().toISOString(),
+            thread_id: activeThreadId,
+          },
+        ]);
         setGuestCredits((current) => {
           const next = Math.max(0, current - 1);
-          try { window.localStorage.setItem(`experts-team:guest-ai-credits:${guestSessionId}`, String(next)); } catch { /* Server also enforces the guest limit. */ }
+          try {
+            window.localStorage.setItem(
+              `experts-team:guest-ai-credits:${guestSessionId}`,
+              String(next),
+            );
+          } catch {
+            /* Server also enforces the guest limit. */
+          }
           return next;
         });
       }
@@ -479,7 +507,12 @@ export function ChrisAiChat({
       const next = await Promise.all(Array.from(files).slice(0, 3).map(loadFileForAi));
       setAttachments((current) => {
         const combined = [...current, ...next].slice(0, 3);
-        if (combined.reduce((total, item) => total + (item.dataUrl?.length ?? item.text?.length ?? 0), 0) > 1_350_000) {
+        if (
+          combined.reduce(
+            (total, item) => total + (item.dataUrl?.length ?? item.text?.length ?? 0),
+            0,
+          ) > 1_350_000
+        ) {
           toast.error("Compressed attachments must stay under 1 MB in total.");
           return current;
         }
@@ -508,7 +541,9 @@ export function ChrisAiChat({
       return;
     }
     if (chatIsFull) {
-      toast.error("This chat is full. Start a new chat to continue; this conversation remains saved.");
+      toast.error(
+        "This chat is full. Start a new chat to continue; this conversation remains saved.",
+      );
       return;
     }
     const prompt = input.trim();
@@ -536,24 +571,43 @@ export function ChrisAiChat({
             <div className="flex items-center gap-2 text-sm font-semibold">
               <MessageSquare className="h-4 w-4 text-primary" /> Your chats
             </div>
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => newChat()} aria-label="New chat">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8"
+              onClick={() => newChat()}
+              aria-label="New chat"
+            >
               <Plus className="h-4 w-4" />
             </Button>
           </div>
           <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
             {visibleThreads.length === 0 && (
-              <p className="px-2 py-5 text-xs leading-relaxed text-muted-foreground">Your conversations will appear here when you start chatting.</p>
+              <p className="px-2 py-5 text-xs leading-relaxed text-muted-foreground">
+                Your conversations will appear here when you start chatting.
+              </p>
             )}
             {visibleThreads.map((thread) => (
-              <div key={thread.threadId} className={`group flex items-center gap-1 rounded-lg ${threadId === thread.threadId ? "bg-primary/10 text-foreground" : "hover:bg-secondary/70"}`}>
+              <div
+                key={thread.threadId}
+                className={`group flex items-center gap-1 rounded-lg ${threadId === thread.threadId ? "bg-primary/10 text-foreground" : "hover:bg-secondary/70"}`}
+              >
                 <button
                   type="button"
-                  onClick={() => { setThreadId(thread.threadId); setAttachments([]); setGeneratedImage(null); }}
+                  onClick={() => {
+                    setThreadId(thread.threadId);
+                    setAttachments([]);
+                    setGeneratedImage(null);
+                  }}
                   className="min-w-0 flex-1 px-3 py-2.5 text-left"
                   title={thread.title}
                 >
-                  <span className="block truncate text-xs font-medium">{thread.title || "New conversation"}</span>
-                  <span className="mt-1 block text-[10px] text-muted-foreground">{new Date(thread.updatedAt).toLocaleDateString()}</span>
+                  <span className="block truncate text-xs font-medium">
+                    {thread.title || "New conversation"}
+                  </span>
+                  <span className="mt-1 block text-[10px] text-muted-foreground">
+                    {new Date(thread.updatedAt).toLocaleDateString()}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -574,243 +628,270 @@ export function ChrisAiChat({
         </aside>
       )}
       <Card className="glow-panel flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/15">
-            <img src="/expertai-mark.svg" alt="" className="h-7 w-7" />
-          </span>
-          <div>
-            <p className="text-sm font-semibold">ExpertAI Chat</p>
-            <p className="text-xs text-muted-foreground">
-              File analysis · app building · {user ? `${profile?.ai_credits ?? 0} AI credits` : `${guestCredits} of 15 free guest credits`}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {onMinimize && (
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Minimize ExpertAI"
-              title="Minimize ExpertAI"
-              onClick={onMinimize}
-            >
-              <Minimize2 className="h-4 w-4" />
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => window.location.assign("/")}
-            title="Back to ExpertsTeam home"
-          >
-            <Home className="mr-1.5 h-4 w-4" /> Home
-          </Button>
-          <Button variant="secondary" size="sm" onClick={newChat} disabled={send.isPending}>
-            New chat
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Clear chat"
-            onClick={() => clear.mutate()}
-            disabled={clear.isPending || send.isPending}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-        {messagesError && (
-          <div
-            role="alert"
-            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3"
-          >
-            <p className="text-sm text-destructive">
-              Could not load your saved messages. Check the database migration, then try again.
-            </p>
-            <Button size="sm" variant="outline" onClick={() => void refetchMessages()}>
-              Retry
-            </Button>
-          </div>
-        )}
-        {messages.length === 0 && (
-          <div className="grid gap-2 sm:grid-cols-2">
-            {[
-              "Review this product brief and propose an MVP",
-              "Explain this uploaded code and suggest fixes",
-              "Generate a premium landing-page hero image prompt",
-              "Audit this design spec and propose a UI structure",
-            ].map((idea) => (
-              <button
-                key={idea}
-                onClick={() => setInput(idea)}
-                className="animate-rise rounded-lg border border-border bg-secondary/60 p-3 text-left text-sm transition-colors hover:border-primary/60"
-              >
-                {idea}
-              </button>
-            ))}
-          </div>
-        )}
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            {message.role !== "user" && (
-              <span className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/15">
-                <Bot className="h-3.5 w-3.5 text-primary" />
-              </span>
-            )}
-            <div
-              className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                message.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "border border-border bg-secondary"
-              }`}
-            >
-              <MessageBody content={message.content} />
-            </div>
-            {message.role === "user" && (
-              <span className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-secondary">
-                <User className="h-3.5 w-3.5" />
-              </span>
-            )}
-          </div>
-        ))}
-        {send.isPending && (
-          <div className="flex justify-start gap-2">
-            <span className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/15">
-              <Bot className="h-3.5 w-3.5 text-primary" />
+        <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/15">
+              <img src="/expertai-mark.svg" alt="" className="h-7 w-7" />
             </span>
-            <div className="max-w-[80%] rounded-2xl border border-border bg-secondary px-4 py-2">
-              {streamingReply ? (
-                <MessageBody content={streamingReply} />
-              ) : (
-                <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin" /> ExpertAI is thinking…
-                </p>
-              )}
+            <div>
+              <p className="text-sm font-semibold">ExpertAI Chat</p>
+              <p className="text-xs text-muted-foreground">
+                File analysis · app building ·{" "}
+                {user
+                  ? `${profile?.ai_credits ?? 0} AI credits`
+                  : `${guestCredits} of 15 free guest credits`}
+              </p>
             </div>
           </div>
-        )}
-      </div>
 
-      {generatedImage && (
-        <div className="border-t border-border/70 bg-secondary/40 p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-              Generated image
-            </p>
+          <div className="flex items-center gap-2">
+            {onMinimize && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Minimize ExpertAI"
+                title="Minimize ExpertAI"
+                onClick={onMinimize}
+              >
+                <Minimize2 className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setGeneratedImage(null)}
-              className="h-7 px-2"
+              onClick={() => window.location.assign("/")}
+              title="Back to ExpertsTeam home"
             >
-              Clear
+              <Home className="mr-1.5 h-4 w-4" /> Home
+            </Button>
+            <Button variant="secondary" size="sm" onClick={newChat} disabled={send.isPending}>
+              New chat
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Clear chat"
+              onClick={() => clear.mutate()}
+              disabled={clear.isPending || send.isPending}
+            >
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-          <img
-            src={`data:${generatedImage.mimeType};base64,${generatedImage.data}`}
-            alt="Generated by ExpertAI"
-            className="max-h-64 w-full rounded-lg border border-border object-contain"
-          />
         </div>
-      )}
 
-      <div className="border-t border-border/70 p-3">
-        {guestCreditsExhausted && (
-          <div role="status" className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">Your 15 free guest credits are used. Create an account to continue chatting with ExpertAI. <button type="button" className="ml-2 font-semibold text-primary underline" onClick={() => window.location.assign("/auth")}>Create account</button></div>
-        )}
-        {chatIsFull && (
-          <div role="status" className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
-            <span>This chat is full. Your conversation is saved. Start a new chat to continue.</span>
-            <Button size="sm" onClick={newChat}>New chat</Button>
-          </div>
-        )}
-        {attachments.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-2">
-            {attachments.map((attachment) => (
-              <span
-                key={`${attachment.name}-${attachment.size ?? 0}`}
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary/70 px-2 py-1 text-xs"
-              >
-                {attachment.name}
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+          {messagesError && (
+            <div
+              role="alert"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3"
+            >
+              <p className="text-sm text-destructive">
+                Could not load your saved messages. Check the database migration, then try again.
+              </p>
+              <Button size="sm" variant="outline" onClick={() => void refetchMessages()}>
+                Retry
+              </Button>
+            </div>
+          )}
+          {messages.length === 0 && (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[
+                "Review this product brief and propose an MVP",
+                "Explain this uploaded code and suggest fixes",
+                "Generate a premium landing-page hero image prompt",
+                "Audit this design spec and propose a UI structure",
+              ].map((idea) => (
                 <button
-                  type="button"
-                  aria-label={`Remove ${attachment.name}`}
-                  onClick={() =>
-                    setAttachments((current) =>
-                      current.filter((item) => item.name !== attachment.name),
-                    )
-                  }
-                  className="ml-1 text-muted-foreground hover:text-foreground"
+                  key={idea}
+                  onClick={() => setInput(idea)}
+                  className="animate-rise rounded-lg border border-border bg-secondary/60 p-3 text-left text-sm transition-colors hover:border-primary/60"
                 >
-                  ×
+                  {idea}
                 </button>
+              ))}
+            </div>
+          )}
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+              {message.role !== "user" && (
+                <span className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/15">
+                  <Bot className="h-3.5 w-3.5 text-primary" />
+                </span>
+              )}
+              <div
+                className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                  message.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : "border border-border bg-secondary"
+                }`}
+              >
+                <MessageBody content={message.content} />
+              </div>
+              {message.role === "user" && (
+                <span className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-secondary">
+                  <User className="h-3.5 w-3.5" />
+                </span>
+              )}
+            </div>
+          ))}
+          {send.isPending && (
+            <div className="flex justify-start gap-2">
+              <span className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/15">
+                <Bot className="h-3.5 w-3.5 text-primary" />
               </span>
-            ))}
+              <div className="max-w-[80%] rounded-2xl border border-border bg-secondary px-4 py-2">
+                {streamingReply ? (
+                  <MessageBody content={streamingReply} />
+                ) : (
+                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" /> ExpertAI is thinking…
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {generatedImage && (
+          <div className="border-t border-border/70 bg-secondary/40 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                Generated image
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setGeneratedImage(null)}
+                className="h-7 px-2"
+              >
+                Clear
+              </Button>
+            </div>
+            <img
+              src={`data:${generatedImage.mimeType};base64,${generatedImage.data}`}
+              alt="Generated by ExpertAI"
+              className="max-h-64 w-full rounded-lg border border-border object-contain"
+            />
           </div>
         )}
 
-        <div className="flex items-end gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            className="hidden"
-            onChange={(event) => {
-              void handleFiles(event.target.files);
-              event.target.value = "";
-            }}
-          />
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon"
-            onClick={() => fileInputRef.current?.click()}
-            aria-label="Upload files"
-          >
-            <Paperclip className="h-4 w-4" />
-          </Button>
-          <Textarea
-            value={input}
-            rows={1}
-            placeholder="Ask ExpertAI anything…"
-            onChange={(event) => setInput(event.target.value)}
-            disabled={chatIsFull || guestCreditsExhausted}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                submit();
-              }
-            }}
-            className="min-h-10 resize-none"
-          />
-          {user && (
+        <div className="border-t border-border/70 p-3">
+          {guestCreditsExhausted && (
+            <div
+              role="status"
+              className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm"
+            >
+              Your 15 free guest credits are used. Create an account to continue chatting with
+              ExpertAI.{" "}
+              <button
+                type="button"
+                className="ml-2 font-semibold text-primary underline"
+                onClick={() => window.location.assign("/auth")}
+              >
+                Create account
+              </button>
+            </div>
+          )}
+          {chatIsFull && (
+            <div
+              role="status"
+              className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm"
+            >
+              <span>
+                This chat is full. Your conversation is saved. Start a new chat to continue.
+              </span>
+              <Button size="sm" onClick={newChat}>
+                New chat
+              </Button>
+            </div>
+          )}
+          {attachments.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {attachments.map((attachment) => (
+                <span
+                  key={`${attachment.name}-${attachment.size ?? 0}`}
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary/70 px-2 py-1 text-xs"
+                >
+                  {attachment.name}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${attachment.name}`}
+                    onClick={() =>
+                      setAttachments((current) =>
+                        current.filter((item) => item.name !== attachment.name),
+                      )
+                    }
+                    className="ml-1 text-muted-foreground hover:text-foreground"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-end gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                void handleFiles(event.target.files);
+                event.target.value = "";
+              }}
+            />
             <Button
+              type="button"
               variant="secondary"
               size="icon"
-              aria-label="Generate image"
-              onClick={() => void generateImageMutation.mutateAsync()}
-              disabled={generateImageMutation.isPending}
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Upload files"
             >
-              {generateImageMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ImagePlus className="h-4 w-4" />
-              )}
+              <Paperclip className="h-4 w-4" />
             </Button>
-          )}
-          <Button onClick={submit} disabled={send.isPending || chatIsFull || guestCreditsExhausted} aria-label="Send message">
-            <Send className="h-4 w-4" />
-          </Button>
+            <Textarea
+              value={input}
+              rows={1}
+              placeholder="Ask ExpertAI anything…"
+              onChange={(event) => setInput(event.target.value)}
+              disabled={chatIsFull || guestCreditsExhausted}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  submit();
+                }
+              }}
+              className="min-h-10 resize-none"
+            />
+            {user && (
+              <Button
+                variant="secondary"
+                size="icon"
+                aria-label="Generate image"
+                onClick={() => void generateImageMutation.mutateAsync()}
+                disabled={generateImageMutation.isPending}
+              >
+                {generateImageMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ImagePlus className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+            <Button
+              onClick={submit}
+              disabled={send.isPending || chatIsFull || guestCreditsExhausted}
+              aria-label="Send message"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-      </div>
       </Card>
     </div>
   );

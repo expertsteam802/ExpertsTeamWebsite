@@ -13,8 +13,16 @@ import {
 } from "lucide-react";
 
 const MAP: Array<{ icon: LucideIcon; ext: string[]; tone: string }> = [
-  { icon: AppWindow, ext: ["apk", "exe", "app", "msi", "dmg", "ipa", "aab", "jar"], tone: "text-accent" },
-  { icon: Gamepad2, ext: ["unity3d", "love", "swf", "rom", "nes", "gba", "iso"], tone: "text-accent" },
+  {
+    icon: AppWindow,
+    ext: ["apk", "exe", "app", "msi", "dmg", "ipa", "aab", "jar"],
+    tone: "text-accent",
+  },
+  {
+    icon: Gamepad2,
+    ext: ["unity3d", "love", "swf", "rom", "nes", "gba", "iso"],
+    tone: "text-accent",
+  },
   { icon: FileVideo, ext: ["mp4", "mov", "avi", "mkv", "webm"], tone: "text-primary" },
   { icon: FileAudio, ext: ["mp3", "wav", "ogg", "m4a", "flac"], tone: "text-chart-3" },
   {
@@ -24,10 +32,35 @@ const MAP: Array<{ icon: LucideIcon; ext: string[]; tone: string }> = [
   },
   { icon: FileArchive, ext: ["zip", "rar", "7z", "tar", "gz"], tone: "text-chart-5" },
   { icon: FileSpreadsheet, ext: ["csv", "xls", "xlsx"], tone: "text-accent" },
-  { icon: FileText, ext: ["pdf", "doc", "docx", "txt", "md", "epub", "ppt", "pptx", "odt", "rtf", "pages"], tone: "text-primary" },
+  {
+    icon: FileText,
+    ext: ["pdf", "doc", "docx", "txt", "md", "epub", "ppt", "pptx", "odt", "rtf", "pages"],
+    tone: "text-primary",
+  },
   {
     icon: FileCode2,
-    ext: ["js", "ts", "tsx", "jsx", "py", "java", "c", "cpp", "html", "css", "json", "php", "sql", "go", "rs", "cs", "sh", "bash", "vue", "svelte"],
+    ext: [
+      "js",
+      "ts",
+      "tsx",
+      "jsx",
+      "py",
+      "java",
+      "c",
+      "cpp",
+      "html",
+      "css",
+      "json",
+      "php",
+      "sql",
+      "go",
+      "rs",
+      "cs",
+      "sh",
+      "bash",
+      "vue",
+      "svelte",
+    ],
     tone: "text-chart-3",
   },
 ];

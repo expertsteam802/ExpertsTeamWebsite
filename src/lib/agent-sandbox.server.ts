@@ -205,13 +205,15 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
       configImport,
       `const previewHost = ${JSON.stringify(previewHost)};`,
       "export default async (environment) => {",
-      "  const base = typeof userConfig === \"function\" ? await userConfig(environment) : await userConfig;",
+      '  const base = typeof userConfig === "function" ? await userConfig(environment) : await userConfig;',
       "  const hostConfig = { server: { allowedHosts: [previewHost] }, preview: { allowedHosts: [previewHost] } };",
       "  return Array.isArray(base) ? base.map((entry) => mergeConfig(entry, hostConfig)) : mergeConfig(base ?? {}, hostConfig);",
       "};",
       "",
     ].join("\n");
-    await sandbox.writeFiles([{ path: previewConfigPath, content: Buffer.from(previewConfig, "utf8") }]);
+    await sandbox.writeFiles([
+      { path: previewConfigPath, content: Buffer.from(previewConfig, "utf8") },
+    ]);
   }
   let alreadyRunning = false;
   let blockedByViteHostCheck = false;
@@ -242,7 +244,8 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
     if (scriptName) {
       const args = ["run", scriptName];
       if (isNext) args.push("--", "--hostname", "0.0.0.0", "--port", String(port));
-      else if (isVite) args.push("--", "--host", "0.0.0.0", "--port", String(port), "--config", previewConfigPath);
+      else if (isVite)
+        args.push("--", "--host", "0.0.0.0", "--port", String(port), "--config", previewConfigPath);
       await sandbox.runCommand({
         cmd: "npm",
         args,
@@ -273,13 +276,15 @@ function shellQuote(value: string) {
 }
 
 function cleanTerminalOutput(value: string) {
-  return value
-    // eslint-disable-next-line no-control-regex
-    .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "")
-    // eslint-disable-next-line no-control-regex
-    .replace(/\x1B\][^\x07]*(?:\x07|\x1B\\)/g, "")
-    .replace(/\r\n?/g, "\n")
-    .slice(-30_000);
+  return (
+    value
+      // eslint-disable-next-line no-control-regex
+      .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "")
+      // eslint-disable-next-line no-control-regex
+      .replace(/\x1B\][^\x07]*(?:\x07|\x1B\\)/g, "")
+      .replace(/\r\n?/g, "\n")
+      .slice(-30_000)
+  );
 }
 
 export async function startCloudProjectTerminal(projectId: string) {
@@ -297,31 +302,31 @@ export async function startCloudProjectTerminal(projectId: string) {
     'const http = require("node:http");',
     'const { WebSocketServer } = require("ws");',
     'const pty = require("node-pty");',
-    'let activeShell = null;',
-    'const server = http.createServer((request, response) => {',
+    "let activeShell = null;",
+    "const server = http.createServer((request, response) => {",
     '  if (request.url === "/health") { response.writeHead(200, { "content-type": "text/plain", "cache-control": "no-store" }); response.end("ok"); return; }',
-    '  response.writeHead(404); response.end();',
-    '});',
-    'const sockets = new WebSocketServer({ noServer: true, maxPayload: 65536, perMessageDeflate: false });',
+    "  response.writeHead(404); response.end();",
+    "});",
+    "const sockets = new WebSocketServer({ noServer: true, maxPayload: 65536, perMessageDeflate: false });",
     'server.on("upgrade", (request, socket, head) => {',
     '  if (request.url !== "/terminal") { socket.destroy(); return; }',
     '  const protocols = String(request.headers["sec-websocket-protocol"] || "").split(",").map((value) => value.trim());',
     '  if (!process.env.TERMINAL_TOKEN || !protocols.includes(process.env.TERMINAL_TOKEN)) { socket.write("HTTP/1.1 401 Unauthorized\\r\\nConnection: close\\r\\n\\r\\n"); socket.destroy(); return; }',
     '  sockets.handleUpgrade(request, socket, head, (client) => sockets.emit("connection", client));',
-    '});',
+    "});",
     'sockets.on("connection", (client) => {',
-    '  if (activeShell) { try { activeShell.kill(); } catch {} activeShell = null; }',
+    "  if (activeShell) { try { activeShell.kill(); } catch {} activeShell = null; }",
     '  const shell = pty.spawn("/bin/bash", ["--login"], { name: "xterm-256color", cols: 100, rows: 30, cwd: process.env.TERMINAL_CWD || "/vercel/sandbox", env: { ...process.env, TERM: "xterm-256color", COLORTERM: "truecolor" } });',
-    '  activeShell = shell;',
-    '  shell.onData((data) => { if (client.readyState === 1) client.send(data); });',
-    '  shell.onExit(() => { if (activeShell === shell) activeShell = null; if (client.readyState === 1) client.close(); });',
+    "  activeShell = shell;",
+    "  shell.onData((data) => { if (client.readyState === 1) client.send(data); });",
+    "  shell.onExit(() => { if (activeShell === shell) activeShell = null; if (client.readyState === 1) client.close(); });",
     '  client.on("message", (buffer) => {',
-    '    const value = buffer.toString();',
+    "    const value = buffer.toString();",
     '    if (value.charCodeAt(0) === 0) { try { const control = JSON.parse(value.slice(1)); if (control.type === "resize") shell.resize(Math.max(20, Math.min(300, Number(control.cols) || 100)), Math.max(5, Math.min(100, Number(control.rows) || 30))); } catch {} return; }',
-    '    shell.write(value);',
-    '  });',
+    "    shell.write(value);",
+    "  });",
     '  client.on("close", () => { try { shell.kill(); } catch {} if (activeShell === shell) activeShell = null; });',
-    '});',
+    "});",
     'server.listen(Number(process.env.TERMINAL_PORT || 4174), "0.0.0.0");',
   ].join("\n");
 
@@ -343,7 +348,9 @@ export async function startCloudProjectTerminal(projectId: string) {
       timeoutMs: 180_000,
     });
     if (install.exitCode !== 0)
-      throw new Error("Could not install the isolated terminal runtime: " + (await install.stderr()).slice(-3000));
+      throw new Error(
+        "Could not install the isolated terminal runtime: " + (await install.stderr()).slice(-3000),
+      );
   }
 
   const ping = () =>
@@ -384,19 +391,37 @@ export async function readCloudProjectFiles(projectId: string) {
     args: [
       ".",
       "(",
-      "-path", "./node_modules",
-      "-o", "-path", "./.git",
-      "-o", "-path", "./dist",
-      "-o", "-path", "./build",
-      "-o", "-path", "./out",
-      "-o", "-path", "./.next",
-      "-o", "-path", "./.vercel",
-      "-o", "-path", "./coverage",
-      "-o", "-path", "./.experts-terminal-bridge",
+      "-path",
+      "./node_modules",
+      "-o",
+      "-path",
+      "./.git",
+      "-o",
+      "-path",
+      "./dist",
+      "-o",
+      "-path",
+      "./build",
+      "-o",
+      "-path",
+      "./out",
+      "-o",
+      "-path",
+      "./.next",
+      "-o",
+      "-path",
+      "./.vercel",
+      "-o",
+      "-path",
+      "./coverage",
+      "-o",
+      "-path",
+      "./.experts-terminal-bridge",
       ")",
       "-prune",
       "-o",
-      "-type", "f",
+      "-type",
+      "f",
       "-print",
     ],
     cwd: WORKDIR,
@@ -419,7 +444,10 @@ export async function readCloudProjectFiles(projectId: string) {
         !/\.(?:pem|key|p12|pfx)$/i.test(filename)
       );
     });
-  if (paths.length > 120) throw new Error("The project has more than 120 files; remove generated files before importing.");
+  if (paths.length > 120)
+    throw new Error(
+      "The project has more than 120 files; remove generated files before importing.",
+    );
   const files: AgentProjectFiles = {};
   let totalBytes = 0;
   for (const path of paths) {
@@ -453,9 +481,7 @@ export async function runCloudProjectCommand(projectId: string, command: string)
     'exit "$command_status"',
     "",
   ].join("\n");
-  await sandbox.writeFiles([
-    { path: commandPath, content: Buffer.from(script, "utf8") },
-  ]);
+  await sandbox.writeFiles([{ path: commandPath, content: Buffer.from(script, "utf8") }]);
   const result = await sandbox.runCommand({
     cmd: "bash",
     args: ["--login", commandPath],
@@ -540,7 +566,9 @@ export async function publishCloudProject(
       const stderr = await build.stderr();
       const stdout = await build.stdout();
       throw new Error(
-        ("Build failed. Fix the build errors before publishing.\n" + (stderr || stdout)).slice(-6000),
+        ("Build failed. Fix the build errors before publishing.\n" + (stderr || stdout)).slice(
+          -6000,
+        ),
       );
     }
 
