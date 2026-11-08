@@ -37,6 +37,9 @@ export function SiteFooter() {
           <Link to="/explore" className="block text-muted-foreground hover:text-foreground">
             Explore all
           </Link>
+          <Link to="/showcase" className="block text-muted-foreground hover:text-foreground">
+            Project showcase
+          </Link>
           <Link to="/about" className="block text-muted-foreground hover:text-foreground">
             About ExpertsTeam
           </Link>
