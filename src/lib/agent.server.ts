@@ -260,7 +260,7 @@ export async function runAgent(
     .split(",")
     .map((item) => item.trim().toLowerCase())
     .filter((item) => ["groq", "gemini", "openrouter"].includes(item));
-  const providerSequence = [...new Set(["groq", ...configured.filter((provider) => provider !== "groq"), "gemini", "openrouter"])];
+  const providerSequence = [...new Set([...configured, "groq", "gemini", "openrouter"])];
   const completedFiles: Record<string, string | null> = {};
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
