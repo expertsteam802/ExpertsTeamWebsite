@@ -38,10 +38,9 @@ import {
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { EditorView, keymap } from "@codemirror/view";
-import { javascript } from "@codemirror/lang-javascript";
-import { html } from "@codemirror/lang-html";
-import { css } from "@codemirror/lang-css";
-import { json } from "@codemirror/lang-json";
+import { LanguageDescription } from "@codemirror/language";
+import type { Extension } from "@codemirror/state";
+import { languages } from "@codemirror/language-data";
 import { oneDark } from "@codemirror/theme-one-dark";
 
 import { indentWithTab } from "@codemirror/commands";
@@ -84,6 +83,8 @@ type ProjectRow = {
 };
 
 type Panel = "preview" | "code" | "console" | "terminal";
+
+const CODING_AGENT_UNDER_DEVELOPMENT = true;
 
 const EDITOR_SNIPPETS = [
   {
@@ -243,6 +244,7 @@ export function CodeAgent() {
   const [terminalOutput, setTerminalOutput] = useState("");
   const [terminalInput, setTerminalInput] = useState("");
   const [terminalReady, setTerminalReady] = useState(false);
+  const [fileLanguage, setFileLanguage] = useState<Extension[]>([]);
   const runtimeFilesRef = useRef<ProjectFiles>({});
   const runtimeSyncQueueRef = useRef<Promise<void>>(Promise.resolve());
 
@@ -250,22 +252,25 @@ export function CodeAgent() {
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const editorRef = useRef<EditorView | null>(null);
   const srcDoc = useMemo(() => buildSrcDocWithConsole(files), [files]);
-  const editorExtensions = useMemo(() => {
-    const language =
-      activeFile.endsWith(".tsx") ||
-      activeFile.endsWith(".ts") ||
-      activeFile.endsWith(".jsx") ||
-      activeFile.endsWith(".js")
-        ? javascript({ jsx: true, typescript: /\.tsx?$/.test(activeFile) })
-        : activeFile.endsWith(".html")
-          ? html()
-          : activeFile.endsWith(".css")
-            ? css()
-            : activeFile.endsWith(".json")
-              ? json()
-              : null;
-    return [keymap.of([indentWithTab]), ...(language ? [language] : [])];
+  useEffect(() => {
+    let cancelled = false;
+    const language = LanguageDescription.matchFilename(languages, activeFile);
+    if (!language) {
+      setFileLanguage([]);
+      return () => { cancelled = true; };
+    }
+    void language.load().then((support) => {
+      if (!cancelled) setFileLanguage([support]);
+    }).catch(() => {
+      if (!cancelled) setFileLanguage([]);
+    });
+    return () => { cancelled = true; };
   }, [activeFile]);
+
+  const editorExtensions = useMemo(
+    () => [keymap.of([indentWithTab]), ...fileLanguage],
+    [fileLanguage],
+  );
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["agent-projects", user?.id],
@@ -405,12 +410,12 @@ export function CodeAgent() {
       setTerminalOutput(
         (current) =>
           current ||
-          "Cloud terminal connected. Commands run inside your isolated project sandbox.\\r\\n",
+          "Cloud terminal connected. Commands run inside your isolated project sandbox.\r\n",
       );
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Could not connect to the cloud terminal.";
-      setTerminalOutput((current) => current + `\\r\\n[terminal error] ${message}\\r\\n`);
+      setTerminalOutput((current) => current + `\r\n[terminal error] ${message}\r\n`);
       toast.error(message);
     }
   }
@@ -420,21 +425,21 @@ export function CodeAgent() {
     const command = terminalInput.trim();
     if (!command || !projectId) return;
     setTerminalInput("");
-    setTerminalOutput((current) => (current + `\\r\\n$ ${command}\\r\\n`).slice(-40000));
+    setTerminalOutput((current) => (current + `\r\n$ ${command}\r\n`).slice(-40000));
     try {
       const result = await terminalCommand({ data: { projectId, command } });
       setTerminalOutput((current) =>
         (
           current +
           result.stdout +
-          (result.stderr ? `\\r\\n${result.stderr}` : "") +
-          `\\r\\n[exit ${result.exitCode}]\\r\\n`
+          (result.stderr ? `\r\n${result.stderr}` : "") +
+          `\r\n[exit ${result.exitCode}]\r\n`
         ).slice(-40000),
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Command failed.";
       setTerminalOutput((current) =>
-        (current + `\\r\\n[terminal error] ${message}\\r\\n`).slice(-40000),
+        (current + `\r\n[terminal error] ${message}\r\n`).slice(-40000),
       );
     }
   }
@@ -488,6 +493,21 @@ export function CodeAgent() {
     setRuntimeUrl(null);
     setRuntimeStatus("Not started");
     runtimeFilesRef.current = {};
+  }
+
+  async function publishProject() {
+    try {
+      const existingSlug = projects.find((project) => project.id === projectId)?.slug;
+      const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "my-app";
+      const slug = existingSlug || `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
+      await persist({ extra: { published: true, slug } });
+      const url = `${window.location.origin}/apps/${slug}`;
+      toast.success("Your app is published", {
+        action: { label: "Open app", onClick: () => window.open(url, "_blank", "noopener,noreferrer") },
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not publish this app.");
+    }
   }
 
   async function saveProjectName() {
@@ -644,6 +664,7 @@ export function CodeAgent() {
   });
 
   async function sendPrompt() {
+    if (CODING_AGENT_UNDER_DEVELOPMENT) return;
     const text = prompt.trim();
     if (!text || busy) return;
 
@@ -949,6 +970,15 @@ export function CodeAgent() {
           >
             <Plus className="mr-1.5 h-3.5 w-3.5" />
             New project
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void publishProject()}
+            className="h-8 border-emerald-400/25 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/20"
+          >
+            <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+            Publish
           </Button>
           <Button
             size="sm"
@@ -1441,7 +1471,7 @@ export function CodeAgent() {
                           onClick={() => {
                             if (!projectId) return;
                             setTerminalOutput((current) =>
-                              (current + `\\r\\n$ ${command}\\r\\n`).slice(-40000),
+                              (current + `\r\n$ ${command}\r\n`).slice(-40000),
                             );
                             void terminalCommand({ data: { projectId, command } })
                               .then((result) => {
@@ -1449,8 +1479,8 @@ export function CodeAgent() {
                                   (
                                     current +
                                     result.stdout +
-                                    (result.stderr ? `\\r\\n${result.stderr}` : "") +
-                                    `\\r\\n[exit ${result.exitCode}]\\r\\n`
+                                    (result.stderr ? `\r\n${result.stderr}` : "") +
+                                    `\r\n[exit ${result.exitCode}]\r\n`
                                   ).slice(-40000),
                                 );
                               })
@@ -1517,9 +1547,7 @@ export function CodeAgent() {
                     </Button>
                   </form>
                   <p className="border-t border-white/[0.06] px-4 py-2 text-[10px] text-slate-600">
-                    Browser-based project shell with a Kali-inspired look. It is not a full Kali
-                    Linux machine: privileged tools, sudo, apt, and unrestricted host access are
-                    unavailable.
+                    Commands execute in your isolated Linux project sandbox. Each submitted command currently runs as a separate Bash job; persistent interactive PTY sessions are not yet enabled.
                   </p>
                 </div>
               )}
@@ -1583,7 +1611,7 @@ export function CodeAgent() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-white">ExpertAI</p>
-                      <p className="text-[9px] text-emerald-400">ExpertAI coding assistant</p>
+                      <p className="text-[9px] text-amber-300">AI tools under development</p>
                     </div>
                   </div>
                   <button
@@ -1595,6 +1623,7 @@ export function CodeAgent() {
                   </button>
                 </div>
 
+                <div className="mx-3 mt-3 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-[11px] leading-5 text-amber-100">ExpertAI prompt-based coding is under development. Your code editor, project files, save, run, preview and sandbox tools remain available.</div>
                 <div className="flex-1 space-y-4 overflow-y-auto p-4">
                   {messages.length === 0 && (
                     <div className="flex min-h-[400px] flex-col justify-center">
@@ -1610,6 +1639,7 @@ export function CodeAgent() {
                           <button
                             key={suggestion}
                             onClick={() => setPrompt(suggestion)}
+                            disabled={CODING_AGENT_UNDER_DEVELOPMENT}
                             className="w-full rounded-xl border border-white/[0.08] bg-white/[0.025] p-3 text-left text-xs leading-5 text-slate-300 transition hover:border-cyan-400/30 hover:bg-cyan-400/[0.06] hover:text-white"
                           >
                             {suggestion}
@@ -1738,6 +1768,7 @@ export function CodeAgent() {
                     <Textarea
                       ref={promptRef}
                       value={prompt}
+                      disabled={CODING_AGENT_UNDER_DEVELOPMENT}
                       onChange={(event) => setPrompt(event.target.value)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" && !event.shiftKey) {
@@ -1746,7 +1777,7 @@ export function CodeAgent() {
                         }
                       }}
                       rows={3}
-                      placeholder="Ask the agent to build or change something…"
+                      placeholder="AI prompt entry is temporarily under development."
                       className="min-h-[76px] resize-none border-0 bg-transparent px-1 text-xs text-white shadow-none placeholder:text-slate-500 focus-visible:ring-0"
                     />
                     <div className="flex items-center justify-between px-1 pt-2">
@@ -1754,20 +1785,20 @@ export function CodeAgent() {
                         <button
                           type="button"
                           onClick={() => referenceInputRef.current?.click()}
-                          disabled={busy}
+                          disabled={busy || CODING_AGENT_UNDER_DEVELOPMENT}
                           className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] text-slate-400 transition hover:bg-white/5 hover:text-cyan-200"
                           title="Attach up to three screenshots or design references"
                         >
                           <ImagePlus className="h-4 w-4" /> Reference images
                         </button>
-                        <span className="hidden text-[9px] text-slate-600 sm:inline">
-                          Enter to send · Shift + Enter for new line
+                        <span className="hidden text-[9px] text-amber-300/80 sm:inline">
+                          Prompt feature under development
                         </span>
                       </div>
                       <Button
                         size="icon"
                         onClick={() => void sendPrompt()}
-                        disabled={busy || !prompt.trim()}
+                        disabled={CODING_AGENT_UNDER_DEVELOPMENT || busy || !prompt.trim()}
                         className="h-8 w-8 bg-cyan-400 text-slate-950 hover:bg-cyan-300"
                         aria-label="Send prompt"
                       >
