@@ -21,16 +21,27 @@ export const deleteUserAccount = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: files } = await supabaseAdmin
+    const { data: files, error: filesError } = await supabaseAdmin
       .from("files")
       .select("storage_path")
       .eq("user_id", data.userId);
+    if (filesError) {
+      throw new Error(`Could not load the user's uploaded files: ${filesError.message}`);
+    }
+
     if (files?.length) {
-      await supabaseAdmin.storage.from("uploads").remove(files.map((file) => file.storage_path));
+      const { error: storageError } = await supabaseAdmin.storage
+        .from("uploads")
+        .remove(files.map((file) => file.storage_path));
+      if (storageError) {
+        throw new Error(`Could not remove the user's uploaded files: ${storageError.message}`);
+      }
     }
 
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
-    if (deleteError) throw deleteError;
+    if (deleteError) {
+      throw new Error(`Supabase could not delete the account: ${deleteError.message}`);
+    }
 
     return { ok: true };
   });
