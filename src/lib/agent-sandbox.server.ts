@@ -304,7 +304,7 @@ export async function startCloudProjectTerminal(projectId: string) {
     'server.on("upgrade", (request, socket, head) => {',
     '  if (request.url !== "/terminal") { socket.destroy(); return; }',
     '  const protocols = String(request.headers["sec-websocket-protocol"] || "").split(",").map((value) => value.trim());',
-    '  if (!process.env.TERMINAL_TOKEN || !protocols.includes(process.env.TERMINAL_TOKEN)) { socket.write("HTTP/1.1 401 Unauthorized\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n"); socket.destroy(); return; }',
+    '  if (!process.env.TERMINAL_TOKEN || !protocols.includes(process.env.TERMINAL_TOKEN)) { socket.write("HTTP/1.1 401 Unauthorized\\r\\nConnection: close\\r\\n\\r\\n"); socket.destroy(); return; }',
     '  sockets.handleUpgrade(request, socket, head, (client) => sockets.emit("connection", client));',
     '});',
     'sockets.on("connection", (client) => {',
