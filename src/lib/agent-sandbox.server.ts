@@ -267,20 +267,51 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   return { url, port, sandboxName: name, installOutput, recovered };
 }
 
+function shellQuote(value: string) {
+  return "'" + value.replace(/'/g, "'\\''") + "'";
+}
+
+function cleanTerminalOutput(value: string) {
+  return value
+    .replace(/\\x1B\\[[0-?]*[ -/]*[@-~]/g, "")
+    .replace(/\\x1B\\][^\\x07]*(?:\\x07|\\x1B\\\\)/g, "")
+    .replace(/\\r\\n?/g, "\\n")
+    .slice(-30_000);
+}
+
 export async function runCloudProjectCommand(projectId: string, command: string) {
   if (!command.trim() || command.length > 3000)
     throw new Error("Enter a command under 3,000 characters.");
   const sandbox = await Sandbox.get({ name: sandboxName(projectId) });
+  const cwdPath = `${WORKDIR}/.experts-terminal-cwd`;
+  const envPath = `${WORKDIR}/.experts-terminal-env`;
+  const commandPath = `${WORKDIR}/.experts-terminal-command.sh`;
+  const savedCwd = (await readText(sandbox, cwdPath))?.trim() || WORKDIR;
+  const script = [
+    "#!/usr/bin/env bash",
+    `cd -- ${shellQuote(savedCwd)} || exit 1`,
+    `if [ -f ${shellQuote(envPath)} ]; then source ${shellQuote(envPath)}; fi`,
+    command,
+    "command_status=$?",
+    `pwd > ${shellQuote(cwdPath)}`,
+    `export -p > ${shellQuote(envPath)}`,
+    'exit "$command_status"',
+    "",
+  ].join("\\n");
+  await sandbox.writeFiles([
+    { path: commandPath, content: Buffer.from(script, "utf8") },
+  ]);
   const result = await sandbox.runCommand({
     cmd: "bash",
-    args: ["-lc", command],
+    args: ["--login", commandPath],
     cwd: WORKDIR,
     timeoutMs: 120_000,
   });
   return {
     exitCode: result.exitCode,
-    stdout: (await result.stdout()).slice(-30_000),
-    stderr: (await result.stderr()).slice(-30_000),
+    stdout: cleanTerminalOutput(await result.stdout()),
+    stderr: cleanTerminalOutput(await result.stderr()),
+    cwd: (await readText(sandbox, cwdPath))?.trim() || WORKDIR,
   };
 }
 
