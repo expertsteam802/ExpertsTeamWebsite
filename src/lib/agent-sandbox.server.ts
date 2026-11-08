@@ -9,6 +9,7 @@ export type AgentProjectFiles = Record<string, string>;
 const WORKDIR = "/vercel/sandbox";
 const META_FILE = ".experts-agent-files.json";
 const PACKAGE_HASH_FILE = ".experts-agent-package-hash";
+const PREVIEW_PORT_FILE = ".experts-agent-preview-port";
 
 function sandboxName(projectId: string) {
   return "experts-agent-pty-" + projectId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 36);
@@ -127,7 +128,7 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
 
   // Existing named sandboxes keep their original configuration, so update the
   // per-session timeout as well as setting it during creation.
-  await sandbox.update({ timeout: 45 * 60 * 1000 });
+  await sandbox.update({ timeout: 45 * 60 * 1000, ports: [port, 4174] });
 
   const previous = await readText(sandbox, `${WORKDIR}/${META_FILE}`);
   let previousManifest: Record<string, string> = {};
@@ -165,6 +166,9 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
       path: META_FILE,
       content: Buffer.from(JSON.stringify(nextManifest), "utf8"),
     },
+  ]);
+  await sandbox.writeFiles([
+    { path: PREVIEW_PORT_FILE, content: Buffer.from(String(port), "utf8") },
   ]);
 
   const packageHash = createHash("sha256").update(files["package.json"]).digest("hex");
@@ -287,8 +291,53 @@ function cleanTerminalOutput(value: string) {
   );
 }
 
-export async function startCloudProjectTerminal(projectId: string) {
-  const sandbox = await Sandbox.get({ name: sandboxName(projectId) });
+export async function startCloudProjectTerminal(
+  projectId: string,
+  sourceFiles: AgentProjectFiles,
+) {
+  const files = repairMissingStylesheetImports({ ...sourceFiles });
+  validateFiles(files);
+  const name = sandboxName(projectId);
+  const sandbox = await Sandbox.getOrCreate({
+    name,
+    runtime: "node24",
+    resources: { vcpus: 1 },
+    timeout: 45 * 60 * 1000,
+    ports: [5173, 4174],
+    resume: true,
+  });
+  const savedPort = Number((await readText(sandbox, WORKDIR + "/" + PREVIEW_PORT_FILE))?.trim());
+  const previewPort = Number.isInteger(savedPort) && savedPort >= 1 && savedPort <= 65535 ? savedPort : 5173;
+  await sandbox.update({ timeout: 45 * 60 * 1000, ports: [previewPort, 4174] });
+
+  const previous = await readText(sandbox, WORKDIR + "/" + META_FILE);
+  let previousManifest: Record<string, string> = {};
+  try {
+    previousManifest = previous ? (JSON.parse(previous) as Record<string, string>) : {};
+  } catch {
+    previousManifest = {};
+  }
+  const nextManifest = Object.fromEntries(
+    Object.entries(files).map(([path, content]) => [
+      path,
+      createHash("sha256").update(content).digest("hex"),
+    ]),
+  );
+  const nextPaths = Object.keys(files);
+  const removed = Object.keys(previousManifest).filter((path) => !nextPaths.includes(path));
+  if (removed.length)
+    await sandbox.runCommand({ cmd: "rm", args: ["-rf", "--", ...removed], cwd: WORKDIR });
+  if (nextPaths.length) {
+    await sandbox.writeFiles(
+      nextPaths.map((path) => ({
+        path,
+        content: Buffer.from(files[path], "utf8"),
+      })),
+    );
+  }
+  await sandbox.writeFiles([
+    { path: META_FILE, content: Buffer.from(JSON.stringify(nextManifest), "utf8") },
+  ];
   const bridgeDir = WORKDIR + "/.experts-terminal-bridge";
   const tokenPath = WORKDIR + "/.experts-terminal-token";
   await sandbox.runCommand({ cmd: "mkdir", args: ["-p", bridgeDir], cwd: WORKDIR });
