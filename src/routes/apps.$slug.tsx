@@ -32,15 +32,27 @@ function LiveApp() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agent_projects")
-        .select("name, files, deployment_url")
+        .select("name, deployment_url")
         .eq("slug", slug)
         .eq("published", true)
         .maybeSingle();
       if (error) throw error;
-      return data as { name: string; files: ProjectFiles; deployment_url: string | null } | null;
+      if (!data || data.deployment_url) return data as { name: string; deployment_url: string | null; files?: ProjectFiles } | null;
+
+      const { data: legacy, error: legacyError } = await supabase
+        .from("agent_projects")
+        .select("files")
+        .eq("slug", slug)
+        .eq("published", true)
+        .maybeSingle();
+      if (legacyError) throw legacyError;
+      return {
+        ...data,
+        files: (legacy?.files ?? {}) as ProjectFiles,
+      } as { name: string; deployment_url: string | null; files?: ProjectFiles };
     },
   });
-  const srcDoc = useMemo(() => (data ? buildSrcDoc(data.files) : ""), [data]);
+  const srcDoc = useMemo(() => (data?.files ? buildSrcDoc(data.files) : ""), [data]);
 
   return (
     <main className="min-h-screen w-screen overflow-hidden bg-white text-slate-900">
