@@ -123,13 +123,25 @@ export const startAgentPreview = createServerFn({ method: "POST" })
     return startCloudProjectPreview(data.projectId, data.files);
   });
 
+const terminalStartRequest = z
+  .object({
+    projectId: z.string().uuid(),
+    files: z.record(z.string().max(512), z.string().max(150000)),
+  })
+  .refine(
+    ({ files }) =>
+      Object.keys(files).length <= 120 &&
+      Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 1_000_000,
+    "The project is too large to open in the Linux terminal.",
+  );
+
 export const startAgentTerminal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => terminalStartRequest.parse(input))
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
     const { startCloudProjectTerminal } = await import("./agent-sandbox.server");
-    return startCloudProjectTerminal(data.projectId);
+    return startCloudProjectTerminal(data.projectId, data.files);
   });
 
 const publishRequest = z
