@@ -337,7 +337,7 @@ export async function startCloudProjectTerminal(
   }
   await sandbox.writeFiles([
     { path: META_FILE, content: Buffer.from(JSON.stringify(nextManifest), "utf8") },
-  ];
+  ]);
   const bridgeDir = WORKDIR + "/.experts-terminal-bridge";
   const tokenPath = WORKDIR + "/.experts-terminal-token";
   await sandbox.runCommand({ cmd: "mkdir", args: ["-p", bridgeDir], cwd: WORKDIR });
