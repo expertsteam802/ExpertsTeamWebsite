@@ -449,7 +449,7 @@ export async function startCloudProjectTerminal(
     'socket.on("message", (data) => { output += data.toString(); if (output.includes("EXPERTS_TERMINAL_OK")) { passed = true; clearTimeout(timeout); socket.close(); } });',
     'socket.on("close", () => { clearTimeout(timeout); process.exit(passed ? 0 : 1); });',
     'socket.on("error", () => { clearTimeout(timeout); process.exit(1); });',
-  ].join("\\n");
+  ].join("\n");
   await sandbox.writeFiles([{ path: selfTestPath, content: Buffer.from(selfTestSource, "utf8") }]);
   const selfTestResult = await sandbox.runCommand({
     cmd: "node",
