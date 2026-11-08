@@ -156,7 +156,7 @@ function MessagesPage() {
 
   async function sendCallSignal(
     signal_type: "offer" | "answer" | "ice" | "hangup" | "reject",
-    payload: Record<string, unknown> = {},
+    payload: object = {},
   ) {
     if (!user || !activeConversation || !recipient) throw new Error("Choose a conversation first.");
     const { error } = await supabase.from("direct_call_signals").insert({
@@ -282,6 +282,14 @@ function MessagesPage() {
       };
       recorder.onstop = () => {
         const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+        if (blob.size > 8 * 1024 * 1024) {
+          toast.error("Voice notes must be 8 MB or smaller. Record a shorter message.");
+          stream.getTracks().forEach((track) => track.stop());
+          recordingStreamRef.current = null;
+          recorderRef.current = null;
+          setRecording(false);
+          return;
+        }
         const extension = blob.type.includes("ogg") ? "ogg" : blob.type.includes("mp4") ? "m4a" : "webm";
         const file = new File([blob], "voice-message-" + Date.now() + "." + extension, { type: blob.type || "audio/webm" });
         if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
@@ -338,7 +346,7 @@ function MessagesPage() {
         cursor = signal.created_at;
         callCursorRef.current[activeConversationId] = cursor;
         if (signal.from_user_id !== userId) {
-          const payload = signal.payload as Record<string, unknown>;
+          const payload = signal.payload as unknown as Record<string, unknown>;
           try {
             if (signal.signal_type === "offer" && callState === "idle") {
               setIncomingCall({
