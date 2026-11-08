@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { Sandbox } from "@vercel/sandbox";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 import { repairMissingStylesheetImports } from "./agent.server";
 
@@ -313,6 +314,148 @@ export async function runCloudProjectCommand(projectId: string, command: string)
     stderr: cleanTerminalOutput(await result.stderr()),
     cwd: (await readText(sandbox, cwdPath))?.trim() || WORKDIR,
   };
+}
+
+function publishedContentType(path: string) {
+  const extension = path.split(".").pop()?.toLowerCase();
+  const types: Record<string, string> = {
+    html: "text/html; charset=utf-8",
+    css: "text/css; charset=utf-8",
+    js: "text/javascript; charset=utf-8",
+    mjs: "text/javascript; charset=utf-8",
+    cjs: "text/javascript; charset=utf-8",
+    json: "application/json; charset=utf-8",
+    map: "application/json; charset=utf-8",
+    svg: "image/svg+xml",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    webp: "image/webp",
+    gif: "image/gif",
+    ico: "image/x-icon",
+    woff: "font/woff",
+    woff2: "font/woff2",
+    ttf: "font/ttf",
+    otf: "font/otf",
+    wasm: "application/wasm",
+    txt: "text/plain; charset=utf-8",
+    xml: "application/xml",
+  };
+  return types[extension ?? ""] ?? "application/octet-stream";
+}
+
+export async function publishCloudProject(
+  projectId: string,
+  sourceFiles: AgentProjectFiles,
+  slug: string,
+) {
+  if (!/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(slug))
+    throw new Error("The public app address is invalid.");
+
+  await startCloudProjectPreview(projectId, sourceFiles);
+  const sandbox = await Sandbox.get({ name: sandboxName(projectId) });
+  let packageJson: Record<string, unknown> = {};
+  try {
+    packageJson = JSON.parse(sourceFiles["package.json"] ?? "{}") as Record<string, unknown>;
+  } catch {
+    throw new Error("package.json contains invalid JSON. Fix it before publishing.");
+  }
+  const scripts = (packageJson.scripts ?? {}) as Record<string, string>;
+  const buildScript = typeof scripts.build === "string" ? scripts.build : "";
+  let outputFiles: Array<{ path: string; content: Buffer }> = [];
+
+  if (buildScript) {
+    const build = await sandbox.runCommand({
+      cmd: "npm",
+      args: ["run", "build"],
+      cwd: WORKDIR,
+      timeoutMs: 240_000,
+    });
+    if (build.exitCode !== 0) {
+      const stderr = await build.stderr();
+      const stdout = await build.stdout();
+      throw new Error(
+        ("Build failed. Fix the build errors before publishing.\n" + (stderr || stdout)).slice(-6000),
+      );
+    }
+
+    let outputDirectory = "";
+    for (const candidate of ["dist", "build", "out"]) {
+      const check = await sandbox.runCommand({
+        cmd: "test",
+        args: ["-f", `${candidate}/index.html`],
+        cwd: WORKDIR,
+      });
+      if (check.exitCode === 0) {
+        outputDirectory = candidate;
+        break;
+      }
+    }
+    if (!outputDirectory) {
+      throw new Error(
+        "The build completed but no static index.html was found in dist/, build/ or out/. This publisher currently supports static frontend builds.",
+      );
+    }
+
+    const listing = await sandbox.runCommand({
+      cmd: "find",
+      args: [outputDirectory, "-type", "f", "-print"],
+      cwd: WORKDIR,
+      timeoutMs: 30_000,
+    });
+    if (listing.exitCode !== 0) throw new Error("Could not list the production build output.");
+    const paths = (await listing.stdout())
+      .split("\n")
+      .map((path) => path.trim())
+      .filter((path) => path.startsWith(outputDirectory + "/"));
+    if (!paths.length || paths.length > 500)
+      throw new Error("The build must contain between 1 and 500 publishable files.");
+
+    let totalBytes = 0;
+    for (const path of paths) {
+      const buffer = await sandbox.readFileToBuffer({ path: `${WORKDIR}/${path}` });
+      if (!buffer) throw new Error(`Could not read build output file: ${path}`);
+      totalBytes += buffer.byteLength;
+      if (buffer.byteLength > 10_000_000 || totalBytes > 40_000_000)
+        throw new Error("The published build is too large (maximum 40 MB total, 10 MB per file).");
+      outputFiles.push({ path: path.slice(outputDirectory.length + 1), content: buffer });
+    }
+  } else {
+    if (!sourceFiles["index.html"])
+      throw new Error("Add an index.html file or a package.json build script before publishing.");
+    outputFiles = Object.entries(sourceFiles).map(([path, content]) => ({
+      path,
+      content: Buffer.from(content, "utf8"),
+    }));
+  }
+
+  if (!outputFiles.some((file) => file.path === "index.html"))
+    throw new Error("The production build does not contain index.html.");
+
+  const releaseId = crypto.randomUUID();
+  const prefix = `${slug}/${releaseId}`;
+  for (let offset = 0; offset < outputFiles.length; offset += 8) {
+    const batch = outputFiles.slice(offset, offset + 8);
+    const results = await Promise.all(
+      batch.map(async (file) => {
+        const path = `${prefix}/${file.path}`;
+        const { error } = await supabaseAdmin.storage
+          .from("published-apps")
+          .upload(path, file.content, {
+            contentType: publishedContentType(file.path),
+            cacheControl: "31536000",
+            upsert: true,
+          });
+        if (error) throw new Error(`Could not publish ${file.path}: ${error.message}`);
+      }),
+    );
+    void results;
+  }
+
+  const { data } = supabaseAdmin.storage
+    .from("published-apps")
+    .getPublicUrl(`${prefix}/index.html`);
+  return { url: data.publicUrl, slug, releaseId, fileCount: outputFiles.length };
 }
 
 export async function stopCloudProjectPreview(projectId: string) {
