@@ -22,6 +22,7 @@ import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ShowcaseRouteImport } from './routes/showcase'
 import { Route as TermsRouteImport } from './routes/terms'
@@ -95,6 +96,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
   path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectsRoute = ProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
@@ -149,6 +155,7 @@ export interface FileRoutesByFullPath {
   '/learn': typeof LearnRoute
   '/messages': typeof MessagesRoute
   '/privacy': typeof PrivacyRoute
+  '/pricing': typeof PricingRoute
   '/projects': typeof ProjectsRoute
   '/showcase': typeof ShowcaseRoute
   '/terms': typeof TermsRoute
@@ -171,6 +178,7 @@ export interface FileRoutesByTo {
   '/learn': typeof LearnRoute
   '/messages': typeof MessagesRoute
   '/privacy': typeof PrivacyRoute
+  '/pricing': typeof PricingRoute
   '/projects': typeof ProjectsRoute
   '/showcase': typeof ShowcaseRoute
   '/terms': typeof TermsRoute
@@ -195,6 +203,7 @@ export interface FileRoutesById {
   '/learn': typeof LearnRoute
   '/messages': typeof MessagesRoute
   '/privacy': typeof PrivacyRoute
+  '/pricing': typeof PricingRoute
   '/projects': typeof ProjectsRoute
   '/showcase': typeof ShowcaseRoute
   '/terms': typeof TermsRoute
@@ -219,6 +228,7 @@ export interface FileRouteTypes {
     | '/learn'
     | '/messages'
     | '/privacy'
+    | '/pricing'
     | '/projects'
     | '/showcase'
     | '/terms'
@@ -241,6 +251,7 @@ export interface FileRouteTypes {
     | '/learn'
     | '/messages'
     | '/privacy'
+    | '/pricing'
     | '/projects'
     | '/showcase'
     | '/terms'
@@ -264,6 +275,7 @@ export interface FileRouteTypes {
     | '/learn'
     | '/messages'
     | '/privacy'
+    | '/pricing'
     | '/projects'
     | '/showcase'
     | '/terms'
@@ -288,6 +300,7 @@ export interface RootRouteChildren {
   LearnRoute: typeof LearnRoute
   MessagesRoute: typeof MessagesRoute
   PrivacyRoute: typeof PrivacyRoute
+  PricingRoute: typeof PricingRoute
   ProjectsRoute: typeof ProjectsRoute
   ShowcaseRoute: typeof ShowcaseRoute
   TermsRoute: typeof TermsRoute
@@ -389,6 +402,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projects': {
       id: '/projects'
       path: '/projects'
@@ -475,6 +495,7 @@ const rootRouteChildren: RootRouteChildren = {
   LearnRoute: LearnRoute,
   MessagesRoute: MessagesRoute,
   PrivacyRoute: PrivacyRoute,
+  PricingRoute: PricingRoute,
   ProjectsRoute: ProjectsRoute,
   ShowcaseRoute: ShowcaseRoute,
   TermsRoute: TermsRoute,
