@@ -1,7 +1,17 @@
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, File, FileText, FolderLock, Image, Loader2, Search, Trash2, UploadCloud } from "lucide-react";
+import {
+  Download,
+  File,
+  FileText,
+  FolderLock,
+  Image,
+  Loader2,
+  Search,
+  Trash2,
+  UploadCloud,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
@@ -50,7 +60,12 @@ function PersonalVaultPage() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
 
-  const { data: files = [], isLoading, isError, refetch } = useQuery({
+  const {
+    data: files = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["personal-vault", user?.id],
     enabled: Boolean(user),
     queryFn: async () => {
@@ -77,7 +92,11 @@ function PersonalVaultPage() {
         const path = user.id + "/" + crypto.randomUUID() + "-" + safeName;
         const { error: uploadError } = await supabase.storage
           .from("personal-vault")
-          .upload(path, file, { cacheControl: "60", upsert: false, contentType: file.type || "application/octet-stream" });
+          .upload(path, file, {
+            cacheControl: "60",
+            upsert: false,
+            contentType: file.type || "application/octet-stream",
+          });
         if (uploadError) throw uploadError;
         const { error: rowError } = await supabase.from("personal_vault_files").insert({
           user_id: user.id,
@@ -111,7 +130,8 @@ function PersonalVaultPage() {
       const { error: storageError } = await supabase.storage
         .from("personal-vault")
         .remove([file.storage_path]);
-      if (storageError) throw new Error("The file entry was removed, but its stored copy could not be cleaned up.");
+      if (storageError)
+        throw new Error("The file entry was removed, but its stored copy could not be cleaned up.");
     },
     onSuccess: async () => {
       toast.success("File deleted from your vault.");
@@ -121,13 +141,16 @@ function PersonalVaultPage() {
   });
 
   const visibleFiles = useMemo(
-    () => files.filter((file) => file.file_name.toLowerCase().includes(search.toLowerCase().trim())),
+    () =>
+      files.filter((file) => file.file_name.toLowerCase().includes(search.toLowerCase().trim())),
     [files, search],
   );
   const totalBytes = files.reduce((total, file) => total + file.size_bytes, 0);
 
   async function download(file: VaultFile) {
-    const { data, error } = await supabase.storage.from("personal-vault").download(file.storage_path);
+    const { data, error } = await supabase.storage
+      .from("personal-vault")
+      .download(file.storage_path);
     if (error || !data) {
       toast.error(error?.message || "Could not download this file.");
       return;
@@ -148,8 +171,12 @@ function PersonalVaultPage() {
         <section className="mx-auto max-w-3xl px-4 py-16 text-center">
           <FolderLock className="mx-auto h-12 w-12 text-primary" />
           <h1 className="mt-4 text-3xl font-semibold">Your Personal Vault</h1>
-          <p className="mt-3 text-muted-foreground">Sign in to keep your files private and accessible only to you.</p>
-          <Button className="mt-6" onClick={() => (window.location.href = "/auth")}>Sign in</Button>
+          <p className="mt-3 text-muted-foreground">
+            Sign in to keep your files private and accessible only to you.
+          </p>
+          <Button className="mt-6" onClick={() => (window.location.href = "/auth")}>
+            Sign in
+          </Button>
         </section>
       </PageShell>
     );
@@ -165,13 +192,16 @@ function PersonalVaultPage() {
             </div>
             <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Personal Vault</h1>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-              Your private space for documents, images and files. Other members cannot browse or download your files.
+              Your private space for documents, images and files. Other members cannot browse or
+              download your files.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="rounded-xl border border-border bg-card px-4 py-2">
               <p className="text-xs text-muted-foreground">Your files</p>
-              <p className="font-semibold tabular-nums">{files.length} · {formatBytes(totalBytes)}</p>
+              <p className="font-semibold tabular-nums">
+                {files.length} · {formatBytes(totalBytes)}
+              </p>
             </div>
             <input
               ref={fileInput}
@@ -184,7 +214,11 @@ function PersonalVaultPage() {
               }}
             />
             <Button onClick={() => fileInput.current?.click()} disabled={upload.isPending}>
-              {upload.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
+              {upload.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <UploadCloud className="mr-2 h-4 w-4" />
+              )}
               Add files
             </Button>
           </div>
@@ -193,16 +227,25 @@ function PersonalVaultPage() {
         <Card className="gap-3 p-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search your private files…" className="pl-9" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search your private files…"
+              className="pl-9"
+            />
           </div>
         </Card>
 
         {isLoading ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading your vault…</div>
+          <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading your vault…
+          </div>
         ) : isError ? (
           <Card className="p-8 text-center">
             <p className="font-medium">Your vault could not be loaded.</p>
-            <Button variant="outline" className="mt-4" onClick={() => void refetch()}>Try again</Button>
+            <Button variant="outline" className="mt-4" onClick={() => void refetch()}>
+              Try again
+            </Button>
           </Card>
         ) : visibleFiles.length ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -210,13 +253,35 @@ function PersonalVaultPage() {
               const Icon = fileIcon(file.mime_type);
               return (
                 <Card key={file.id} className="flex flex-row items-center gap-3 p-4">
-                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Icon className="h-5 w-5" /></div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold" title={file.file_name}>{file.file_name}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{formatBytes(file.size_bytes)} · {new Date(file.created_at).toLocaleDateString()}</p>
+                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <Icon className="h-5 w-5" />
                   </div>
-                  <Button variant="ghost" size="icon" aria-label={"Download " + file.file_name} onClick={() => void download(file)}><Download className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" aria-label={"Delete " + file.file_name} disabled={remove.isPending} onClick={() => remove.mutate(file)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold" title={file.file_name}>
+                      {file.file_name}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {formatBytes(file.size_bytes)} ·{" "}
+                      {new Date(file.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={"Download " + file.file_name}
+                    onClick={() => void download(file)}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={"Delete " + file.file_name}
+                    disabled={remove.isPending}
+                    onClick={() => remove.mutate(file)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
                 </Card>
               );
             })}
@@ -224,9 +289,19 @@ function PersonalVaultPage() {
         ) : (
           <Card className="flex flex-col items-center justify-center px-6 py-16 text-center">
             <FolderLock className="h-12 w-12 text-muted-foreground/60" />
-            <h2 className="mt-4 text-lg font-semibold">{search ? "No matching files" : "Your vault is empty"}</h2>
-            <p className="mt-2 max-w-md text-sm text-muted-foreground">{search ? "Try another file name." : "Upload your first file. It will be private to your account, not part of the public community library."}</p>
-            {!search && <Button className="mt-5" onClick={() => fileInput.current?.click()}>Upload your first file</Button>}
+            <h2 className="mt-4 text-lg font-semibold">
+              {search ? "No matching files" : "Your vault is empty"}
+            </h2>
+            <p className="mt-2 max-w-md text-sm text-muted-foreground">
+              {search
+                ? "Try another file name."
+                : "Upload your first file. It will be private to your account, not part of the public community library."}
+            </p>
+            {!search && (
+              <Button className="mt-5" onClick={() => fileInput.current?.click()}>
+                Upload your first file
+              </Button>
+            )}
           </Card>
         )}
       </section>

@@ -26,8 +26,8 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ShowcaseRouteImport } from './routes/showcase'
 import { Route as TermsRouteImport } from './routes/terms'
-import { Route as VideosRouteImport } from './routes/videos'
 import { Route as VaultRouteImport } from './routes/vault'
+import { Route as VideosRouteImport } from './routes/videos'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AppsSlugRouteImport } from './routes/apps.$slug'
@@ -117,14 +117,14 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VideosRoute = VideosRouteImport.update({
-  id: '/videos',
-  path: '/videos',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const VaultRoute = VaultRouteImport.update({
   id: '/vault',
   path: '/vault',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VideosRoute = VideosRouteImport.update({
+  id: '/videos',
+  path: '/videos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
@@ -165,8 +165,8 @@ export interface FileRoutesByFullPath {
   '/projects': typeof ProjectsRoute
   '/showcase': typeof ShowcaseRoute
   '/terms': typeof TermsRoute
-  '/videos': typeof VideosRoute
   '/vault': typeof VaultRoute
+  '/videos': typeof VideosRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/apps/$slug': typeof AppsSlugRoute
@@ -189,6 +189,7 @@ export interface FileRoutesByTo {
   '/projects': typeof ProjectsRoute
   '/showcase': typeof ShowcaseRoute
   '/terms': typeof TermsRoute
+  '/vault': typeof VaultRoute
   '/videos': typeof VideosRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -214,6 +215,7 @@ export interface FileRoutesById {
   '/projects': typeof ProjectsRoute
   '/showcase': typeof ShowcaseRoute
   '/terms': typeof TermsRoute
+  '/vault': typeof VaultRoute
   '/videos': typeof VideosRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -239,8 +241,8 @@ export interface FileRouteTypes {
     | '/projects'
     | '/showcase'
     | '/terms'
-    | '/videos'
     | '/vault'
+    | '/videos'
     | '/admin'
     | '/dashboard'
     | '/apps/$slug'
@@ -263,6 +265,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/showcase'
     | '/terms'
+    | '/vault'
     | '/videos'
     | '/admin'
     | '/dashboard'
@@ -287,6 +290,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/showcase'
     | '/terms'
+    | '/vault'
     | '/videos'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
@@ -312,8 +316,8 @@ export interface RootRouteChildren {
   ProjectsRoute: typeof ProjectsRoute
   ShowcaseRoute: typeof ShowcaseRoute
   TermsRoute: typeof TermsRoute
-  VideosRoute: typeof VideosRoute
   VaultRoute: typeof VaultRoute
+  VideosRoute: typeof VideosRoute
   AppsSlugRoute: typeof AppsSlugRoute
   ApiAiStreamRoute: typeof ApiAiStreamRoute
 }
@@ -439,18 +443,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/videos': {
-      id: '/videos'
-      path: '/videos'
-      fullPath: '/videos'
-      preLoaderRoute: typeof VideosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/vault': {
       id: '/vault'
       path: '/vault'
       fullPath: '/vault'
       preLoaderRoute: typeof VaultRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/videos': {
+      id: '/videos'
+      path: '/videos'
+      fullPath: '/videos'
+      preLoaderRoute: typeof VideosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
@@ -515,8 +519,8 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectsRoute: ProjectsRoute,
   ShowcaseRoute: ShowcaseRoute,
   TermsRoute: TermsRoute,
-  VideosRoute: VideosRoute,
   VaultRoute: VaultRoute,
+  VideosRoute: VideosRoute,
   AppsSlugRoute: AppsSlugRoute,
   ApiAiStreamRoute: ApiAiStreamRoute,
 }

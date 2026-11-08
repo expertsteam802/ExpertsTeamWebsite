@@ -73,16 +73,28 @@ export function SiteHeader() {
           ))}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-full min-w-0 gap-1 px-2 text-xs font-semibold">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-full min-w-0 gap-1 px-2 text-xs font-semibold"
+              >
                 <MoreHorizontal className="h-4 w-4" /> More
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem asChild><Link to="/contact">Contact</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link to="/pricing">Pricing</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/contact">Contact</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/pricing">Pricing</Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild><Link to="/privacy">Privacy</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link to="/terms">Terms of Use</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/privacy">Privacy</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/terms">Terms of Use</Link>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </nav>
@@ -207,10 +219,34 @@ export function SiteHeader() {
             </Link>
           ))}
           <div className="mt-2 grid grid-cols-2 gap-2 border-t border-border/70 pt-3">
-            <Link to="/contact" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary">Contact</Link>
-            <Link to="/pricing" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary">Pricing</Link>
-            <Link to="/privacy" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary">Privacy</Link>
-            <Link to="/terms" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary">Terms of Use</Link>
+            <Link
+              to="/contact"
+              onClick={() => setOpen(false)}
+              className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary"
+            >
+              Contact
+            </Link>
+            <Link
+              to="/pricing"
+              onClick={() => setOpen(false)}
+              className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary"
+            >
+              Pricing
+            </Link>
+            <Link
+              to="/privacy"
+              onClick={() => setOpen(false)}
+              className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary"
+            >
+              Privacy
+            </Link>
+            <Link
+              to="/terms"
+              onClick={() => setOpen(false)}
+              className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary"
+            >
+              Terms of Use
+            </Link>
           </div>
         </nav>
       )}
