@@ -217,6 +217,8 @@ function RootComponent() {
 
 function RootContent() {
   const settings = useSiteSettings();
+  const router = useRouter();
+  const isPublishedApp = router.state.location.pathname.startsWith("/apps/");
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
 
@@ -278,7 +280,7 @@ function RootContent() {
         </DialogContent>
       </Dialog>
 
-      {aiChatOpen ? (
+      {!isPublishedApp && (aiChatOpen ? (
         <div className="fixed bottom-4 right-4 z-[100] h-[min(680px,calc(100dvh-2rem))] w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
           <ChrisAiChat onMinimize={() => setAiChatOpen(false)} />
         </div>
@@ -292,7 +294,7 @@ function RootContent() {
         >
           <Bot className="h-7 w-7" />
         </button>
-      )}
+      ))}
     </>
   );
 }
