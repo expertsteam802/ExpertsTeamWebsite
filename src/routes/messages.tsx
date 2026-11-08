@@ -7,10 +7,15 @@ import {
   Check,
   ImagePlus,
   MessageCircle,
+  Mic,
+  PhoneOff,
   Search,
   Send,
   Sparkles,
+  Square,
   Trash2,
+  Video,
+  VideoOff,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -96,6 +101,20 @@ function MessagesPage() {
   const [draft, setDraft] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
   const [attachmentPreview, setAttachmentPreview] = useState("");
+  const [recording, setRecording] = useState(false);
+  const [callState, setCallState] = useState<"idle" | "incoming" | "calling" | "connected">("idle");
+  const [incomingCall, setIncomingCall] = useState<{ from_user_id: string; payload: RTCSessionDescriptionInit } | null>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [muted, setMuted] = useState(false);
+  const [cameraOff, setCameraOff] = useState(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
+  const callCursorRef = useRef<Record<string, string>>({});
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const [typing, setTyping] = useState(false);
   const [onlineIds, setOnlineIds] = useState<string[]>([]);
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
@@ -133,6 +152,220 @@ function MessagesPage() {
   );
   const recipient = otherMember?.profiles ?? null;
   const activeConversationId = activeConversation?.id ?? null;
+
+  async function sendCallSignal(
+    signal_type: "offer" | "answer" | "ice" | "hangup" | "reject",
+    payload: Record<string, unknown> = {},
+  ) {
+    if (!user || !activeConversation || !recipient) throw new Error("Choose a conversation first.");
+    const { error } = await supabase.from("direct_call_signals").insert({
+      conversation_id: activeConversation.id,
+      from_user_id: user.id,
+      to_user_id: recipient.id,
+      signal_type,
+      payload: JSON.parse(JSON.stringify(payload)),
+    });
+    if (error) throw error;
+  }
+
+  async function flushPendingIce(pc: RTCPeerConnection) {
+    const queued = pendingIceRef.current;
+    pendingIceRef.current = [];
+    for (const candidate of queued) {
+      await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    }
+  }
+
+  function createPeerConnection() {
+    const pc = new RTCPeerConnection({
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+      ],
+    });
+    peerConnectionRef.current = pc;
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        void sendCallSignal("ice", { candidate: event.candidate.toJSON() }).catch((error: Error) => toast.error(error.message));
+      }
+    };
+    pc.ontrack = (event) => setRemoteStream(event.streams[0] ?? new MediaStream([event.track]));
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === "connected") setCallState("connected");
+      if (pc.connectionState === "failed") toast.error("The call could not connect. Your network may require a TURN relay.");
+      if (pc.connectionState === "failed" || pc.connectionState === "closed") {
+        if (peerConnectionRef.current === pc) void endCall(false);
+      }
+    };
+    return pc;
+  }
+
+  async function startVideoCall() {
+    if (!user || !activeConversation || !recipient || callState !== "idle") return;
+    if (!navigator.mediaDevices?.getUserMedia || typeof RTCPeerConnection === "undefined") {
+      toast.error("Video calling is not supported by this browser.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      setLocalStream(stream);
+      const pc = createPeerConnection();
+      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await sendCallSignal("offer", pc.localDescription?.toJSON() ?? offer);
+      setCallState("calling");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not start the video call.");
+      await endCall(false);
+    }
+  }
+
+  async function acceptVideoCall() {
+    if (!incomingCall || !user) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      setLocalStream(stream);
+      const pc = createPeerConnection();
+      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+      await pc.setRemoteDescription(new RTCSessionDescription(incomingCall.payload));
+      await flushPendingIce(pc);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await sendCallSignal("answer", pc.localDescription?.toJSON() ?? answer);
+      setIncomingCall(null);
+      setCallState("calling");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not accept the video call.");
+      await endCall(false);
+    }
+  }
+
+  async function endCall(notify = true) {
+    if (notify && user && activeConversation && recipient && callState !== "idle") {
+      await sendCallSignal("hangup").catch(() => undefined);
+    }
+    const pc = peerConnectionRef.current;
+    peerConnectionRef.current = null;
+    pc?.close();
+    localStream?.getTracks().forEach((track) => track.stop());
+    setLocalStream(null);
+    setRemoteStream(null);
+    setIncomingCall(null);
+    setCallState("idle");
+    setMuted(false);
+    setCameraOff(false);
+    pendingIceRef.current = [];
+  }
+
+  async function startVoiceRecording() {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      toast.error("Voice recording is not supported by this browser.");
+      return;
+    }
+    if (attachment) {
+      toast.error("Send or remove the current attachment before recording a voice note.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const options = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? { mimeType: "audio/webm;codecs=opus" }
+        : undefined;
+      const recorder = new MediaRecorder(stream, options);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+        const extension = blob.type.includes("ogg") ? "ogg" : blob.type.includes("mp4") ? "m4a" : "webm";
+        const file = new File([blob], "voice-message-" + Date.now() + "." + extension, { type: blob.type || "audio/webm" });
+        if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
+        setAttachment(file);
+        setAttachmentPreview(URL.createObjectURL(blob));
+        stream.getTracks().forEach((track) => track.stop());
+        recordingStreamRef.current = null;
+        recorderRef.current = null;
+        setRecording(false);
+      };
+      recordingStreamRef.current = stream;
+      recorderRef.current = recorder;
+      recorder.start();
+      setRecording(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Allow microphone access to record a voice note.");
+    }
+  }
+
+  function stopVoiceRecording() {
+    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+  }
+
+  useEffect(() => {
+    if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
+  }, [localStream, remoteStream]);
+
+  useEffect(() => {
+    if (!userId || !activeConversationId) return;
+    let cancelled = false;
+    let cursor = callCursorRef.current[activeConversationId] ?? new Date(Date.now() - 120_000).toISOString();
+    const pollSignals = async () => {
+      const { data, error } = await supabase
+        .from("direct_call_signals")
+        .select("id,conversation_id,from_user_id,to_user_id,signal_type,payload,created_at")
+        .eq("conversation_id", activeConversationId)
+        .eq("to_user_id", userId)
+        .gt("created_at", cursor)
+        .order("created_at", { ascending: true })
+        .limit(50);
+      if (error || cancelled) return;
+      for (const signal of data ?? []) {
+        cursor = signal.created_at;
+        callCursorRef.current[activeConversationId] = cursor;
+        if (signal.from_user_id !== userId) {
+          const payload = signal.payload as Record<string, unknown>;
+          try {
+            if (signal.signal_type === "offer" && callState === "idle") {
+              setIncomingCall({
+                from_user_id: signal.from_user_id,
+                payload: payload as unknown as RTCSessionDescriptionInit,
+              });
+              setCallState("incoming");
+            } else if (signal.signal_type === "answer" && peerConnectionRef.current) {
+              await peerConnectionRef.current.setRemoteDescription(
+                new RTCSessionDescription(payload as unknown as RTCSessionDescriptionInit),
+              );
+              await flushPendingIce(peerConnectionRef.current);
+              setCallState("connected");
+            } else if (signal.signal_type === "ice") {
+              const candidate = payload.candidate as RTCIceCandidateInit | undefined;
+              if (candidate) {
+                if (peerConnectionRef.current?.remoteDescription) {
+                  await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+                } else {
+                  pendingIceRef.current.push(candidate);
+                }
+              }
+            } else if (signal.signal_type === "hangup" || signal.signal_type === "reject") {
+              await endCall(false);
+              if (signal.signal_type === "reject") toast("The call was declined.");
+            }
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "A call signal could not be processed.");
+          }
+        }
+        await supabase.from("direct_call_signals").delete().eq("id", signal.id);
+      }
+    };
+    const timer = window.setInterval(() => void pollSignals(), 1200);
+    void pollSignals();
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [activeConversationId, userId, callState]);
 
   const { data: messages = [], isLoading: messagesLoading } = useQuery({
     queryKey: ["direct-messages", activeConversation?.id],
@@ -327,7 +560,7 @@ function MessagesPage() {
         media_path = path;
       }
       const body = draft.trim();
-      if (!body && !media_path) throw new Error("Write a message or attach a photo.");
+      if (!body && !media_path) throw new Error("Write a message, share a photo or record a voice note.");
       const { error } = await supabase.from("direct_messages").insert({
         conversation_id: activeConversation.id,
         sender_id: user.id,
@@ -703,18 +936,74 @@ function MessagesPage() {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Delete chat"
-                    title="Remove chat from your inbox"
-                    onClick={() => deleteConversation.mutate(activeConversation.id)}
-                    disabled={deleteConversation.isPending}
-                    className="shrink-0 text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Start video call"
+                      title="Start video call"
+                      onClick={() => void startVideoCall()}
+                      disabled={callState !== "idle"}
+                    >
+                      <Video className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Delete chat"
+                      title="Remove chat from your inbox"
+                      onClick={() => deleteConversation.mutate(activeConversation.id)}
+                      disabled={deleteConversation.isPending}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </header>
+                {callState !== "idle" && (
+                  <div className="shrink-0 border-b border-border/70 bg-card/90 p-3">
+                    {callState === "incoming" ? (
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold">Incoming video call</p>
+                          <p className="text-xs text-muted-foreground">{personName(recipient)} is calling you.</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => void acceptVideoCall()}>Accept</Button>
+                          <Button size="sm" variant="outline" onClick={() => { void sendCallSignal("reject").catch(() => undefined); void endCall(false); }}>Decline</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="relative overflow-hidden rounded-xl bg-black">
+                            <video ref={localVideoRef} autoPlay muted playsInline className="aspect-video w-full object-cover" />
+                            <span className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-1 text-[10px] text-white">You</span>
+                          </div>
+                          <div className="relative overflow-hidden rounded-xl bg-black">
+                            <video ref={remoteVideoRef} autoPlay playsInline className="aspect-video w-full object-cover" />
+                            {!remoteStream && <span className="absolute inset-0 grid place-items-center text-xs text-white/70">Connecting…</span>}
+                            <span className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-1 text-[10px] text-white">{personName(recipient)}</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-xs text-muted-foreground">{callState === "connected" ? "Connected" : "Calling…"}</span>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant={muted ? "secondary" : "outline"} onClick={() => { const next = !muted; localStream?.getAudioTracks().forEach((track) => { track.enabled = !next; }); setMuted(next); }}>
+                              {muted ? "Unmute" : "Mute"}
+                            </Button>
+                            <Button size="sm" variant={cameraOff ? "secondary" : "outline"} onClick={() => { const next = !cameraOff; localStream?.getVideoTracks().forEach((track) => { track.enabled = !next; }); setCameraOff(next); }}>
+                              {cameraOff ? <Video className="mr-1 h-3.5 w-3.5" /> : <VideoOff className="mr-1 h-3.5 w-3.5" />} Camera
+                            </Button>
+                            <Button size="sm" variant="destructive" onClick={() => void endCall(true)}>
+                              <PhoneOff className="mr-1 h-3.5 w-3.5" /> End
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-5 sm:px-7">
                   <div className="mb-7 text-center">
                     <Avatar className="mx-auto h-16 w-16">
@@ -736,7 +1025,7 @@ function MessagesPage() {
                       <Sparkles className="mx-auto h-6 w-6 text-primary" />
                       <p className="mt-2 text-sm font-semibold">Say hello</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        This is the beginning of your conversation. Send a message or share a photo.
+                        This is the beginning of your conversation. Send a message, share a photo or record a voice note.
                       </p>
                     </div>
                   )}
@@ -750,7 +1039,9 @@ function MessagesPage() {
                         <div
                           className={`max-w-[min(82%,520px)] rounded-3xl px-4 py-3 shadow-sm ${mine ? "rounded-br-md bg-gradient-to-br from-primary to-primary/80 text-primary-foreground" : "rounded-bl-md border border-border/70 bg-card"}`}
                         >
-                          {message.media_url && (
+                          {message.media_url && (message.media_path?.match(/\\.(webm|ogg|m4a|mp3|wav)$/i) ? (
+                            <audio controls preload="metadata" src={message.media_url} className="mb-2 max-w-full" />
+                          ) : (
                             <a href={message.media_url} target="_blank" rel="noreferrer">
                               <img
                                 src={message.media_url}
@@ -758,7 +1049,7 @@ function MessagesPage() {
                                 className="mb-2 max-h-80 rounded-2xl object-cover"
                               />
                             </a>
-                          )}
+                          ))}
                           {message.body && (
                             <p className="whitespace-pre-wrap break-words text-sm leading-6">
                               {message.body}
@@ -806,11 +1097,11 @@ function MessagesPage() {
                 >
                   {attachmentPreview && (
                     <div className="mb-3 flex items-center gap-3 rounded-xl border border-border bg-card p-2">
-                      <img
-                        src={attachmentPreview}
-                        alt="Attachment preview"
-                        className="h-14 w-14 rounded-lg object-cover"
-                      />
+                      {attachment?.type.startsWith("audio/") ? (
+                        <audio controls src={attachmentPreview} className="min-w-0 flex-1" />
+                      ) : (
+                        <img src={attachmentPreview} alt="Attachment preview" className="h-14 w-14 rounded-lg object-cover" />
+                      )}
                       <span className="min-w-0 flex-1 truncate text-xs">{attachment?.name}</span>
                       <Button
                         type="button"
@@ -838,6 +1129,18 @@ function MessagesPage() {
                         onChange={(event) => chooseAttachment(event.target.files?.[0])}
                       />
                     </label>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant={recording ? "destructive" : "ghost"}
+                      className="h-10 w-10 shrink-0 rounded-xl"
+                      aria-label={recording ? "Stop voice recording" : "Record voice message"}
+                      title={recording ? "Stop recording" : "Record voice message"}
+                      onClick={() => recording ? stopVoiceRecording() : void startVoiceRecording()}
+                      disabled={sendMessage.isPending || Boolean(attachment && !recording)}
+                    >
+                      {recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    </Button>
                     <textarea
                       value={draft}
                       onChange={(event) => updateDraft(event.target.value)}
@@ -855,7 +1158,7 @@ function MessagesPage() {
                     <Button
                       type="submit"
                       size="icon"
-                      disabled={sendMessage.isPending || (!draft.trim() && !attachment)}
+                      disabled={sendMessage.isPending || (!draft.trim() && !attachment) || recording}
                       className="h-10 w-10 shrink-0 rounded-xl"
                     >
                       <Send className="h-4 w-4" />
