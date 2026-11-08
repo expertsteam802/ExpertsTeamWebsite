@@ -151,7 +151,6 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
   '/showcase': typeof ShowcaseRoute
-  '/showcase': typeof ShowcaseRoute
   '/terms': typeof TermsRoute
   '/videos': typeof VideosRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -173,6 +172,7 @@ export interface FileRoutesByTo {
   '/messages': typeof MessagesRoute
   '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
+  '/showcase': typeof ShowcaseRoute
   '/terms': typeof TermsRoute
   '/videos': typeof VideosRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -196,6 +196,7 @@ export interface FileRoutesById {
   '/messages': typeof MessagesRoute
   '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
+  '/showcase': typeof ShowcaseRoute
   '/terms': typeof TermsRoute
   '/videos': typeof VideosRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
@@ -220,6 +221,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/projects'
     | '/showcase'
+    | '/showcase'
     | '/terms'
     | '/videos'
     | '/admin'
@@ -241,6 +243,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/privacy'
     | '/projects'
+    | '/showcase'
     | '/terms'
     | '/videos'
     | '/admin'
@@ -391,6 +394,13 @@ declare module '@tanstack/react-router' {
       path: '/projects'
       fullPath: '/projects'
       preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/showcase': {
+      id: '/showcase'
+      path: '/showcase'
+      fullPath: '/showcase'
+      preLoaderRoute: typeof ShowcaseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/showcase': {
