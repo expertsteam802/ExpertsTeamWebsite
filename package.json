@@ -77,7 +77,8 @@
     "@codemirror/lang-html": "^6.4.12",
     "@codemirror/lang-css": "^6.3.1",
     "@codemirror/lang-json": "^6.0.2",
-    "@codemirror/theme-one-dark": "^6.1.2"
+    "@codemirror/theme-one-dark": "^6.1.2",
+    "@codemirror/language-data": "^6.5.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
