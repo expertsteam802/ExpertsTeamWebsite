@@ -281,7 +281,7 @@ export function CodeAgent() {
 
   useEffect(() => {
     const container = terminalContainerRef.current;
-    if (panel !== "terminal" || !terminalConnection || !container) return;
+    if (!terminalConnection || !container) return;
 
     const terminal = new XTerm({
       cursorBlink: true,
@@ -354,7 +354,7 @@ export function CodeAgent() {
       if (xtermRef.current === terminal) xtermRef.current = null;
       setTerminalReady(false);
     };
-  }, [panel, terminalConnection]);
+  }, [terminalConnection]);
 
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
@@ -1509,8 +1509,7 @@ async function runProject() {
                 </>
               )}
 
-              {panel === "terminal" && (
-                <div className="flex min-h-0 flex-1 flex-col bg-[#050a12]">
+              <div className={panel === "terminal" ? "flex min-h-0 flex-1 flex-col bg-[#050a12]" : "hidden"}>
                   <div className="flex min-h-10 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] px-3 py-2">
                     <span className="flex items-center gap-2 text-xs text-slate-300">
                       <Terminal className="h-3.5 w-3.5 text-emerald-300" />
@@ -1563,7 +1562,6 @@ async function runProject() {
                     Persistent Bash session in an isolated Vercel Linux microVM. Supports terminal input, ANSI output, resizing and interactive CLI programs. Use network tools only on systems you own or are authorized to test.
                   </p>
                 </div>
-              )}
 
               {panel === "console" && (
                 <>
