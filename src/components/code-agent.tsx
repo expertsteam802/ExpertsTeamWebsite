@@ -56,6 +56,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import {
   pushProjectToGithub,
+  publishAgentProject,
   runCodingAgent,
   runAgentTerminalCommand,
   startAgentPreview,
@@ -203,6 +204,7 @@ export function CodeAgent() {
   const queryClient = useQueryClient();
   const run = useServerFn(runCodingAgent);
   const push = useServerFn(pushProjectToGithub);
+  const publish = useServerFn(publishAgentProject);
   const startPreview = useServerFn(startAgentPreview);
   const terminalCommand = useServerFn(runAgentTerminalCommand);
   const stopPreview = useServerFn(stopAgentPreview);
@@ -504,12 +506,14 @@ export function CodeAgent() {
 
   async function publishProject() {
     try {
-      const existingSlug = projects.find((project) => project.id === projectId)?.slug;
+      const activeProjectId = await persist();
+      const existingSlug = projects.find((project) => project.id === activeProjectId)?.slug;
       const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "my-app";
       const slug = existingSlug || `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
-      await persist({ extra: { published: true, slug } });
-      const url = `${window.location.origin}/apps/${slug}`;
-      toast.success("Your app is published", {
+      const result = await publish({ data: { projectId: activeProjectId, files, slug } });
+      await queryClient.invalidateQueries({ queryKey: ["agent-projects", user?.id] });
+      const url = `${window.location.origin}/apps/${result.slug}`;
+      toast.success("Your app is built and published", {
         action: { label: "Open app", onClick: () => window.open(url, "_blank", "noopener,noreferrer") },
       });
     } catch (error) {
