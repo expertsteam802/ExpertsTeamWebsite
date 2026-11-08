@@ -54,20 +54,25 @@ export function SiteHeader() {
           </span>
         </Link>
 
-        <nav className={cn("hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto md:flex", ALIGN[navAlign])}>
+        <nav
+          className={cn(
+            "hidden min-w-0 flex-1 grid-cols-9 items-stretch gap-1 lg:grid",
+            ALIGN[navAlign],
+          )}
+        >
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.to}
               to={item.to}
               activeOptions={{ exact: item.to === "/" }}
-              className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:font-semibold data-[status=active]:text-foreground ${item.to === "/community" ? "bg-primary/10 font-semibold text-primary" : "text-muted-foreground"}`}
+              className="font-display flex min-w-0 items-center justify-center rounded-lg px-1.5 py-2 text-center text-sm font-semibold tracking-tight leading-tight text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:text-foreground"
             >
               {item.label}
             </Link>
           ))}
           <Link
             to="/contact"
-            className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:text-foreground"
+            className="font-display flex min-w-0 items-center justify-center rounded-lg px-1.5 py-2 text-center text-sm font-semibold tracking-tight leading-tight text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:text-foreground"
           >
             Contact
           </Link>
@@ -132,9 +137,15 @@ export function SiteHeader() {
                 <Button variant="secondary" className="max-w-48 gap-2 truncate">
                   <Avatar className="h-7 w-7">
                     <AvatarImage src={profile?.avatar_url ?? undefined} />
-                    <AvatarFallback>{(profile?.display_name || profile?.username || "A").slice(0, 1).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback>
+                      {(profile?.display_name || profile?.username || "A")
+                        .slice(0, 1)
+                        .toUpperCase()}
+                    </AvatarFallback>
                   </Avatar>
-                  <span className="truncate">{profile?.display_name || profile?.username || "Account"}</span>
+                  <span className="truncate">
+                    {profile?.display_name || profile?.username || "Account"}
+                  </span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
@@ -163,7 +174,7 @@ export function SiteHeader() {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className="lg:hidden"
             aria-label="Menu"
             aria-expanded={open}
             onClick={() => setOpen((value) => !value)}
@@ -181,7 +192,7 @@ export function SiteHeader() {
               to={item.to}
               onClick={() => setOpen(false)}
               activeOptions={{ exact: item.to === "/" }}
-              className="block rounded-xl px-3 py-3 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:font-semibold data-[status=active]:text-foreground"
+              className="font-display block rounded-xl px-3 py-3 text-base font-medium tracking-tight text-muted-foreground hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:font-semibold data-[status=active]:text-foreground"
             >
               {item.label}
             </Link>

@@ -34,6 +34,15 @@ export function SiteFooter() {
           <Link to="/learn" className="block text-muted-foreground hover:text-foreground">
             Learn to code
           </Link>
+          <Link to="/explore" className="block text-muted-foreground hover:text-foreground">
+            Explore all
+          </Link>
+          <Link to="/showcase" className="block text-muted-foreground hover:text-foreground">
+            Project showcase
+          </Link>
+          <Link to="/about" className="block text-muted-foreground hover:text-foreground">
+            About ExpertsTeam
+          </Link>
         </div>
         <div className="space-y-2 text-sm">
           <p className="font-medium">Community</p>
@@ -42,6 +51,18 @@ export function SiteFooter() {
           </Link>
           <Link to="/auth" className="block text-muted-foreground hover:text-foreground">
             Join the community
+          </Link>
+          <Link to="/privacy" className="block text-muted-foreground hover:text-foreground">
+            Privacy policy
+          </Link>
+          <Link to="/terms" className="block text-muted-foreground hover:text-foreground">
+            Terms of service
+          </Link>
+          <Link to="/pricing" className="block text-muted-foreground hover:text-foreground">
+            Plans & limits
+          </Link>
+          <Link to="/cookies" className="block text-muted-foreground hover:text-foreground">
+            Cookie notice
           </Link>
         </div>
         <div className="space-y-2 text-sm">
@@ -71,12 +92,27 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="border-t border-border/70 px-4 py-5 text-center text-xs text-muted-foreground">
-        <p>© {new Date().getFullYear()} {settings.site_name}. Built by <span className="font-semibold text-foreground">Chris Expert</span>.</p>
+        <p>
+          © {new Date().getFullYear()} {settings.site_name}. Built by{" "}
+          <span className="font-semibold text-foreground">Chris Expert</span>.
+        </p>
         <div className="mt-2 flex items-center justify-center gap-4">
-          <a href={settings.instagram_url} target="_blank" rel="noreferrer" aria-label="Chris Expert on Instagram" className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground">
+          <a
+            href={settings.instagram_url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Chris Expert on Instagram"
+            className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+          >
             <Instagram className="h-3.5 w-3.5" /> Instagram
           </a>
-          <a href={settings.youtube_url} target="_blank" rel="noreferrer" aria-label="Chris Expert on YouTube" className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground">
+          <a
+            href={settings.youtube_url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Chris Expert on YouTube"
+            className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+          >
             <Youtube className="h-3.5 w-3.5" /> YouTube
           </a>
         </div>

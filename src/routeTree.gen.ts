@@ -11,15 +11,21 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as AiRouteImport } from './routes/ai'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CommunityRouteImport } from './routes/community'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as CookiesRouteImport } from './routes/cookies'
 import { Route as EntertainmentRouteImport } from './routes/entertainment'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as MessagesRouteImport } from './routes/messages'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as ShowcaseRouteImport } from './routes/showcase'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as VideosRouteImport } from './routes/videos'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -33,6 +39,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AiRoute = AiRouteImport.update({
@@ -55,14 +66,14 @@ const ContactRoute = ContactRouteImport.update({
   path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CookiesRoute = CookiesRouteImport.update({
+  id: '/cookies',
+  path: '/cookies',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EntertainmentRoute = EntertainmentRouteImport.update({
   id: '/entertainment',
   path: '/entertainment',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LearnRoute = LearnRouteImport.update({
-  id: '/learn',
-  path: '/learn',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExploreRoute = ExploreRouteImport.update({
@@ -70,14 +81,39 @@ const ExploreRoute = ExploreRouteImport.update({
   path: '/explore',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LearnRoute = LearnRouteImport.update({
+  id: '/learn',
+  path: '/learn',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MessagesRoute = MessagesRouteImport.update({
   id: '/messages',
   path: '/messages',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectsRoute = ProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShowcaseRoute = ShowcaseRouteImport.update({
+  id: '/showcase',
+  path: '/showcase',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VideosRoute = VideosRouteImport.update({
@@ -108,15 +144,21 @@ const ApiAiStreamRoute = ApiAiStreamRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/ai': typeof AiRoute
   '/auth': typeof AuthRoute
   '/community': typeof CommunityRoute
   '/contact': typeof ContactRoute
+  '/cookies': typeof CookiesRoute
   '/entertainment': typeof EntertainmentRoute
   '/explore': typeof ExploreRoute
   '/learn': typeof LearnRoute
   '/messages': typeof MessagesRoute
+  '/privacy': typeof PrivacyRoute
+  '/pricing': typeof PricingRoute
   '/projects': typeof ProjectsRoute
+  '/showcase': typeof ShowcaseRoute
+  '/terms': typeof TermsRoute
   '/videos': typeof VideosRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -125,15 +167,21 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/ai': typeof AiRoute
   '/auth': typeof AuthRoute
   '/community': typeof CommunityRoute
   '/contact': typeof ContactRoute
+  '/cookies': typeof CookiesRoute
   '/entertainment': typeof EntertainmentRoute
   '/explore': typeof ExploreRoute
   '/learn': typeof LearnRoute
   '/messages': typeof MessagesRoute
+  '/privacy': typeof PrivacyRoute
+  '/pricing': typeof PricingRoute
   '/projects': typeof ProjectsRoute
+  '/showcase': typeof ShowcaseRoute
+  '/terms': typeof TermsRoute
   '/videos': typeof VideosRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -144,15 +192,21 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/about': typeof AboutRoute
   '/ai': typeof AiRoute
   '/auth': typeof AuthRoute
   '/community': typeof CommunityRoute
   '/contact': typeof ContactRoute
+  '/cookies': typeof CookiesRoute
   '/entertainment': typeof EntertainmentRoute
   '/explore': typeof ExploreRoute
   '/learn': typeof LearnRoute
   '/messages': typeof MessagesRoute
+  '/privacy': typeof PrivacyRoute
+  '/pricing': typeof PricingRoute
   '/projects': typeof ProjectsRoute
+  '/showcase': typeof ShowcaseRoute
+  '/terms': typeof TermsRoute
   '/videos': typeof VideosRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -163,15 +217,21 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/about'
     | '/ai'
     | '/auth'
     | '/community'
     | '/contact'
+    | '/cookies'
     | '/entertainment'
     | '/explore'
     | '/learn'
     | '/messages'
+    | '/privacy'
+    | '/pricing'
     | '/projects'
+    | '/showcase'
+    | '/terms'
     | '/videos'
     | '/admin'
     | '/dashboard'
@@ -180,15 +240,21 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/about'
     | '/ai'
     | '/auth'
     | '/community'
     | '/contact'
+    | '/cookies'
     | '/entertainment'
     | '/explore'
     | '/learn'
     | '/messages'
+    | '/privacy'
+    | '/pricing'
     | '/projects'
+    | '/showcase'
+    | '/terms'
     | '/videos'
     | '/admin'
     | '/dashboard'
@@ -198,15 +264,21 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/about'
     | '/ai'
     | '/auth'
     | '/community'
     | '/contact'
+    | '/cookies'
     | '/entertainment'
     | '/explore'
     | '/learn'
     | '/messages'
+    | '/privacy'
+    | '/pricing'
     | '/projects'
+    | '/showcase'
+    | '/terms'
     | '/videos'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
@@ -217,15 +289,21 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AboutRoute: typeof AboutRoute
   AiRoute: typeof AiRoute
   AuthRoute: typeof AuthRoute
   CommunityRoute: typeof CommunityRoute
   ContactRoute: typeof ContactRoute
+  CookiesRoute: typeof CookiesRoute
   EntertainmentRoute: typeof EntertainmentRoute
   ExploreRoute: typeof ExploreRoute
   LearnRoute: typeof LearnRoute
   MessagesRoute: typeof MessagesRoute
+  PrivacyRoute: typeof PrivacyRoute
+  PricingRoute: typeof PricingRoute
   ProjectsRoute: typeof ProjectsRoute
+  ShowcaseRoute: typeof ShowcaseRoute
+  TermsRoute: typeof TermsRoute
   VideosRoute: typeof VideosRoute
   AppsSlugRoute: typeof AppsSlugRoute
   ApiAiStreamRoute: typeof ApiAiStreamRoute
@@ -245,6 +323,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ai': {
@@ -275,18 +360,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cookies': {
+      id: '/cookies'
+      path: '/cookies'
+      fullPath: '/cookies'
+      preLoaderRoute: typeof CookiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/entertainment': {
       id: '/entertainment'
       path: '/entertainment'
       fullPath: '/entertainment'
       preLoaderRoute: typeof EntertainmentRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/learn': {
-      id: '/learn'
-      path: '/learn'
-      fullPath: '/learn'
-      preLoaderRoute: typeof LearnRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/explore': {
@@ -296,6 +381,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExploreRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/learn': {
+      id: '/learn'
+      path: '/learn'
+      fullPath: '/learn'
+      preLoaderRoute: typeof LearnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/messages': {
       id: '/messages'
       path: '/messages'
@@ -303,11 +395,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MessagesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projects': {
       id: '/projects'
       path: '/projects'
       fullPath: '/projects'
       preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/showcase': {
+      id: '/showcase'
+      path: '/showcase'
+      fullPath: '/showcase'
+      preLoaderRoute: typeof ShowcaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/videos': {
@@ -364,15 +484,21 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AboutRoute: AboutRoute,
   AiRoute: AiRoute,
   AuthRoute: AuthRoute,
   CommunityRoute: CommunityRoute,
   ContactRoute: ContactRoute,
+  CookiesRoute: CookiesRoute,
   EntertainmentRoute: EntertainmentRoute,
   ExploreRoute: ExploreRoute,
   LearnRoute: LearnRoute,
   MessagesRoute: MessagesRoute,
+  PrivacyRoute: PrivacyRoute,
+  PricingRoute: PricingRoute,
   ProjectsRoute: ProjectsRoute,
+  ShowcaseRoute: ShowcaseRoute,
+  TermsRoute: TermsRoute,
   VideosRoute: VideosRoute,
   AppsSlugRoute: AppsSlugRoute,
   ApiAiStreamRoute: ApiAiStreamRoute,

@@ -113,12 +113,12 @@ async function callOpenAiCompatible(
       signal: AbortSignal.timeout(isGroq ? 30000 : 60000),
     });
   const requestedOutput = request.generationConfig?.maxOutputTokens ?? 1800;
-  let response = await send(isGroq ? 3800 : 10000, Math.min(requestedOutput, isGroq ? 700 : 1800));
+  let response = await send(isGroq ? 3800 : 10000, Math.min(requestedOutput, isGroq ? 1100 : 1800));
   // Groq may reject an otherwise valid request when its TPM window is tight.
   // Retry the same provider once with a materially smaller context/output budget.
   if (isGroq && response.status === 413) {
     await response.text();
-    response = await send(2400, Math.min(requestedOutput, 400));
+    response = await send(2400, Math.min(requestedOutput, 600));
   }
   if (!response.ok)
     throw new Error(

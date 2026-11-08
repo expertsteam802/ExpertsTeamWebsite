@@ -123,6 +123,92 @@ export const startAgentPreview = createServerFn({ method: "POST" })
     return startCloudProjectPreview(data.projectId, data.files);
   });
 
+const terminalStartRequest = z
+  .object({
+    projectId: z.string().uuid(),
+    files: z.record(z.string().max(512), z.string().max(150000)),
+  })
+  .refine(
+    ({ files }) =>
+      Object.keys(files).length <= 120 &&
+      Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 1_000_000,
+    "The project is too large to open in the Linux terminal.",
+  );
+
+export const startAgentTerminal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => terminalStartRequest.parse(input))
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const { startCloudProjectTerminal } = await import("./agent-sandbox.server");
+    return startCloudProjectTerminal(data.projectId, data.files);
+  });
+
+const publishRequest = z
+  .object({
+    projectId: z.string().uuid(),
+    slug: z.string().regex(/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/),
+    files: z.record(z.string().max(512), z.string().max(150000)),
+  })
+  .refine(
+    ({ files }) =>
+      Object.keys(files).length <= 120 &&
+      Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 1_000_000,
+    "The project is too large to publish.",
+  );
+
+export const syncAgentTerminalFiles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const { readCloudProjectFiles } = await import("./agent-sandbox.server");
+    return readCloudProjectFiles(data.projectId);
+  });
+
+export const publishAgentProject = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => publishRequest.parse(input))
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const now = new Date().toISOString();
+    const { error: startError } = await context.supabase
+      .from("agent_projects")
+      .update({ last_build_status: "building", last_build_at: now })
+      .eq("id", data.projectId)
+      .eq("user_id", context.userId);
+    if (startError) throw new Error("Could not start the app publishing job.");
+
+    try {
+      const { publishCloudProject } = await import("./agent-sandbox.server");
+      const result = await publishCloudProject(data.projectId, data.files, data.slug);
+      const { data: saved, error: saveError } = await context.supabase
+        .from("agent_projects")
+        .update({
+          published: true,
+          slug: data.slug,
+          deployment_url: result.url,
+          last_build_status: "success",
+          last_build_at: new Date().toISOString(),
+        })
+        .eq("id", data.projectId)
+        .eq("user_id", context.userId)
+        .select("id")
+        .maybeSingle();
+      if (saveError)
+        throw new Error("The app was built, but its published URL could not be saved.");
+      if (!saved) throw new Error("The app was built, but the project is no longer available.");
+      return result;
+    } catch (error) {
+      await context.supabase
+        .from("agent_projects")
+        .update({ last_build_status: "failed", last_build_at: new Date().toISOString() })
+        .eq("id", data.projectId)
+        .eq("user_id", context.userId);
+      throw error;
+    }
+  });
+
 export const runAgentTerminalCommand = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>

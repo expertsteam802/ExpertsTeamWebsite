@@ -45,7 +45,10 @@ function AiPage() {
           </div>
         </div>
 
-        <nav aria-label="ExpertAI workspace" className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1">
+        <nav
+          aria-label="ExpertAI workspace"
+          className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1"
+        >
           <button
             type="button"
             onClick={() => setActiveView("builder")}
@@ -76,10 +79,14 @@ function AiPage() {
       </header>
 
       <section className="relative min-h-0 flex-1 overflow-hidden">
-        <div className={`h-full min-h-0 overflow-hidden ${activeView === "builder" ? "block" : "hidden"}`}>
+        <div
+          className={`h-full min-h-0 overflow-hidden ${activeView === "builder" ? "block" : "hidden"}`}
+        >
           <CodeAgent />
         </div>
-        <div className={`h-full min-h-0 overflow-hidden ${activeView === "chat" ? "block" : "hidden"}`}>
+        <div
+          className={`h-full min-h-0 overflow-hidden ${activeView === "chat" ? "block" : "hidden"}`}
+        >
           <ChrisAiChat />
         </div>
       </section>

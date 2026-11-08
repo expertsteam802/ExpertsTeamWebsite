@@ -51,8 +51,13 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
       if (!youtubeId) throw new Error("Paste a valid YouTube link.");
       if (thumbnailUrl.trim()) {
         let parsedThumbnail: URL;
-        try { parsedThumbnail = new URL(thumbnailUrl.trim()); } catch { throw new Error("Enter a valid thumbnail URL."); }
-        if (parsedThumbnail.protocol !== "https:") throw new Error("Thumbnail URLs must use HTTPS.");
+        try {
+          parsedThumbnail = new URL(thumbnailUrl.trim());
+        } catch {
+          throw new Error("Enter a valid thumbnail URL.");
+        }
+        if (parsedThumbnail.protocol !== "https:")
+          throw new Error("Thumbnail URLs must use HTTPS.");
       }
       const { error } = await supabase
         .from("videos")
@@ -191,14 +196,18 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
                 value={thumbnailUrl}
                 onChange={(event) => setThumbnailUrl(event.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Leave blank to use the YouTube thumbnail.</p>
+              <p className="text-xs text-muted-foreground">
+                Leave blank to use the YouTube thumbnail.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="video-edit-alignment">Player alignment</Label>
               <select
                 id="video-edit-alignment"
                 value={alignment}
-                onChange={(event) => setAlignment(event.target.value as "left" | "center" | "right")}
+                onChange={(event) =>
+                  setAlignment(event.target.value as "left" | "center" | "right")
+                }
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
               >
                 <option value="left">Left</option>

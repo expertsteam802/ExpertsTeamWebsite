@@ -3,7 +3,13 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -40,9 +46,15 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [gateOpen, setGateOpen] = useState(false);
   const [authGateRequired, setAuthGateRequired] = useState(false);
-  const [pendingSignupResult, setPendingSignupResult] = useState<{ email: string; needsConfirmation: boolean } | null>(null);
+  const [pendingSignupResult, setPendingSignupResult] = useState<{
+    email: string;
+    needsConfirmation: boolean;
+  } | null>(null);
   const signupFlow = useRef(false);
-  const [signupResult, setSignupResult] = useState<{ email: string; needsConfirmation: boolean } | null>(null);
+  const [signupResult, setSignupResult] = useState<{
+    email: string;
+    needsConfirmation: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -98,19 +110,33 @@ function AuthPage() {
       if (!data.user) throw new Error("Supabase did not return a new account.");
       if (avatarFile && data.session) {
         try {
-          const extension = avatarFile.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+          const extension =
+            avatarFile.name
+              .split(".")
+              .pop()
+              ?.toLowerCase()
+              .replace(/[^a-z0-9]/g, "") || "jpg";
           const path = `${data.user.id}/avatar-${Date.now()}.${extension}`;
-          const { error: uploadError } = await supabase.storage.from("uploads").upload(path, avatarFile, {
-            cacheControl: "3600",
-            upsert: true,
-            contentType: avatarFile.type || "image/jpeg",
-          });
+          const { error: uploadError } = await supabase.storage
+            .from("uploads")
+            .upload(path, avatarFile, {
+              cacheControl: "3600",
+              upsert: true,
+              contentType: avatarFile.type || "image/jpeg",
+            });
           if (uploadError) throw uploadError;
           const avatarUrl = supabase.storage.from("uploads").getPublicUrl(path).data.publicUrl;
-          const { error: profileError } = await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", data.user.id);
+          const { error: profileError } = await supabase
+            .from("profiles")
+            .update({ avatar_url: avatarUrl })
+            .eq("id", data.user.id);
           if (profileError) throw profileError;
         } catch (avatarError) {
-          toast.error(avatarError instanceof Error ? "Account created. Add your profile photo later from your profile settings." : "Account created. You can add your photo later.");
+          toast.error(
+            avatarError instanceof Error
+              ? "Account created. Add your profile photo later from your profile settings."
+              : "Account created. You can add your photo later.",
+          );
         }
       }
       setPendingSignupResult({ email: email.trim(), needsConfirmation: !data.session });
@@ -230,7 +256,10 @@ function AuthPage() {
                 />
               </div>
               <div className="space-y-2 rounded-xl border border-border/70 bg-secondary/30 p-3">
-                <Label htmlFor="signup-avatar">Profile photo <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                <Label htmlFor="signup-avatar">
+                  Profile photo{" "}
+                  <span className="font-normal text-muted-foreground">(optional)</span>
+                </Label>
                 <input
                   id="signup-avatar"
                   type="file"
@@ -246,7 +275,11 @@ function AuthPage() {
                   }}
                   className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary-foreground"
                 />
-                <p className="text-xs text-muted-foreground">{avatarFile ? avatarFile.name : "Add a photo now, or skip and add one later from your profile."}</p>
+                <p className="text-xs text-muted-foreground">
+                  {avatarFile
+                    ? avatarFile.name
+                    : "Add a photo now, or skip and add one later from your profile."}
+                </p>
               </div>
               <Button className="w-full" onClick={() => void signUp()} disabled={busy}>
                 Create account
@@ -271,31 +304,39 @@ function AuthPage() {
           }
         }}
       />
-      <Dialog open={!!signupResult} onOpenChange={(open) => {
-        if (!open) {
-          const shouldGoToDashboard = !signupResult?.needsConfirmation;
-          setSignupResult(null);
-          signupFlow.current = false;
-          setAuthGateRequired(false);
-          if (shouldGoToDashboard) void navigate({ to: "/dashboard", replace: true });
-        }
-      }}>
+      <Dialog
+        open={!!signupResult}
+        onOpenChange={(open) => {
+          if (!open) {
+            const shouldGoToDashboard = !signupResult?.needsConfirmation;
+            setSignupResult(null);
+            signupFlow.current = false;
+            setAuthGateRequired(false);
+            if (shouldGoToDashboard) void navigate({ to: "/dashboard", replace: true });
+          }
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{signupResult?.needsConfirmation ? "Check your email" : "Your account is ready!"}</DialogTitle>
+            <DialogTitle>
+              {signupResult?.needsConfirmation ? "Check your email" : "Your account is ready!"}
+            </DialogTitle>
             <DialogDescription>
               {signupResult?.needsConfirmation
                 ? `We created your account. Follow the confirmation link sent to ${signupResult.email} to finish signing in.`
                 : "Your ExpertsTeam account was created successfully. You can now explore your dashboard."}
             </DialogDescription>
           </DialogHeader>
-          <Button className="w-full sm:w-auto" onClick={() => {
-            const shouldGoToDashboard = !signupResult?.needsConfirmation;
-            setSignupResult(null);
-            signupFlow.current = false;
-            setAuthGateRequired(false);
-            if (shouldGoToDashboard) void navigate({ to: "/dashboard", replace: true });
-          }}>
+          <Button
+            className="w-full sm:w-auto"
+            onClick={() => {
+              const shouldGoToDashboard = !signupResult?.needsConfirmation;
+              setSignupResult(null);
+              signupFlow.current = false;
+              setAuthGateRequired(false);
+              if (shouldGoToDashboard) void navigate({ to: "/dashboard", replace: true });
+            }}
+          >
             {signupResult?.needsConfirmation ? "Back to sign in" : "Open my dashboard"}
           </Button>
         </DialogContent>

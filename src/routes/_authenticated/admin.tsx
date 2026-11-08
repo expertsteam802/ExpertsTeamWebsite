@@ -268,15 +268,25 @@ function AdminPage() {
         site_name: settings.site_name,
         logo_url: settings.logo_url ?? "",
         background_image_url: (() => {
-          const branding = settings.site_branding_settings && typeof settings.site_branding_settings === "object" && !Array.isArray(settings.site_branding_settings)
-            ? (settings.site_branding_settings as Record<string, unknown>).siteBranding as Record<string, unknown> | undefined
-            : undefined;
-          return typeof branding?.background_image_url === "string" ? branding.background_image_url : "";
+          const branding =
+            settings.site_branding_settings &&
+            typeof settings.site_branding_settings === "object" &&
+            !Array.isArray(settings.site_branding_settings)
+              ? ((settings.site_branding_settings as Record<string, unknown>).siteBranding as
+                  Record<string, unknown> | undefined)
+              : undefined;
+          return typeof branding?.background_image_url === "string"
+            ? branding.background_image_url
+            : "";
         })(),
         banner_image_url: (() => {
-          const branding = settings.site_branding_settings && typeof settings.site_branding_settings === "object" && !Array.isArray(settings.site_branding_settings)
-            ? (settings.site_branding_settings as Record<string, unknown>).siteBranding as Record<string, unknown> | undefined
-            : undefined;
+          const branding =
+            settings.site_branding_settings &&
+            typeof settings.site_branding_settings === "object" &&
+            !Array.isArray(settings.site_branding_settings)
+              ? ((settings.site_branding_settings as Record<string, unknown>).siteBranding as
+                  Record<string, unknown> | undefined)
+              : undefined;
           return typeof branding?.banner_image_url === "string" ? branding.banner_image_url : "";
         })(),
         youtube_url: settings.youtube_url,
@@ -442,10 +452,10 @@ function AdminPage() {
       await removeAccount({ data: { userId } });
     },
     onSuccess: () => {
-      toast.success("Member deleted");
-      void queryClient.invalidateQueries({ queryKey: ["admin", "members"] });
+      toast.success("User account permanently deleted");
+      void queryClient.invalidateQueries({ queryKey: ["admin"] });
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error("Could not delete user: " + error.message),
   });
 
   const changeMemberRole = useMutation({
@@ -722,20 +732,30 @@ function AdminPage() {
               <TabsContent value="uploads" className="mt-0 space-y-5">
                 <div className="flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <h2 className="font-display text-2xl font-semibold">Community upload library</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">Review, edit or remove uploaded files and shared external download links. Add resources directly from the admin workspace.</p>
+                    <h2 className="font-display text-2xl font-semibold">
+                      Community upload library
+                    </h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Review, edit or remove uploaded files and shared external download links. Add
+                      resources directly from the admin workspace.
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-secondary px-3 py-1.5 text-xs text-muted-foreground">{adminFiles.length} resources</span>
+                    <span className="rounded-full bg-secondary px-3 py-1.5 text-xs text-muted-foreground">
+                      {adminFiles.length} resources
+                    </span>
                     <UploadDialog />
                   </div>
                 </div>
                 {adminFilesLoading ? (
-                  <Card className="p-8 text-sm text-muted-foreground">Loading community resources…</Card>
+                  <Card className="p-8 text-sm text-muted-foreground">
+                    Loading community resources…
+                  </Card>
                 ) : adminFilesError ? (
                   <Card className="flex flex-col items-start gap-3 p-6">
                     <p className="text-sm text-destructive">
-                      The upload library could not be loaded. Check your connection and access permissions, then try again.
+                      The upload library could not be loaded. Check your connection and access
+                      permissions, then try again.
                     </p>
                     <Button variant="outline" onClick={() => void refetchAdminFiles()}>
                       <RefreshCw className="mr-2 h-4 w-4" /> Retry loading uploads
@@ -833,9 +853,13 @@ function AdminPage() {
               <TabsContent value="branding" className="mt-0">
                 <Card className="max-w-3xl gap-4 p-6">
                   <div>
-                    <h2 className="font-display text-lg font-semibold">Website branding and appearance</h2>
+                    <h2 className="font-display text-lg font-semibold">
+                      Website branding and appearance
+                    </h2>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Upload a background image from your device or paste an image URL. Uploaded images are stored in Supabase and remain available after refreshes and deployments.
+                      Upload a background image from your device or paste an image URL. Uploaded
+                      images are stored in Supabase and remain available after refreshes and
+                      deployments.
                     </p>
                   </div>
                   {form ? (
@@ -843,8 +867,12 @@ function AdminPage() {
                       <div className="space-y-3 rounded-xl border border-border/70 p-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
-                            <Label htmlFor="background-image-upload">Website background image</Label>
-                            <p className="mt-1 text-xs text-muted-foreground">JPG, PNG, WebP or GIF · maximum 10 MB</p>
+                            <Label htmlFor="background-image-upload">
+                              Website background image
+                            </Label>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              JPG, PNG, WebP or GIF · maximum 10 MB
+                            </p>
                           </div>
                           <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
                             <ImagePlus className="mr-2 h-4 w-4" />
@@ -859,11 +887,19 @@ function AdminPage() {
                                 const file = event.target.files?.[0];
                                 if (!file) return;
                                 try {
-                                  if (!file.type.startsWith("image/")) throw new Error("Choose a valid image file.");
-                                  if (file.size > 10 * 1024 * 1024) throw new Error("Image must be 10 MB or smaller.");
+                                  if (!file.type.startsWith("image/"))
+                                    throw new Error("Choose a valid image file.");
+                                  if (file.size > 10 * 1024 * 1024)
+                                    throw new Error("Image must be 10 MB or smaller.");
                                   setBackgroundUploadPending(true);
-                                  const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-                                  const filePath = "site-branding/background-" + Date.now() + "." + extension;
+                                  const extension =
+                                    file.name
+                                      .split(".")
+                                      .pop()
+                                      ?.toLowerCase()
+                                      .replace(/[^a-z0-9]/g, "") || "jpg";
+                                  const filePath =
+                                    "site-branding/background-" + Date.now() + "." + extension;
                                   const { error: uploadError } = await supabase.storage
                                     .from("site-assets")
                                     .upload(filePath, file, {
@@ -872,11 +908,21 @@ function AdminPage() {
                                       upsert: true,
                                     });
                                   if (uploadError) throw uploadError;
-                                  const { data } = supabase.storage.from("site-assets").getPublicUrl(filePath);
-                                  setForm((current) => current ? { ...current, background_image_url: data.publicUrl } : current);
-                                  toast.success("Background uploaded. Click Save settings to publish it.");
+                                  const { data } = supabase.storage
+                                    .from("site-assets")
+                                    .getPublicUrl(filePath);
+                                  setForm((current) =>
+                                    current
+                                      ? { ...current, background_image_url: data.publicUrl }
+                                      : current,
+                                  );
+                                  toast.success(
+                                    "Background uploaded. Click Save settings to publish it.",
+                                  );
                                 } catch (error) {
-                                  toast.error(error instanceof Error ? error.message : "Image upload failed.");
+                                  toast.error(
+                                    error instanceof Error ? error.message : "Image upload failed.",
+                                  );
                                 } finally {
                                   setBackgroundUploadPending(false);
                                   event.target.value = "";
@@ -930,12 +976,19 @@ function AdminPage() {
                             id={key}
                             value={form[key]}
                             placeholder={
-                              key === "owner_email" ? "hello@yourwebsite.com" :
-                              key === "instagram_url" ? "https://instagram.com/yourhandle" :
-                              key === "youtube_url" ? "https://youtube.com/@yourchannel" :
-                              key === "logo_url" ? "https://example.com/logo.png" :
-                              key === "background_image_url" ? "https://example.com/background.jpg" :
-                              key === "banner_image_url" ? "https://example.com/banner.jpg" : ""
+                              key === "owner_email"
+                                ? "hello@yourwebsite.com"
+                                : key === "instagram_url"
+                                  ? "https://instagram.com/yourhandle"
+                                  : key === "youtube_url"
+                                    ? "https://youtube.com/@yourchannel"
+                                    : key === "logo_url"
+                                      ? "https://example.com/logo.png"
+                                      : key === "background_image_url"
+                                        ? "https://example.com/background.jpg"
+                                        : key === "banner_image_url"
+                                          ? "https://example.com/banner.jpg"
+                                          : ""
                             }
                             onChange={(event) => setForm({ ...form, [key]: event.target.value })}
                           />
@@ -1069,10 +1122,15 @@ function AdminPage() {
                             <Button
                               variant="destructive"
                               size="sm"
-                              onClick={() => deleteMember.mutate(member.id)}
+                              onClick={() => {
+                                const confirmed = window.confirm(
+                                  "Permanently delete this user and their uploaded files? This cannot be undone.",
+                                );
+                                if (confirmed) deleteMember.mutate(member.id);
+                              }}
                               disabled={deleteMember.isPending}
                             >
-                              Delete user
+                              {deleteMember.isPending ? "Deleting…" : "Delete user"}
                             </Button>
                           )}
                         </div>

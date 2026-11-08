@@ -1,5 +1,6 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Sandbox } from "@vercel/sandbox";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 import { repairMissingStylesheetImports } from "./agent.server";
 
@@ -8,9 +9,10 @@ export type AgentProjectFiles = Record<string, string>;
 const WORKDIR = "/vercel/sandbox";
 const META_FILE = ".experts-agent-files.json";
 const PACKAGE_HASH_FILE = ".experts-agent-package-hash";
+const PREVIEW_PORT_FILE = ".experts-agent-preview-port";
 
 function sandboxName(projectId: string) {
-  return `experts-agent-${projectId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 36)}`;
+  return "experts-agent-pty-" + projectId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 36);
 }
 
 function validateFiles(files: AgentProjectFiles) {
@@ -120,13 +122,14 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
     runtime: "node24",
     resources: { vcpus: 1 },
     timeout: 45 * 60 * 1000,
-    ports: [port],
+    networkPolicy: "allow-all",
+    ports: [port, 4174],
     resume: true,
   });
 
   // Existing named sandboxes keep their original configuration, so update the
   // per-session timeout as well as setting it during creation.
-  await sandbox.update({ timeout: 45 * 60 * 1000 });
+  await sandbox.update({ timeout: 45 * 60 * 1000, networkPolicy: "allow-all", ports: [port, 4174] });
 
   const previous = await readText(sandbox, `${WORKDIR}/${META_FILE}`);
   let previousManifest: Record<string, string> = {};
@@ -164,6 +167,9 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
       path: META_FILE,
       content: Buffer.from(JSON.stringify(nextManifest), "utf8"),
     },
+  ]);
+  await sandbox.writeFiles([
+    { path: PREVIEW_PORT_FILE, content: Buffer.from(String(port), "utf8") },
   ]);
 
   const packageHash = createHash("sha256").update(files["package.json"]).digest("hex");
@@ -204,13 +210,15 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
       configImport,
       `const previewHost = ${JSON.stringify(previewHost)};`,
       "export default async (environment) => {",
-      "  const base = typeof userConfig === \"function\" ? await userConfig(environment) : await userConfig;",
+      '  const base = typeof userConfig === "function" ? await userConfig(environment) : await userConfig;',
       "  const hostConfig = { server: { allowedHosts: [previewHost] }, preview: { allowedHosts: [previewHost] } };",
       "  return Array.isArray(base) ? base.map((entry) => mergeConfig(entry, hostConfig)) : mergeConfig(base ?? {}, hostConfig);",
       "};",
       "",
     ].join("\n");
-    await sandbox.writeFiles([{ path: previewConfigPath, content: Buffer.from(previewConfig, "utf8") }]);
+    await sandbox.writeFiles([
+      { path: previewConfigPath, content: Buffer.from(previewConfig, "utf8") },
+    ]);
   }
   let alreadyRunning = false;
   let blockedByViteHostCheck = false;
@@ -241,7 +249,8 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
     if (scriptName) {
       const args = ["run", scriptName];
       if (isNext) args.push("--", "--hostname", "0.0.0.0", "--port", String(port));
-      else if (isVite) args.push("--", "--host", "0.0.0.0", "--port", String(port), "--config", previewConfigPath);
+      else if (isVite)
+        args.push("--", "--host", "0.0.0.0", "--port", String(port), "--config", previewConfigPath);
       await sandbox.runCommand({
         cmd: "npm",
         args,
@@ -267,21 +276,466 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   return { url, port, sandboxName: name, installOutput, recovered };
 }
 
+function shellQuote(value: string) {
+  return "'" + value.replace(/'/g, "'\\''") + "'";
+}
+
+function cleanTerminalOutput(value: string) {
+  return (
+    value
+      // eslint-disable-next-line no-control-regex
+      .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "")
+      // eslint-disable-next-line no-control-regex
+      .replace(/\x1B\][^\x07]*(?:\x07|\x1B\\)/g, "")
+      .replace(/\r\n?/g, "\n")
+      .slice(-30_000)
+  );
+}
+
+export async function startCloudProjectTerminal(
+  projectId: string,
+  sourceFiles: AgentProjectFiles,
+) {
+  const files = repairMissingStylesheetImports({ ...sourceFiles });
+  validateFiles(files);
+  const name = sandboxName(projectId);
+  const sandbox = await Sandbox.getOrCreate({
+    name,
+    runtime: "node24",
+    resources: { vcpus: 1 },
+    timeout: 45 * 60 * 1000,
+    networkPolicy: "allow-all",
+    ports: [5173, 4174],
+    resume: true,
+  });
+  const savedPort = Number((await readText(sandbox, WORKDIR + "/" + PREVIEW_PORT_FILE))?.trim());
+  const previewPort = Number.isInteger(savedPort) && savedPort >= 1 && savedPort <= 65535 ? savedPort : 5173;
+  await sandbox.update({ timeout: 45 * 60 * 1000, networkPolicy: "allow-all", ports: [previewPort, 4174] });
+
+  const previous = await readText(sandbox, WORKDIR + "/" + META_FILE);
+  let previousManifest: Record<string, string> = {};
+  try {
+    previousManifest = previous ? (JSON.parse(previous) as Record<string, string>) : {};
+  } catch {
+    previousManifest = {};
+  }
+  const nextManifest = Object.fromEntries(
+    Object.entries(files).map(([path, content]) => [
+      path,
+      createHash("sha256").update(content).digest("hex"),
+    ]),
+  );
+  const nextPaths = Object.keys(files);
+  const removed = Object.keys(previousManifest).filter((path) => !nextPaths.includes(path));
+  if (removed.length)
+    await sandbox.runCommand({ cmd: "rm", args: ["-rf", "--", ...removed], cwd: WORKDIR });
+  if (nextPaths.length) {
+    await sandbox.writeFiles(
+      nextPaths.map((path) => ({
+        path,
+        content: Buffer.from(files[path], "utf8"),
+      })),
+    );
+  }
+  await sandbox.writeFiles([
+    { path: META_FILE, content: Buffer.from(JSON.stringify(nextManifest), "utf8") },
+  ]);
+  const bridgeDir = WORKDIR + "/.experts-terminal-bridge";
+  const tokenPath = WORKDIR + "/.experts-terminal-token";
+  await sandbox.runCommand({ cmd: "mkdir", args: ["-p", bridgeDir], cwd: WORKDIR });
+  const token = (await readText(sandbox, tokenPath))?.trim() || randomBytes(32).toString("hex");
+  const packageJson = JSON.stringify({
+    private: true,
+    type: "commonjs",
+    dependencies: { "node-pty": "^1.1.0", ws: "^8.18.3" },
+  });
+  const serverSource = [
+    'const http = require("node:http");',
+    'const { WebSocketServer } = require("ws");',
+    'const pty = require("node-pty");',
+    "let activeShell = null;",
+    "const server = http.createServer((request, response) => {",
+    '  if (request.url === "/health") { response.writeHead(200, { "content-type": "text/plain", "cache-control": "no-store" }); response.end("ok"); return; }',
+    "  response.writeHead(404); response.end();",
+    "});",
+    "const sockets = new WebSocketServer({ noServer: true, maxPayload: 65536, perMessageDeflate: false });",
+    'server.on("upgrade", (request, socket, head) => {',
+    '  if (request.url !== "/terminal") { socket.destroy(); return; }',
+    '  const protocols = String(request.headers["sec-websocket-protocol"] || "").split(",").map((value) => value.trim());',
+    '  if (!process.env.TERMINAL_TOKEN || !protocols.includes(process.env.TERMINAL_TOKEN)) { socket.write("HTTP/1.1 401 Unauthorized\\r\\nConnection: close\\r\\n\\r\\n"); socket.destroy(); return; }',
+    '  sockets.handleUpgrade(request, socket, head, (client) => sockets.emit("connection", client));',
+    "});",
+    'sockets.on("connection", (client) => {',
+    "  if (activeShell) { try { activeShell.kill(); } catch {} activeShell = null; }",
+    '  const shell = pty.spawn("/bin/bash", ["--login"], { name: "xterm-256color", cols: 100, rows: 30, cwd: process.env.TERMINAL_CWD || "/vercel/sandbox", env: { ...process.env, TERM: "xterm-256color", COLORTERM: "truecolor" } });',
+    "  activeShell = shell;",
+    "  shell.onData((data) => { if (client.readyState === 1) client.send(data); });",
+    "  shell.onExit(() => { if (activeShell === shell) activeShell = null; if (client.readyState === 1) client.close(); });",
+    '  client.on("message", (buffer) => {',
+    "    const value = buffer.toString();",
+    '    if (value.charCodeAt(0) === 0) { try { const control = JSON.parse(value.slice(1)); if (control.type === "resize") shell.resize(Math.max(20, Math.min(300, Number(control.cols) || 100)), Math.max(5, Math.min(100, Number(control.rows) || 30))); } catch {} return; }',
+    "    shell.write(value);",
+    "  });",
+    '  client.on("close", () => { try { shell.kill(); } catch {} if (activeShell === shell) activeShell = null; });',
+    "});",
+    'server.listen(Number(process.env.TERMINAL_PORT || 4174), "0.0.0.0");',
+  ].join("\n");
+
+  await sandbox.writeFiles([
+    { path: bridgeDir + "/package.json", content: Buffer.from(packageJson, "utf8") },
+    { path: bridgeDir + "/server.cjs", content: Buffer.from(serverSource, "utf8") },
+    { path: tokenPath, content: Buffer.from(token, "utf8"), mode: 0o600 },
+  ]);
+  const syntaxCheck = await sandbox.runCommand({
+    cmd: "node",
+    args: ["--check", bridgeDir + "/server.cjs"],
+    cwd: WORKDIR,
+    timeoutMs: 10_000,
+  });
+  if (syntaxCheck.exitCode !== 0)
+    throw new Error("The Linux terminal bridge failed its syntax check: " + (await syntaxCheck.stderr()).slice(-2000));
+  const installed = await sandbox.runCommand({
+    cmd: "test",
+    args: ["-d", bridgeDir + "/node_modules/node-pty"],
+    cwd: WORKDIR,
+  });
+  if (installed.exitCode !== 0) {
+    const install = await sandbox.runCommand({
+      cmd: "npm",
+      args: ["install", "--no-audit", "--no-fund"],
+      cwd: bridgeDir,
+      timeoutMs: 180_000,
+    });
+    if (install.exitCode !== 0)
+      throw new Error(
+        "Could not install the isolated terminal runtime: " + (await install.stderr()).slice(-3000),
+      );
+  }
+
+  const ping = () =>
+    sandbox.runCommand({
+      cmd: "curl",
+      args: ["-fsS", "http://127.0.0.1:4174/health"],
+      cwd: WORKDIR,
+      timeoutMs: 5000,
+    });
+  const health = await ping();
+  if (health.exitCode !== 0) {
+    await sandbox.runCommand({
+      cmd: "node",
+      args: ["server.cjs"],
+      cwd: bridgeDir,
+      env: { TERMINAL_TOKEN: token, TERMINAL_CWD: WORKDIR, TERMINAL_PORT: "4174" },
+      detached: true,
+    });
+  }
+
+  let ready = false;
+  for (let attempt = 0; attempt < 25; attempt++) {
+    const check = await ping();
+    if (check.exitCode === 0 && (await check.stdout()).trim() === "ok") {
+      ready = true;
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+  if (!ready) throw new Error("The interactive Linux terminal did not start inside the sandbox.");
+  const selfTestPath = bridgeDir + "/healthcheck.cjs";
+  const selfTestSource = [
+    'const WebSocket = require("ws");',
+    'let output = "";',
+    'let passed = false;',
+    'const socket = new WebSocket("ws://127.0.0.1:4174/terminal", ["experts-terminal", process.env.TERMINAL_TOKEN]);',
+    'const timeout = setTimeout(() => { socket.terminate(); process.exit(1); }, 12000);',
+    'socket.on("open", () => socket.send("echo EXPERTS_TERMINAL_OK\\r"));',
+    'socket.on("message", (data) => { output += data.toString(); if (output.includes("EXPERTS_TERMINAL_OK")) { passed = true; clearTimeout(timeout); socket.close(); } });',
+    'socket.on("close", () => { clearTimeout(timeout); process.exit(passed ? 0 : 1); });',
+    'socket.on("error", () => { clearTimeout(timeout); process.exit(1); });',
+  ].join("\n");
+  await sandbox.writeFiles([{ path: selfTestPath, content: Buffer.from(selfTestSource, "utf8") }]);
+  const selfTestResult = await sandbox.runCommand({
+    cmd: "node",
+    args: ["healthcheck.cjs"],
+    cwd: bridgeDir,
+    env: { TERMINAL_TOKEN: token },
+    timeoutMs: 15_000,
+  });
+  if (selfTestResult.exitCode !== 0)
+    throw new Error("The Linux PTY failed its interactive shell self-test: " + (await selfTestResult.stderr()).slice(-2000));
+
+  return { url: sandbox.domain(4174).replace(/^https:/, "wss:") + "/terminal", token };
+}
+
+export async function readCloudProjectFiles(projectId: string) {
+  const sandbox = await Sandbox.get({ name: sandboxName(projectId) });
+  const listing = await sandbox.runCommand({
+    cmd: "find",
+    args: [
+      ".",
+      "(",
+      "-path",
+      "./node_modules",
+      "-o",
+      "-path",
+      "./.git",
+      "-o",
+      "-path",
+      "./dist",
+      "-o",
+      "-path",
+      "./build",
+      "-o",
+      "-path",
+      "./out",
+      "-o",
+      "-path",
+      "./.next",
+      "-o",
+      "-path",
+      "./.vercel",
+      "-o",
+      "-path",
+      "./coverage",
+      "-o",
+      "-path",
+      "./.experts-terminal-bridge",
+      ")",
+      "-prune",
+      "-o",
+      "-type",
+      "f",
+      "-print",
+    ],
+    cwd: WORKDIR,
+    timeoutMs: 30_000,
+  });
+  if (listing.exitCode !== 0) throw new Error("Could not scan the sandbox project files.");
+  const paths = (await listing.stdout())
+    .split("\n")
+    .map((path) => path.trim().replace(/^\.\//, ""))
+    .filter((path) => {
+      const filename = path.split("/").at(-1) ?? "";
+      return (
+        path &&
+        /^[a-zA-Z0-9_@./-]+$/.test(path) &&
+        !path.split("/").some((part) => !part || part === "." || part === "..") &&
+        !path.split("/").some((part) => part.startsWith(".experts-")) &&
+        ![".npmrc", ".netrc", ".pypirc"].includes(filename) &&
+        !/^\.env(?:\.|$)/i.test(filename) &&
+        !/^(?:id_rsa|id_ed25519|credentials?|secrets?)(?:\.|$)/i.test(filename) &&
+        !/\.(?:pem|key|p12|pfx)$/i.test(filename)
+      );
+    });
+  if (paths.length > 120)
+    throw new Error(
+      "The project has more than 120 files; remove generated files before importing.",
+    );
+  const files: AgentProjectFiles = {};
+  let totalBytes = 0;
+  for (const path of paths) {
+    const buffer = await sandbox.readFileToBuffer({ path: WORKDIR + "/" + path });
+    if (!buffer) continue;
+    totalBytes += buffer.byteLength;
+    if (buffer.byteLength > 150_000 || totalBytes > 1_000_000)
+      throw new Error("The project files exceed the 1 MB import limit.");
+    files[path] = buffer.toString("utf8");
+  }
+  validateFiles(files);
+  return { files };
+}
+
 export async function runCloudProjectCommand(projectId: string, command: string) {
   if (!command.trim() || command.length > 3000)
     throw new Error("Enter a command under 3,000 characters.");
   const sandbox = await Sandbox.get({ name: sandboxName(projectId) });
+  const cwdPath = `${WORKDIR}/.experts-terminal-cwd`;
+  const envPath = `${WORKDIR}/.experts-terminal-env`;
+  const commandPath = `${WORKDIR}/.experts-terminal-command.sh`;
+  const savedCwd = (await readText(sandbox, cwdPath))?.trim() || WORKDIR;
+  const script = [
+    "#!/usr/bin/env bash",
+    `cd -- ${shellQuote(savedCwd)} || exit 1`,
+    `if [ -f ${shellQuote(envPath)} ]; then source ${shellQuote(envPath)}; fi`,
+    command,
+    "command_status=$?",
+    `pwd > ${shellQuote(cwdPath)}`,
+    `export -p > ${shellQuote(envPath)}`,
+    'exit "$command_status"',
+    "",
+  ].join("\n");
+  await sandbox.writeFiles([{ path: commandPath, content: Buffer.from(script, "utf8") }]);
   const result = await sandbox.runCommand({
     cmd: "bash",
-    args: ["-lc", command],
+    args: ["--login", commandPath],
     cwd: WORKDIR,
     timeoutMs: 120_000,
   });
   return {
     exitCode: result.exitCode,
-    stdout: (await result.stdout()).slice(-30_000),
-    stderr: (await result.stderr()).slice(-30_000),
+    stdout: cleanTerminalOutput(await result.stdout()),
+    stderr: cleanTerminalOutput(await result.stderr()),
+    cwd: (await readText(sandbox, cwdPath))?.trim() || WORKDIR,
   };
+}
+
+function isPublishableAsset(path: string) {
+  const normalized = path.replace(/\\\\/g, "/");
+  const segments = normalized.split("/");
+  const filename = segments.at(-1) ?? "";
+  if (segments.some((part) => ["node_modules", ".git", ".vercel"].includes(part))) return false;
+  if (/^\\.env(?:\\.|$)/i.test(filename)) return false;
+  if (/^(?:id_rsa|id_ed25519|credentials?|secrets?)(?:\\.|$)/i.test(filename)) return false;
+  if (/\\.(?:pem|key|p12|pfx)$/i.test(filename)) return false;
+  return true;
+}
+
+function publishedContentType(path: string) {
+  const extension = path.split(".").pop()?.toLowerCase();
+  const types: Record<string, string> = {
+    html: "text/html; charset=utf-8",
+    css: "text/css; charset=utf-8",
+    js: "text/javascript; charset=utf-8",
+    mjs: "text/javascript; charset=utf-8",
+    cjs: "text/javascript; charset=utf-8",
+    json: "application/json; charset=utf-8",
+    map: "application/json; charset=utf-8",
+    svg: "image/svg+xml",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    webp: "image/webp",
+    gif: "image/gif",
+    ico: "image/x-icon",
+    woff: "font/woff",
+    woff2: "font/woff2",
+    ttf: "font/ttf",
+    otf: "font/otf",
+    wasm: "application/wasm",
+    txt: "text/plain; charset=utf-8",
+    xml: "application/xml",
+  };
+  return types[extension ?? ""] ?? "application/octet-stream";
+}
+
+export async function publishCloudProject(
+  projectId: string,
+  sourceFiles: AgentProjectFiles,
+  slug: string,
+) {
+  if (!/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(slug))
+    throw new Error("The public app address is invalid.");
+
+  await startCloudProjectPreview(projectId, sourceFiles);
+  const sandbox = await Sandbox.get({ name: sandboxName(projectId) });
+  let packageJson: Record<string, unknown> = {};
+  try {
+    packageJson = JSON.parse(sourceFiles["package.json"] ?? "{}") as Record<string, unknown>;
+  } catch {
+    throw new Error("package.json contains invalid JSON. Fix it before publishing.");
+  }
+  const scripts = (packageJson.scripts ?? {}) as Record<string, string>;
+  const buildScript = typeof scripts.build === "string" ? scripts.build : "";
+  let outputFiles: Array<{ path: string; content: Buffer }> = [];
+
+  if (buildScript) {
+    const build = await sandbox.runCommand({
+      cmd: "npm",
+      args: ["run", "build"],
+      cwd: WORKDIR,
+      timeoutMs: 240_000,
+    });
+    if (build.exitCode !== 0) {
+      const stderr = await build.stderr();
+      const stdout = await build.stdout();
+      throw new Error(
+        ("Build failed. Fix the build errors before publishing.\n" + (stderr || stdout)).slice(
+          -6000,
+        ),
+      );
+    }
+
+    let outputDirectory = "";
+    for (const candidate of ["dist", "build", "out"]) {
+      const check = await sandbox.runCommand({
+        cmd: "test",
+        args: ["-f", `${candidate}/index.html`],
+        cwd: WORKDIR,
+      });
+      if (check.exitCode === 0) {
+        outputDirectory = candidate;
+        break;
+      }
+    }
+    if (!outputDirectory) {
+      throw new Error(
+        "The build completed but no static index.html was found in dist/, build/ or out/. This publisher currently supports static frontend builds.",
+      );
+    }
+
+    const listing = await sandbox.runCommand({
+      cmd: "find",
+      args: [outputDirectory, "-type", "f", "-print"],
+      cwd: WORKDIR,
+      timeoutMs: 30_000,
+    });
+    if (listing.exitCode !== 0) throw new Error("Could not list the production build output.");
+    const paths = (await listing.stdout())
+      .split("\n")
+      .map((path) => path.trim())
+      .filter((path) => path.startsWith(outputDirectory + "/"))
+      .map((path) => path.slice(outputDirectory.length + 1))
+      .filter(isPublishableAsset)
+      .map((path) => `${outputDirectory}/${path}`);
+    if (!paths.length || paths.length > 500)
+      throw new Error("The build must contain between 1 and 500 publishable files.");
+
+    let totalBytes = 0;
+    for (const path of paths) {
+      const buffer = await sandbox.readFileToBuffer({ path: `${WORKDIR}/${path}` });
+      if (!buffer) throw new Error(`Could not read build output file: ${path}`);
+      totalBytes += buffer.byteLength;
+      if (buffer.byteLength > 10_000_000 || totalBytes > 40_000_000)
+        throw new Error("The published build is too large (maximum 40 MB total, 10 MB per file).");
+      outputFiles.push({ path: path.slice(outputDirectory.length + 1), content: buffer });
+    }
+  } else {
+    if (!sourceFiles["index.html"])
+      throw new Error("Add an index.html file or a package.json build script before publishing.");
+    outputFiles = Object.entries(sourceFiles)
+      .filter(([path]) => isPublishableAsset(path))
+      .map(([path, content]) => ({
+        path,
+        content: Buffer.from(content, "utf8"),
+      }));
+  }
+
+  if (!outputFiles.some((file) => file.path === "index.html"))
+    throw new Error("The production build does not contain index.html.");
+
+  const releaseId = randomUUID();
+  const prefix = `${slug}/${releaseId}`;
+  for (let offset = 0; offset < outputFiles.length; offset += 8) {
+    const batch = outputFiles.slice(offset, offset + 8);
+    const results = await Promise.all(
+      batch.map(async (file) => {
+        const path = `${prefix}/${file.path}`;
+        const { error } = await supabaseAdmin.storage
+          .from("published-apps")
+          .upload(path, file.content, {
+            contentType: publishedContentType(file.path),
+            cacheControl: "31536000",
+            upsert: true,
+          });
+        if (error) throw new Error(`Could not publish ${file.path}: ${error.message}`);
+      }),
+    );
+    void results;
+  }
+
+  const { data } = supabaseAdmin.storage
+    .from("published-apps")
+    .getPublicUrl(`${prefix}/index.html`);
+  return { url: data.publicUrl, slug, releaseId, fileCount: outputFiles.length };
 }
 
 export async function stopCloudProjectPreview(projectId: string) {

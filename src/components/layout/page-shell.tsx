@@ -9,9 +9,13 @@ export function PageShell({ children }: { children: ReactNode }) {
   return (
     <div
       className="flex min-h-screen flex-col bg-background bg-cover bg-center bg-fixed"
-      style={settings.background_image_url ? {
-        backgroundImage: `linear-gradient(rgba(5, 10, 20, 0.78), rgba(5, 10, 20, 0.78)), url("${settings.background_image_url}")`,
-      } : undefined}
+      style={
+        settings.background_image_url
+          ? {
+              backgroundImage: `linear-gradient(rgba(5, 10, 20, 0.78), rgba(5, 10, 20, 0.78)), url("${settings.background_image_url}")`,
+            }
+          : undefined
+      }
     >
       <SiteHeader />
       {settings.banner_image_url && (

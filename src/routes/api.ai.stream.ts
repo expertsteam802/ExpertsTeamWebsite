@@ -59,12 +59,18 @@ export const Route = createFileRoute("/api/ai/stream")({
           const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
           const isGuest = !token;
           if (token && token.split(".").length !== 3) {
-            return Response.json({ error: "Your session is invalid. Please sign in again." }, { status: 401 });
+            return Response.json(
+              { error: "Your session is invalid. Please sign in again." },
+              { status: 401 },
+            );
           }
           if (isGuest) {
             const origin = request.headers.get("origin");
             if (origin && origin !== new URL(request.url).origin) {
-              return Response.json({ error: "Guest chat requests must come from this website." }, { status: 403 });
+              return Response.json(
+                { error: "Guest chat requests must come from this website." },
+                { status: 403 },
+              );
             }
           }
 
@@ -72,7 +78,10 @@ export const Route = createFileRoute("/api/ai/stream")({
           if (isGuest) {
             guestSessionId = request.headers.get("x-guest-session") || "";
             if (!/^[0-9a-f-]{36}$/i.test(guestSessionId)) {
-              return Response.json({ error: "A valid guest session is required." }, { status: 400 });
+              return Response.json(
+                { error: "A valid guest session is required." },
+                { status: 400 },
+              );
             }
           }
 
@@ -80,7 +89,10 @@ export const Route = createFileRoute("/api/ai/stream")({
           const supabaseKey =
             process.env["SUPABASE_PUBLISHABLE_KEY"] || process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
           if (!supabaseUrl || !supabaseKey) {
-            return Response.json({ error: "Supabase server configuration is missing." }, { status: 500 });
+            return Response.json(
+              { error: "Supabase server configuration is missing." },
+              { status: 500 },
+            );
           }
 
           const supabase = createClient(supabaseUrl, supabaseKey, {
@@ -92,7 +104,10 @@ export const Route = createFileRoute("/api/ai/stream")({
           if (!isGuest) {
             const { data: authData, error: authError } = await supabase.auth.getUser(token);
             if (authError || !authData.user) {
-              return Response.json({ error: "Your session is invalid. Please sign in again." }, { status: 401 });
+              return Response.json(
+                { error: "Your session is invalid. Please sign in again." },
+                { status: 401 },
+              );
             }
             const { data: profile, error: profileError } = await supabase
               .from("profiles")
@@ -100,7 +115,10 @@ export const Route = createFileRoute("/api/ai/stream")({
               .eq("id", authData.user.id)
               .single();
             if (profileError) {
-              return Response.json({ error: "Could not check your AI credit balance." }, { status: 500 });
+              return Response.json(
+                { error: "Could not check your AI credit balance." },
+                { status: 500 },
+              );
             }
             profileCredits = profile.ai_credits;
             const { data: adminRole, error: roleError } = await supabase.rpc("has_role", {
@@ -108,27 +126,43 @@ export const Route = createFileRoute("/api/ai/stream")({
               _role: "admin",
             });
             if (roleError) {
-              return Response.json({ error: "Could not verify your account permissions." }, { status: 500 });
+              return Response.json(
+                { error: "Could not verify your account permissions." },
+                { status: 500 },
+              );
             }
             isAdmin = Boolean(adminRole);
             if (!isAdmin && profileCredits < 1) {
-              return Response.json({
-                error: "You have no AI credits remaining. Upgrade your Studio plan or watch a reward ad when available.",
-              }, { status: 402 });
+              return Response.json(
+                {
+                  error:
+                    "You have no AI credits remaining. Upgrade your Studio plan or watch a reward ad when available.",
+                },
+                { status: 402 },
+              );
             }
           }
 
           const parsed = requestSchema.safeParse(await request.json());
           if (!parsed.success) {
-            return Response.json({ error: "The message or attachments are invalid or too large." }, { status: 400 });
+            return Response.json(
+              { error: "The message or attachments are invalid or too large." },
+              { status: 400 },
+            );
           }
 
           let guestServiceClient: ReturnType<typeof createClient> | null = null;
           let guestIpHash = "";
           if (isGuest) {
-            const serviceRoleKey = process.env["SUPABASE_SECRET_KEY"] || process.env["SUPABASE_SERVICE_ROLE_KEY"] || process.env["SERVICE_ROLE_KEY"];
+            const serviceRoleKey =
+              process.env["SUPABASE_SECRET_KEY"] ||
+              process.env["SUPABASE_SERVICE_ROLE_KEY"] ||
+              process.env["SERVICE_ROLE_KEY"];
             if (!serviceRoleKey) {
-              return Response.json({ error: "Guest chat is not configured yet. Please sign in to use ExpertAI." }, { status: 503 });
+              return Response.json(
+                { error: "Guest chat is not configured yet. Please sign in to use ExpertAI." },
+                { status: 503 },
+              );
             }
             const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
             const ip = forwarded || request.headers.get("x-real-ip") || "unknown";
@@ -136,7 +170,9 @@ export const Route = createFileRoute("/api/ai/stream")({
               "SHA-256",
               new TextEncoder().encode(`${ip}:${guestSessionId}:${serviceRoleKey}`),
             );
-            guestIpHash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+            guestIpHash = Array.from(new Uint8Array(digest), (byte) =>
+              byte.toString(16).padStart(2, "0"),
+            ).join("");
             guestServiceClient = createClient(supabaseUrl, serviceRoleKey, {
               auth: { persistSession: false, autoRefreshToken: false },
             });
@@ -145,24 +181,36 @@ export const Route = createFileRoute("/api/ai/stream")({
               { p_ip_hash: guestIpHash },
             );
             if (guestCheckError) {
-              return Response.json({ error: "Guest chat credits could not be checked. Please try again later." }, { status: 503 });
+              return Response.json(
+                { error: "Guest chat credits could not be checked. Please try again later." },
+                { status: 503 },
+              );
             }
             if (!canUseCredits) {
-              return Response.json({
-                error: "You've used your 15 free guest credits for this 24-hour period. Create an account for more AI credits.",
-              }, { status: 402 });
+              return Response.json(
+                {
+                  error:
+                    "You've used your 15 free guest credits for this 24-hour period. Create an account for more AI credits.",
+                },
+                { status: 402 },
+              );
             }
           }
 
           const consumeCredit = async (): Promise<string | null> => {
             if (isAdmin) return null;
             if (isGuest) {
-              if (!guestServiceClient || !guestIpHash) return "Guest chat is not configured yet. Please sign in to use ExpertAI.";
-              const { data: allowed, error } = await guestServiceClient.rpc("consume_guest_ai_credit", {
-                p_ip_hash: guestIpHash,
-              });
+              if (!guestServiceClient || !guestIpHash)
+                return "Guest chat is not configured yet. Please sign in to use ExpertAI.";
+              const { data: allowed, error } = await guestServiceClient.rpc(
+                "consume_guest_ai_credit",
+                {
+                  p_ip_hash: guestIpHash,
+                },
+              );
               if (error) return "Guest chat credits could not be checked. Please try again later.";
-              if (!allowed) return "You've used your 15 free guest credits for this 24-hour period. Create an account for more AI credits.";
+              if (!allowed)
+                return "You've used your 15 free guest credits for this 24-hour period. Create an account for more AI credits.";
               return null;
             }
             const { error } = await supabase.rpc("consume_ai_credit");
@@ -208,11 +256,20 @@ export const Route = createFileRoute("/api/ai/stream")({
           const compactedContents = compactSmartContents(contents);
           const systemText =
             "You are ExpertAI, a practical assistant for developers and creators on ExpertsTeam. Answer the exact question first. Keep ordinary answers brief: usually 1–5 short sentences or a few bullets. Expand only when the user asks for detail, a tutorial, a plan, or code. Avoid long introductions, repeated conclusions, filler, and unnecessary jargon. For code requests, provide complete usable code and explain only the key integration steps. Ask one focused clarification only when essential. Be friendly, accurate, and honest about what you have not tested.";
-          const configuredProviderOrder = (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
+          const configuredProviderOrder = (
+            process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter"
+          )
             .split(",")
             .map((item) => item.trim().toLowerCase())
             .filter((item) => ["groq", "gemini", "openrouter"].includes(item));
-          const providerOrder = [...new Set(["groq", ...configuredProviderOrder.filter((item) => item !== "groq"), "gemini", "openrouter"])];
+          const providerOrder = [
+            ...new Set([
+              "groq",
+              ...configuredProviderOrder.filter((item) => item !== "groq"),
+              "gemini",
+              "openrouter",
+            ]),
+          ];
           const geminiKey = process.env["GEMINI_API_KEY"]?.trim();
           const hasImageAttachments = attachments.some((file) => Boolean(file.dataUrl));
           const orderedProviders = hasImageAttachments

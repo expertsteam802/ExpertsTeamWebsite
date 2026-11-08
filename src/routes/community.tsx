@@ -360,7 +360,9 @@ function CommunityPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
                 ExpertsTeam social
               </p>
-              <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">Ask anything. Get answers.</h1>
+              <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">
+                Ask anything. Get answers.
+              </h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 Get help with any question, share what you're building and learn from the community.
               </p>
@@ -882,7 +884,11 @@ function PostCard({
             <AvatarFallback>{author.slice(0, 1).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <button type="button" onClick={() => setProfileOpen(true)} className="block max-w-full truncate text-left text-sm font-semibold hover:text-primary hover:underline">
+            <button
+              type="button"
+              onClick={() => setProfileOpen(true)}
+              className="block max-w-full truncate text-left text-sm font-semibold hover:text-primary hover:underline"
+            >
               {author}
             </button>
             <p className="text-xs text-muted-foreground">
@@ -993,26 +999,42 @@ function PostCard({
           </DialogHeader>
           <div className="flex items-center gap-3 rounded-xl bg-secondary/40 p-4">
             <Avatar className="h-14 w-14">
-              <AvatarImage src={authorProfile?.avatar_url ?? post.profiles?.avatar_url ?? undefined} />
+              <AvatarImage
+                src={authorProfile?.avatar_url ?? post.profiles?.avatar_url ?? undefined}
+              />
               <AvatarFallback>{author.slice(0, 1).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div className="min-w-0">
               <p className="font-semibold">{authorProfile?.display_name || author}</p>
-              <p className="text-xs text-muted-foreground">@{authorProfile?.username || post.profiles?.username || "member"}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{authorPosts.length} recent posts</p>
+              <p className="text-xs text-muted-foreground">
+                @{authorProfile?.username || post.profiles?.username || "member"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {authorPosts.length} recent posts
+              </p>
             </div>
           </div>
           {authorProfile?.bio && <p className="text-sm leading-6">{authorProfile.bio}</p>}
           <div className="space-y-2">
             <h3 className="text-sm font-semibold">Recent community posts</h3>
-            {authorPosts.length ? authorPosts.map((item) => (
-              <div key={item.id} className="rounded-xl border border-border/70 p-3">
-                <p className="text-xs font-semibold capitalize text-primary">{item.kind}</p>
-                <p className="mt-1 text-sm font-medium">{item.title}</p>
-                {item.body && <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-xs text-muted-foreground">{item.body}</p>}
-                <p className="mt-2 text-[10px] text-muted-foreground">{new Date(item.created_at).toLocaleDateString()}</p>
-              </div>
-            )) : <p className="text-sm text-muted-foreground">No posts to show yet.</p>}
+            {authorPosts.length ? (
+              authorPosts.map((item) => (
+                <div key={item.id} className="rounded-xl border border-border/70 p-3">
+                  <p className="text-xs font-semibold capitalize text-primary">{item.kind}</p>
+                  <p className="mt-1 text-sm font-medium">{item.title}</p>
+                  {item.body && (
+                    <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-xs text-muted-foreground">
+                      {item.body}
+                    </p>
+                  )}
+                  <p className="mt-2 text-[10px] text-muted-foreground">
+                    {new Date(item.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No posts to show yet.</p>
+            )}
           </div>
         </DialogContent>
       </Dialog>
