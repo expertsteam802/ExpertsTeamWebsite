@@ -831,7 +831,9 @@ export function CodeAgent() {
         'Imported "' + imported.name + '" as a project folder (' + imported.fileCount + " files).",
       );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not clone this GitHub repository.");
+      toast.error(
+        error instanceof Error ? error.message : "Could not clone this GitHub repository.",
+      );
     } finally {
       setImportingRepo(false);
     }
@@ -1234,12 +1236,12 @@ export function CodeAgent() {
                     <Github className="h-3.5 w-3.5" />
                   </button>
                   <button
-                  onClick={createProject}
-                  className="rounded p-1 text-slate-500 hover:bg-white/10 hover:text-cyan-300"
-                  aria-label="Create project"
-                  title="New project folder"
-                >
-                  <Plus className="h-3.5 w-3.5" />
+                    onClick={createProject}
+                    className="rounded p-1 text-slate-500 hover:bg-white/10 hover:text-cyan-300"
+                    aria-label="Create project"
+                    title="New project folder"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
@@ -1271,7 +1273,10 @@ export function CodeAgent() {
                       <Folder className="h-3.5 w-3.5 shrink-0 text-amber-300" />
                       <span className="min-w-0 flex-1 truncate">{project.name}</span>
                       {project.github_repo && (
-                        <Github className="h-3 w-3 shrink-0 text-slate-500" aria-label="GitHub repository" />
+                        <Github
+                          className="h-3 w-3 shrink-0 text-slate-500"
+                          aria-label="GitHub repository"
+                        />
                       )}
                     </button>
                     <button
@@ -2149,7 +2154,8 @@ export function CodeAgent() {
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm leading-6 text-slate-400">
-              Import a repository into your Project Explorer. It will become its own folder and open in the editor.
+              Import a repository into your Project Explorer. It will become its own folder and open
+              in the editor.
             </p>
             <div className="space-y-1.5">
               <Label htmlFor="clone-repo-url">GitHub repository URL</Label>
@@ -2162,7 +2168,10 @@ export function CodeAgent() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="clone-github-token">GitHub access token <span className="font-normal text-slate-500">(private repositories only)</span></Label>
+              <Label htmlFor="clone-github-token">
+                GitHub access token{" "}
+                <span className="font-normal text-slate-500">(private repositories only)</span>
+              </Label>
               <Input
                 id="clone-github-token"
                 type="password"
@@ -2173,11 +2182,13 @@ export function CodeAgent() {
                 className="border-white/10 bg-white/5"
               />
               <p className="text-[11px] leading-5 text-slate-500">
-                Public repositories can be imported without a token. A token is used only for this import and is never saved.
+                Public repositories can be imported without a token. A token is used only for this
+                import and is never saved.
               </p>
             </div>
             <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-3 text-xs leading-5 text-slate-400">
-              Imports up to 120 text files and 1 MB per project. Generated folders, binary assets and secret files are skipped. Your GitHub repository is not modified.
+              Imports up to 120 text files and 1 MB per project. Generated folders, binary assets
+              and secret files are skipped. Your GitHub repository is not modified.
             </div>
             <Button
               className="w-full bg-white text-slate-950 hover:bg-slate-200"
