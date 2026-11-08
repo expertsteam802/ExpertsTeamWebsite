@@ -540,7 +540,7 @@ export function CodeAgent() {
   async function openTerminal() {
     if (terminalReady) return;
     try {
-      const activeProjectId = projectId ?? (await persist());
+      const activeProjectId = await persist();
       const connection = await connectTerminal({
         data: { projectId: activeProjectId, files },
       });
