@@ -8,10 +8,10 @@ import { buildSrcDoc, type ProjectFiles } from "@/lib/sandbox";
 export const Route = createFileRoute("/apps/$slug")({
   head: () => ({
     meta: [
-      { title: "Live app — ExpertsTeam" },
+      { title: "Published app" },
       {
         name: "description",
-        content: "An app built and published with the ExpertsTeam coding agent.",
+        content: "A standalone app published from a browser development workspace.",
       },
       { property: "og:title", content: "Live app — ExpertsTeam" },
       {
@@ -66,6 +66,8 @@ function LiveApp() {
           src={data.deployment_url ?? undefined}
           srcDoc={data.deployment_url ? undefined : srcDoc}
           sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"
+          allow="clipboard-read; clipboard-write; fullscreen"
+          referrerPolicy="no-referrer"
           className="fixed inset-0 h-screen w-screen border-0 bg-white"
         />
       ) : (
