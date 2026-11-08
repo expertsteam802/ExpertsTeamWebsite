@@ -99,14 +99,19 @@
   --sidebar-ring: oklch(0.82 0.15 195);
   --gradient-hero:
     radial-gradient(
-      120% 90% at 12% 0%,
-      color-mix(in oklab, var(--primary) 26%, transparent),
-      transparent 60%
+      72% 64% at 48% 0%,
+      color-mix(in oklab, var(--primary) 14%, transparent),
+      transparent 72%
     ),
     radial-gradient(
-      110% 80% at 92% 8%,
-      color-mix(in oklab, var(--accent) 20%, transparent),
-      transparent 62%
+      44% 38% at 88% 12%,
+      color-mix(in oklab, var(--accent) 7%, transparent),
+      transparent 78%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--surface) 22%, transparent),
+      transparent 78%
     );
   --gradient-brand: linear-gradient(120deg, var(--primary), var(--accent));
   --shadow-glow:
