@@ -427,7 +427,11 @@ export function CodeAgent() {
     const command = terminalInput.trim();
     if (!command || !projectId) return;
     setTerminalInput("");
-    setTerminalOutput((current) => (current + `\r\n$ ${command}\r\n`).slice(-40000));
+    if (command === "clear") {
+      setTerminalOutput("");
+      return;
+    }
+    setTerminalOutput((current) => (current + `\r\n${terminalCwd}$ ${command}\r\n`).slice(-40000));
     try {
       const result = await terminalCommand({ data: { projectId, command } });
       setTerminalCwd(result.cwd || terminalCwd);
@@ -1474,7 +1478,7 @@ export function CodeAgent() {
                           onClick={() => {
                             if (!projectId) return;
                             setTerminalOutput((current) =>
-                              (current + `\r\n$ ${command}\r\n`).slice(-40000),
+                              (current + `\r\n${terminalCwd}$ ${command}\r\n`).slice(-40000),
                             );
                             void terminalCommand({ data: { projectId, command } })
                               .then((result) => {
