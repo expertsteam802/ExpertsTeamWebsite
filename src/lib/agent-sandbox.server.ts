@@ -122,13 +122,14 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
     runtime: "node24",
     resources: { vcpus: 1 },
     timeout: 45 * 60 * 1000,
+    networkPolicy: "allow-all",
     ports: [port, 4174],
     resume: true,
   });
 
   // Existing named sandboxes keep their original configuration, so update the
   // per-session timeout as well as setting it during creation.
-  await sandbox.update({ timeout: 45 * 60 * 1000, ports: [port, 4174] });
+  await sandbox.update({ timeout: 45 * 60 * 1000, networkPolicy: "allow-all", ports: [port, 4174] });
 
   const previous = await readText(sandbox, `${WORKDIR}/${META_FILE}`);
   let previousManifest: Record<string, string> = {};
@@ -303,12 +304,13 @@ export async function startCloudProjectTerminal(
     runtime: "node24",
     resources: { vcpus: 1 },
     timeout: 45 * 60 * 1000,
+    networkPolicy: "allow-all",
     ports: [5173, 4174],
     resume: true,
   });
   const savedPort = Number((await readText(sandbox, WORKDIR + "/" + PREVIEW_PORT_FILE))?.trim());
   const previewPort = Number.isInteger(savedPort) && savedPort >= 1 && savedPort <= 65535 ? savedPort : 5173;
-  await sandbox.update({ timeout: 45 * 60 * 1000, ports: [previewPort, 4174] });
+  await sandbox.update({ timeout: 45 * 60 * 1000, networkPolicy: "allow-all", ports: [previewPort, 4174] });
 
   const previous = await readText(sandbox, WORKDIR + "/" + META_FILE);
   let previousManifest: Record<string, string> = {};
