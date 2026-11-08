@@ -345,7 +345,13 @@ export const publishAgentProject = createServerFn({ method: "POST" })
 
     try {
       const { publishCloudProject } = await import("./agent-sandbox.server");
-      const result = await publishCloudProject(data.projectId, data.files, data.slug, context.userId, context.supabase);
+      const result = await publishCloudProject(
+        data.projectId,
+        data.files,
+        data.slug,
+        context.userId,
+        context.supabase,
+      );
       const { data: saved, error: saveError } = await context.supabase
         .from("agent_projects")
         .update({
