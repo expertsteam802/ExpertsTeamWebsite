@@ -5,6 +5,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -217,8 +218,9 @@ function RootComponent() {
 
 function RootContent() {
   const settings = useSiteSettings();
-  const router = useRouter();
-  const isPublishedApp = router.state.location.pathname.startsWith("/apps/");
+  const isPublishedApp = useRouterState({
+    select: (state) => state.location.pathname.startsWith("/apps/"),
+  });
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
 
