@@ -274,8 +274,8 @@ function shellQuote(value: string) {
 
 function cleanTerminalOutput(value: string) {
   return value
-    .replace(/\x1B\\[[0-?]*[ -/]*[@-~]/g, "")
-    .replace(/\x1B\\][^\x07]*(?:\x07|\x1B\\\\)/g, "")
+    .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "")
+    .replace(/\x1B\][^\x07]*(?:\x07|\x1B\\)/g, "")
     .replace(/\r\n?/g, "\n")
     .slice(-30_000);
 }
