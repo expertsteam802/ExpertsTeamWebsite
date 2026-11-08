@@ -23,6 +23,7 @@ import { Route as LearnRouteImport } from './routes/learn'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as ShowcaseRouteImport } from './routes/showcase'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as VideosRouteImport } from './routes/videos'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
@@ -99,6 +100,11 @@ const ProjectsRoute = ProjectsRouteImport.update({
   path: '/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ShowcaseRoute = ShowcaseRouteImport.update({
+  id: '/showcase',
+  path: '/showcase',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -144,6 +150,8 @@ export interface FileRoutesByFullPath {
   '/messages': typeof MessagesRoute
   '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
+  '/showcase': typeof ShowcaseRoute
+  '/showcase': typeof ShowcaseRoute
   '/terms': typeof TermsRoute
   '/videos': typeof VideosRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -211,6 +219,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/privacy'
     | '/projects'
+    | '/showcase'
     | '/terms'
     | '/videos'
     | '/admin'
@@ -277,6 +286,7 @@ export interface RootRouteChildren {
   MessagesRoute: typeof MessagesRoute
   PrivacyRoute: typeof PrivacyRoute
   ProjectsRoute: typeof ProjectsRoute
+  ShowcaseRoute: typeof ShowcaseRoute
   TermsRoute: typeof TermsRoute
   VideosRoute: typeof VideosRoute
   AppsSlugRoute: typeof AppsSlugRoute
@@ -383,6 +393,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/showcase': {
+      id: '/showcase'
+      path: '/showcase'
+      fullPath: '/showcase'
+      preLoaderRoute: typeof ShowcaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -456,6 +473,7 @@ const rootRouteChildren: RootRouteChildren = {
   MessagesRoute: MessagesRoute,
   PrivacyRoute: PrivacyRoute,
   ProjectsRoute: ProjectsRoute,
+  ShowcaseRoute: ShowcaseRoute,
   TermsRoute: TermsRoute,
   VideosRoute: VideosRoute,
   AppsSlugRoute: AppsSlugRoute,
