@@ -10,7 +10,6 @@ import {
   Gamepad2,
   Layers3,
   MessageCircle,
-  Play,
   Rocket,
   Sparkles,
   TerminalSquare,
