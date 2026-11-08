@@ -111,6 +111,7 @@ function MessagesPage() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordingStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
   const callCursorRef = useRef<Record<string, string>>({});
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -208,6 +209,7 @@ function MessagesPage() {
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      localStreamRef.current = stream;
       setLocalStream(stream);
       const pc = createPeerConnection();
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
@@ -248,7 +250,8 @@ function MessagesPage() {
     const pc = peerConnectionRef.current;
     peerConnectionRef.current = null;
     pc?.close();
-    localStream?.getTracks().forEach((track) => track.stop());
+    localStreamRef.current?.getTracks().forEach((track) => track.stop());
+    localStreamRef.current = null;
     setLocalStream(null);
     setRemoteStream(null);
     setIncomingCall(null);
@@ -306,6 +309,16 @@ function MessagesPage() {
     if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
   }, [localStream, remoteStream]);
+
+  useEffect(() => {
+    return () => {
+      if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+      recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+      peerConnectionRef.current?.getSenders().forEach((sender) => sender.track?.stop());
+      peerConnectionRef.current?.close();
+      peerConnectionRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (!userId || !activeConversationId) return;
@@ -554,7 +567,7 @@ function MessagesPage() {
           .upload(path, attachment, {
             cacheControl: "3600",
             upsert: false,
-            contentType: attachment.type,
+            contentType: attachment.type.split(";")[0] || "application/octet-stream",
           });
         if (uploadError) throw uploadError;
         media_path = path;
