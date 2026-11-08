@@ -122,10 +122,6 @@ export interface FileRoutesByFullPath {
   '/cookies': typeof CookiesRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
-  '/about': typeof AboutRoute
-  '/cookies': typeof CookiesRoute
-  '/privacy': typeof PrivacyRoute
-  '/terms': typeof TermsRoute
   '/community': typeof CommunityRoute
   '/contact': typeof ContactRoute
   '/entertainment': typeof EntertainmentRoute
@@ -166,6 +162,10 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/ai': typeof AiRoute
   '/auth': typeof AuthRoute
+  '/about': typeof AboutRoute
+  '/cookies': typeof CookiesRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/community': typeof CommunityRoute
   '/contact': typeof ContactRoute
   '/entertainment': typeof EntertainmentRoute
@@ -206,6 +206,10 @@ export interface FileRouteTypes {
     | '/'
     | '/ai'
     | '/auth'
+    | '/about'
+    | '/cookies'
+    | '/privacy'
+    | '/terms'
     | '/community'
     | '/contact'
     | '/entertainment'
@@ -224,6 +228,10 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/ai'
     | '/auth'
+    | '/about'
+    | '/cookies'
+    | '/privacy'
+    | '/terms'
     | '/community'
     | '/contact'
     | '/entertainment'
