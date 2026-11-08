@@ -56,7 +56,7 @@ export function SiteHeader() {
 
         <nav
           className={cn(
-            "hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto md:flex",
+            "hidden min-w-0 flex-1 grid-cols-9 items-stretch gap-1 lg:grid",
             ALIGN[navAlign],
           )}
         >
@@ -65,14 +65,14 @@ export function SiteHeader() {
               key={item.to}
               to={item.to}
               activeOptions={{ exact: item.to === "/" }}
-              className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:font-semibold data-[status=active]:text-foreground ${item.to === "/community" ? "bg-primary/10 font-semibold text-primary" : "text-muted-foreground"}`}
+              className="font-display flex min-w-0 items-center justify-center rounded-lg px-1.5 py-2 text-center text-sm font-semibold tracking-tight leading-tight text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:text-foreground"
             >
               {item.label}
             </Link>
           ))}
           <Link
             to="/contact"
-            className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:text-foreground"
+            className="font-display flex min-w-0 items-center justify-center rounded-lg px-1.5 py-2 text-center text-sm font-semibold tracking-tight leading-tight text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:text-foreground"
           >
             Contact
           </Link>
@@ -174,7 +174,7 @@ export function SiteHeader() {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className="lg:hidden"
             aria-label="Menu"
             aria-expanded={open}
             onClick={() => setOpen((value) => !value)}
@@ -192,7 +192,7 @@ export function SiteHeader() {
               to={item.to}
               onClick={() => setOpen(false)}
               activeOptions={{ exact: item.to === "/" }}
-              className="block rounded-xl px-3 py-3 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:font-semibold data-[status=active]:text-foreground"
+              className="font-display block rounded-xl px-3 py-3 text-base font-medium tracking-tight text-muted-foreground hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:font-semibold data-[status=active]:text-foreground"
             >
               {item.label}
             </Link>
