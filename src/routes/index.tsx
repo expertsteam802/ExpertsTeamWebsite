@@ -29,17 +29,17 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Expertsteam802 | ExpertsTeam Coding & AI Studio" },
+      { title: "ExpertsTeam | Learn, Build, Connect & Create" },
       {
         name: "description",
         content:
-          "Expertsteam802 is the official ExpertsTeam website to ask any question and get help, learn to code and become a pro coder, build apps with AI, and explore creator videos and developer projects.",
+          "ExpertsTeam is a developer community and creative platform to learn coding, get answers, build projects, explore creator videos and connect with other makers.",
       },
       { property: "og:title", content: "Expertsteam802 | ExpertsTeam Coding & AI Studio" },
       {
         property: "og:description",
         content:
-          "Visit Expertsteam802 to get community answers, learn to code and become a pro coder, build with ExpertAI and explore developer resources.",
+          "Learn to code, get community answers, build projects, explore creator videos and keep your files private with ExpertsTeam. ExpertAI is one of the tools that helps you create.",
       },
     ],
   }),
@@ -188,7 +188,7 @@ function Index() {
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
         <div className="mx-auto max-w-2xl text-center">
           <span className="text-xs font-semibold tracking-[0.22em] text-primary">
-            MORE THAN A PROMPT BOX
+            ONE PLATFORM, MANY WAYS TO GROW
           </span>
           <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">
             Everything you need to keep creating.
