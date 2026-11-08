@@ -463,10 +463,12 @@ function AdminPage() {
       await removeAccount({ data: { userId } });
     },
     onSuccess: () => {
-      toast.success("Member deleted");
-      void queryClient.invalidateQueries({ queryKey: ["admin", "members"] });
+      toast.success("User account permanently deleted");
+      void queryClient.invalidateQueries({ queryKey: ["admin"] });
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => {
+      toast.error(`Could not delete user: ${error.message}`);
+    },
   });
 
   const changeMemberRole = useMutation({
@@ -1048,10 +1050,15 @@ function AdminPage() {
                             <Button
                               variant="destructive"
                               size="sm"
-                              onClick={() => deleteMember.mutate(member.id)}
+                              onClick={() => {
+                                const label = member.display_name || member.username || "this user";
+                                if (window.confirm(`Permanently delete ${label} and their account? This cannot be undone.`)) {
+                                  deleteMember.mutate(member.id);
+                                }
+                              }}
                               disabled={deleteMember.isPending}
                             >
-                              Delete user
+                              {deleteMember.isPending ? "Deleting…" : "Delete user"}
                             </Button>
                           )}
                         </div>
