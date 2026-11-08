@@ -173,8 +173,11 @@ function loadFileForAi(file: File): Promise<UploadedFile> {
 
 export function ChrisAiChat({
   onMinimize,
+  compact = false,
 }: {
   onMinimize?: () => void;
+  /** Compact floating assistant hides the saved-conversations sidebar. */
+  compact?: boolean;
 } = {}) {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
@@ -565,7 +568,7 @@ export function ChrisAiChat({
 
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden bg-background">
-      {user && (
+      {user && !compact && (
         <aside className="hidden w-60 shrink-0 flex-col border-r border-border/70 bg-card/70 md:flex">
           <div className="flex items-center justify-between border-b border-border/70 p-3">
             <div className="flex items-center gap-2 text-sm font-semibold">

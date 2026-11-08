@@ -285,7 +285,7 @@ function RootContent() {
       {!isPublishedApp &&
         (aiChatOpen ? (
           <div className="fixed bottom-4 right-4 z-[100] h-[min(680px,calc(100dvh-2rem))] w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
-            <ChrisAiChat onMinimize={() => setAiChatOpen(false)} />
+            <ChrisAiChat compact onMinimize={() => setAiChatOpen(false)} />
           </div>
         ) : (
           <button
