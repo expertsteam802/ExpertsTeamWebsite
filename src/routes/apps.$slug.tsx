@@ -32,12 +32,12 @@ function LiveApp() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agent_projects")
-        .select("name, files")
+        .select("name, files, deployment_url")
         .eq("slug", slug)
         .eq("published", true)
         .maybeSingle();
       if (error) throw error;
-      return data as { name: string; files: ProjectFiles } | null;
+      return data as { name: string; files: ProjectFiles; deployment_url: string | null } | null;
     },
   });
   const srcDoc = useMemo(() => (data ? buildSrcDoc(data.files) : ""), [data]);
@@ -49,7 +49,8 @@ function LiveApp() {
       ) : data ? (
         <iframe
           title={data.name}
-          srcDoc={srcDoc}
+          src={data.deployment_url ?? undefined}
+          srcDoc={data.deployment_url ? undefined : srcDoc}
           sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"
           className="fixed inset-0 h-screen w-screen border-0 bg-white"
         />
