@@ -544,8 +544,7 @@ async function runProject() {
   function resetRuntimeForProjectChange() {
     if (projectId && runtimeUrl) void stopPreview({ data: { projectId } }).catch(() => undefined);
     setTerminalReady(false);
-    setTerminalInput("");
-    setTerminalOutput("");
+    setTerminalConnection(null);
     setRuntimeUrl(null);
     setRuntimeStatus("Not started");
     runtimeFilesRef.current = {};
