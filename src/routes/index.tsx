@@ -35,7 +35,7 @@ export const Route = createFileRoute("/")({
         content:
           "ExpertsTeam is a developer community and creative platform to learn coding, get answers, build projects, explore creator videos and connect with other makers.",
       },
-      { property: "og:title", content: "Expertsteam802 | ExpertsTeam Coding & AI Studio" },
+      { property: "og:title", content: "ExpertsTeam | Learn, Build, Connect & Create" },
       {
         property: "og:description",
         content:
@@ -123,26 +123,25 @@ function Index() {
                 Make it real.
               </h1>
               <p className="max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
-                {settings.site_name} is your creative space to turn ideas into apps with AI, explore
-                real code, learn by doing and share what you make.
+                {settings.site_name} is your place to learn, build projects, share ideas, discover useful resources and connect with other creators. ExpertAI is here when you need a hand.
               </p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Link to="/ai">
+              <Link to="/explore">
                 <Button
                   size="lg"
                   className="group h-12 w-full px-6 text-sm font-semibold sm:w-auto"
                 >
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Open ExpertAI Studio
+                  <Compass className="mr-2 h-4 w-4" />
+                  Explore ExpertsTeam
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>
-              <Link to="/videos">
+              <Link to="/ai">
                 <Button size="lg" variant="outline" className="h-12 w-full px-6 sm:w-auto">
-                  <Play className="mr-2 h-4 w-4" />
-                  Explore the platform
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Open ExpertAI
                 </Button>
               </Link>
             </div>
