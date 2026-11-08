@@ -129,7 +129,11 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
 
   // Existing named sandboxes keep their original configuration, so update the
   // per-session timeout as well as setting it during creation.
-  await sandbox.update({ timeout: 45 * 60 * 1000, networkPolicy: "allow-all", ports: [port, 4174] });
+  await sandbox.update({
+    timeout: 45 * 60 * 1000,
+    networkPolicy: "allow-all",
+    ports: [port, 4174],
+  });
 
   const previous = await readText(sandbox, `${WORKDIR}/${META_FILE}`);
   let previousManifest: Record<string, string> = {};
@@ -292,10 +296,7 @@ function cleanTerminalOutput(value: string) {
   );
 }
 
-export async function startCloudProjectTerminal(
-  projectId: string,
-  sourceFiles: AgentProjectFiles,
-) {
+export async function startCloudProjectTerminal(projectId: string, sourceFiles: AgentProjectFiles) {
   const files = repairMissingStylesheetImports({ ...sourceFiles });
   validateFiles(files);
   const name = sandboxName(projectId);
@@ -309,8 +310,13 @@ export async function startCloudProjectTerminal(
     resume: true,
   });
   const savedPort = Number((await readText(sandbox, WORKDIR + "/" + PREVIEW_PORT_FILE))?.trim());
-  const previewPort = Number.isInteger(savedPort) && savedPort >= 1 && savedPort <= 65535 ? savedPort : 5173;
-  await sandbox.update({ timeout: 45 * 60 * 1000, networkPolicy: "allow-all", ports: [previewPort, 4174] });
+  const previewPort =
+    Number.isInteger(savedPort) && savedPort >= 1 && savedPort <= 65535 ? savedPort : 5173;
+  await sandbox.update({
+    timeout: 45 * 60 * 1000,
+    networkPolicy: "allow-all",
+    ports: [previewPort, 4174],
+  });
 
   const previous = await readText(sandbox, WORKDIR + "/" + META_FILE);
   let previousManifest: Record<string, string> = {};
@@ -393,7 +399,10 @@ export async function startCloudProjectTerminal(
     timeoutMs: 10_000,
   });
   if (syntaxCheck.exitCode !== 0)
-    throw new Error("The Linux terminal bridge failed its syntax check: " + (await syntaxCheck.stderr()).slice(-2000));
+    throw new Error(
+      "The Linux terminal bridge failed its syntax check: " +
+        (await syntaxCheck.stderr()).slice(-2000),
+    );
   const installed = await sandbox.runCommand({
     cmd: "test",
     args: ["-d", bridgeDir + "/node_modules/node-pty"],
@@ -444,9 +453,9 @@ export async function startCloudProjectTerminal(
   const selfTestSource = [
     'const WebSocket = require("ws");',
     'let output = "";',
-    'let passed = false;',
+    "let passed = false;",
     'const socket = new WebSocket("ws://127.0.0.1:4174/terminal", ["experts-terminal", process.env.TERMINAL_TOKEN]);',
-    'const timeout = setTimeout(() => { socket.terminate(); process.exit(1); }, 12000);',
+    "const timeout = setTimeout(() => { socket.terminate(); process.exit(1); }, 12000);",
     'socket.on("open", () => socket.send("echo EXPERTS_TERMINAL_OK\\r"));',
     'socket.on("message", (data) => { output += data.toString(); if (output.includes("EXPERTS_TERMINAL_OK")) { passed = true; clearTimeout(timeout); socket.close(); } });',
     'socket.on("close", () => { clearTimeout(timeout); process.exit(passed ? 0 : 1); });',
@@ -461,7 +470,10 @@ export async function startCloudProjectTerminal(
     timeoutMs: 15_000,
   });
   if (selfTestResult.exitCode !== 0)
-    throw new Error("The Linux PTY failed its interactive shell self-test: " + (await selfTestResult.stderr()).slice(-2000));
+    throw new Error(
+      "The Linux PTY failed its interactive shell self-test: " +
+        (await selfTestResult.stderr()).slice(-2000),
+    );
 
   return { url: sandbox.domain(4174).replace(/^https:/, "wss:") + "/terminal", token };
 }

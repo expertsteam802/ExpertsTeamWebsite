@@ -21,8 +21,8 @@ import { Route as EntertainmentRouteImport } from './routes/entertainment'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as MessagesRouteImport } from './routes/messages'
-import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ShowcaseRouteImport } from './routes/showcase'
 import { Route as TermsRouteImport } from './routes/terms'
@@ -91,14 +91,14 @@ const MessagesRoute = MessagesRouteImport.update({
   path: '/messages',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsRoute = ProjectsRouteImport.update({
@@ -154,8 +154,8 @@ export interface FileRoutesByFullPath {
   '/explore': typeof ExploreRoute
   '/learn': typeof LearnRoute
   '/messages': typeof MessagesRoute
-  '/privacy': typeof PrivacyRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
   '/showcase': typeof ShowcaseRoute
   '/terms': typeof TermsRoute
@@ -177,8 +177,8 @@ export interface FileRoutesByTo {
   '/explore': typeof ExploreRoute
   '/learn': typeof LearnRoute
   '/messages': typeof MessagesRoute
-  '/privacy': typeof PrivacyRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
   '/showcase': typeof ShowcaseRoute
   '/terms': typeof TermsRoute
@@ -202,8 +202,8 @@ export interface FileRoutesById {
   '/explore': typeof ExploreRoute
   '/learn': typeof LearnRoute
   '/messages': typeof MessagesRoute
-  '/privacy': typeof PrivacyRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
   '/showcase': typeof ShowcaseRoute
   '/terms': typeof TermsRoute
@@ -227,8 +227,8 @@ export interface FileRouteTypes {
     | '/explore'
     | '/learn'
     | '/messages'
-    | '/privacy'
     | '/pricing'
+    | '/privacy'
     | '/projects'
     | '/showcase'
     | '/terms'
@@ -250,8 +250,8 @@ export interface FileRouteTypes {
     | '/explore'
     | '/learn'
     | '/messages'
-    | '/privacy'
     | '/pricing'
+    | '/privacy'
     | '/projects'
     | '/showcase'
     | '/terms'
@@ -274,8 +274,8 @@ export interface FileRouteTypes {
     | '/explore'
     | '/learn'
     | '/messages'
-    | '/privacy'
     | '/pricing'
+    | '/privacy'
     | '/projects'
     | '/showcase'
     | '/terms'
@@ -299,8 +299,8 @@ export interface RootRouteChildren {
   ExploreRoute: typeof ExploreRoute
   LearnRoute: typeof LearnRoute
   MessagesRoute: typeof MessagesRoute
-  PrivacyRoute: typeof PrivacyRoute
   PricingRoute: typeof PricingRoute
+  PrivacyRoute: typeof PrivacyRoute
   ProjectsRoute: typeof ProjectsRoute
   ShowcaseRoute: typeof ShowcaseRoute
   TermsRoute: typeof TermsRoute
@@ -395,18 +395,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MessagesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/pricing': {
       id: '/pricing'
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects': {
@@ -494,8 +494,8 @@ const rootRouteChildren: RootRouteChildren = {
   ExploreRoute: ExploreRoute,
   LearnRoute: LearnRoute,
   MessagesRoute: MessagesRoute,
-  PrivacyRoute: PrivacyRoute,
   PricingRoute: PricingRoute,
+  PrivacyRoute: PrivacyRoute,
   ProjectsRoute: ProjectsRoute,
   ShowcaseRoute: ShowcaseRoute,
   TermsRoute: TermsRoute,

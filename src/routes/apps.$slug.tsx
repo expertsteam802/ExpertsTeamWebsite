@@ -37,7 +37,8 @@ function LiveApp() {
         .eq("published", true)
         .maybeSingle();
       if (error) throw error;
-      if (!data || data.deployment_url) return data as { name: string; deployment_url: string | null; files?: ProjectFiles } | null;
+      if (!data || data.deployment_url)
+        return data as { name: string; deployment_url: string | null; files?: ProjectFiles } | null;
 
       const { data: legacy, error: legacyError } = await supabase
         .from("agent_projects")
