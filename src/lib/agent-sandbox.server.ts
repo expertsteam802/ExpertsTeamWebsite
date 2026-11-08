@@ -350,15 +350,18 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
   const tokenPath = WORKDIR + "/.experts-terminal-token";
   await sandbox.runCommand({ cmd: "mkdir", args: ["-p", bridgeDir], cwd: WORKDIR });
   const token = (await readText(sandbox, tokenPath))?.trim() || randomBytes(32).toString("hex");
+  // Keep the terminal bridge pure JavaScript. node-pty requires node-gyp,
+  // a compiler toolchain and make, which are not present in Vercel Sandbox images.
+  // util-linux "script" allocates a real PTY without compiling native addons.
   const packageJson = JSON.stringify({
     private: true,
     type: "commonjs",
-    dependencies: { "node-pty": "^1.1.0", ws: "^8.18.3" },
+    dependencies: { ws: "^8.18.3" },
   });
   const serverSource = [
     'const http = require("node:http");',
+    'const { spawn } = require("node:child_process");',
     'const { WebSocketServer } = require("ws");',
-    'const pty = require("node-pty");',
     "let activeShell = null;",
     "const server = http.createServer((request, response) => {",
     '  if (request.url === "/health") { response.writeHead(200, { "content-type": "text/plain", "cache-control": "no-store" }); response.end("ok"); return; }',
@@ -373,19 +376,22 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
     "});",
     'sockets.on("connection", (client) => {',
     "  if (activeShell) { try { activeShell.kill(); } catch {} activeShell = null; }",
-    '  const shell = pty.spawn("/bin/bash", ["--login"], { name: "xterm-256color", cols: 100, rows: 30, cwd: process.env.TERMINAL_CWD || "/vercel/sandbox", env: { ...process.env, TERM: "xterm-256color", COLORTERM: "truecolor" } });',
+    '  const shell = spawn("script", ["-q", "-f", "-c", "/bin/bash --login", "/dev/null"], { cwd: process.env.TERMINAL_CWD || "/vercel/sandbox", env: { ...process.env, TERM: "xterm-256color", COLORTERM: "truecolor" }, stdio: ["pipe", "pipe", "pipe"] });',
     "  activeShell = shell;",
-    "  shell.onData((data) => { if (client.readyState === 1) client.send(data); });",
-    "  shell.onExit(() => { if (activeShell === shell) activeShell = null; if (client.readyState === 1) client.close(); });",
+    '  shell.stdout.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
+    '  shell.stderr.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
+    '  shell.on("error", (error) => { if (client.readyState === 1) client.send("\\r\\nTerminal startup error: " + error.message + "\\r\\n"); });',
+    '  shell.on("close", () => { if (activeShell === shell) activeShell = null; if (client.readyState === 1) client.close(); });',
+    '  shell.stdin.write("stty cols 100 rows 30\\n");',
     '  client.on("message", (buffer) => {',
     "    const value = buffer.toString();",
-    '    if (value.charCodeAt(0) === 0) { try { const control = JSON.parse(value.slice(1)); if (control.type === "resize") shell.resize(Math.max(20, Math.min(300, Number(control.cols) || 100)), Math.max(5, Math.min(100, Number(control.rows) || 30))); } catch {} return; }',
-    "    shell.write(value);",
+    '    if (value.charCodeAt(0) === 0) { try { const control = JSON.parse(value.slice(1)); if (control.type === "resize") { const cols = Math.max(20, Math.min(300, Number(control.cols) || 100)); const rows = Math.max(5, Math.min(100, Number(control.rows) || 30)); shell.stdin.write("stty cols " + cols + " rows " + rows + "; kill -WINCH $$\\n"); } } catch {} return; }',
+    "    if (shell.stdin.writable) shell.stdin.write(value);",
     "  });",
-    '  client.on("close", () => { try { shell.kill(); } catch {} if (activeShell === shell) activeShell = null; });',
+    '  client.on("close", () => { try { shell.kill("SIGHUP"); } catch {} if (activeShell === shell) activeShell = null; });',
     "});",
     'server.listen(Number(process.env.TERMINAL_PORT || 4174), "0.0.0.0");',
-  ].join("\n");
+  ].join("\\n");
 
   await sandbox.writeFiles([
     { path: bridgeDir + "/package.json", content: Buffer.from(packageJson, "utf8") },
@@ -403,9 +409,17 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
       "The Linux terminal bridge failed its syntax check: " +
         (await syntaxCheck.stderr()).slice(-2000),
     );
+  const scriptCheck = await sandbox.runCommand({
+    cmd: "sh",
+    args: ["-lc", "command -v script"],
+    cwd: WORKDIR,
+    timeoutMs: 10_000,
+  });
+  if (scriptCheck.exitCode !== 0)
+    throw new Error("This Vercel Sandbox image does not include the util-linux script command required to allocate a terminal.");
   const installed = await sandbox.runCommand({
     cmd: "test",
-    args: ["-d", bridgeDir + "/node_modules/node-pty"],
+    args: ["-d", bridgeDir + "/node_modules/ws"],
     cwd: WORKDIR,
   });
   if (installed.exitCode !== 0) {
@@ -417,7 +431,7 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
     });
     if (install.exitCode !== 0)
       throw new Error(
-        "Could not install the isolated terminal runtime: " + (await install.stderr()).slice(-3000),
+        "Could not install the JavaScript-only terminal runtime: " + (await install.stderr()).slice(-3000),
       );
   }
 
