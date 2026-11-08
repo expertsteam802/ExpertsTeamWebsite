@@ -44,6 +44,9 @@ import { languages } from "@codemirror/language-data";
 import { oneDark } from "@codemirror/theme-one-dark";
 
 import { indentWithTab } from "@codemirror/commands";
+import { Terminal as XTerm } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import "@xterm/xterm/css/xterm.css";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -58,7 +61,7 @@ import {
   pushProjectToGithub,
   publishAgentProject,
   runCodingAgent,
-  runAgentTerminalCommand,
+  startAgentTerminal,
   startAgentPreview,
   stopAgentPreview,
 } from "@/lib/agent.functions";
@@ -206,7 +209,7 @@ export function CodeAgent() {
   const push = useServerFn(pushProjectToGithub);
   const publish = useServerFn(publishAgentProject);
   const startPreview = useServerFn(startAgentPreview);
-  const terminalCommand = useServerFn(runAgentTerminalCommand);
+  const connectTerminal = useServerFn(startAgentTerminal);
   const stopPreview = useServerFn(stopAgentPreview);
 
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -243,15 +246,16 @@ export function CodeAgent() {
   const [runtimeBusy, setRuntimeBusy] = useState(false);
   const [runtimeUrl, setRuntimeUrl] = useState<string | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState("Not started");
-  const [terminalOutput, setTerminalOutput] = useState("");
-  const [terminalInput, setTerminalInput] = useState("");
   const [terminalReady, setTerminalReady] = useState(false);
-  const [terminalCwd, setTerminalCwd] = useState("/vercel/sandbox");
+  const [terminalConnection, setTerminalConnection] = useState<{ url: string; token: string } | null>(null);
   const [fileLanguage, setFileLanguage] = useState<Extension[]>([]);
   const runtimeFilesRef = useRef<ProjectFiles>({});
   const runtimeSyncQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const terminalContainerRef = useRef<HTMLDivElement>(null);
+  const terminalSocketRef = useRef<WebSocket | null>(null);
+  const xtermRef = useRef<XTerm | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const editorRef = useRef<EditorView | null>(null);
   const srcDoc = useMemo(() => buildSrcDocWithConsole(files), [files]);
@@ -274,6 +278,84 @@ export function CodeAgent() {
     () => [keymap.of([indentWithTab]), ...fileLanguage],
     [fileLanguage],
   );
+
+  useEffect(() => {
+    const container = terminalContainerRef.current;
+    if (panel !== "terminal" || !terminalConnection || !container) return;
+
+    const terminal = new XTerm({
+      cursorBlink: true,
+      convertEol: true,
+      scrollback: 5000,
+      fontSize: 13,
+      fontFamily: '"Cascadia Code", "Fira Code", Menlo, monospace',
+      theme: {
+        background: "#050a12",
+        foreground: "#dbeafe",
+        cursor: "#34d399",
+        selectionBackground: "#164e63",
+        black: "#0b1220",
+        green: "#34d399",
+        brightGreen: "#6ee7b7",
+        cyan: "#67e8f9",
+        brightCyan: "#a5f3fc",
+      },
+    });
+    const fit = new FitAddon();
+    terminal.loadAddon(fit);
+    terminal.open(container);
+    fit.fit();
+    xtermRef.current = terminal;
+
+    const socket = new WebSocket(terminalConnection.url, [
+      "experts-terminal",
+      terminalConnection.token,
+    ]);
+    socket.binaryType = "arraybuffer";
+    terminalSocketRef.current = socket;
+
+    socket.onopen = () => {
+      setTerminalReady(true);
+      terminal.focus();
+      terminal.write("\r\nConnected to the isolated Linux shell.\r\n");
+      socket.send("\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
+    };
+    socket.onmessage = (event) => {
+      if (typeof event.data === "string") terminal.write(event.data);
+      else if (event.data instanceof ArrayBuffer) terminal.write(new Uint8Array(event.data));
+    };
+    socket.onerror = () => {
+      setTerminalReady(false);
+      terminal.writeln("\r\n[terminal connection error]");
+    };
+    socket.onclose = () => setTerminalReady(false);
+
+    const input = terminal.onData((value) => {
+      if (socket.readyState === WebSocket.OPEN) socket.send(value);
+    });
+    const resize = terminal.onResize(({ cols, rows }) => {
+      if (socket.readyState === WebSocket.OPEN)
+        socket.send("\u0000" + JSON.stringify({ type: "resize", cols, rows }));
+    });
+    const observer = new ResizeObserver(() => {
+      fit.fit();
+      if (socket.readyState === WebSocket.OPEN)
+        socket.send("\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
+    });
+    observer.observe(container);
+
+    return () => {
+      observer.disconnect();
+      input.dispose();
+      resize.dispose();
+      socket.close();
+      terminal.dispose();
+      if (terminalSocketRef.current === socket) terminalSocketRef.current = null;
+      if (xtermRef.current === terminal) xtermRef.current = null;
+      setTerminalReady(false);
+    };
+  }, [panel, terminalConnection]);
+
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["agent-projects", user?.id],
@@ -405,21 +487,15 @@ export function CodeAgent() {
     if (terminalReady) return;
     try {
       const activeProjectId = projectId ?? (await persist());
-      const result = await startPreview({ data: { projectId: activeProjectId, files } });
-      setRuntimeUrl(result.url);
+      const preview = await startPreview({ data: { projectId: activeProjectId, files } });
+      setRuntimeUrl(preview.url);
       setRuntimeStatus("Running in Vercel Sandbox");
       runtimeFilesRef.current = { ...files };
-      setTerminalReady(true);
-      setTerminalCwd("/vercel/sandbox");
-      setTerminalOutput(
-        (current) =>
-          current ||
-          "Cloud terminal connected. Commands run inside your isolated project sandbox.\r\n",
-      );
+      const connection = await connectTerminal({ data: { projectId: activeProjectId } });
+      setTerminalConnection(connection);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Could not connect to the cloud terminal.";
-      setTerminalOutput((current) => current + `\r\n[terminal error] ${message}\r\n`);
+        error instanceof Error ? error.message : "Could not connect to the Linux terminal.";
       toast.error(message);
     }
   }
@@ -1465,14 +1541,14 @@ export function CodeAgent() {
 
               {panel === "terminal" && (
                 <div className="flex min-h-0 flex-1 flex-col bg-[#050a12]">
-                  <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] px-4">
+                  <div className="flex min-h-10 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] px-3 py-2">
                     <span className="flex items-center gap-2 text-xs text-slate-300">
                       <Terminal className="h-3.5 w-3.5 text-emerald-300" />
-                      Bash · isolated Linux workspace
+                      Linux Bash · interactive PTY
                     </span>
                     <div className="flex flex-wrap items-center justify-end gap-2">
-                      <span className="text-[10px] text-slate-500">
-                        {terminalReady ? terminalCwd : "SANDBOX OFFLINE"}
+                      <span className={terminalReady ? "text-[10px] text-emerald-300" : "text-[10px] text-slate-500"}>
+                        {terminalReady ? "CONNECTED" : "OFFLINE"}
                       </span>
                       {["ls", "pwd", "npm run dev", "npm run build"].map((command) => (
                         <button
@@ -1480,27 +1556,8 @@ export function CodeAgent() {
                           type="button"
                           disabled={!terminalReady}
                           onClick={() => {
-                            if (!projectId) return;
-                            setTerminalOutput((current) =>
-                              (current + `\r\n${terminalCwd}$ ${command}\r\n`).slice(-40000),
-                            );
-                            void terminalCommand({ data: { projectId, command } })
-                              .then((result) => {
-                                setTerminalCwd(result.cwd || terminalCwd);
-                                setTerminalOutput((current) =>
-                                  (
-                                    current +
-                                    result.stdout +
-                                    (result.stderr ? `\r\n${result.stderr}` : "") +
-                                    `\r\n[exit ${result.exitCode}]\r\n`
-                                  ).slice(-40000),
-                                );
-                              })
-                              .catch((error) =>
-                                toast.error(
-                                  error instanceof Error ? error.message : "Command failed",
-                                ),
-                              );
+                            if (terminalSocketRef.current?.readyState === WebSocket.OPEN)
+                              terminalSocketRef.current.send(command + "\r");
                           }}
                           className="rounded border border-white/10 px-2 py-1 font-mono text-[10px] text-slate-400 hover:border-emerald-400/40 hover:text-emerald-200 disabled:opacity-30"
                         >
@@ -1509,8 +1566,9 @@ export function CodeAgent() {
                       ))}
                       <button
                         type="button"
-                        onClick={() => setTerminalOutput("")}
-                        className="text-xs text-slate-500 hover:text-white"
+                        disabled={!terminalReady}
+                        onClick={() => xtermRef.current?.clear()}
+                        className="text-xs text-slate-500 hover:text-white disabled:opacity-30"
                       >
                         Clear
                       </button>
@@ -1525,41 +1583,14 @@ export function CodeAgent() {
                       )}
                     </div>
                   </div>
-                  <pre
-                    aria-live="polite"
-                    className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-words p-4 font-mono text-xs leading-5 text-emerald-200"
-                  >
-                    {terminalOutput || "Start the shell to run commands in your project workspace."}
-                  </pre>
-                  <form
-                    onSubmit={(event) => void submitTerminalCommand(event)}
-                    className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] p-3"
-                  >
-                    <span className="font-mono text-xs text-emerald-400">{terminalCwd}$</span>
-                    <input
-                      aria-label="Terminal command"
-                      value={terminalInput}
-                      onChange={(event) => setTerminalInput(event.target.value)}
-                      disabled={!terminalReady}
-                      autoComplete="off"
-                      spellCheck={false}
-                      placeholder={
-                        terminalReady ? "Type a command, e.g. ls" : "Start the shell first"
-                      }
-                      className="min-w-0 flex-1 bg-transparent font-mono text-xs text-slate-100 outline-none placeholder:text-slate-600"
-                    />
-                    <Button
-                      type="submit"
-                      size="sm"
-                      disabled={!terminalReady || !terminalInput.trim()}
-                      className="h-8 bg-cyan-400 text-slate-950 hover:bg-cyan-300"
-                    >
-                      <Send className="mr-1.5 h-3.5 w-3.5" />
-                      Run
-                    </Button>
-                  </form>
+                  <div
+                    ref={terminalContainerRef}
+                    role="region"
+                    aria-label="Interactive Linux terminal"
+                    className="min-h-0 flex-1 overflow-hidden px-3 py-2"
+                  />
                   <p className="border-t border-white/[0.06] px-4 py-2 text-[10px] text-slate-600">
-                    Linux Bash runs inside your isolated project sandbox. The working directory and exported environment persist between commands. Full-screen interactive PTY programs are not supported in this terminal view yet.
+                    Persistent Bash session in an isolated Vercel Linux microVM. Supports terminal input, ANSI output, resizing and interactive CLI programs. Use network tools only on systems you own or are authorized to test.
                   </p>
                 </div>
               )}
