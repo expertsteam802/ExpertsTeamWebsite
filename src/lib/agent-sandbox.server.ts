@@ -412,6 +412,8 @@ export async function readCloudProjectFiles(projectId: string) {
         path &&
         /^[a-zA-Z0-9_@./-]+$/.test(path) &&
         !path.split("/").some((part) => !part || part === "." || part === "..") &&
+        !path.split("/").some((part) => part.startsWith(".experts-")) &&
+        ![".npmrc", ".netrc", ".pypirc"].includes(filename) &&
         !/^\.env(?:\.|$)/i.test(filename) &&
         !/^(?:id_rsa|id_ed25519|credentials?|secrets?)(?:\.|$)/i.test(filename) &&
         !/\.(?:pem|key|p12|pfx)$/i.test(filename)
