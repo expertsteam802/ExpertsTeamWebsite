@@ -176,7 +176,9 @@ function Index() {
               </span>
               <span>
                 <span className="block text-xs font-semibold">More than an AI studio</span>
-                <span className="block text-[10px] text-muted-foreground">Learn · Connect · Create · Share</span>
+                <span className="block text-[10px] text-muted-foreground">
+                  Learn · Connect · Create · Share
+                </span>
               </span>
             </div>
           </div>

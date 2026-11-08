@@ -12,7 +12,7 @@ export function PageShell({ children }: { children: ReactNode }) {
       style={{
         backgroundImage: settings.background_image_url
           ? `linear-gradient(rgba(5, 10, 20, 0.78), rgba(5, 10, 20, 0.78)), url("${settings.background_image_url}")`
-          : "linear-gradient(rgba(5, 10, 20, 0.66), rgba(5, 10, 20, 0.74)), url(\"/experts-team-background.svg\")",
+          : 'linear-gradient(rgba(5, 10, 20, 0.66), rgba(5, 10, 20, 0.74)), url("/experts-team-background.svg")',
       }}
     >
       <SiteHeader />
