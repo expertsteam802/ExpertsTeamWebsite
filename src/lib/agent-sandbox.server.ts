@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { Sandbox } from "@vercel/sandbox";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
@@ -316,6 +316,17 @@ export async function runCloudProjectCommand(projectId: string, command: string)
   };
 }
 
+function isPublishableAsset(path: string) {
+  const normalized = path.replace(/\\\\/g, "/");
+  const segments = normalized.split("/");
+  const filename = segments.at(-1) ?? "";
+  if (segments.some((part) => ["node_modules", ".git", ".vercel"].includes(part))) return false;
+  if (/^\\.env(?:\\.|$)/i.test(filename)) return false;
+  if (/^(?:id_rsa|id_ed25519|credentials?|secrets?)(?:\\.|$)/i.test(filename)) return false;
+  if (/\\.(?:pem|key|p12|pfx)$/i.test(filename)) return false;
+  return true;
+}
+
 function publishedContentType(path: string) {
   const extension = path.split(".").pop()?.toLowerCase();
   const types: Record<string, string> = {
@@ -407,7 +418,10 @@ export async function publishCloudProject(
     const paths = (await listing.stdout())
       .split("\n")
       .map((path) => path.trim())
-      .filter((path) => path.startsWith(outputDirectory + "/"));
+      .filter((path) => path.startsWith(outputDirectory + "/"))
+      .map((path) => path.slice(outputDirectory.length + 1))
+      .filter(isPublishableAsset)
+      .map((path) => `${outputDirectory}/${path}`);
     if (!paths.length || paths.length > 500)
       throw new Error("The build must contain between 1 and 500 publishable files.");
 
@@ -423,16 +437,18 @@ export async function publishCloudProject(
   } else {
     if (!sourceFiles["index.html"])
       throw new Error("Add an index.html file or a package.json build script before publishing.");
-    outputFiles = Object.entries(sourceFiles).map(([path, content]) => ({
-      path,
-      content: Buffer.from(content, "utf8"),
-    }));
+    outputFiles = Object.entries(sourceFiles)
+      .filter(([path]) => isPublishableAsset(path))
+      .map(([path, content]) => ({
+        path,
+        content: Buffer.from(content, "utf8"),
+      }));
   }
 
   if (!outputFiles.some((file) => file.path === "index.html"))
     throw new Error("The production build does not contain index.html.");
 
-  const releaseId = crypto.randomUUID();
+  const releaseId = randomUUID();
   const prefix = `${slug}/${releaseId}`;
   for (let offset = 0; offset < outputFiles.length; offset += 8) {
     const batch = outputFiles.slice(offset, offset + 8);
