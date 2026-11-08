@@ -384,6 +384,14 @@ export async function startCloudProjectTerminal(
     { path: bridgeDir + "/server.cjs", content: Buffer.from(serverSource, "utf8") },
     { path: tokenPath, content: Buffer.from(token, "utf8"), mode: 0o600 },
   ]);
+  const syntaxCheck = await sandbox.runCommand({
+    cmd: "node",
+    args: ["--check", bridgeDir + "/server.cjs"],
+    cwd: WORKDIR,
+    timeoutMs: 10_000,
+  });
+  if (syntaxCheck.exitCode !== 0)
+    throw new Error("The Linux terminal bridge failed its syntax check: " + (await syntaxCheck.stderr()).slice(-2000));
   const installed = await sandbox.runCommand({
     cmd: "test",
     args: ["-d", bridgeDir + "/node_modules/node-pty"],
@@ -430,6 +438,29 @@ export async function startCloudProjectTerminal(
     await new Promise((resolve) => setTimeout(resolve, 400));
   }
   if (!ready) throw new Error("The interactive Linux terminal did not start inside the sandbox.");
+  const selfTestPath = bridgeDir + "/healthcheck.cjs";
+  const selfTestSource = [
+    'const WebSocket = require("ws");',
+    'let output = "";',
+    'let passed = false;',
+    'const socket = new WebSocket("ws://127.0.0.1:4174/terminal", ["experts-terminal", process.env.TERMINAL_TOKEN]);',
+    'const timeout = setTimeout(() => { socket.terminate(); process.exit(1); }, 12000);',
+    'socket.on("open", () => socket.send("echo EXPERTS_TERMINAL_OK\\r"));',
+    'socket.on("message", (data) => { output += data.toString(); if (output.includes("EXPERTS_TERMINAL_OK")) { passed = true; clearTimeout(timeout); socket.close(); } });',
+    'socket.on("close", () => { clearTimeout(timeout); process.exit(passed ? 0 : 1); });',
+    'socket.on("error", () => { clearTimeout(timeout); process.exit(1); });',
+  ].join("\\n");
+  await sandbox.writeFiles([{ path: selfTestPath, content: Buffer.from(selfTestSource, "utf8") }]);
+  const selfTestResult = await sandbox.runCommand({
+    cmd: "node",
+    args: ["healthcheck.cjs"],
+    cwd: bridgeDir,
+    env: { TERMINAL_TOKEN: token },
+    timeoutMs: 15_000,
+  });
+  if (selfTestResult.exitCode !== 0)
+    throw new Error("The Linux PTY failed its interactive shell self-test: " + (await selfTestResult.stderr()).slice(-2000));
+
   return { url: sandbox.domain(4174).replace(/^https:/, "wss:") + "/terminal", token };
 }
 
