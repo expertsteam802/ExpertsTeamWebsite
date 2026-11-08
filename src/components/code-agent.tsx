@@ -1919,6 +1919,9 @@ async function runProject() {
           <p className="text-xs text-slate-400">
             Enable lightweight built-in completion and snippet packs for the languages you use.
           </p>
+          <p className="text-xs leading-5 text-slate-400">
+            Syntax highlighting and language modes load automatically from file extensions. Supported modes include JavaScript, TypeScript, JSX, TSX, HTML, CSS, JSON, Markdown, Python, Java, C, C++, C#, Go, Rust, PHP, SQL, YAML, XML, Vue, Svelte and more. These are editor language modes, not marketplace extensions or guaranteed runtimes.
+          </p>
           <div className="space-y-2">
             {[
               {
