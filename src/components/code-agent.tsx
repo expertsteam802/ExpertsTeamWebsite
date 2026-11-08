@@ -796,7 +796,7 @@ export function CodeAgent() {
     setImportingRepo(true);
     try {
       // Preserve the workspace currently open before switching to the imported repository.
-      if (!projectId || dirty) await persist();
+      if (dirty) await persist();
       const imported = await importGithub({
         data: { repoUrl, token: importToken.trim() || undefined },
       });
@@ -819,7 +819,7 @@ export function CodeAgent() {
       setFiles(imported.files);
       setMessages([]);
       setActiveFile(Object.keys(imported.files).sort()[0] ?? "README.md");
-      setGithubRepo(imported.repoUrl);
+      setGithubRepo(imported.name);
       setLogs([]);
       setPanel("code");
       setDirty(false);
