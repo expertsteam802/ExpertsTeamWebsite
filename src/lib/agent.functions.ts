@@ -123,6 +123,15 @@ export const startAgentPreview = createServerFn({ method: "POST" })
     return startCloudProjectPreview(data.projectId, data.files);
   });
 
+export const startAgentTerminal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const { startCloudProjectTerminal } = await import("./agent-sandbox.server");
+    return startCloudProjectTerminal(data.projectId);
+  });
+
 const publishRequest = z
   .object({
     projectId: z.string().uuid(),
