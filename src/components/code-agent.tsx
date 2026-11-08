@@ -244,6 +244,7 @@ export function CodeAgent() {
   const [terminalOutput, setTerminalOutput] = useState("");
   const [terminalInput, setTerminalInput] = useState("");
   const [terminalReady, setTerminalReady] = useState(false);
+  const [terminalCwd, setTerminalCwd] = useState("/vercel/sandbox");
   const [fileLanguage, setFileLanguage] = useState<Extension[]>([]);
   const runtimeFilesRef = useRef<ProjectFiles>({});
   const runtimeSyncQueueRef = useRef<Promise<void>>(Promise.resolve());
@@ -407,6 +408,7 @@ export function CodeAgent() {
       setRuntimeStatus("Running in Vercel Sandbox");
       runtimeFilesRef.current = { ...files };
       setTerminalReady(true);
+      setTerminalCwd("/vercel/sandbox");
       setTerminalOutput(
         (current) =>
           current ||
@@ -428,6 +430,7 @@ export function CodeAgent() {
     setTerminalOutput((current) => (current + `\r\n$ ${command}\r\n`).slice(-40000));
     try {
       const result = await terminalCommand({ data: { projectId, command } });
+      setTerminalCwd(result.cwd || terminalCwd);
       setTerminalOutput((current) =>
         (
           current +
@@ -1167,7 +1170,7 @@ export function CodeAgent() {
                   ExpertAI workspace
                 </div>
                 <p className="mt-2 text-[11px] leading-5 text-slate-500">
-                  Describe a feature, ask for a change or let the agent create project files.
+                  Edit project files, run your app and use the Linux sandbox. AI prompt-based coding is under development.
                 </p>
               </div>
             </div>
@@ -1457,11 +1460,11 @@ export function CodeAgent() {
                   <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] px-4">
                     <span className="flex items-center gap-2 text-xs text-slate-300">
                       <Terminal className="h-3.5 w-3.5 text-emerald-300" />
-                      Expert Terminal · isolated cloud workspace
+                      Bash · isolated Linux workspace
                     </span>
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       <span className="text-[10px] text-slate-500">
-                        {terminalReady ? "SANDBOX ONLINE" : "SANDBOX OFFLINE"}
+                        {terminalReady ? terminalCwd : "SANDBOX OFFLINE"}
                       </span>
                       {["ls", "pwd", "npm run dev", "npm run build"].map((command) => (
                         <button
@@ -1475,6 +1478,7 @@ export function CodeAgent() {
                             );
                             void terminalCommand({ data: { projectId, command } })
                               .then((result) => {
+                                setTerminalCwd(result.cwd || terminalCwd);
                                 setTerminalOutput((current) =>
                                   (
                                     current +
@@ -1523,7 +1527,7 @@ export function CodeAgent() {
                     onSubmit={(event) => void submitTerminalCommand(event)}
                     className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] p-3"
                   >
-                    <span className="font-mono text-sm text-emerald-400">$</span>
+                    <span className="font-mono text-xs text-emerald-400">{terminalCwd}$</span>
                     <input
                       aria-label="Terminal command"
                       value={terminalInput}
@@ -1547,7 +1551,7 @@ export function CodeAgent() {
                     </Button>
                   </form>
                   <p className="border-t border-white/[0.06] px-4 py-2 text-[10px] text-slate-600">
-                    Commands execute in your isolated Linux project sandbox. Each submitted command currently runs as a separate Bash job; persistent interactive PTY sessions are not yet enabled.
+                    Linux Bash runs inside your isolated project sandbox. The working directory and exported environment persist between commands. Full-screen interactive PTY programs are not supported in this terminal view yet.
                   </p>
                 </div>
               )}
