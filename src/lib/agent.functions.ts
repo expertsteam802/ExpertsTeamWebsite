@@ -145,6 +145,15 @@ const publishRequest = z
     "The project is too large to publish.",
   );
 
+export const syncAgentTerminalFiles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const { readCloudProjectFiles } = await import("./agent-sandbox.server");
+    return readCloudProjectFiles(data.projectId);
+  });
+
 export const publishAgentProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => publishRequest.parse(input))
