@@ -51,7 +51,7 @@ function formatBytes(bytes: number) {
 function fileIcon(mimeType: string | null) {
   if (mimeType?.startsWith("image/")) return Image;
   if (mimeType?.startsWith("text/") || mimeType?.includes("pdf")) return FileText;
-  return File;
+  return FileIcon;
 }
 
 function PersonalVaultPage() {
