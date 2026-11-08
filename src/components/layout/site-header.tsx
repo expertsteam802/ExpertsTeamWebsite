@@ -46,7 +46,7 @@ export function SiteHeader() {
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4">
         <Link to="/" className="flex shrink-0 items-center gap-2">
           <img
-            src={settings.logo_url || "/logo.png"}
+            src={settings.logo_url || "/experts-team-mark.svg"}
             alt={`${settings.site_name} logo`}
             className="h-10 w-10 rounded-full object-cover ring-1 ring-primary/50"
           />
