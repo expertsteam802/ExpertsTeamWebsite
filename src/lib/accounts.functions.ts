@@ -25,7 +25,8 @@ export const deleteUserAccount = createServerFn({ method: "POST" })
       .from("files")
       .select("storage_path")
       .eq("user_id", data.userId);
-    if (filesError) throw new Error("Could not load the user's uploaded files: " + filesError.message);
+    if (filesError)
+      throw new Error("Could not load the user's uploaded files: " + filesError.message);
 
     if (files?.length) {
       const paths = files.map((file) => file.storage_path).filter(Boolean);

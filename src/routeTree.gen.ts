@@ -403,13 +403,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShowcaseRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/showcase': {
-      id: '/showcase'
-      path: '/showcase'
-      fullPath: '/showcase'
-      preLoaderRoute: typeof ShowcaseRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/terms': {
       id: '/terms'
       path: '/terms'
