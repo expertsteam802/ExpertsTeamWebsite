@@ -330,7 +330,10 @@ export async function streamOllamaContent(
     await upstream.body?.cancel();
     throw new Error(`Qwen/Ollama HTTP ${upstream.status}.`);
   }
-  if (!upstream.body) throw new Error("Qwen/Ollama did not return a streaming response.");
+  if (!upstream.body || !upstream.headers.get("content-type")?.includes("text/event-stream")) {
+    await upstream.body?.cancel();
+    throw new Error("The configured ExpertAI service does not support token streaming.");
+  }
 
   const reader = upstream.body.getReader();
   const decoder = new TextDecoder();
@@ -393,7 +396,11 @@ export async function streamOllamaContent(
         }
       } catch (error) {
         finished = true;
-        controller.error(error);
+        const message =
+          error instanceof Error && error.name === "TimeoutError"
+            ? "ExpertAI timed out while generating a response. Please try again."
+            : "ExpertAI's response stream disconnected before completion. Please retry.";
+        controller.error(new Error(message));
       }
     },
     async cancel(reason) {
