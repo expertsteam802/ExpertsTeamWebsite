@@ -285,6 +285,7 @@ async function callOllama(request: GeminiRequest): Promise<GeminiResponse> {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "bypass-tunnel-reminder": "true",
       ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
     },
     body: JSON.stringify({
@@ -325,6 +326,7 @@ export async function streamOllamaContent(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "bypass-tunnel-reminder": "true",
       ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
     },
     body: JSON.stringify({
