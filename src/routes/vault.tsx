@@ -300,14 +300,15 @@ function PersonalVaultPage() {
                       {new Date(file.created_at).toLocaleDateString()}
                     </p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={"Download " + file.file_name}
-                    onClick={() => void download(file)}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
+                  {file.entry_type === "link" && file.file_url ? (
+                    <Button variant="ghost" size="icon" asChild aria-label={"Open " + file.file_name}>
+                      <a href={file.file_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /></a>
+                    </Button>
+                  ) : (
+                    <Button variant="ghost" size="icon" aria-label={"Download " + file.file_name} onClick={() => void download(file)}>
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
