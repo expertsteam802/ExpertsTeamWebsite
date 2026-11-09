@@ -44,12 +44,14 @@ export function ConversationCall({ conversationId, recipientId, recipientName }:
     if (remoteVideo.current && remoteStream) remoteVideo.current.srcObject = remoteStream;
   }, [localStream, remoteStream, status]);
 
+  const userId = user?.id;
+
   useEffect(() => {
-    if (!user || !conversationId) return;
+    if (!userId || !conversationId) return;
     const channel = supabase.channel("call:"+conversationId,{config:{private:true}});
     channel.on("broadcast",{event:"signal"},async ({payload}) => {
       const signal = payload as Signal;
-      if (!signal || signal.sender_id === user.id || signal.target_id !== user.id) return;
+      if (!signal || signal.sender_id === userId || signal.target_id !== userId) return;
       try {
         if (signal.kind === "hangup") { cleanup(); setStatus("idle"); return; }
         if (signal.kind === "offer" && signal.sdp) {
@@ -74,7 +76,7 @@ export function ConversationCall({ conversationId, recipientId, recipientName }:
     });
     channelRef.current=channel;
     return () => { setChannelReady(false); cleanup(); channelRef.current=null; void supabase.removeChannel(channel); };
-  },[user?.id,conversationId]);
+  },[userId,conversationId]);
 
   async function preparePeer() {
     if (!user) throw new Error("Sign in to call.");
