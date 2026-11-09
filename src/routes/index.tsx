@@ -47,32 +47,32 @@ export const Route = createFileRoute("/")({
 
 const CAPABILITIES = [
   {
-    icon: WandSparkles,
-    number: "01",
-    title: "Describe it. Start building.",
-    body: "Turn a plain-language idea into a working project with ExpertAI, then refine the result as you go.",
-    tag: "AI APP BUILDER",
-  },
-  {
     icon: Code2,
-    number: "02",
-    title: "Make the code yours.",
-    body: "Open your files, edit the details, run your project and keep control of what gets changed.",
-    tag: "CODE WORKSPACE",
+    number: "01",
+    title: "Learn by building.",
+    body: "Follow practical coding lessons and turn what you learn into real projects.",
+    tag: "LEARN TO CODE",
   },
   {
-    icon: TerminalSquare,
-    number: "03",
-    title: "See it come alive.",
-    body: "Work in a browser-based terminal and preview your project as you build — without setting up a local machine first.",
-    tag: "LIVE PREVIEW",
+    icon: Gamepad2,
+    number: "02",
+    title: "Discover free downloads.",
+    body: "Find games, apps, tools and useful files shared for the community.",
+    tag: "GAMES, APPS & FILES",
   },
   {
     icon: Users,
+    number: "03",
+    title: "Grow with creators.",
+    body: "Ask questions, share your work and find helpful answers in the ExpertsTeam community.",
+    tag: "COMMUNITY",
+  },
+  {
+    icon: WandSparkles,
     number: "04",
-    title: "Ask anything. Get answers.",
-    body: "Get help with any question, find practical solutions and grow with creators, learners and developers in the ExpertsTeam community.",
-    tag: "CREATOR COMMUNITY",
+    title: "Build with ExpertAI.",
+    body: "Get AI help when you need to plan, code, test or improve a project.",
+    tag: "EXPERTAI STUDIO",
   },
 ];
 
