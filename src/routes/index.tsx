@@ -115,16 +115,15 @@ function Index() {
 
             <div className="space-y-5">
               <h1 className="max-w-3xl font-display text-5xl font-bold leading-[1.04] tracking-tight sm:text-6xl lg:text-7xl">
-                Think it.
+                Learn it.
                 <br />
-                <span className="brand-text">Build it.</span>
+                <span className="brand-text">Code it.</span>
                 <br />
-                Make it real.
+                Play. Create. Share.
               </h1>
               <p className="max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
-                {settings.site_name} is your place to learn, build projects, share ideas, discover
-                useful resources and connect with other creators. ExpertAI is here when you need a
-                hand.
+                Learn coding, build apps, play games, find free downloads and connect with creators.
+                ExpertAI is one of the tools here when you need a hand.
               </p>
             </div>
 
