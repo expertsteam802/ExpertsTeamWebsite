@@ -19,7 +19,7 @@ function sandboxName(projectId: string) {
 
 function validateFiles(files: AgentProjectFiles) {
   const entries = Object.entries(files);
-  if (entries.length > 120) throw new Error("This project contains too many files for preview.");
+  if (entries.length > 400) throw new Error("This project contains more than 400 files; the workspace preview limit is 400.");
   let total = 0;
   for (const [path, content] of entries) {
     if (
@@ -30,11 +30,11 @@ function validateFiles(files: AgentProjectFiles) {
       !/^[a-zA-Z0-9_@./-]+$/.test(path)
     )
       throw new Error("The project contains an invalid file path.");
-    if (typeof content !== "string" || content.length > 150_000)
+    if (typeof content !== "string" || content.length > 500_000)
       throw new Error("A project file is too large to preview.");
     total += content.length;
   }
-  if (total > 1_000_000) throw new Error("This project is too large to preview.");
+  if (total > 3_000_000) throw new Error("This project is too large to preview.");
 }
 
 async function readText(sandbox: Awaited<ReturnType<typeof Sandbox.getOrCreate>>, path: string) {
