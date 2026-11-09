@@ -257,7 +257,6 @@ function PersonalVaultPage() {
             <Link2 className="mr-2 h-4 w-4" /> Save link
           </Button>
         </Card>
-        </div>
 
         <Card className="gap-3 p-4">
           <div className="relative">
