@@ -540,7 +540,7 @@ export function ChrisAiChat({
 
   function submit() {
     if (guestCreditsExhausted) {
-      toast.error("You have used your 15 free guest credits. Create an account to keep chatting.");
+      toast.error("No free credits left. Sign in to continue.");
       return;
     }
     if (chatIsFull) {
@@ -638,11 +638,8 @@ export function ChrisAiChat({
             </span>
             <div>
               <p className="text-sm font-semibold">ExpertAI Chat</p>
-              <p className="text-xs text-muted-foreground">
-                File analysis · app building ·{" "}
-                {user
-                  ? `${profile?.ai_credits ?? 0} AI credits`
-                  : `${guestCredits} of 15 free guest credits`}
+              <p className="text-xs font-medium text-blue-300">
+                {user ? `${profile?.ai_credits ?? 0} credits` : `${guestCredits} free credits`}
               </p>
             </div>
           </div>
@@ -788,8 +785,7 @@ export function ChrisAiChat({
               role="status"
               className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm"
             >
-              Your 15 free guest credits are used. Create an account to continue chatting with
-              ExpertAI.{" "}
+              No free credits left. Sign in to continue.{" "}
               <button
                 type="button"
                 className="ml-2 font-semibold text-primary underline"
