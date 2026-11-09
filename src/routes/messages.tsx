@@ -334,7 +334,10 @@ function MessagesPage() {
         body,
         media_path,
       });
-      if (error) throw error;
+      if (error) {
+        if (media_path) await supabase.storage.from("direct-messages").remove([media_path]);
+        throw error;
+      }
     },
     onSuccess: () => {
       setDraft("");
@@ -736,7 +739,7 @@ function MessagesPage() {
                       <Sparkles className="mx-auto h-6 w-6 text-primary" />
                       <p className="mt-2 text-sm font-semibold">Say hello</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        This is the beginning of your conversation. Send a message or share a photo.
+                        This is the beginning of your conversation. Send a message, photo or voice note.
                       </p>
                     </div>
                   )}
@@ -819,7 +822,7 @@ function MessagesPage() {
                   <div className="flex items-end gap-2 rounded-2xl border border-border bg-card p-2 shadow-inner">
                     <label
                       className="grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-xl text-muted-foreground transition hover:bg-secondary hover:text-primary"
-                      title="Attach photo"
+                      title="Attach image or audio"
                     >
                       <ImagePlus className="h-5 w-5" />
                       <input
