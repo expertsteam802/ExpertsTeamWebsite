@@ -495,6 +495,14 @@ export async function generateGeminiContent(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (message === "not_configured") continue;
+      if (provider === "ollama") {
+        const reason = /fetch failed|ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|network/i.test(message)
+          ? "tunnel_or_network_unavailable"
+          : /HTTP 401|HTTP 403|HTTP 404/i.test(message)
+            ? "endpoint_or_model_rejected"
+            : "inference_failed";
+        console.warn("[ExpertAI] Qwen/Ollama unavailable; trying provider fallback.", { reason });
+      }
       if (
         /HTTP 413|HTTP 429|rate.?limit|quota|RESOURCE_EXHAUSTED|tokens per minute/i.test(message)
       ) {
