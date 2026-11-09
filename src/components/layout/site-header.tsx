@@ -52,7 +52,7 @@ export function SiteHeader() {
 
         <nav
           className={cn(
-            "hidden min-w-0 flex-1 grid-cols-10 items-stretch gap-1 lg:grid",
+            "hidden min-w-0 flex-1 grid-cols-5 items-stretch gap-1 lg:grid",
             ALIGN[navAlign],
           )}
         >
