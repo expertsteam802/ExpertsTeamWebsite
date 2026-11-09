@@ -118,10 +118,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       // YouTube requires a Referer header for embedded playback (error 153).
       { name: "referrer", content: "strict-origin-when-cross-origin" },
-      { title: "ExpertsTeam — Learn, Code, Play & Free Downloads" },
+      { title: "ExpertsTeam | Code, Create & Connect in One Digital Hub" },
       {
         name: "description",
-        content: "Learn coding, build apps, play games and download free apps, games and files.",
+        content: "Learn to code, build with ExpertAI, connect with creators, and discover useful apps and downloads on ExpertsTeam.",
       },
 
       {
@@ -131,12 +131,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:site_name", content: "ExpertsTeam" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:title", content: "ExpertsTeam — Learn, Code, Play & Build Free Apps" },
-      { name: "twitter:title", content: "ExpertsTeam — Learn, Code, Play & Build Free Apps" },
+      { property: "og:title", content: "ExpertsTeam | Code, Create & Connect in One Digital Hub" },
+      { name: "twitter:title", content: "ExpertsTeam | Code, Create & Connect in One Digital Hub" },
       {
         property: "og:description",
         content:
-          "Learn coding, build apps, play games and get free downloads with the ExpertsTeam community.",
+          "Learn to code, build with ExpertAI, connect with creators, and discover useful apps and downloads on ExpertsTeam.",
       },
       {
         name: "twitter:description",
@@ -187,7 +187,7 @@ function RootShell({ children }: { children: ReactNode }) {
               alternateName: ["Experts Team", "expertsteam.giize.com"],
               url: "https://expertsteam.giize.com/",
               description:
-                "Learn to code, build apps, play games and download free files with ExpertsTeam.",
+                "ExpertsTeam is a digital hub to learn coding, build apps with ExpertAI, connect with creators, and discover useful downloads.",
             }),
           }}
         />
@@ -201,7 +201,7 @@ function RootShell({ children }: { children: ReactNode }) {
               alternateName: ["Experts Team", "expertsteam.giize.com"],
               url: "https://expertsteam.giize.com/",
               description:
-                "Learn to code, build apps, play games and download free files with ExpertsTeam.",
+                "ExpertsTeam is a digital hub to learn coding, build apps with ExpertAI, connect with creators, and discover useful downloads.",
             }),
           }}
         />
