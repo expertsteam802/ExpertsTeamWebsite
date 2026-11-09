@@ -185,6 +185,7 @@ async function callCloudflare(request: GeminiRequest): Promise<GeminiResponse> {
 
 type OllamaConfig = { endpoint: string; model: string; apiKey?: string } | null;
 let ollamaConfigCache: { expiresAt: number; value: OllamaConfig } | null = null;
+let ollamaMissingConfigLogged = false;
 
 async function resolveOllamaConfig(): Promise<OllamaConfig> {
   if (ollamaConfigCache && ollamaConfigCache.expiresAt > Date.now()) {
@@ -199,6 +200,10 @@ async function resolveOllamaConfig(): Promise<OllamaConfig> {
     ""
   ).trim();
   if (!supabaseUrl || !serviceKey) {
+    if (!ollamaMissingConfigLogged) {
+      console.info("[ExpertAI] Qwen/Ollama is not configured; provider fallback is active.");
+      ollamaMissingConfigLogged = true;
+    }
     ollamaConfigCache = { value: null, expiresAt: Date.now() + 15000 };
     return null;
   }
@@ -214,9 +219,14 @@ async function resolveOllamaConfig(): Promise<OllamaConfig> {
   }>;
   const rawEndpoint = rows[0]?.ad_settings?.siteBranding?.ollama_url;
   if (typeof rawEndpoint !== "string" || !rawEndpoint.trim()) {
+    if (!ollamaMissingConfigLogged) {
+      console.info("[ExpertAI] Qwen/Ollama endpoint is empty; provider fallback is active.");
+      ollamaMissingConfigLogged = true;
+    }
     ollamaConfigCache = { value: null, expiresAt: Date.now() + 15000 };
     return null;
   }
+  ollamaMissingConfigLogged = false;
 
   let parsed: URL;
   try {
@@ -297,6 +307,7 @@ async function callOllama(request: GeminiRequest): Promise<GeminiResponse> {
   };
   const output = data.choices?.[0]?.message?.content;
   if (!output) throw new Error("Qwen/Ollama returned an empty response.");
+  console.info("[ExpertAI] Qwen/Ollama coding-agent inference completed.");
   return asGeminiResponse(output);
 }
 
@@ -340,6 +351,7 @@ export async function streamOllamaContent(
   const encoder = new TextEncoder();
   let buffer = "";
   let finished = false;
+  let sawToken = false;
   const emitLine = (line: string, controller: ReadableStreamDefaultController<Uint8Array>) => {
     if (!line.startsWith("data:")) return false;
     const data = line.slice(5).trim();
@@ -354,6 +366,10 @@ export async function streamOllamaContent(
       };
       const text = event.choices?.[0]?.delta?.content;
       if (typeof text === "string" && text) {
+        if (!sawToken) {
+          sawToken = true;
+          console.info("[ExpertAI] Qwen/Ollama chat stream produced its first token.");
+        }
         controller.enqueue(
           encoder.encode(
             "data: " +
@@ -378,6 +394,7 @@ export async function streamOllamaContent(
             const emittedDone = buffer.trim() ? emitLine(buffer.trim(), controller) : false;
             if (!emittedDone) controller.enqueue(encoder.encode("data: [DONE]\n\n"));
             finished = true;
+            if (sawToken) console.info("[ExpertAI] Qwen/Ollama chat stream completed.");
             controller.close();
             return;
           }
@@ -388,6 +405,7 @@ export async function streamOllamaContent(
             if (emitLine(line, controller)) {
               finished = true;
               await reader.cancel();
+              console.info("[ExpertAI] Qwen/Ollama chat stream completed.");
               controller.close();
               return;
             }
