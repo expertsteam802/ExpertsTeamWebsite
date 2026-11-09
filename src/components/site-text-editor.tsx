@@ -105,8 +105,14 @@ export function SiteTextEditor() {
   if (!isAdmin) return null;
 
   return (
+    <>
+      <style>{`
+        body.et-site-copy-editing :is(h1,h2,h3,h4,p,a,button,span,label,li):not([data-site-copy-ignore]) { cursor: text !important; }
+        body.et-site-copy-editing :is(h1,h2,h3,h4,p,a,button,span,label,li):not([data-site-copy-ignore]):hover { outline: 1px dashed rgba(77,141,255,.8); outline-offset: 3px; border-radius: 3px; }
+      `}</style>
     <button
       type="button"
+      data-site-copy-ignore="true"
       onClick={() => setEditing((value) => !value)}
       aria-pressed={editing}
       className="fixed bottom-28 left-4 z-[120] inline-flex items-center gap-2 rounded-full border border-blue-300/30 bg-[#0b1730]/95 px-4 py-2.5 text-xs font-semibold text-blue-100 shadow-xl backdrop-blur-xl transition hover:bg-[#12264a]"
@@ -114,5 +120,6 @@ export function SiteTextEditor() {
       {editing ? <X className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
       {saving ? "Saving…" : editing ? "Exit text editing" : "Edit site text"}
     </button>
+    </>
   );
 }
