@@ -189,7 +189,6 @@ function RootShell({ children }: { children: ReactNode }) {
               url: "https://expertsteam.giize.com/",
               description:
                 "Learn to code, build apps, play games and download free files with ExpertsTeam.",
-              founder: { "@type": "Organization", name: "ExpertsTeam" },
             }),
           }}
         />
