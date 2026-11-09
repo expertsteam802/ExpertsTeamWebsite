@@ -203,14 +203,18 @@ export async function generateGeminiContent(
       .filter(Boolean);
   const availableProviders = ["groq", "gemini", "openrouter", "mistral", "cloudflare"];
   // Use every configured adapter as a fallback; credentials stay server-side.
+  // An explicit order is a strict provider allowlist. This lets guest
+  // chat use OpenRouter only and signed-in chat use Gemini then Groq.
   const configuredOrder = hasImageReference
     ? ["gemini"]
-    : [
-        ...new Set([
-          ...requestedOrder.filter((item) => availableProviders.includes(item)),
-          ...availableProviders,
-        ]),
-      ];
+    : providerOrder
+      ? [...new Set(requestedOrder.filter((item) => availableProviders.includes(item)))]
+      : [
+          ...new Set([
+            ...requestedOrder.filter((item) => availableProviders.includes(item)),
+            ...availableProviders,
+          ]),
+        ];
   const failures: string[] = [];
   const coolingDown: string[] = [];
 
