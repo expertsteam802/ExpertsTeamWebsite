@@ -76,7 +76,9 @@ function PersonalVaultPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("personal_vault_files")
-        .select("id,user_id,storage_path,file_name,file_url,entry_type,mime_type,size_bytes,created_at")
+        .select(
+          "id,user_id,storage_path,file_name,file_url,entry_type,mime_type,size_bytes,created_at",
+        )
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -137,7 +139,9 @@ function PersonalVaultPage() {
           .from("personal-vault")
           .remove([file.storage_path]);
         if (storageError)
-          throw new Error("The file entry was removed, but its stored copy could not be cleaned up.");
+          throw new Error(
+            "The file entry was removed, but its stored copy could not be cleaned up.",
+          );
       }
     },
     onSuccess: async () => {
@@ -152,15 +156,29 @@ function PersonalVaultPage() {
       if (!user) throw new Error("Sign in to save links.");
       const normalized = linkUrl.trim();
       let parsed: URL;
-      try { parsed = new URL(normalized); } catch { throw new Error("Enter a valid web link."); }
-      if (!["https:", "http:"].includes(parsed.protocol)) throw new Error("Only HTTP and HTTPS links are supported.");
+      try {
+        parsed = new URL(normalized);
+      } catch {
+        throw new Error("Enter a valid web link.");
+      }
+      if (!["https:", "http:"].includes(parsed.protocol))
+        throw new Error("Only HTTP and HTTPS links are supported.");
       const { error } = await supabase.from("personal_vault_files").insert({
-        user_id: user.id, storage_path: null, file_name: parsed.hostname + parsed.pathname,
-        file_url: parsed.toString(), entry_type: "link", mime_type: "text/uri-list", size_bytes: 0,
+        user_id: user.id,
+        storage_path: null,
+        file_name: parsed.hostname + parsed.pathname,
+        file_url: parsed.toString(),
+        entry_type: "link",
+        mime_type: "text/uri-list",
+        size_bytes: 0,
       });
       if (error) throw error;
     },
-    onSuccess: async () => { setLinkUrl(""); toast.success("Link saved to your private vault."); await queryClient.invalidateQueries({ queryKey: ["personal-vault", user?.id] }); },
+    onSuccess: async () => {
+      setLinkUrl("");
+      toast.success("Link saved to your private vault.");
+      await queryClient.invalidateQueries({ queryKey: ["personal-vault", user?.id] });
+    },
     onError: (error: Error) => toast.error(error.message),
   });
 
@@ -237,7 +255,11 @@ function PersonalVaultPage() {
                 event.target.value = "";
               }}
             />
-            <Button variant="outline" onClick={() => fileInput.current?.click()} disabled={upload.isPending}>
+            <Button
+              variant="outline"
+              onClick={() => fileInput.current?.click()}
+              disabled={upload.isPending}
+            >
               {upload.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -251,7 +273,12 @@ function PersonalVaultPage() {
         <Card className="flex flex-col gap-3 p-4 sm:flex-row">
           <div className="flex flex-1 items-center gap-2">
             <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <Input value={linkUrl} onChange={(event) => setLinkUrl(event.target.value)} placeholder="Paste a website, document, or download link…" type="url" />
+            <Input
+              value={linkUrl}
+              onChange={(event) => setLinkUrl(event.target.value)}
+              placeholder="Paste a website, document, or download link…"
+              type="url"
+            />
           </div>
           <Button onClick={() => addLink.mutate()} disabled={!linkUrl.trim() || addLink.isPending}>
             <Link2 className="mr-2 h-4 w-4" /> Save link
@@ -288,7 +315,11 @@ function PersonalVaultPage() {
               return (
                 <Card key={file.id} className="flex flex-row items-center gap-3 p-4">
                   <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-                    {file.entry_type === "link" ? <Link2 className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
+                    {file.entry_type === "link" ? (
+                      <Link2 className="h-5 w-5" />
+                    ) : (
+                      <Icon className="h-5 w-5" />
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold" title={file.file_name}>
@@ -300,11 +331,23 @@ function PersonalVaultPage() {
                     </p>
                   </div>
                   {file.entry_type === "link" && file.file_url ? (
-                    <Button variant="ghost" size="icon" asChild aria-label={"Open " + file.file_name}>
-                      <a href={file.file_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /></a>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      asChild
+                      aria-label={"Open " + file.file_name}
+                    >
+                      <a href={file.file_url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
                     </Button>
                   ) : (
-                    <Button variant="ghost" size="icon" aria-label={"Download " + file.file_name} onClick={() => void download(file)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={"Download " + file.file_name}
+                      onClick={() => void download(file)}
+                    >
                       <Download className="h-4 w-4" />
                     </Button>
                   )}
