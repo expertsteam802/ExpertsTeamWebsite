@@ -283,7 +283,7 @@ export async function isOllamaConfigured(): Promise<boolean> {
     return Boolean(await resolveOllamaConfig());
   } catch (error) {
     console.warn("[ExpertAI] Qwen/Ollama configuration is unavailable; provider fallback is active.", {
-      reason: error instanceof Error && /HTTP 5\\d\\d|fetch failed|timeout|network/i.test(error.message)
+      reason: error instanceof Error && /HTTP 5\d\d|fetch failed|timeout|network/i.test(error.message)
         ? "configuration_service_unavailable"
         : "invalid_endpoint_configuration",
     });
