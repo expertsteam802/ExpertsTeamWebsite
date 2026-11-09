@@ -57,7 +57,17 @@ export const runCodingAgent = createServerFn({ method: "POST" })
         "You have no AI credits remaining on this account. Ask an administrator about your usage allowance.",
       );
     const { runAgent } = await import("./agent.server");
-    const result = await runAgent(data, process.env["GEMINI_API_KEY"]);
+    let result: Awaited<ReturnType<typeof runAgent>>;
+    try {
+      result = await runAgent(data, process.env["GEMINI_API_KEY"]);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      console.error("[ExpertAI coding agent provider failure]", detail);
+      if (/Qwen\\/Ollama|Groq|Gemini|OpenRouter|Mistral|Cloudflare|HTTP 4\\d\\d|HTTP 5\\d\\d|fetch failed|timed out|timeout/i.test(detail)) {
+        throw new Error("ExpertAI is temporarily unavailable. Your existing project files were not replaced. Please retry shortly.");
+      }
+      throw error;
+    }
     if (!isAdmin) {
       const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
       if (creditError) throw new Error(creditError.message);
