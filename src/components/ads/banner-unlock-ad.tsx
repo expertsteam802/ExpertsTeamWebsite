@@ -168,6 +168,11 @@ export function BannerUnlockAd({
           </span>
         )}
       </div>
+      <div className="mt-2 text-right">
+        <a href="/contact?topic=ad-report" className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground">
+          Report an inappropriate ad
+        </a>
+      </div>
     </section>
   );
 }
