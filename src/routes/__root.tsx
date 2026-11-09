@@ -13,6 +13,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Bot } from "lucide-react";
 
 import { ChrisAiChat } from "@/components/chris-ai";
+import { SiteTextEditor } from "@/components/site-text-editor";
 import {
   Dialog,
   DialogContent,
@@ -278,6 +279,7 @@ function RootContent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <Toaster richColors position="top-center" />
+      <SiteTextEditor />
 
       <Dialog open={Boolean(runtimeError)} onOpenChange={(open) => !open && setRuntimeError(null)}>
         <DialogContent>
