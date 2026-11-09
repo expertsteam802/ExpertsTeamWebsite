@@ -71,9 +71,11 @@ export function BannerUnlockAd({
     };`;
 
     let unlockedWithoutAd = false;
+    let loadFallback: number | undefined;
     const unlockWithoutAd = () => {
       if (unlockedWithoutAd || completedRef.current) return;
       unlockedWithoutAd = true;
+      if (loadFallback !== undefined) window.clearTimeout(loadFallback);
       completedRef.current = true;
       setAdUnavailable(true);
       setFinished(true);
@@ -82,7 +84,7 @@ export function BannerUnlockAd({
     const detectCreative = () => {
       if (creative.querySelector("iframe")) {
         setAdReady(true);
-        window.clearTimeout(loadFallback);
+        if (loadFallback !== undefined) window.clearTimeout(loadFallback);
       }
     };
     const creativeObserver = new MutationObserver(detectCreative);
@@ -106,10 +108,10 @@ export function BannerUnlockAd({
     // Only start the countdown after a real iframe creative appears.
     // If the network is blocked or has no fill, unlock transparently rather than
     // pretending an ad was shown or trapping the member behind an empty slot.
-    const loadFallback = window.setTimeout(unlockWithoutAd, 15000);
+    loadFallback = window.setTimeout(unlockWithoutAd, 15000);
 
     return () => {
-      window.clearTimeout(loadFallback);
+      if (loadFallback !== undefined) window.clearTimeout(loadFallback);
       observer.disconnect();
       creativeObserver.disconnect();
       slot.replaceChildren();
