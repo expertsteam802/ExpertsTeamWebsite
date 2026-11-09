@@ -1,8 +1,20 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
-  Compass, GraduationCap, Users, Sparkles, MessageCircle, Gamepad2,
-  FolderKanban, Video, Images, Info, Mail, CreditCard, LockKeyhole, Shield,
+  Compass,
+  GraduationCap,
+  Users,
+  Sparkles,
+  MessageCircle,
+  Gamepad2,
+  FolderKanban,
+  Video,
+  Images,
+  Info,
+  Mail,
+  CreditCard,
+  LockKeyhole,
+  Shield,
 } from "lucide-react";
 import { SiteHeader } from "@/components/layout/site-header";
 import { useAuth } from "@/hooks/use-auth";
@@ -35,37 +47,66 @@ export function PageShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="et-shell relative flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-[#07090d] text-[#f2f0e9]">
-      <div aria-hidden="true" className="et-cinema-backdrop absolute inset-0" style={{ backgroundImage: `linear-gradient(112deg,rgba(7,9,13,.92),rgba(7,9,13,.78) 48%,rgba(7,9,13,.9)),url("${background}")` }} />
+      <div
+        aria-hidden="true"
+        className="et-cinema-backdrop absolute inset-0"
+        style={{
+          backgroundImage: `linear-gradient(112deg,rgba(7,9,13,.92),rgba(7,9,13,.78) 48%,rgba(7,9,13,.9)),url("${background}")`,
+        }}
+      />
       <div aria-hidden="true" className="et-grain pointer-events-none absolute inset-0" />
       <SiteHeader />
       {settings.banner_image_url && (
         <div className="relative z-10 shrink-0 overflow-hidden border-b border-white/10">
-          <img src={settings.banner_image_url} alt={`${settings.site_name} banner`} className="max-h-24 w-full object-cover object-center" />
+          <img
+            src={settings.banner_image_url}
+            alt={`${settings.site_name} banner`}
+            className="max-h-24 w-full object-cover object-center"
+          />
         </div>
       )}
       <main className="et-main relative z-10 min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
         <div className="et-page-content min-h-full">{children}</div>
       </main>
       <footer className="relative z-20 shrink-0 border-t border-blue-400/20 bg-[#080d18]/95 shadow-[0_-12px_40px_rgba(0,0,0,.28)] backdrop-blur-2xl">
-        <nav aria-label="Primary bottom navigation" className="mx-auto flex max-w-[1680px] items-center justify-start gap-1 overflow-x-auto border-b border-white/[0.07] px-3 py-2 sm:justify-center sm:px-5">
+        <nav
+          aria-label="Primary bottom navigation"
+          className="mx-auto flex max-w-[1680px] items-center justify-start gap-1 overflow-x-auto border-b border-white/[0.07] px-3 py-2 sm:justify-center sm:px-5"
+        >
           {primaryLinks.map((item) => (
-            <Link key={item.to} to={item.to} className="inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-semibold text-white/65 transition hover:bg-blue-400/10 hover:text-blue-200">
-              <item.icon className="h-3.5 w-3.5" />{item.label}
+            <Link
+              key={item.to}
+              to={item.to}
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-semibold text-white/65 transition hover:bg-blue-400/10 hover:text-blue-200"
+            >
+              <item.icon className="h-3.5 w-3.5" />
+              {item.label}
             </Link>
           ))}
         </nav>
         <div className="mx-auto flex max-w-[1680px] flex-col gap-2 px-3 py-2.5 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
-          <nav aria-label="More navigation" className="flex items-center justify-start gap-1 overflow-x-auto lg:flex-1">
+          <nav
+            aria-label="More navigation"
+            className="flex items-center justify-start gap-1 overflow-x-auto lg:flex-1"
+          >
             {secondaryLinks.map((item) => (
-              <Link key={item.to} to={item.to} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-medium text-white/45 transition hover:bg-white/[0.06] hover:text-blue-200">
-                <item.icon className="h-3 w-3" />{item.label}
+              <Link
+                key={item.to}
+                to={item.to}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-medium text-white/45 transition hover:bg-white/[0.06] hover:text-blue-200"
+              >
+                <item.icon className="h-3 w-3" />
+                {item.label}
               </Link>
             ))}
           </nav>
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-white/[0.06] pt-2 text-[9px] font-semibold tracking-[.14em] text-white/35 lg:border-0 lg:pt-0">
             <span>EXPERTSTEAM · DIGITAL COMMONS</span>
             <span>BUILT BY CHRIS EXPERT</span>
-            <span className="inline-flex items-center gap-1.5"><i className="h-1.5 w-1.5 rounded-full bg-blue-400 shadow-[0_0_9px_#4d8dff]" /> SYSTEM READY</span>
+            <span className="inline-flex items-center gap-1.5">
+              <i className="h-1.5 w-1.5 rounded-full bg-blue-400 shadow-[0_0_9px_#4d8dff]" /> SYSTEM
+              READY
+            </span>
           </div>
         </div>
       </footer>

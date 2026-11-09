@@ -301,16 +301,36 @@ function AdminPage() {
         ai_free_credits: String(settings.ai_free_credits ?? 25),
         payout_account: settings.payout_account ?? "",
         navigation_labels_json: (() => {
-          const root = settings.site_branding_settings && typeof settings.site_branding_settings === "object" && !Array.isArray(settings.site_branding_settings)
-            ? settings.site_branding_settings as Record<string, unknown>
-            : {};
+          const root =
+            settings.site_branding_settings &&
+            typeof settings.site_branding_settings === "object" &&
+            !Array.isArray(settings.site_branding_settings)
+              ? (settings.site_branding_settings as Record<string, unknown>)
+              : {};
           const saved = root.siteNavigation;
-          return JSON.stringify(saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {
-            home: "Home", learn: "Learn", community: "Community", expertai: "ExpertAI",
-            messages: "Messages", discover: "Discover", explore: "Explore all spaces",
-            workspace: "Workspace & projects", videos: "Creator videos", showcase: "Project showcase",
-            about: "About", contact: "Contact", plans: "Plans", vault: "Personal Vault", admin: "Admin",
-          }, null, 2);
+          return JSON.stringify(
+            saved && typeof saved === "object" && !Array.isArray(saved)
+              ? saved
+              : {
+                  home: "Home",
+                  learn: "Learn",
+                  community: "Community",
+                  expertai: "ExpertAI",
+                  messages: "Messages",
+                  discover: "Discover",
+                  explore: "Explore all spaces",
+                  workspace: "Workspace & projects",
+                  videos: "Creator videos",
+                  showcase: "Project showcase",
+                  about: "About",
+                  contact: "Contact",
+                  plans: "Plans",
+                  vault: "Personal Vault",
+                  admin: "Admin",
+                },
+            null,
+            2,
+          );
         })(),
       });
     }
@@ -329,19 +349,32 @@ function AdminPage() {
           throw new Error("Navigation labels must be a JSON object.");
         }
         const entries = Object.entries(parsed as Record<string, unknown>);
-        if (entries.some(([key, value]) => !/^[a-z_]+$/.test(key) || typeof value !== "string" || value.trim().length > 32)) {
+        if (
+          entries.some(
+            ([key, value]) =>
+              !/^[a-z_]+$/.test(key) || typeof value !== "string" || value.trim().length > 32,
+          )
+        ) {
           throw new Error("Each navigation label must be text (maximum 32 characters).");
         }
-        navigationLabels = Object.fromEntries(entries.map(([key, value]) => [key, (value as string).trim()]));
+        navigationLabels = Object.fromEntries(
+          entries.map(([key, value]) => [key, (value as string).trim()]),
+        );
       } catch (error) {
         throw error instanceof Error ? error : new Error("Navigation labels JSON is invalid.");
       }
-      const existingBranding = settings.site_branding_settings && typeof settings.site_branding_settings === "object" && !Array.isArray(settings.site_branding_settings)
-        ? settings.site_branding_settings as Record<string, unknown>
-        : {};
-      const existingSiteBranding = existingBranding.siteBranding && typeof existingBranding.siteBranding === "object" && !Array.isArray(existingBranding.siteBranding)
-        ? existingBranding.siteBranding as Record<string, unknown>
-        : {};
+      const existingBranding =
+        settings.site_branding_settings &&
+        typeof settings.site_branding_settings === "object" &&
+        !Array.isArray(settings.site_branding_settings)
+          ? (settings.site_branding_settings as Record<string, unknown>)
+          : {};
+      const existingSiteBranding =
+        existingBranding.siteBranding &&
+        typeof existingBranding.siteBranding === "object" &&
+        !Array.isArray(existingBranding.siteBranding)
+          ? (existingBranding.siteBranding as Record<string, unknown>)
+          : {};
       if (!Number.isInteger(freeCredits) || freeCredits < 0 || freeCredits > 100000)
         throw new Error("Free AI credits must be between 0 and 100,000.");
       if (!Number.isFinite(studioPrice) || studioPrice < 0.01 || studioPrice > 1000)
@@ -1099,7 +1132,8 @@ function AdminPage() {
                   <div>
                     <h2 className="font-display text-lg font-semibold">Navigation labels</h2>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Rename the main tabs and the links shown beneath them in the bottom navigation. Keep the JSON keys unchanged; edit only the text values.
+                      Rename the main tabs and the links shown beneath them in the bottom
+                      navigation. Keep the JSON keys unchanged; edit only the text values.
                     </p>
                   </div>
                   {form ? (
@@ -1107,20 +1141,29 @@ function AdminPage() {
                       <Textarea
                         rows={14}
                         value={form.navigation_labels_json}
-                        onChange={(event) => setForm({ ...form, navigation_labels_json: event.target.value })}
+                        onChange={(event) =>
+                          setForm({ ...form, navigation_labels_json: event.target.value })
+                        }
                         className="font-mono text-xs"
                         aria-label="Navigation label settings"
                       />
-                      <Button onClick={() => saveSettings.mutate()} disabled={saveSettings.isPending}>
+                      <Button
+                        onClick={() => saveSettings.mutate()}
+                        disabled={saveSettings.isPending}
+                      >
                         {saveSettings.isPending ? "Saving…" : "Save navigation labels"}
                       </Button>
                     </>
-                  ) : <p className="text-sm text-muted-foreground">Loading settings…</p>}
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Loading settings…</p>
+                  )}
                 </Card>
                 <Card className="max-w-3xl gap-3 p-6">
                   <h2 className="font-display text-lg font-semibold">Edit website text</h2>
                   <p className="text-sm leading-6 text-muted-foreground">
-                    On any website page, use the blue “Edit site text” control to turn on editing, then select a heading, paragraph, or label to change it. Your changes are saved in the site settings and reused wherever that same website text appears.
+                    On any website page, use the blue “Edit site text” control to turn on editing,
+                    then select a heading, paragraph, or label to change it. Your changes are saved
+                    in the site settings and reused wherever that same website text appears.
                   </p>
                 </Card>
               </TabsContent>

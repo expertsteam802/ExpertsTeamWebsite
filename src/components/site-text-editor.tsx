@@ -19,7 +19,9 @@ function applySiteCopy(copy: Record<string, string>) {
   let current = walker.nextNode() as Text | null;
   while (current) {
     const parent = current.parentElement;
-    const excluded = parent?.closest("script,style,textarea,input,select,option,code,pre,svg,[contenteditable=true],[data-site-copy-ignore]");
+    const excluded = parent?.closest(
+      "script,style,textarea,input,select,option,code,pre,svg,[contenteditable=true],[data-site-copy-ignore]",
+    );
     if (!excluded && current.nodeValue?.trim()) {
       const source = originalText.get(current) ?? current.nodeValue;
       originalText.set(current, source);
@@ -63,11 +65,15 @@ export function SiteTextEditor() {
       let element = target instanceof HTMLElement ? target : target?.parentElement;
       let textNode: Text | null = null;
       while (element && !textNode) {
-        const excluded = element.closest("script,style,textarea,input,select,option,code,pre,svg,[contenteditable=true],[data-site-copy-ignore]");
+        const excluded = element.closest(
+          "script,style,textarea,input,select,option,code,pre,svg,[contenteditable=true],[data-site-copy-ignore]",
+        );
         if (excluded) return;
-        textNode = Array.from(element.childNodes).find(
-          (node): node is Text => node.nodeType === Node.TEXT_NODE && Boolean(node.textContent?.trim()),
-        ) ?? null;
+        textNode =
+          Array.from(element.childNodes).find(
+            (node): node is Text =>
+              node.nodeType === Node.TEXT_NODE && Boolean(node.textContent?.trim()),
+          ) ?? null;
         element = element.parentElement;
       }
       if (!textNode) return;
@@ -84,11 +90,20 @@ export function SiteTextEditor() {
       }
       setSaving(true);
       try {
-        const current = settings.site_branding_settings && typeof settings.site_branding_settings === "object" && !Array.isArray(settings.site_branding_settings)
-          ? settings.site_branding_settings as Record<string, Json>
-          : {};
-        const next = { ...current, siteCopy: { ...settings.site_copy, [key]: replacement.trim() } } as Json;
-        const { error } = await supabase.from("site_settings").update({ site_branding_settings: next }).eq("id", settings.id);
+        const current =
+          settings.site_branding_settings &&
+          typeof settings.site_branding_settings === "object" &&
+          !Array.isArray(settings.site_branding_settings)
+            ? (settings.site_branding_settings as Record<string, Json>)
+            : {};
+        const next = {
+          ...current,
+          siteCopy: { ...settings.site_copy, [key]: replacement.trim() },
+        } as Json;
+        const { error } = await supabase
+          .from("site_settings")
+          .update({ site_branding_settings: next })
+          .eq("id", settings.id);
         if (error) throw error;
         await queryClient.invalidateQueries({ queryKey: ["site-settings"] });
         toast.success("Website text saved.");
@@ -110,16 +125,16 @@ export function SiteTextEditor() {
         body.et-site-copy-editing :is(h1,h2,h3,h4,p,a,button,span,label,li):not([data-site-copy-ignore]) { cursor: text !important; }
         body.et-site-copy-editing :is(h1,h2,h3,h4,p,a,button,span,label,li):not([data-site-copy-ignore]):hover { outline: 1px dashed rgba(77,141,255,.8); outline-offset: 3px; border-radius: 3px; }
       `}</style>
-    <button
-      type="button"
-      data-site-copy-ignore="true"
-      onClick={() => setEditing((value) => !value)}
-      aria-pressed={editing}
-      className="fixed bottom-28 left-4 z-[120] inline-flex items-center gap-2 rounded-full border border-blue-300/30 bg-[#0b1730]/95 px-4 py-2.5 text-xs font-semibold text-blue-100 shadow-xl backdrop-blur-xl transition hover:bg-[#12264a]"
-    >
-      {editing ? <X className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
-      {saving ? "Saving…" : editing ? "Exit text editing" : "Edit site text"}
-    </button>
+      <button
+        type="button"
+        data-site-copy-ignore="true"
+        onClick={() => setEditing((value) => !value)}
+        aria-pressed={editing}
+        className="fixed bottom-28 left-4 z-[120] inline-flex items-center gap-2 rounded-full border border-blue-300/30 bg-[#0b1730]/95 px-4 py-2.5 text-xs font-semibold text-blue-100 shadow-xl backdrop-blur-xl transition hover:bg-[#12264a]"
+      >
+        {editing ? <X className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+        {saving ? "Saving…" : editing ? "Exit text editing" : "Edit site text"}
+      </button>
     </>
   );
 }

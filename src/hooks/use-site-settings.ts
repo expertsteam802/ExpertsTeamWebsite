@@ -52,22 +52,34 @@ export function useSiteSettings() {
     branding && typeof branding === "object" && !Array.isArray(branding)
       ? (branding as Record<string, Json>)
       : {};
-  const navigationValue = data?.site_branding_settings &&
+  const navigationValue =
+    data?.site_branding_settings &&
     typeof data.site_branding_settings === "object" &&
     !Array.isArray(data.site_branding_settings)
       ? (data.site_branding_settings as Record<string, Json>).siteNavigation
       : null;
-  const copyValue = data?.site_branding_settings &&
+  const copyValue =
+    data?.site_branding_settings &&
     typeof data.site_branding_settings === "object" &&
     !Array.isArray(data.site_branding_settings)
       ? (data.site_branding_settings as Record<string, Json>).siteCopy
       : null;
-  const navigationLabels = navigationValue && typeof navigationValue === "object" && !Array.isArray(navigationValue)
-    ? Object.fromEntries(Object.entries(navigationValue).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
-    : {};
-  const siteCopy = copyValue && typeof copyValue === "object" && !Array.isArray(copyValue)
-    ? Object.fromEntries(Object.entries(copyValue).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
-    : {};
+  const navigationLabels =
+    navigationValue && typeof navigationValue === "object" && !Array.isArray(navigationValue)
+      ? Object.fromEntries(
+          Object.entries(navigationValue).filter(
+            (entry): entry is [string, string] => typeof entry[1] === "string",
+          ),
+        )
+      : {};
+  const siteCopy =
+    copyValue && typeof copyValue === "object" && !Array.isArray(copyValue)
+      ? Object.fromEntries(
+          Object.entries(copyValue).filter(
+            (entry): entry is [string, string] => typeof entry[1] === "string",
+          ),
+        )
+      : {};
   return data
     ? {
         ...data,
