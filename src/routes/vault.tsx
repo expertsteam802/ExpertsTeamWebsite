@@ -288,7 +288,7 @@ function PersonalVaultPage() {
               return (
                 <Card key={file.id} className="flex flex-row items-center gap-3 p-4">
                   <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-                    <Icon className="h-5 w-5" />
+                    {file.entry_type === "link" ? <Link2 className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold" title={file.file_name}>
