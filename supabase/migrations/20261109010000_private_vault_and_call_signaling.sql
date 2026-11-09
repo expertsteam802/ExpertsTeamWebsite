@@ -41,57 +41,32 @@ create policy "Vault owners delete private objects" on storage.objects
     bucket_id='private-vault' and (storage.foldername(name))[1]=(select auth.uid())::text
   );
 
--- Private Realtime signaling: call topics are scoped to an existing direct conversation.
+-- Realtime call topics are private and restricted to authenticated conversation members.
 drop policy if exists "Conversation members receive call signals" on realtime.messages;
 create policy "Conversation members receive call signals"
   on realtime.messages for select to authenticated
   using (
-    realtime.topic() ~ '^call:[0-9a-fA-F-]{36}
-  );
-drop policy if exists "Conversation members send call signals" on realtime.messages;
-create policy "Conversation members send call signals"
-  on realtime.messages for insert to authenticated
-  with check (
-    realtime.topic() like 'call:%'
-    and private.is_direct_conversation_member(split_part(realtime.topic(), ':', 2)::uuid)
-  );
-
--- Permit private voice notes in the existing conversation media bucket.
-update storage.buckets
-set allowed_mime_types = array[
-  'image/jpeg','image/png','image/webp','image/gif',
-  'audio/webm','audio/webm;codecs=opus','audio/mp4','audio/mpeg','audio/ogg','audio/wav'
-]::text[]
-where id='direct-messages';
-
+    realtime.topic() ~ '^call:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
     and private.is_direct_conversation_member(
-      case when split_part(realtime.topic(), ':', 2) ~ '^[0-9a-fA-F-]{36}
-  );
-drop policy if exists "Conversation members send call signals" on realtime.messages;
-create policy "Conversation members send call signals"
-  on realtime.messages for insert to authenticated
-  with check (
-    realtime.topic() like 'call:%'
-    and private.is_direct_conversation_member(split_part(realtime.topic(), ':', 2)::uuid)
-  );
-
--- Permit private voice notes in the existing conversation media bucket.
-update storage.buckets
-set allowed_mime_types = array[
-  'image/jpeg','image/png','image/webp','image/gif',
-  'audio/webm','audio/webm;codecs=opus','audio/mp4','audio/mpeg','audio/ogg','audio/wav'
-]::text[]
-where id='direct-messages';
-
-        then split_part(realtime.topic(), ':', 2)::uuid else null end
+      case
+        when split_part(realtime.topic(), ':', 2) ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+        then split_part(realtime.topic(), ':', 2)::uuid
+        else null
+      end
     )
   );
 drop policy if exists "Conversation members send call signals" on realtime.messages;
 create policy "Conversation members send call signals"
   on realtime.messages for insert to authenticated
   with check (
-    realtime.topic() like 'call:%'
-    and private.is_direct_conversation_member(split_part(realtime.topic(), ':', 2)::uuid)
+    realtime.topic() ~ '^call:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+    and private.is_direct_conversation_member(
+      case
+        when split_part(realtime.topic(), ':', 2) ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+        then split_part(realtime.topic(), ':', 2)::uuid
+        else null
+      end
+    )
   );
 
 -- Permit private voice notes in the existing conversation media bucket.
