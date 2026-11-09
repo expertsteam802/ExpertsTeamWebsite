@@ -231,10 +231,12 @@ async function resolveOllamaConfig(): Promise<OllamaConfig> {
     hostname.endsWith(".local") ||
     hostname.endsWith(".internal") ||
     hostname === "metadata.google.internal";
+  const allowLocalDevelopment =
+    process.env["NODE_ENV"] !== "production" && parsed.protocol === "http:" && localHost;
   if (
-    (parsed.protocol !== "https:" && !(process.env["NODE_ENV"] !== "production" && parsed.protocol === "http:" && localHost)) ||
+    (parsed.protocol !== "https:" && !allowLocalDevelopment) ||
     isIP(hostname) !== 0 ||
-    localHost ||
+    (localHost && !allowLocalDevelopment) ||
     parsed.username ||
     parsed.password ||
     parsed.search ||
@@ -340,7 +342,7 @@ export async function streamOllamaContent(
     const data = line.slice(5).trim();
     if (!data) return false;
     if (data === "[DONE]") {
-      controller.enqueue(encoder.encode("data: [DONE]\\n\\n"));
+      controller.enqueue(encoder.encode("data: [DONE]\n\n"));
       return true;
     }
     try {
@@ -353,7 +355,7 @@ export async function streamOllamaContent(
           encoder.encode(
             "data: " +
               JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] }) +
-              "\\n\\n",
+              "\n\n",
           ),
         );
       }
@@ -371,13 +373,13 @@ export async function streamOllamaContent(
           if (done) {
             buffer += decoder.decode();
             if (buffer.trim()) emitLine(buffer.trim(), controller);
-            controller.enqueue(encoder.encode("data: [DONE]\\n\\n"));
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
             finished = true;
             controller.close();
             return;
           }
           buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split(/\\r?\\n/);
+          const lines = buffer.split(/\r?\n/);
           buffer = lines.pop() ?? "";
           for (const line of lines) {
             if (emitLine(line, controller)) {
