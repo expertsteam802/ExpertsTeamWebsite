@@ -64,7 +64,7 @@ function DashboardPage() {
   const [bio, setBio] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
-  const { data: files } = useQuery({
+  const { data: files, isLoading: filesLoading, isError: filesError, error: filesQueryError } = useQuery({
     queryKey: ["files", "mine", user?.id],
     enabled: !!user,
     queryFn: async () => {
@@ -244,7 +244,15 @@ function DashboardPage() {
             <VaultPanel />
           </TabsContent>
           <TabsContent value="files" className="min-w-0 pt-0">
-            <FileGrid files={files ?? []} />
+            {filesError ? (
+              <Card className="border-destructive/40 p-6 text-sm text-destructive">
+                Your uploaded library could not be loaded: {(filesQueryError as Error).message}. Your files have not been deleted.
+              </Card>
+            ) : filesLoading ? (
+              <Card className="p-8 text-center text-sm text-muted-foreground">Loading your uploads…</Card>
+            ) : (
+              <FileGrid files={files ?? []} />
+            )}
           </TabsContent>
           <TabsContent value="videos" className="min-w-0 pt-0">
             <VideoGrid videos={videos ?? []} />
