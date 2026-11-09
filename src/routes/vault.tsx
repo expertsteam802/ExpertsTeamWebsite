@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Download,
+  ExternalLink,
+  Link2,
   File as FileIcon,
   FileText,
   FolderLock,
@@ -36,6 +38,8 @@ type VaultFile = {
   user_id: string;
   storage_path: string;
   file_name: string;
+  file_url: string | null;
+  entry_type: "file" | "link";
   mime_type: string | null;
   size_bytes: number;
   created_at: string;
@@ -59,6 +63,7 @@ function PersonalVaultPage() {
   const queryClient = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
 
   const {
     data: files = [],
@@ -71,7 +76,7 @@ function PersonalVaultPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("personal_vault_files")
-        .select("id,user_id,storage_path,file_name,mime_type,size_bytes,created_at")
+        .select("id,user_id,storage_path,file_name,file_url,entry_type,mime_type,size_bytes,created_at")
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -127,16 +132,35 @@ function PersonalVaultPage() {
         .eq("id", file.id)
         .eq("user_id", user.id);
       if (rowError) throw rowError;
-      const { error: storageError } = await supabase.storage
-        .from("personal-vault")
-        .remove([file.storage_path]);
-      if (storageError)
-        throw new Error("The file entry was removed, but its stored copy could not be cleaned up.");
+      if (file.storage_path) {
+        const { error: storageError } = await supabase.storage
+          .from("personal-vault")
+          .remove([file.storage_path]);
+        if (storageError)
+          throw new Error("The file entry was removed, but its stored copy could not be cleaned up.");
+      }
     },
     onSuccess: async () => {
       toast.success("File deleted from your vault.");
       await queryClient.invalidateQueries({ queryKey: ["personal-vault", user?.id] });
     },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const addLink = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Sign in to save links.");
+      const normalized = linkUrl.trim();
+      let parsed: URL;
+      try { parsed = new URL(normalized); } catch { throw new Error("Enter a valid web link."); }
+      if (!["https:", "http:"].includes(parsed.protocol)) throw new Error("Only HTTP and HTTPS links are supported.");
+      const { error } = await supabase.from("personal_vault_files").insert({
+        user_id: user.id, storage_path: null, file_name: parsed.hostname + parsed.pathname,
+        file_url: parsed.toString(), entry_type: "link", mime_type: "text/uri-list", size_bytes: 0,
+      });
+      if (error) throw error;
+    },
+    onSuccess: async () => { setLinkUrl(""); toast.success("Link saved to your private vault."); await queryClient.invalidateQueries({ queryKey: ["personal-vault", user?.id] }); },
     onError: (error: Error) => toast.error(error.message),
   });
 
@@ -213,7 +237,7 @@ function PersonalVaultPage() {
                 event.target.value = "";
               }}
             />
-            <Button onClick={() => fileInput.current?.click()} disabled={upload.isPending}>
+            <Button variant="outline" onClick={() => fileInput.current?.click()} disabled={upload.isPending}>
               {upload.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -222,6 +246,17 @@ function PersonalVaultPage() {
               Add files
             </Button>
           </div>
+        </div>
+
+        <Card className="flex flex-col gap-3 p-4 sm:flex-row">
+          <div className="flex flex-1 items-center gap-2">
+            <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <Input value={linkUrl} onChange={(event) => setLinkUrl(event.target.value)} placeholder="Paste a website, document, or download link…" type="url" />
+          </div>
+          <Button onClick={() => addLink.mutate()} disabled={!linkUrl.trim() || addLink.isPending}>
+            <Link2 className="mr-2 h-4 w-4" /> Save link
+          </Button>
+        </Card>
         </div>
 
         <Card className="gap-3 p-4">
