@@ -68,22 +68,42 @@ export function SiteHeader() {
           ))}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-full gap-1.5 px-3 text-sm font-semibold">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-full gap-1.5 px-3 text-sm font-semibold"
+              >
                 <MoreHorizontal className="h-4 w-4" /> More
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>Discover</DropdownMenuLabel>
-              <DropdownMenuItem asChild><Link to="/entertainment">Games, apps & free files</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link to="/ai">ExpertAI Studio</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link to="/messages">Messages</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link to="/projects">Apply to ExpertsTeam</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/entertainment">Games, apps & free files</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/ai">ExpertAI Studio</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/messages">Messages</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/projects">Apply to ExpertsTeam</Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild><Link to="/pricing">Pricing</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link to="/contact">Contact</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/pricing">Pricing</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/contact">Contact</Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild><Link to="/privacy">Privacy</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link to="/terms">Terms of Use</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/privacy">Privacy</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/terms">Terms of Use</Link>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </nav>
@@ -119,8 +139,6 @@ export function SiteHeader() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-
-
 
           {user ? (
             <DropdownMenu>

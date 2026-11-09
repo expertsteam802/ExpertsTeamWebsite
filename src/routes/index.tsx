@@ -31,8 +31,7 @@ export const Route = createFileRoute("/")({
       { title: "ExpertsTeam — Learn, Code, Play & Free Downloads" },
       {
         name: "description",
-        content:
-          "Learn coding, build apps, play games and download free apps, games and files.",
+        content: "Learn coding, build apps, play games and download free apps, games and files.",
       },
       { property: "og:title", content: "ExpertsTeam — Learn, Code, Play & Free Downloads" },
       {
@@ -303,14 +302,22 @@ function Index() {
           </p>
           <p className="mt-3 text-sm leading-7 text-muted-foreground sm:text-base">
             Start with{" "}
-            <Link to="/learn" className="font-medium text-primary hover:underline">coding lessons</Link>,
-            browse{" "}
-            <Link to="/entertainment" className="font-medium text-primary hover:underline">free games, apps and files</Link>,
-            meet creators in the{" "}
-            <Link to="/community" className="font-medium text-primary hover:underline">community</Link>,
-            or open{" "}
-            <Link to="/ai" className="font-medium text-primary hover:underline">ExpertAI Studio</Link>
-            {" "}when you want help building.
+            <Link to="/learn" className="font-medium text-primary hover:underline">
+              coding lessons
+            </Link>
+            , browse{" "}
+            <Link to="/entertainment" className="font-medium text-primary hover:underline">
+              free games, apps and files
+            </Link>
+            , meet creators in the{" "}
+            <Link to="/community" className="font-medium text-primary hover:underline">
+              community
+            </Link>
+            , or open{" "}
+            <Link to="/ai" className="font-medium text-primary hover:underline">
+              ExpertAI Studio
+            </Link>{" "}
+            when you want help building.
           </p>
         </div>
       </section>

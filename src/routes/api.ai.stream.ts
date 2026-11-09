@@ -152,7 +152,10 @@ export const Route = createFileRoute("/api/ai/stream")({
           }
           if (isGuest && parsed.data.attachments?.some((file) => Boolean(file.dataUrl))) {
             return Response.json(
-              { error: "Sign in to use image analysis. Guest chat currently supports text and document questions." },
+              {
+                error:
+                  "Sign in to use image analysis. Guest chat currently supports text and document questions.",
+              },
               { status: 403 },
             );
           }

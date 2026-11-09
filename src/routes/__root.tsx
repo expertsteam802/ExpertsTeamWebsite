@@ -121,10 +121,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "ExpertsTeam — Learn, Code, Play & Free Downloads" },
       {
         name: "description",
-        content:
-          "Learn coding, build apps, play games and download free apps, games and files.",
+        content: "Learn coding, build apps, play games and download free apps, games and files.",
       },
-      
+
       {
         name: "google-site-verification",
         content: "YdY2ygzprZLok7-Cvwg_j29cI4ycK480HDQmh0d-JIg",
@@ -201,7 +200,8 @@ function RootShell({ children }: { children: ReactNode }) {
               name: "ExpertsTeam",
               alternateName: ["Experts Team", "expertsteam.giize.com"],
               url: "https://expertsteam.giize.com/",
-              description: "Learn to code, build apps, play games and download free files with ExpertsTeam.",
+              description:
+                "Learn to code, build apps, play games and download free files with ExpertsTeam.",
             }),
           }}
         />
