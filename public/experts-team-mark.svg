@@ -1,14 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
-  <defs>
-    <linearGradient id="brand" x1="18" y1="14" x2="110" y2="116" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#67E8F9"/>
-      <stop offset=".52" stop-color="#3B82F6"/>
-      <stop offset="1" stop-color="#A78BFA"/>
-    </linearGradient>
-  </defs>
-  <rect x="5" y="5" width="118" height="118" rx="32" fill="#07111F"/>
-  <rect x="5.75" y="5.75" width="116.5" height="116.5" rx="31.25" stroke="url(#brand)" stroke-width="1.5"/>
-  <path d="M43 34H86V47H56V58H81V70H56V81H87V94H43V34Z" fill="url(#brand)"/>
-  <path d="M92 48V80M76 64H108" stroke="#F8FAFC" stroke-width="7" stroke-linecap="round"/>
-  <circle cx="92" cy="64" r="5" fill="#67E8F9"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+<defs>
+ <linearGradient id="metal" x1="72" y1="48" x2="440" y2="468" gradientUnits="userSpaceOnUse"><stop stop-color="#F8FAFC"/><stop offset=".22" stop-color="#7DD3FC"/><stop offset=".55" stop-color="#3B82F6"/><stop offset=".82" stop-color="#8B5CF6"/><stop offset="1" stop-color="#C4B5FD"/></linearGradient>
+ <linearGradient id="core" x1="120" y1="96" x2="390" y2="410" gradientUnits="userSpaceOnUse"><stop stop-color="#172B50"/><stop offset=".55" stop-color="#09172D"/><stop offset="1" stop-color="#050B18"/></linearGradient>
+ <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="matrix(0 270 -270 0 256 230)" gradientUnits="userSpaceOnUse"><stop stop-color="#2563EB" stop-opacity=".38"/><stop offset="1" stop-color="#020617" stop-opacity="0"/></radialGradient>
+ <filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18"/></filter>
+ <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#020617" flood-opacity=".8"/></filter>
+</defs>
+<rect width="512" height="512" rx="112" fill="#050B18"/>
+<rect width="512" height="512" rx="112" fill="url(#glow)"/>
+<circle cx="256" cy="248" r="188" stroke="#38BDF8" stroke-opacity=".18" stroke-width="2"/>
+<circle cx="256" cy="248" r="162" stroke="#818CF8" stroke-opacity=".24" stroke-width="2" stroke-dasharray="3 13"/>
+<circle cx="256" cy="248" r="142" fill="#2563EB" fill-opacity=".25" filter="url(#blur)"/>
+<g filter="url(#shadow)">
+ <path d="M256 61 402 145V313L256 451 110 313V145L256 61Z" fill="url(#core)" stroke="url(#metal)" stroke-width="8"/>
+ <path d="M256 86 380 157V300L256 419 132 300V157L256 86Z" stroke="#BAE6FD" stroke-opacity=".22" stroke-width="2"/>
+ <path d="M177 166H333V208H222V237H315V278H222V307H337V349H177V166Z" fill="url(#metal)"/>
+ <path d="M354 197V317M294 257H414" stroke="#F8FAFC" stroke-width="16" stroke-linecap="round"/>
+ <circle cx="354" cy="257" r="13" fill="#67E8F9"/>
+</g>
+<path d="M256 30V54M256 442V466M76 248H98M414 248H436" stroke="#7DD3FC" stroke-opacity=".75" stroke-width="4" stroke-linecap="round"/>
+<circle cx="256" cy="30" r="5" fill="#E0F2FE"/><circle cx="436" cy="248" r="5" fill="#C4B5FD"/>
 </svg>
