@@ -17,6 +17,7 @@ export function BannerUnlockAd({
   const onUnlockedRef = useRef(onUnlocked);
   const completedRef = useRef(false);
   const [adReady, setAdReady] = useState(false);
+  const [adUnavailable, setAdUnavailable] = useState(false);
   const [remaining, setRemaining] = useState(seconds);
   const [finished, setFinished] = useState(false);
 
@@ -69,12 +70,30 @@ export function BannerUnlockAd({
       'params' : {}
     };`;
 
+    let unlockedWithoutAd = false;
+    const unlockWithoutAd = () => {
+      if (unlockedWithoutAd || completedRef.current) return;
+      unlockedWithoutAd = true;
+      completedRef.current = true;
+      setAdUnavailable(true);
+      setFinished(true);
+      onUnlockedRef.current();
+    };
+    const detectCreative = () => {
+      if (creative.querySelector("iframe")) {
+        setAdReady(true);
+        window.clearTimeout(loadFallback);
+      }
+    };
+    const creativeObserver = new MutationObserver(detectCreative);
+    creativeObserver.observe(creative, { childList: true, subtree: true });
+
     const adScript = document.createElement("script");
     adScript.type = "text/javascript";
     adScript.src = AD_SCRIPT_URL;
     adScript.async = false;
-    adScript.onload = () => setAdReady(true);
-    adScript.onerror = () => setAdReady(true);
+    adScript.onload = detectCreative;
+    adScript.onerror = unlockWithoutAd;
 
     // Keep the exact order: atOptions first, publisher script second.
     creative.appendChild(configScript);
@@ -84,13 +103,15 @@ export function BannerUnlockAd({
     const observer = new ResizeObserver(fitBanner);
     observer.observe(slot);
 
-    // Do not fabricate an ad if the network blocks or has no fill. The
-    // content-unlock fallback still prevents a broken ad from trapping users.
-    const loadFallback = window.setTimeout(() => setAdReady(true), 15000);
+    // Only start the countdown after a real iframe creative appears.
+    // If the network is blocked or has no fill, unlock transparently rather than
+    // pretending an ad was shown or trapping the member behind an empty slot.
+    const loadFallback = window.setTimeout(unlockWithoutAd, 15000);
 
     return () => {
       window.clearTimeout(loadFallback);
       observer.disconnect();
+      creativeObserver.disconnect();
       slot.replaceChildren();
       delete slot.dataset.adsterraMounted;
     };
@@ -128,10 +149,12 @@ export function BannerUnlockAd({
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
           {finished
-            ? "You're all set. Your content is ready."
+            ? adUnavailable
+              ? "No advertisement was available. Your content has been unlocked."
+              : "You're all set. Your content is ready."
             : adReady
               ? "Stay here for a few seconds to unlock this content."
-              : "Loading Adsterra banner…"}
+              : "Waiting for a real Adsterra creative…"}
         </p>
         {finished ? (
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
