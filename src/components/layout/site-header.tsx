@@ -50,60 +50,41 @@ export function SiteHeader() {
           </span>
         </Link>
 
-        <nav
-          className={cn(
-            "hidden min-w-0 flex-1 grid-cols-5 items-stretch gap-1 lg:grid",
-            ALIGN[navAlign],
-          )}
-        >
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              activeOptions={{ exact: item.to === "/" }}
-              className="font-display flex min-w-0 items-center justify-center rounded-lg px-1.5 py-2 text-center text-sm font-semibold tracking-tight leading-tight text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:text-foreground"
-            >
-              {item.label}
-            </Link>
-          ))}
+        <nav className={cn("hidden min-w-0 flex-1 items-center gap-1 lg:flex", ALIGN[navAlign])}>
+          <Link to="/" activeOptions={{ exact: true }} className="rounded-lg px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary data-[status=active]:bg-secondary data-[status=active]:text-foreground">Home</Link>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-full gap-1.5 px-3 text-sm font-semibold"
-              >
-                <MoreHorizontal className="h-4 w-4" /> More
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Discover</DropdownMenuLabel>
-              <DropdownMenuItem asChild>
-                <Link to="/entertainment">Games, apps & free files</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/ai">ExpertAI Studio</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/messages">Messages</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/projects">Apply to ExpertsTeam</Link>
-              </DropdownMenuItem>
+            <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="gap-2 text-sm font-semibold">Discover <MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              <DropdownMenuLabel>Explore & learn</DropdownMenuLabel>
+              <DropdownMenuItem asChild><Link to="/explore">Explore the platform</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/learn">Learn to code</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/community">Community</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/entertainment">Games, apps & free files</Link></DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="gap-2 text-sm font-semibold">Create <MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              <DropdownMenuLabel>Build & contribute</DropdownMenuLabel>
+              <DropdownMenuItem asChild><Link to="/ai">ExpertAI Studio</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/projects">Apply to ExpertsTeam</Link></DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="gap-2 text-sm font-semibold">Connect <MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              <DropdownMenuLabel>Your network</DropdownMenuLabel>
+              <DropdownMenuItem asChild><Link to="/messages">Messages</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/contact">Contact</Link></DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="gap-2 text-sm font-semibold">More <MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem asChild><Link to="/pricing">Pricing</Link></DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/pricing">Pricing</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/contact">Contact</Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/privacy">Privacy</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/terms">Terms of Use</Link>
-              </DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/privacy">Privacy</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/terms">Terms of Use</Link></DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </nav>
@@ -194,39 +175,26 @@ export function SiteHeader() {
       </div>
 
       {open && (
-        <nav className="animate-rise border-t border-border/70 px-4 pb-4 md:hidden">
-          <div className="grid grid-cols-2 gap-1 py-3">
-            {NAV_ITEMS.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                onClick={() => setOpen(false)}
-                activeOptions={{ exact: item.to === "/" }}
-                className="rounded-xl px-3 py-3 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground data-[status=active]:bg-secondary data-[status=active]:text-foreground"
-              >
-                {item.label}
-              </Link>
-            ))}
+        <nav className="animate-rise border-t border-border/70 px-4 pb-5 md:hidden">
+          <div className="grid grid-cols-2 gap-2 py-4">
+            <Link to="/" onClick={() => setOpen(false)} className="rounded-xl border border-border px-3 py-3 text-sm font-semibold">Home</Link>
+            <Link to="/explore" onClick={() => setOpen(false)} className="rounded-xl border border-border px-3 py-3 text-sm font-semibold">Explore</Link>
+            <Link to="/learn" onClick={() => setOpen(false)} className="rounded-xl border border-border px-3 py-3 text-sm font-semibold">Learn</Link>
+            <Link to="/community" onClick={() => setOpen(false)} className="rounded-xl border border-border px-3 py-3 text-sm font-semibold">Community</Link>
           </div>
-          <div className="grid grid-cols-2 gap-1 border-t border-border/70 pt-3">
+          <div className="grid grid-cols-2 gap-2 border-t border-border/70 pt-4">
+            <p className="col-span-2 px-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">Create & connect</p>
             {[
-              { to: "/entertainment", label: "Games, apps & files" },
               { to: "/ai", label: "ExpertAI Studio" },
-              { to: "/messages", label: "Messages" },
               { to: "/projects", label: "Apply to ExpertsTeam" },
+              { to: "/messages", label: "Messages" },
+              { to: "/entertainment", label: "Games, apps & files" },
               { to: "/pricing", label: "Pricing" },
               { to: "/contact", label: "Contact" },
               { to: "/privacy", label: "Privacy" },
               { to: "/terms", label: "Terms of Use" },
             ].map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary"
-              >
-                {item.label}
-              </Link>
+              <Link key={item.to} to={item.to} onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary">{item.label}</Link>
             ))}
           </div>
         </nav>
