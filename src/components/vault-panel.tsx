@@ -39,7 +39,7 @@ export function VaultPanel() {
   const upload = useMutation({
     mutationFn: async () => {
       if (!user || !selected) throw new Error("Choose a file first.");
-      if (selected.size > 200 * 1024 * 1024) throw new Error("Vault files are limited to 200 MB.");
+      if (selected.size > 100 * 1024 * 1024) throw new Error("Vault files are limited to 100 MB.");
       const safeName = selected.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-180);
       const path = user.id + "/" + crypto.randomUUID() + "-" + safeName;
       const { error: storageError } = await supabase.storage.from("personal-vault").upload(path, selected, {
@@ -96,7 +96,7 @@ export function VaultPanel() {
       </div>
       <Card className="flex flex-wrap items-end gap-3 p-4">
         <div className="min-w-0 flex-1 space-y-2">
-          <label className="text-sm font-medium" htmlFor="vault-upload">Add a file (up to 200 MB)</label>
+          <label className="text-sm font-medium" htmlFor="vault-upload">Add a file (up to 100 MB)</label>
           <Input id="vault-upload" type="file" onChange={e => setSelected(e.target.files?.[0] ?? null)} />
           {selected && <p className="text-xs text-muted-foreground">{selected.name} · {formatBytes(selected.size)}</p>}
         </div>
