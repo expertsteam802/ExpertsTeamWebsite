@@ -11,7 +11,7 @@ import type { Json } from "@/integrations/supabase/types";
 const originalText = new WeakMap<Text, string>();
 
 function textKey(value: string) {
-  return value.replace(/\\s+/g, " ").trim();
+  return value.replace(/\s+/g, " ").trim();
 }
 
 function applySiteCopy(copy: Record<string, string>) {
@@ -25,8 +25,8 @@ function applySiteCopy(copy: Record<string, string>) {
       originalText.set(current, source);
       const key = textKey(source);
       const replacement = copy[key];
-      const leading = source.match(/^\\s*/)?.[0] ?? "";
-      const trailing = source.match(/\\s*$/)?.[0] ?? "";
+      const leading = source.match(/^\s*/)?.[0] ?? "";
+      const trailing = source.match(/\s*$/)?.[0] ?? "";
       const next = replacement === undefined ? source : leading + replacement + trailing;
       if (current.nodeValue !== next) current.nodeValue = next;
     }
