@@ -262,25 +262,11 @@ export const Route = createFileRoute("/api/ai/stream")({
           const compactedContents = compactSmartContents(contents);
           const systemText =
             "You are ExpertAI, a practical assistant for developers and creators on ExpertsTeam. Answer the exact question first. Keep ordinary answers brief: usually 1–5 short sentences or a few bullets. Expand only when the user asks for detail, a tutorial, a plan, or code. Avoid long introductions, repeated conclusions, filler, and unnecessary jargon. For code requests, provide complete usable code and explain only the key integration steps. Ask one focused clarification only when essential. Be friendly, accurate, and honest about what you have not tested.";
-          const configuredProviderOrder = (
-            process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter"
-          )
-            .split(",")
-            .map((item) => item.trim().toLowerCase())
-            .filter((item) => ["groq", "gemini", "openrouter"].includes(item));
-          const providerOrder = [
-            ...new Set([
-              "groq",
-              ...configuredProviderOrder.filter((item) => item !== "groq"),
-              "gemini",
-              "openrouter",
-            ]),
-          ];
+          // Guests use the OpenRouter free/normal API path only.
+          // Signed-in members use Gemini first, with Groq as the only fallback.
+          const orderedProviders = isGuest ? ["openrouter"] : ["gemini", "groq"];
           const geminiKey = process.env["GEMINI_API_KEY"]?.trim();
           const hasImageAttachments = attachments.some((file) => Boolean(file.dataUrl));
-          const orderedProviders = hasImageAttachments
-            ? ["gemini", ...providerOrder.filter((provider) => provider !== "gemini")]
-            : providerOrder;
 
           // Prefer Gemini for image inputs because the text-only providers cannot inspect them.
           if (geminiKey && orderedProviders[0] === "gemini" && !isProviderCoolingDown("gemini")) {
