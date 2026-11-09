@@ -1,6 +1,6 @@
--- Authenticated WebRTC call signaling and audio voice-note storage.
--- The Personal Vault schema and bucket are managed by the existing
--- personal_vault_private_storage migration; do not create a second Vault.
+-- Authenticated WebRTC call signaling.
+-- The Personal Vault schema and both storage buckets already exist; this
+-- migration adds only private call-channel authorization policies.
 
 drop policy if exists "Conversation members receive call signals" on realtime.messages;
 create policy "Conversation members receive call signals"
@@ -31,13 +31,3 @@ create policy "Conversation members send call signals"
     )
   );
 
--- Extend the existing direct-message MIME allowlist without replacing it.
-update storage.buckets
-set allowed_mime_types = (
-  select array_agg(distinct mime_type)
-  from unnest(coalesce(allowed_mime_types, '{}'::text[]) || array[
-    'audio/webm', 'audio/webm;codecs=opus', 'audio/mp4',
-    'audio/mpeg', 'audio/ogg', 'audio/wav'
-  ]) as mime_type
-)
-where id = 'direct-messages';
