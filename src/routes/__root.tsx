@@ -118,11 +118,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       // YouTube requires a Referer header for embedded playback (error 153).
       { name: "referrer", content: "strict-origin-when-cross-origin" },
-      { title: "ExpertsTeam — Learn, Code, Play & Build Free Apps" },
+      { title: "ExpertsTeam — Learn, Code, Play & Free Downloads" },
       {
         name: "description",
         content:
-          "Learn to code, build apps, play games and download free files. Join ExpertsTeam to learn, create and connect.",
+          "Learn coding, build apps, play games and download free apps, games and files.",
       },
       
       {
@@ -142,7 +142,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "twitter:description",
         content:
-          "ExpertsTeam is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community.",
+          "Learn coding, build apps, play games and download free apps, games and files with ExpertsTeam.",
       },
       { property: "og:image", content: "https://expertsteam.giize.com/social-preview.png" },
       { property: "og:image:width", content: "1200" },
