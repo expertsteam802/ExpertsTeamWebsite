@@ -326,6 +326,7 @@ export async function streamOllamaContent(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Accept: "text/event-stream",
       "bypass-tunnel-reminder": "true",
       ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
     },
