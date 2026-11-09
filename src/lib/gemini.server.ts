@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import { compactSmartRequest } from "./smart-processing.server";
 
 export type GeminiContent = {
@@ -181,6 +182,225 @@ async function callCloudflare(request: GeminiRequest): Promise<GeminiResponse> {
   return asGeminiResponse(data.result.response);
 }
 
+
+type OllamaConfig = { endpoint: string; model: string; apiKey?: string } | null;
+let ollamaConfigCache: { expiresAt: number; value: OllamaConfig } | null = null;
+
+async function resolveOllamaConfig(): Promise<OllamaConfig> {
+  if (ollamaConfigCache && ollamaConfigCache.expiresAt > Date.now()) {
+    return ollamaConfigCache.value;
+  }
+
+  const supabaseUrl = (process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"] || "").trim();
+  const serviceKey = (
+    process.env["SUPABASE_SECRET_KEY"] ||
+    process.env["SUPABASE_SERVICE_ROLE_KEY"] ||
+    process.env["SERVICE_ROLE_KEY"] ||
+    ""
+  ).trim();
+  if (!supabaseUrl || !serviceKey) {
+    ollamaConfigCache = { value: null, expiresAt: Date.now() + 15000 };
+    return null;
+  }
+
+  const settingsUrl = new URL("/rest/v1/site_settings?select=ad_settings&id=eq.1", supabaseUrl);
+  const response = await fetch(settingsUrl, {
+    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!response.ok) throw new Error(`Ollama configuration lookup failed (HTTP ${response.status}).`);
+  const rows = (await response.json()) as Array<{
+    ad_settings?: { siteBranding?: { ollama_url?: unknown } } | null;
+  }>;
+  const rawEndpoint = rows[0]?.ad_settings?.siteBranding?.ollama_url;
+  if (typeof rawEndpoint !== "string" || !rawEndpoint.trim()) {
+    ollamaConfigCache = { value: null, expiresAt: Date.now() + 15000 };
+    return null;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(rawEndpoint.trim());
+  } catch {
+    throw new Error("The configured Qwen/Ollama endpoint is not a valid URL.");
+  }
+  const hostname = parsed.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  const localHost =
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".local") ||
+    hostname.endsWith(".internal") ||
+    hostname === "metadata.google.internal";
+  if (
+    (parsed.protocol !== "https:" && !(process.env["NODE_ENV"] !== "production" && parsed.protocol === "http:" && localHost)) ||
+    isIP(hostname) !== 0 ||
+    localHost ||
+    parsed.username ||
+    parsed.password ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw new Error("The configured Qwen/Ollama endpoint must be a public HTTPS URL without credentials or query parameters.");
+  }
+
+  const basePath = parsed.pathname.replace(/\/+$/, "");
+  if (basePath.endsWith("/v1/chat/completions")) {
+    parsed.pathname = basePath;
+  } else if (basePath.endsWith("/v1")) {
+    parsed.pathname = basePath + "/chat/completions";
+  } else {
+    parsed.pathname = basePath + "/v1/chat/completions";
+  }
+  parsed.search = "";
+  parsed.hash = "";
+
+  const value: OllamaConfig = {
+    endpoint: parsed.toString(),
+    model: process.env["OLLAMA_MODEL"]?.trim() || "qwen2.5:7b-instruct",
+    ...(process.env["OLLAMA_API_KEY"]?.trim()
+      ? { apiKey: process.env["OLLAMA_API_KEY"].trim() }
+      : {}),
+  };
+  // A short cache lets an admin change only the Supabase URL setting without a redeploy.
+  ollamaConfigCache = { value, expiresAt: Date.now() + 15000 };
+  return value;
+}
+
+async function callOllama(request: GeminiRequest): Promise<GeminiResponse> {
+  const config = await resolveOllamaConfig();
+  if (!config) throw new Error("not_configured");
+  const response = await fetch(config.endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
+    },
+    body: JSON.stringify({
+      model: config.model,
+      messages: openAiMessages(request),
+      max_tokens: Math.min(request.generationConfig?.maxOutputTokens ?? 1800, 2400),
+      stream: false,
+      ...(request.generationConfig?.responseMimeType === "application/json"
+        ? { response_format: { type: "json_object" } }
+        : {}),
+    }),
+    signal: AbortSignal.timeout(60000),
+  });
+  if (!response.ok) {
+    const detail = (await response.text()).slice(0, 300);
+    throw new Error(`Qwen/Ollama HTTP ${response.status}: ${detail}`);
+  }
+  const data = (await response.json()) as {
+    choices?: { message?: { content?: string | null } }[];
+  };
+  const output = data.choices?.[0]?.message?.content;
+  if (!output) throw new Error("Qwen/Ollama returned an empty response.");
+  return asGeminiResponse(output);
+}
+
+/** Stream OpenAI-compatible Qwen/Ollama deltas as the Gemini-shaped SSE events used by ExpertAI. */
+export async function streamOllamaContent(
+  request: GeminiRequest,
+  signal?: AbortSignal,
+): Promise<ReadableStream<Uint8Array> | null> {
+  if (request.contents.some((item) => item.parts.some((part) => Boolean(part.inlineData?.data)))) {
+    return null;
+  }
+  const config = await resolveOllamaConfig();
+  if (!config) return null;
+  const upstream = await fetch(config.endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
+    },
+    body: JSON.stringify({
+      model: config.model,
+      messages: openAiMessages(compactSmartRequest(request)),
+      max_tokens: Math.min(request.generationConfig?.maxOutputTokens ?? 700, 1800),
+      stream: true,
+    }),
+    signal: signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(65000)])
+      : AbortSignal.timeout(65000),
+  });
+  if (!upstream.ok) {
+    const detail = (await upstream.text()).slice(0, 300);
+    throw new Error(`Qwen/Ollama HTTP ${upstream.status}: ${detail}`);
+  }
+  if (!upstream.body) throw new Error("Qwen/Ollama did not return a streaming response.");
+
+  const reader = upstream.body.getReader();
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+  let buffer = "";
+  let finished = false;
+  const emitLine = (line: string, controller: ReadableStreamDefaultController<Uint8Array>) => {
+    if (!line.startsWith("data:")) return false;
+    const data = line.slice(5).trim();
+    if (!data) return false;
+    if (data === "[DONE]") {
+      controller.enqueue(encoder.encode("data: [DONE]\\n\\n"));
+      return true;
+    }
+    try {
+      const event = JSON.parse(data) as {
+        choices?: { delta?: { content?: string | null } }[];
+      };
+      const text = event.choices?.[0]?.delta?.content;
+      if (typeof text === "string" && text) {
+        controller.enqueue(
+          encoder.encode(
+            "data: " +
+              JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] }) +
+              "\\n\\n",
+          ),
+        );
+      }
+    } catch {
+      // Ignore non-JSON SSE lines; the next complete data event remains usable.
+    }
+    return false;
+  };
+
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        while (!finished) {
+          const { done, value } = await reader.read();
+          if (done) {
+            buffer += decoder.decode();
+            if (buffer.trim()) emitLine(buffer.trim(), controller);
+            controller.enqueue(encoder.encode("data: [DONE]\\n\\n"));
+            finished = true;
+            controller.close();
+            return;
+          }
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split(/\\r?\\n/);
+          buffer = lines.pop() ?? "";
+          for (const line of lines) {
+            if (emitLine(line, controller)) {
+              finished = true;
+              await reader.cancel();
+              controller.close();
+              return;
+            }
+          }
+          if (controller.desiredSize !== null && controller.desiredSize <= 0) return;
+        }
+      } catch (error) {
+        finished = true;
+        controller.error(error);
+      }
+    },
+    async cancel(reason) {
+      finished = true;
+      await reader.cancel(reason);
+    },
+  });
+}
+
 export async function generateGeminiContent(
   request: GeminiRequest,
   apiKey?: string,
@@ -197,11 +417,11 @@ export async function generateGeminiContent(
   }
   const requestedOrder =
     providerOrder ??
-    (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
+    (process.env["AI_PROVIDER_ORDER"] || "ollama,groq,gemini,openrouter")
       .split(",")
       .map((item) => item.trim().toLowerCase())
       .filter(Boolean);
-  const availableProviders = ["groq", "gemini", "openrouter", "mistral", "cloudflare"];
+  const availableProviders = ["ollama", "groq", "gemini", "openrouter", "mistral", "cloudflare"];
   // Use every configured adapter as a fallback; credentials stay server-side.
   const configuredOrder = hasImageReference
     ? ["gemini"]
@@ -238,6 +458,7 @@ export async function generateGeminiContent(
           );
         return (await response.json()) as GeminiResponse;
       }
+      if (provider === "ollama") return await callOllama(activeRequest);
       if (provider === "groq" || provider === "openrouter") {
         return await callOpenAiCompatible(provider, activeRequest);
       }
