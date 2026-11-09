@@ -25,6 +25,7 @@ export function ConversationCall({ conversationId, recipientId, recipientName }:
   const [status,setStatus] = useState<"idle"|"calling"|"incoming"|"connected">("idle");
   const [muted,setMuted] = useState(false);
   const [cameraOff,setCameraOff] = useState(false);
+  const [channelReady,setChannelReady] = useState(false);
 
   function cleanup() {
     peerRef.current?.close(); peerRef.current=null;
@@ -57,15 +58,20 @@ export function ConversationCall({ conversationId, recipientId, recipientName }:
           else pendingIce.current.push(signal.candidate);
         }
       } catch (error) { toast.error(error instanceof Error ? error.message : "Call connection failed."); }
-    }).subscribe();
+    }).subscribe((channelStatus) => {
+      setChannelReady(channelStatus === "SUBSCRIBED");
+      if (channelStatus === "CHANNEL_ERROR" || channelStatus === "TIMED_OUT") {
+        toast.error("Secure call signaling is unavailable. Check your connection and try again.");
+      }
+    });
     channelRef.current=channel;
-    return () => { cleanup(); channelRef.current=null; void supabase.removeChannel(channel); };
+    return () => { setChannelReady(false); cleanup(); channelRef.current=null; void supabase.removeChannel(channel); };
   },[user?.id,conversationId]);
 
   async function preparePeer() {
     if (!user) throw new Error("Sign in to call.");
     const channel=channelRef.current;
-    if (!channel) throw new Error("Call channel is still connecting. Try again in a moment.");
+    if (!channel || !channelReady) throw new Error("Secure call channel is still connecting. Try again in a moment.");
     const stream=await navigator.mediaDevices.getUserMedia({audio:true,video:true});
     localRef.current=stream;
     if (localVideo.current) localVideo.current.srcObject=stream;
@@ -109,10 +115,10 @@ export function ConversationCall({ conversationId, recipientId, recipientName }:
 
   return <Card className="space-y-3 p-3">
     <div className="flex items-center justify-between gap-2"><div><p className="text-sm font-semibold">Video call</p><p className="text-xs text-muted-foreground">{status==="connected"?"Connected":status==="incoming"?"Incoming call":status==="calling"?"Connecting…":"Call "+recipientName}</p></div>
-      {status==="idle" ? <Button size="sm" onClick={()=>void startCall()}><Video className="mr-2 h-4 w-4"/>Start call</Button> : status==="incoming" ? <Button size="sm" onClick={()=>void answerCall()}><Phone className="mr-2 h-4 w-4"/>Answer</Button> : <Button size="sm" variant="destructive" onClick={()=>void hangup()}><PhoneOff className="mr-2 h-4 w-4"/>End</Button>}
+      {status==="idle" ? <Button size="sm" disabled={!channelReady} onClick={()=>void startCall()}><Video className="mr-2 h-4 w-4"/>Start call</Button> : status==="incoming" ? <Button size="sm" onClick={()=>void answerCall()}><Phone className="mr-2 h-4 w-4"/>Answer</Button> : <Button size="sm" variant="destructive" onClick={()=>void hangup()}><PhoneOff className="mr-2 h-4 w-4"/>End</Button>}
     </div>
-    {status!=="idle" && <div className="grid grid-cols-2 gap-2"><video ref={remoteVideo} autoPlay playsInline className="aspect-video w-full rounded-xl bg-black"/><video ref={localVideo} autoPlay muted playsInline className="aspect-video w-full rounded-xl bg-black"/></div>}
-    {status!=="idle" && <div className="flex gap-2"><Button size="icon" variant="outline" aria-label="Toggle microphone" onClick={()=>{const track=localRef.current?.getAudioTracks()[0]; if(track){track.enabled=!track.enabled;setMuted(!track.enabled);}}}>{muted?<MicOff/>:<Mic/>}</Button><Button size="icon" variant="outline" aria-label="Toggle camera" onClick={()=>{const track=localRef.current?.getVideoTracks()[0]; if(track){track.enabled=!track.enabled;setCameraOff(!track.enabled);}}}>{cameraOff?<VideoOff/>:<Video/>}</Button></div>}
+    {status!=="idle" && status!=="incoming" && <div className="grid grid-cols-2 gap-2"><video ref={remoteVideo} autoPlay playsInline className="aspect-video w-full rounded-xl bg-black"/><video ref={localVideo} autoPlay muted playsInline className="aspect-video w-full rounded-xl bg-black"/></div>}
+    {status!=="idle" && status!=="incoming" && <div className="flex gap-2"><Button size="icon" variant="outline" aria-label="Toggle microphone" onClick={()=>{const track=localRef.current?.getAudioTracks()[0]; if(track){track.enabled=!track.enabled;setMuted(!track.enabled);}}}>{muted?<MicOff/>:<Mic/>}</Button><Button size="icon" variant="outline" aria-label="Toggle camera" onClick={()=>{const track=localRef.current?.getVideoTracks()[0]; if(track){track.enabled=!track.enabled;setCameraOff(!track.enabled);}}}>{cameraOff?<VideoOff/>:<Video/>}</Button></div>}
     <p className="text-[11px] text-muted-foreground">Camera and microphone access are required. Some networks require a TURN relay; this connection currently uses public STUN servers.</p>
   </Card>;
 }
