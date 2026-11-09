@@ -2187,7 +2187,9 @@ export function CodeAgent() {
               </p>
             </div>
             <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-3 text-xs leading-5 text-slate-400">
-              Imports up to 400 text files and 3 MB of source text per project (maximum 500 KB per file). Generated folders, binary assets and secret files are skipped. Your GitHub repository is not modified.
+              Imports up to 400 text files and 3 MB of source text per project (maximum 500 KB per
+              file). Generated folders, binary assets and secret files are skipped. Your GitHub
+              repository is not modified.
             </div>
             <Button
               className="w-full bg-white text-slate-950 hover:bg-slate-200"

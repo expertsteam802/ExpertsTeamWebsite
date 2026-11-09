@@ -19,7 +19,10 @@ function sandboxName(projectId: string) {
 
 function validateFiles(files: AgentProjectFiles) {
   const entries = Object.entries(files);
-  if (entries.length > 400) throw new Error("This project contains more than 400 files; the workspace preview limit is 400.");
+  if (entries.length > 400)
+    throw new Error(
+      "This project contains more than 400 files; the workspace preview limit is 400.",
+    );
   let total = 0;
   for (const [path, content] of entries) {
     if (
