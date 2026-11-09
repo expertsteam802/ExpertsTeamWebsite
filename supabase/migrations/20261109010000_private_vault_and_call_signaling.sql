@@ -56,3 +56,11 @@ create policy "Conversation members send call signals"
     realtime.topic() like 'call:%'
     and private.is_direct_conversation_member(split_part(realtime.topic(), ':', 2)::uuid)
   );
+
+-- Permit private voice notes in the existing conversation media bucket.
+update storage.buckets
+set allowed_mime_types = array[
+  'image/jpeg','image/png','image/webp','image/gif',
+  'audio/webm','audio/webm;codecs=opus','audio/mp4','audio/mpeg','audio/ogg','audio/wav'
+]::text[]
+where id='direct-messages';
