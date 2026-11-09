@@ -26,15 +26,23 @@ export function ConversationCall({ conversationId, recipientId, recipientName }:
   const [muted,setMuted] = useState(false);
   const [cameraOff,setCameraOff] = useState(false);
   const [channelReady,setChannelReady] = useState(false);
+  const [localStream,setLocalStream] = useState<MediaStream|null>(null);
+  const [remoteStream,setRemoteStream] = useState<MediaStream|null>(null);
 
   function cleanup() {
     peerRef.current?.close(); peerRef.current=null;
     localRef.current?.getTracks().forEach(track=>track.stop()); localRef.current=null;
     if (localVideo.current) localVideo.current.srcObject=null;
     if (remoteVideo.current) remoteVideo.current.srcObject=null;
+    setLocalStream(null); setRemoteStream(null);
     pendingIce.current=[];
     incomingOffer.current=null;
   }
+
+  useEffect(() => {
+    if (localVideo.current && localStream) localVideo.current.srcObject = localStream;
+    if (remoteVideo.current && remoteStream) remoteVideo.current.srcObject = remoteStream;
+  }, [localStream, remoteStream, status]);
 
   useEffect(() => {
     if (!user || !conversationId) return;
@@ -74,13 +82,13 @@ export function ConversationCall({ conversationId, recipientId, recipientName }:
     if (!channel || !channelReady) throw new Error("Secure call channel is still connecting. Try again in a moment.");
     const stream=await navigator.mediaDevices.getUserMedia({audio:true,video:true});
     localRef.current=stream;
-    if (localVideo.current) localVideo.current.srcObject=stream;
+    setLocalStream(stream);
     const peer=new RTCPeerConnection({iceServers:ICE_SERVERS});
     peerRef.current=peer;
     stream.getTracks().forEach(track=>peer.addTrack(track,stream));
-    peer.ontrack=event=>{if(remoteVideo.current) remoteVideo.current.srcObject=event.streams[0] ?? new MediaStream([event.track]);};
+    peer.ontrack=event=>setRemoteStream(event.streams[0] ?? new MediaStream([event.track]));
     peer.onicecandidate=event=>{if(event.candidate) void channel.send({type:"broadcast",event:"signal",payload:{sender_id:user.id,target_id:recipientId,kind:"ice",candidate:event.candidate.toJSON()}});};
-    peer.onconnectionstatechange=()=>{if(peer.connectionState==="connected") setStatus("connected"); if(["failed","disconnected","closed"].includes(peer.connectionState)) setStatus("idle");};
+    peer.onconnectionstatechange=()=>{if(peer.connectionState==="connected") setStatus("connected"); if(["failed","closed"].includes(peer.connectionState)){cleanup();setStatus("idle");}};
     return {peer,channel};
   }
 
