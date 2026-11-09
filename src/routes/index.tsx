@@ -28,17 +28,17 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ExpertsTeam | Learn, Build, Connect & Create" },
+      { title: "ExpertsTeam — Learn, Code, Play & Download Free Apps" },
       {
         name: "description",
         content:
-          "ExpertsTeam is a developer community and creative platform to learn coding, get answers, build projects, explore creator videos and connect with other makers.",
+          "Learn coding, build apps, play games and download free files. Join ExpertsTeam to learn, create and connect.",
       },
       { property: "og:title", content: "ExpertsTeam | Learn, Build, Connect & Create" },
       {
         property: "og:description",
         content:
-          "Learn to code, get community answers, build projects, explore creator videos and keep your files private with ExpertsTeam. ExpertAI is one of the tools that helps you create.",
+          "Learn to code, build apps, play games and download free files with ExpertsTeam. Connect, create and grow.",
       },
     ],
   }),
@@ -110,7 +110,7 @@ function Index() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-50" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
               </span>
-              YOUR NEXT IDEA STARTS HERE
+              LEARN · CODE · PLAY · CREATE
             </div>
 
             <div className="space-y-5">
