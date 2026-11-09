@@ -121,9 +121,18 @@ export function ConversationCall({ conversationId, recipientId, recipientName }:
     cleanup(); setStatus("idle");
   }
 
+  async function declineCall() {
+    const callerId = incomingOffer.current?.senderId;
+    if (user && callerId) {
+      await channelRef.current?.send({type:"broadcast",event:"signal",payload:{sender_id:user.id,target_id:callerId,kind:"hangup"}});
+    }
+    cleanup();
+    setStatus("idle");
+  }
+
   return <Card className="space-y-3 p-3">
     <div className="flex items-center justify-between gap-2"><div><p className="text-sm font-semibold">Video call</p><p className="text-xs text-muted-foreground">{status==="connected"?"Connected":status==="incoming"?"Incoming call":status==="calling"?"Connecting…":"Call "+recipientName}</p></div>
-      {status==="idle" ? <Button size="sm" disabled={!channelReady} onClick={()=>void startCall()}><Video className="mr-2 h-4 w-4"/>Start call</Button> : status==="incoming" ? <Button size="sm" onClick={()=>void answerCall()}><Phone className="mr-2 h-4 w-4"/>Answer</Button> : <Button size="sm" variant="destructive" onClick={()=>void hangup()}><PhoneOff className="mr-2 h-4 w-4"/>End</Button>}
+      {status==="idle" ? <Button size="sm" disabled={!channelReady} onClick={()=>void startCall()}><Video className="mr-2 h-4 w-4"/>Start call</Button> : status==="incoming" ? <div className="flex gap-2"><Button size="sm" onClick={()=>void answerCall()}><Phone className="mr-2 h-4 w-4"/>Answer</Button><Button size="sm" variant="destructive" onClick={()=>void declineCall()}><PhoneOff className="mr-2 h-4 w-4"/>Decline</Button></div> : <Button size="sm" variant="destructive" onClick={()=>void hangup()}><PhoneOff className="mr-2 h-4 w-4"/>End</Button>}
     </div>
     {status!=="idle" && status!=="incoming" && <div className="grid grid-cols-2 gap-2"><video ref={remoteVideo} autoPlay playsInline className="aspect-video w-full rounded-xl bg-black"/><video ref={localVideo} autoPlay muted playsInline className="aspect-video w-full rounded-xl bg-black"/></div>}
     {status!=="idle" && status!=="incoming" && <div className="flex gap-2"><Button size="icon" variant="outline" aria-label="Toggle microphone" onClick={()=>{const track=localRef.current?.getAudioTracks()[0]; if(track){track.enabled=!track.enabled;setMuted(!track.enabled);}}}>{muted?<MicOff/>:<Mic/>}</Button><Button size="icon" variant="outline" aria-label="Toggle camera" onClick={()=>{const track=localRef.current?.getVideoTracks()[0]; if(track){track.enabled=!track.enabled;setCameraOff(!track.enabled);}}}>{cameraOff?<VideoOff/>:<Video/>}</Button></div>}
