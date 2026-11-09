@@ -122,7 +122,10 @@ function PersonalVaultPage() {
       toast.success("Your files are safely stored in your private vault.");
       await queryClient.invalidateQueries({ queryKey: ["personal-vault", user?.id] });
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => {
+      toast.error(error.message);
+      void queryClient.invalidateQueries({ queryKey: ["personal-vault", user?.id] });
+    },
   });
 
   const remove = useMutation({
@@ -205,7 +208,7 @@ function PersonalVaultPage() {
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   if (!user) {
