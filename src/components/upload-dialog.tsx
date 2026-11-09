@@ -73,24 +73,30 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
         throw new Error("This file is bigger than your remaining space — upgrade for more room.");
       }
       setPercent(0);
-      const path = file ? await uploadWithProgress({ file, userId: user.id, onProgress: setPercent }) : null;
-      const linkedName = cleanSourceUrl ? (new URL(cleanSourceUrl).pathname.split("/").filter(Boolean).pop() || "external-resource") : null;
+      let path: string | null = null;
+      try {
+        path = file ? await uploadWithProgress({ file, userId: user.id, onProgress: setPercent }) : null;
+        const linkedName = cleanSourceUrl ? (new URL(cleanSourceUrl).pathname.split("/").filter(Boolean).pop() || "external-resource") : null;
 
-      const { error } = await supabase.from("files").insert({
-        user_id: user.id,
-        title: (title.trim() || file?.name || linkedName || "External resource").slice(0, 140),
-        description: description.trim().slice(0, 1000) || null,
-        storage_path: path,
-        source_url: cleanSourceUrl || null,
-        thumbnail_url: thumbnailUrl.trim() || null,
-        file_name: file?.name || linkedName || "external-resource",
-        mime_type: file?.type || null,
-        size_bytes: file?.size ?? 0,
-        category,
-        price: Math.max(0, Number(price) || 0),
-        payout_account: payoutAccount.trim() || null,
-      });
-      if (error) throw error;
+        const { error } = await supabase.from("files").insert({
+          user_id: user.id,
+          title: (title.trim() || file?.name || linkedName || "External resource").slice(0, 140),
+          description: description.trim().slice(0, 1000) || null,
+          storage_path: path,
+          source_url: cleanSourceUrl || null,
+          thumbnail_url: thumbnailUrl.trim() || null,
+          file_name: file?.name || linkedName || "external-resource",
+          mime_type: file?.type || null,
+          size_bytes: file?.size ?? 0,
+          category,
+          price: Math.max(0, Number(price) || 0),
+          payout_account: payoutAccount.trim() || null,
+        });
+        if (error) throw error;
+      } catch (error) {
+        if (path) await supabase.storage.from("uploads").remove([path]);
+        throw error;
+      }
     },
     onSuccess: () => {
       toast.success("Upload complete");
