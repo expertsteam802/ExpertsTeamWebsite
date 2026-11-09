@@ -278,6 +278,19 @@ async function resolveOllamaConfig(): Promise<OllamaConfig> {
   return value;
 }
 
+export async function isOllamaConfigured(): Promise<boolean> {
+  try {
+    return Boolean(await resolveOllamaConfig());
+  } catch (error) {
+    console.warn("[ExpertAI] Qwen/Ollama configuration is unavailable; provider fallback is active.", {
+      reason: error instanceof Error && /HTTP 5\\d\\d|fetch failed|timeout|network/i.test(error.message)
+        ? "configuration_service_unavailable"
+        : "invalid_endpoint_configuration",
+    });
+    return false;
+  }
+}
+
 async function callOllama(request: GeminiRequest): Promise<GeminiResponse> {
   const config = await resolveOllamaConfig();
   if (!config) throw new Error("not_configured");
@@ -457,9 +470,8 @@ export async function generateGeminiContent(
     ? ["gemini"]
     : [
         ...new Set([
-          "ollama",
-          ...requestedOrder.filter((item) => availableProviders.includes(item) && item !== "ollama"),
-          ...availableProviders.filter((item) => item !== "ollama"),
+          ...requestedOrder.filter((item) => availableProviders.includes(item)),
+          ...availableProviders,
         ]),
       ];
   const failures: string[] = [];
