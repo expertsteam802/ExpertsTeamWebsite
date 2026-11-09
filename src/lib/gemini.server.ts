@@ -490,7 +490,7 @@ export async function generateGeminiContent(
         );
       } else if (/HTTP 401|HTTP 403|HTTP 404/i.test(message))
         markProviderCoolingDown(provider, 300);
-      else if (/HTTP 5\d\d|timed out|timeout/i.test(message)) markProviderCoolingDown(provider, 20);
+      else if (/HTTP 5\d\d|timed out|timeout|fetch failed|ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|network/i.test(message)) markProviderCoolingDown(provider, 20);
       failures.push(`${provider}: ${message}`);
     }
   }
