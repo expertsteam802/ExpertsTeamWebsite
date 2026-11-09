@@ -24,7 +24,7 @@ export function VaultPanel() {
   const [title, setTitle] = useState("");
 
   const filesQuery = useQuery({
-    queryKey: ["private-vault", user?.id],
+    queryKey: ["personal-vault", user?.id],
     enabled: Boolean(user),
     queryFn: async () => {
       const { data, error } = await vaultTable()
@@ -52,13 +52,13 @@ export function VaultPanel() {
         size_bytes: selected.size, storage_path: path,
       });
       if (error) {
-        await supabase.storage.from("private-vault").remove([path]);
+        await supabase.storage.from("personal-vault").remove([path]);
         throw error;
       }
     },
     onSuccess: async () => {
       setSelected(null); setTitle("");
-      await queryClient.invalidateQueries({ queryKey: ["private-vault", user?.id] });
+      await queryClient.invalidateQueries({ queryKey: ["personal-vault", user?.id] });
       toast.success("Saved privately in your Vault.");
     },
     onError: (error: Error) => toast.error(error.message),
@@ -67,19 +67,19 @@ export function VaultPanel() {
   const remove = useMutation({
     mutationFn: async (file: VaultFile) => {
       if (!user || file.user_id !== user.id) throw new Error("You can only remove your own Vault files.");
-      const { error: storageError } = await supabase.storage.from("private-vault").remove([file.storage_path]);
+      const { error: storageError } = await supabase.storage.from("personal-vault").remove([file.storage_path]);
       if (storageError) throw storageError;
       const { error } = await vaultTable().delete().eq("id", file.id).eq("user_id", user.id);
       if (error) throw error;
     },
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["private-vault", user?.id] }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["personal-vault", user?.id] }),
     onError: (error: Error) => toast.error(error.message),
   });
 
   async function download(file: VaultFile) {
     try {
       if (!user || file.user_id !== user.id) throw new Error("This file is not yours.");
-      const { data, error } = await supabase.storage.from("private-vault").createSignedUrl(file.storage_path, 90);
+      const { data, error } = await supabase.storage.from("personal-vault").createSignedUrl(file.storage_path, 90);
       if (error) throw error;
       window.open(data.signedUrl, "_blank", "noopener,noreferrer");
     } catch (error) { toast.error(error instanceof Error ? error.message : "Could not open file."); }
