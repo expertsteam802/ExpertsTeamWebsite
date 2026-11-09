@@ -10,6 +10,7 @@ import {
   generateGeminiContent,
   isProviderCoolingDown,
   markProviderCoolingDown,
+  streamOllamaContent,
 } from "@/lib/gemini.server";
 
 const requestSchema = z
@@ -208,16 +209,49 @@ export const Route = createFileRoute("/api/ai/stream")({
           const compactedContents = compactSmartContents(contents);
           const systemText =
             "You are ExpertAI, a practical assistant for developers and creators on ExpertsTeam. Answer the exact question first. Keep ordinary answers brief: usually 1–5 short sentences or a few bullets. Expand only when the user asks for detail, a tutorial, a plan, or code. Avoid long introductions, repeated conclusions, filler, and unnecessary jargon. For code requests, provide complete usable code and explain only the key integration steps. Ask one focused clarification only when essential. Be friendly, accurate, and honest about what you have not tested.";
-          const configuredProviderOrder = (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
+          const configuredProviderOrder = (process.env["AI_PROVIDER_ORDER"] || "ollama,groq,gemini,openrouter")
             .split(",")
             .map((item) => item.trim().toLowerCase())
-            .filter((item) => ["groq", "gemini", "openrouter"].includes(item));
-          const providerOrder = [...new Set(["groq", ...configuredProviderOrder.filter((item) => item !== "groq"), "gemini", "openrouter"])];
+             .filter((item) => ["ollama", "groq", "gemini", "openrouter"].includes(item));
+          const providerOrder = [...new Set(["ollama", ...configuredProviderOrder, "groq", "gemini", "openrouter"])];
           const geminiKey = process.env["GEMINI_API_KEY"]?.trim();
           const hasImageAttachments = attachments.some((file) => Boolean(file.dataUrl));
           const orderedProviders = hasImageAttachments
             ? ["gemini", ...providerOrder.filter((provider) => provider !== "gemini")]
             : providerOrder;
+
+          // Qwen/Ollama is configured in site_settings and is contacted only from this server route.
+          // It streams real provider deltas; if the tunnel is offline, continue to the normal fallback chain.
+          if (!hasImageAttachments && orderedProviders[0] === "ollama" && !isProviderCoolingDown("ollama")) {
+            try {
+              const ollamaStream = await streamOllamaContent(
+                {
+                  systemInstruction: { parts: [{ text: systemText }] },
+                  contents: compactedContents,
+                  generationConfig: { maxOutputTokens: 700 },
+                },
+                request.signal,
+              );
+              if (ollamaStream) {
+                const creditError = await consumeCredit();
+                if (creditError) {
+                  await ollamaStream.cancel();
+                  return Response.json({ error: creditError }, { status: 402 });
+                }
+                return new Response(ollamaStream, {
+                  headers: {
+                    "Content-Type": "text/event-stream; charset=utf-8",
+                    "Cache-Control": "no-cache, no-transform",
+                    "X-Accel-Buffering": "no",
+                  },
+                });
+              }
+            } catch (error) {
+              if (request.signal.aborted) throw error;
+              markProviderCoolingDown("ollama", 30);
+              console.error("[ExpertAI Qwen/Ollama stream; trying fallback]", error);
+            }
+          }
 
           // Prefer Gemini for image inputs because the text-only providers cannot inspect them.
           if (geminiKey && orderedProviders[0] === "gemini" && !isProviderCoolingDown("gemini")) {
