@@ -802,7 +802,7 @@ export type Database = {
       personal_vault_files: {
         Row: {
           created_at: string;
-          entry_type: string;
+          entry_type: "file" | "link";
           file_name: string;
           file_url: string | null;
           id: string;
@@ -813,7 +813,7 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
-          entry_type?: string;
+          entry_type?: "file" | "link";
           file_name: string;
           file_url?: string | null;
           id?: string;
@@ -824,7 +824,7 @@ export type Database = {
         };
         Update: {
           created_at?: string;
-          entry_type?: string;
+          entry_type?: "file" | "link";
           file_name?: string;
           file_url?: string | null;
           id?: string;
