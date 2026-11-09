@@ -18,17 +18,17 @@ import { formatDate } from "@/lib/format";
 export const Route = createFileRoute("/projects")({
   head: () => ({
     meta: [
-      { title: "Workspace — ExpertsTeam community" },
+      { title: "Apply to ExpertsTeam | Contributor Community" },
       {
         name: "description",
         content:
-          "The ExpertsTeam contributor applications: group chats for map editors, sound editors, game and web development, plus developer applications.",
+          "Apply to join the ExpertsTeam contributor workspace for web, game, map or sound development.",
       },
-      { property: "og:title", content: "Workspace — ExpertsTeam development team" },
+      { property: "og:title", content: "Apply to ExpertsTeam" },
       {
         property: "og:description",
         content:
-          "Group chats for the ExpertsTeam development team: map editors, sound editors, game and web dev.",
+          "Apply to contribute to ExpertsTeam projects and collaborate with the approved development team.",
       },
       { property: "og:url", content: "https://expertsteam.giize.com/projects" },
       { property: "og:image", content: "https://expertsteam.giize.com/social-preview.png" },
