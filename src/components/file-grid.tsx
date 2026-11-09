@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Download, ExternalLink, FileDown, Pencil, Trash2 } from "lucide-react";
+import { Download, ExternalLink, FileDown, LockKeyhole, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { BannerUnlockAd } from "@/components/ads/banner-unlock-ad";
 import { toast } from "sonner";
@@ -86,6 +86,34 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const saveToVault = useMutation({
+    mutationFn: async (file: CommunityFile) => {
+      if (!user || file.user_id !== user.id) throw new Error("Only the file owner can save a private Vault copy.");
+      if (!file.storage_path) throw new Error("External links cannot be copied into private storage.");
+      const { data: blob, error: downloadError } = await supabase.storage.from("uploads").download(file.storage_path);
+      if (downloadError) throw downloadError;
+      const safeName = file.file_name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-180);
+      const path = user.id + "/" + crypto.randomUUID() + "-" + safeName;
+      const { error: uploadError } = await supabase.storage.from("private-vault").upload(path, blob, {
+        cacheControl: "3600", upsert: false, contentType: file.mime_type || blob.type || "application/octet-stream",
+      });
+      if (uploadError) throw uploadError;
+      const { error } = await supabase.from("vault_files").insert({
+        user_id: user.id, title: file.title.slice(0, 140), file_name: file.file_name.slice(0, 255),
+        mime_type: file.mime_type, size_bytes: file.size_bytes, storage_path: path,
+      });
+      if (error) {
+        await supabase.storage.from("private-vault").remove([path]);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["private-vault", user?.id] });
+      toast.success("A private copy was saved to your Vault.");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const remove = useMutation({
     mutationFn: async (file: CommunityFile) => {
       if (file.storage_path) {
@@ -167,6 +195,11 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
                 </Button>
                 {canManage && (
                   <>
+                    {file.user_id === user?.id && file.storage_path && (
+                      <Button size="sm" variant="outline" onClick={() => saveToVault.mutate(file)} disabled={saveToVault.isPending}>
+                        <LockKeyhole className="mr-1.5 h-3.5 w-3.5" /> Save to Vault
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="ghost"
