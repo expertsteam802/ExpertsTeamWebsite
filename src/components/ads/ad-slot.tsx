@@ -74,7 +74,7 @@ export function AdSlot({ slot }: { slot: string }) {
       <div ref={slotRef} className="mx-auto w-full max-w-[728px] overflow-hidden" style={{ height: 90 }} />
       {loadState !== "blocked" && (
         <p className="mt-1 text-center text-[10px] text-muted-foreground" aria-live="polite">
-          Sponsored
+          Sponsored · <a href="/contact?topic=ad-report" className="underline underline-offset-2 hover:text-foreground">Report ad</a>
         </p>
       )}
     </aside>
