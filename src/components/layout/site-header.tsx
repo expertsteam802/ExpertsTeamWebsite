@@ -70,14 +70,14 @@ export function SiteHeader() {
               {isAdmin && <DropdownMenuItem asChild><Link to="/admin"><Shield className="mr-2 h-4 w-4" />Admin panel</Link></DropdownMenuItem>}
               <DropdownMenuSeparator /><DropdownMenuItem onClick={() => void signOut()}><LogOut className="mr-2 h-4 w-4" />Sign out</DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu> : <Link to="/auth"><Button size="sm" className="rounded-xl bg-[#c9f36b] font-bold text-[#11150b] hover:bg-[#a8c9ff]">Sign in</Button></Link>}
+          </DropdownMenu> : <Link to="/auth"><Button size="sm" className="rounded-xl bg-[#4d8dff] font-bold text-white hover:bg-[#6b9fff]">Sign in</Button></Link>}
           <Button variant="ghost" size="icon" className="md:hidden text-white" aria-label="Menu" aria-expanded={open} onClick={() => setOpen(v => !v)}><Menu className="h-4 w-4" /></Button>
         </div>
       </div>
 
       {open && <nav aria-label="Mobile navigation" className="grid grid-cols-2 gap-2 border-t border-white/10 bg-[#090b10] p-3 md:hidden">
-        {LINKS.map(item => <Link key={item.to} to={item.to} onClick={() => setOpen(false)} className={cn("flex items-center gap-2 rounded-xl border px-3 py-3 text-xs font-semibold", pathname === item.to ? "border-[#c9f36b]/35 bg-[#c9f36b]/10 text-[#d8ff83]" : "border-white/10 text-white/65")}>
-          <item.icon className="h-4 w-4" />{item.label}
+        {LINKS.map(item => <Link key={item.to} to={item.to} onClick={() => setOpen(false)} className={cn("flex items-center gap-2 rounded-xl border px-3 py-3 text-xs font-semibold", pathname === item.to ? "border-[#4d8dff]/35 bg-[#4d8dff]/10 text-[#a8c9ff]" : "border-white/10 text-white/65")}>
+          <item.icon className="h-4 w-4" />{settings.navigation_labels[item.key] || item.label}
         </Link>)}
         <Link to="/explore" onClick={() => setOpen(false)} className="rounded-xl border border-white/10 px-3 py-3 text-xs font-semibold text-white/65">Explore all spaces</Link>
         {user && <Link to="/vault" onClick={() => setOpen(false)} className="rounded-xl border border-white/10 px-3 py-3 text-xs font-semibold text-white/65">Personal Vault</Link>}
@@ -87,7 +87,7 @@ export function SiteHeader() {
       <style>{`
         .et-nav-tab{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;border:1px solid transparent;border-radius:11px;padding:10px 12px;color:rgba(244,242,233,.55);font-size:12px;font-weight:650;letter-spacing:.01em;transition:all .18s ease}
         .et-nav-tab:hover{color:#f5f2e9;background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.07)}
-        .et-nav-active{color:#d8ff83;background:rgba(77,141,255,.12);border-color:rgba(77,141,255,.28);box-shadow:inset 0 0 18px rgba(201,243,107,.035)}
+        .et-nav-active{color:#a8c9ff;background:rgba(77,141,255,.12);border-color:rgba(77,141,255,.28);box-shadow:inset 0 0 18px rgba(77,141,255,.05)}
         .et-topbar{box-shadow:0 12px 40px rgba(0,0,0,.24)}
       `}</style>
     </header>
