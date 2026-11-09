@@ -118,26 +118,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       // YouTube requires a Referer header for embedded playback (error 153).
       { name: "referrer", content: "strict-origin-when-cross-origin" },
-      { title: "Expertsteam802 | ExpertsTeam Coding & AI Studio" },
+      { title: "ExpertsTeam — Learn, Code, Play & Build Free Apps" },
       {
         name: "description",
         content:
-          "Expertsteam802 is the official ExpertsTeam website for AI app building, coding tutorials, creator videos, developer projects and community learning.",
+          "Learn to code, build apps, play games and download free files. Join ExpertsTeam to learn, create and connect.",
       },
-      { name: "author", content: "Chris Expert" },
+      
       {
         name: "google-site-verification",
         content: "YdY2ygzprZLok7-Cvwg_j29cI4ycK480HDQmh0d-JIg",
       },
-      { property: "og:site_name", content: "Expertsteam802 | ExpertsTeam" },
+      { property: "og:site_name", content: "ExpertsTeam" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:title", content: "Expertsteam802 | ExpertsTeam Coding & AI Studio" },
-      { name: "twitter:title", content: "Expertsteam802 | ExpertsTeam Coding & AI Studio" },
+      { property: "og:title", content: "ExpertsTeam — Learn, Code, Play & Build Free Apps" },
+      { name: "twitter:title", content: "ExpertsTeam — Learn, Code, Play & Build Free Apps" },
       {
         property: "og:description",
         content:
-          "ExpertsTeam is the home of Chris Expert: watch every channel video inside the site, download games and resources, learn to code and join the community.",
+          "Learn coding, build apps, play games and get free downloads with the ExpertsTeam community.",
       },
       {
         name: "twitter:description",
@@ -185,11 +185,24 @@ function RootShell({ children }: { children: ReactNode }) {
               "@context": "https://schema.org",
               "@type": "Organization",
               name: "ExpertsTeam",
-              alternateName: ["Expertsteam802", "ExpertsTeam Coders"],
+              alternateName: ["Experts Team", "expertsteam.giize.com"],
               url: "https://expertsteam.giize.com/",
               description:
-                "ExpertsTeam is a creative technology platform for AI-assisted app building, coding education, creator videos and developer community projects.",
-              founder: { "@type": "Person", name: "Chris Expert" },
+                "Learn to code, build apps, play games and download free files with ExpertsTeam.",
+              founder: { "@type": "Organization", name: "ExpertsTeam" },
+            }),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "ExpertsTeam",
+              alternateName: ["Experts Team", "expertsteam.giize.com"],
+              url: "https://expertsteam.giize.com/",
+              description: "Learn to code, build apps, play games and download free files with ExpertsTeam.",
             }),
           }}
         />
