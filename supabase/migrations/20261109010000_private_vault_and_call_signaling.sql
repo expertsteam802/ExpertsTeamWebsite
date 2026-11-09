@@ -46,8 +46,45 @@ drop policy if exists "Conversation members receive call signals" on realtime.me
 create policy "Conversation members receive call signals"
   on realtime.messages for select to authenticated
   using (
+    realtime.topic() ~ '^call:[0-9a-fA-F-]{36}
+  );
+drop policy if exists "Conversation members send call signals" on realtime.messages;
+create policy "Conversation members send call signals"
+  on realtime.messages for insert to authenticated
+  with check (
     realtime.topic() like 'call:%'
     and private.is_direct_conversation_member(split_part(realtime.topic(), ':', 2)::uuid)
+  );
+
+-- Permit private voice notes in the existing conversation media bucket.
+update storage.buckets
+set allowed_mime_types = array[
+  'image/jpeg','image/png','image/webp','image/gif',
+  'audio/webm','audio/webm;codecs=opus','audio/mp4','audio/mpeg','audio/ogg','audio/wav'
+]::text[]
+where id='direct-messages';
+
+    and private.is_direct_conversation_member(
+      case when split_part(realtime.topic(), ':', 2) ~ '^[0-9a-fA-F-]{36}
+  );
+drop policy if exists "Conversation members send call signals" on realtime.messages;
+create policy "Conversation members send call signals"
+  on realtime.messages for insert to authenticated
+  with check (
+    realtime.topic() like 'call:%'
+    and private.is_direct_conversation_member(split_part(realtime.topic(), ':', 2)::uuid)
+  );
+
+-- Permit private voice notes in the existing conversation media bucket.
+update storage.buckets
+set allowed_mime_types = array[
+  'image/jpeg','image/png','image/webp','image/gif',
+  'audio/webm','audio/webm;codecs=opus','audio/mp4','audio/mpeg','audio/ogg','audio/wav'
+]::text[]
+where id='direct-messages';
+
+        then split_part(realtime.topic(), ':', 2)::uuid else null end
+    )
   );
 drop policy if exists "Conversation members send call signals" on realtime.messages;
 create policy "Conversation members send call signals"
