@@ -634,7 +634,7 @@ export type Database = {
           },
         ]
       }
-      vault_files: {
+      personal_vault_files: {
         Row: {
           created_at: string
           file_name: string
@@ -642,7 +642,6 @@ export type Database = {
           mime_type: string | null
           size_bytes: number
           storage_path: string
-          title: string
           user_id: string
         }
         Insert: {
@@ -652,7 +651,6 @@ export type Database = {
           mime_type?: string | null
           size_bytes?: number
           storage_path: string
-          title: string
           user_id: string
         }
         Update: {
@@ -662,7 +660,6 @@ export type Database = {
           mime_type?: string | null
           size_bytes?: number
           storage_path?: string
-          title?: string
           user_id?: string
         }
         Relationships: []
