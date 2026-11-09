@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { HardDrive, MessageCircle, Sparkles, Users, Video } from "lucide-react";
+import { HardDrive, LockKeyhole, MessageCircle, Sparkles, Users, Video } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -202,6 +202,9 @@ function DashboardPage() {
           <div className="flex flex-wrap gap-2">
             <UploadDialog />
             <AddVideoDialog category="entertainment" triggerLabel="Add a video" />
+            <Button variant="outline" onClick={() => void navigate({ to: "/vault" })}>
+              <LockKeyhole className="mr-2 h-4 w-4" /> Personal Vault
+            </Button>
             <Button variant="outline" onClick={() => void navigate({ to: "/messages" })}>
               <MessageCircle className="mr-2 h-4 w-4" /> Messages
             </Button>
