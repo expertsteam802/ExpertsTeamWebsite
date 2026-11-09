@@ -18,11 +18,11 @@ import { formatDate } from "@/lib/format";
 export const Route = createFileRoute("/projects")({
   head: () => ({
     meta: [
-      { title: "Workspace — ExpertsTeam development team" },
+      { title: "Workspace — ExpertsTeam community" },
       {
         name: "description",
         content:
-          "The ExpertsTeam company workspace: group chats for map editors, sound editors, game and web development, plus developer applications.",
+          "The ExpertsTeam contributor applications: group chats for map editors, sound editors, game and web development, plus developer applications.",
       },
       { property: "og:title", content: "Workspace — ExpertsTeam development team" },
       {
@@ -30,11 +30,11 @@ export const Route = createFileRoute("/projects")({
         content:
           "Group chats for the ExpertsTeam development team: map editors, sound editors, game and web dev.",
       },
-      { property: "og:url", content: "https://chrisprograms.lovable.app/projects" },
-      { property: "og:image", content: "https://chrisprograms.lovable.app/social-preview.png" },
-      { name: "twitter:image", content: "https://chrisprograms.lovable.app/social-preview.png" },
+      { property: "og:url", content: "https://expertsteam.giize.com/projects" },
+      { property: "og:image", content: "https://expertsteam.giize.com/social-preview.png" },
+      { name: "twitter:image", content: "https://expertsteam.giize.com/social-preview.png" },
     ],
-    links: [{ rel: "canonical", href: "https://chrisprograms.lovable.app/projects" }],
+    links: [{ rel: "canonical", href: "https://expertsteam.giize.com/projects" }],
   }),
   component: ProjectsPage,
 });
