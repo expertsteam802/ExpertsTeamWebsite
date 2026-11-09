@@ -2,9 +2,16 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - fix/vercel-vite-allowed-host
+      - feature/learn-explore-inbox-dashboard
+      - feature/community-content-ads-ai-dashboard
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - fix/vercel-vite-allowed-host
+      - feature/learn-explore-inbox-dashboard
 
 permissions:
   contents: write
