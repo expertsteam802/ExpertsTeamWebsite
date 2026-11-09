@@ -86,6 +86,9 @@ test("coding agent falls back to Groq when Gemini is rate limited", async () => 
   process.env["GROQ_API_KEY"] = "groq-test-key";
   const urls: string[] = [];
   globalThis.fetch = (async (url) => {
+    if (String(url).includes("/rest/v1/site_settings")) {
+      return Response.json([{ ad_settings: { siteBranding: {} } }]);
+    }
     urls.push(String(url));
     if (String(url).includes("generativelanguage.googleapis.com")) {
       return new Response("quota exceeded", { status: 429 });
@@ -309,6 +312,9 @@ test("Groq retries a 413 TPM response with smaller context and output budgets", 
   const outputBudgets: number[] = [];
   let calls = 0;
   globalThis.fetch = (async (url, init) => {
+    if (String(url).includes("/rest/v1/site_settings")) {
+      return Response.json([{ ad_settings: { siteBranding: {} } }]);
+    }
     if (!String(url).includes("api.groq.com")) {
       throw new Error("Unexpected provider request: " + String(url));
     }
@@ -335,7 +341,7 @@ test("Groq retries a 413 TPM response with smaller context and output budgets", 
     const result = await runAgent(input, "test-key");
     assert.equal(result.files["index.html"], "<h1>Recovered</h1>");
     assert.equal(calls, 2);
-    assert.deepEqual(outputBudgets, [1100, 600]);
+    assert.deepEqual(outputBudgets, [700, 400]);
   } finally {
     if (previousOrder === undefined) delete process.env["AI_PROVIDER_ORDER"];
     else process.env["AI_PROVIDER_ORDER"] = previousOrder;
