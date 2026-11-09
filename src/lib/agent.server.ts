@@ -1,6 +1,6 @@
 import { posix as path } from "node:path";
 
-import { generateGeminiContent } from "./gemini.server";
+import { generateGeminiContent, isOllamaConfigured } from "./gemini.server";
 
 type AgentInput = {
   prompt: string;
@@ -260,7 +260,14 @@ export async function runAgent(
     .split(",")
     .map((item) => item.trim().toLowerCase())
      .filter((item) => ["ollama", "groq", "gemini", "openrouter"].includes(item));
-  const providerSequence = [...new Set(["ollama", ...configured, "groq", "gemini", "openrouter"])];
+  const ollamaConfigured = await isOllamaConfigured();
+  const providerSequence = [...new Set([
+    ...(ollamaConfigured ? ["ollama"] : []),
+    ...configured.filter((provider) => provider !== "ollama"),
+    "groq",
+    "gemini",
+    "openrouter",
+  ])];
   const completedFiles: Record<string, string | null> = {};
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
