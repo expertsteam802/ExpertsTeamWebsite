@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Square } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,11 @@ export function VoiceRecorder({ onRecorded, disabled=false }: { onRecorded: (fil
   const chunks = useRef<Blob[]>([]);
   const stream = useRef<MediaStream|null>(null);
   const [recording,setRecording] = useState(false);
+
+  useEffect(() => () => {
+    if (recorder.current?.state === "recording") recorder.current.stop();
+    stream.current?.getTracks().forEach(track => track.stop());
+  }, []);
 
   async function toggle() {
     if (recording) { recorder.current?.stop(); setRecording(false); return; }
