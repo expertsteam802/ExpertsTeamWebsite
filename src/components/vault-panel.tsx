@@ -11,11 +11,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatBytes, formatDate } from "@/lib/format";
 
 type VaultFile = {
-  id: string; user_id: string; title: string; file_name: string;
+  id: string; user_id: string; file_name: string;
   mime_type: string | null; size_bytes: number; storage_path: string; created_at: string;
 };
 
-const vaultTable = () => supabase.from("vault_files");
+const vaultTable = () => supabase.from("personal_vault_files");
 
 export function VaultPanel() {
   const { user } = useAuth();
@@ -28,7 +28,7 @@ export function VaultPanel() {
     enabled: Boolean(user),
     queryFn: async () => {
       const { data, error } = await vaultTable()
-        .select("id,user_id,title,file_name,mime_type,size_bytes,storage_path,created_at")
+        .select("id,user_id,file_name,mime_type,size_bytes,storage_path,created_at")
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -42,13 +42,13 @@ export function VaultPanel() {
       if (selected.size > 200 * 1024 * 1024) throw new Error("Vault files are limited to 200 MB.");
       const safeName = selected.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-180);
       const path = user.id + "/" + crypto.randomUUID() + "-" + safeName;
-      const { error: storageError } = await supabase.storage.from("private-vault").upload(path, selected, {
+      const { error: storageError } = await supabase.storage.from("personal-vault").upload(path, selected, {
         cacheControl: "3600", upsert: false, contentType: selected.type || "application/octet-stream",
       });
       if (storageError) throw storageError;
       const { error } = await vaultTable().insert({
-        user_id: user.id, title: (title.trim() || selected.name).slice(0, 140),
-        file_name: selected.name.slice(0, 255), mime_type: selected.type || null,
+        user_id: user.id,
+        file_name: (title.trim() || selected.name).slice(0, 255), mime_type: selected.type || null,
         size_bytes: selected.size, storage_path: path,
       });
       if (error) {
@@ -114,7 +114,7 @@ export function VaultPanel() {
         : !filesQuery.data?.length ? <Card className="border-dashed p-10 text-center"><FileLock2 className="mx-auto h-8 w-8 text-muted-foreground"/><p className="mt-3 font-semibold">Your Vault is ready</p><p className="mt-1 text-sm text-muted-foreground">Files you add here stay private to your account.</p></Card>
         : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{filesQuery.data.map(file => <Card key={file.id} className="flex min-w-0 items-center gap-3 p-4">
             <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><FileLock2 className="h-5 w-5"/></div>
-            <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{file.title}</p><p className="truncate text-xs text-muted-foreground">{file.file_name}</p><p className="text-xs text-muted-foreground">{formatBytes(file.size_bytes)} · {formatDate(file.created_at)}</p></div>
+            <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{file.file_name}</p><p className="truncate text-xs text-muted-foreground">Private upload</p><p className="text-xs text-muted-foreground">{formatBytes(file.size_bytes)} · {formatDate(file.created_at)}</p></div>
             <Button size="icon" variant="ghost" aria-label="Download private file" onClick={() => void download(file)}><Download className="h-4 w-4"/></Button>
             <Button size="icon" variant="ghost" aria-label="Delete private file" disabled={remove.isPending} onClick={() => remove.mutate(file)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
           </Card>)}</div>}
