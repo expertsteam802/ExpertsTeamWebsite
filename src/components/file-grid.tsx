@@ -103,12 +103,12 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
         mime_type: file.mime_type, size_bytes: file.size_bytes, storage_path: path,
       });
       if (error) {
-        await supabase.storage.from("private-vault").remove([path]);
+        await supabase.storage.from("personal-vault").remove([path]);
         throw error;
       }
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["private-vault", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["personal-vault", user?.id] });
       toast.success("A private copy was saved to your Vault.");
     },
     onError: (error: Error) => toast.error(error.message),
