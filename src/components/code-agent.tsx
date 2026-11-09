@@ -52,6 +52,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { SpeechInputButton } from "@/components/speech-input-button";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
@@ -1735,6 +1736,7 @@ export function CodeAgent() {
                     }}
                   />
                   <div className="rounded-xl border border-white/[0.12] bg-[#101c2d] p-2 focus-within:border-cyan-400/40">
+                    <div className="flex justify-end pb-1"><SpeechInputButton disabled={busy} onTranscript={(text) => setPrompt((current) => [current.trim(), text].filter(Boolean).join(" "))} /></div>
                     <Textarea
                       ref={promptRef}
                       value={prompt}
