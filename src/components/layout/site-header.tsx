@@ -1,35 +1,21 @@
-import { Link } from "@tanstack/react-router";
-import { LogOut, Menu, MoreHorizontal, Palette, Shield } from "lucide-react";
+import { Link, useRouterState } from "@tanstack/react-router";
+import { LogOut, Menu, MoreHorizontal, Palette, Shield, Compass, GraduationCap, Users, Sparkles, MessageCircle, Gamepad2, FolderKanban } from "lucide-react";
 import { useState } from "react";
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { THEMES, useTheme, type NavAlign } from "@/hooks/use-theme";
 import { cn } from "@/lib/utils";
 
-const ALIGN: Record<NavAlign, string> = {
-  left: "justify-start",
-  center: "justify-center",
-  right: "justify-end",
-};
-
-const MOBILE_LINKS = [
-  { to: "/entertainment", label: "Games, apps & files" },
-  { to: "/projects", label: "Apply to ExpertsTeam" },
-  { to: "/contact", label: "Contact" },
-  { to: "/pricing", label: "Pricing" },
-  { to: "/privacy", label: "Privacy" },
-  { to: "/terms", label: "Terms of Use" },
+const LINKS = [
+  { to: "/", label: "Home", icon: Compass, exact: true },
+  { to: "/learn", label: "Learn", icon: GraduationCap },
+  { to: "/community", label: "Community", icon: Users },
+  { to: "/ai", label: "ExpertAI", icon: Sparkles },
+  { to: "/messages", label: "Messages", icon: MessageCircle },
+  { to: "/entertainment", label: "Discover", icon: Gamepad2 },
 ] as const;
 
 export function SiteHeader() {
@@ -37,262 +23,86 @@ export function SiteHeader() {
   const { user, profile, isAdmin, signOut } = useAuth();
   const { theme, setTheme, navAlign, setNavAlign } = useTheme();
   const [open, setOpen] = useState(false);
-
-  const tabClass =
-    "shrink-0 rounded-xl px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground data-[status=active]:bg-primary/10 data-[status=active]:text-primary";
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const activeClass = "et-nav-tab et-nav-active";
+  const idleClass = "et-nav-tab";
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/70 bg-background/90 backdrop-blur-xl">
-      <div className="mx-auto flex min-h-16 max-w-7xl items-center gap-3 px-3 sm:px-4">
-        <Link to="/" className="flex shrink-0 items-center gap-2">
-          <img
-            src={settings.logo_url || "/experts-team-mark.svg"}
-            alt="ExpertsTeam"
-            className="h-9 w-9 rounded-full object-cover"
-          />
-          <span className="font-display text-base font-bold tracking-tight sm:text-lg">
-            ExpertsTeam
+    <header className="et-topbar relative z-50 shrink-0 border-b border-white/10 bg-[#090b10]/90 backdrop-blur-2xl">
+      <div className="mx-auto flex min-h-[70px] max-w-[1680px] items-center gap-3 px-3 sm:px-5 lg:px-7">
+        <Link to="/" className="group flex shrink-0 items-center gap-2.5">
+          <img src={settings.logo_url || "/experts-team-mark.svg"} alt="ExpertsTeam" className="h-10 w-10 rounded-xl object-cover shadow-[0_0_26px_rgba(201,243,107,.12)] ring-1 ring-white/15 transition group-hover:scale-[1.04]" />
+          <span className="leading-none">
+            <span className="block font-display text-[15px] font-bold tracking-[-.055em] text-[#f5f2e9] sm:text-[17px]">EXPERTS<span className="text-[#c9f36b]">TEAM</span></span>
+            <span className="mt-1 block text-[8px] font-semibold tracking-[.28em] text-white/35">MAKE THE UNCOMMON</span>
           </span>
         </Link>
 
-        <nav
-          aria-label="Main navigation"
-          className={cn(
-            "hidden min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex",
-            ALIGN[navAlign],
-          )}
-        >
-          <Link to="/" activeOptions={{ exact: true }} className={tabClass}>
-            Home
-          </Link>
-          <Link to="/explore" className={tabClass}>
-            Explore
-          </Link>
-          <Link to="/learn" className={tabClass}>
-            Learn
-          </Link>
-          <Link to="/community" className={tabClass}>
-            Community
-          </Link>
-          <Link to="/ai" className={tabClass}>
-            ExpertAI
-          </Link>
-          <Link to="/messages" className={tabClass}>
-            Messages
-          </Link>
+        <nav aria-label="Main navigation" className="hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto px-3 md:flex [scrollbar-width:none]">
+          {LINKS.map((item) => {
+            const active = item.exact ? pathname === "/" : pathname === item.to || pathname.startsWith(item.to + "/");
+            return <Link key={item.to} to={item.to} aria-current={active ? "page" : undefined} className={active ? activeClass : idleClass}>
+              <item.icon className="h-3.5 w-3.5" /><span>{item.label}</span>
+            </Link>;
+          })}
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="shrink-0 gap-1.5 rounded-xl px-3 font-semibold"
-              >
-                More <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>More from ExpertsTeam</DropdownMenuLabel>
-              <DropdownMenuItem asChild>
-                <Link to="/entertainment">Games, apps & free files</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/projects">Apply to ExpertsTeam</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/contact">Contact</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/pricing">Pricing</Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/privacy">Privacy</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/terms">Terms of Use</Link>
-              </DropdownMenuItem>
+            <DropdownMenuTrigger asChild><button className="et-nav-tab"><MoreHorizontal className="h-3.5 w-3.5" /><span>More</span></button></DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="w-56">
+              <DropdownMenuLabel>Explore ExpertsTeam</DropdownMenuLabel>
+              <DropdownMenuItem asChild><Link to="/explore">Explore all spaces</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/projects"><FolderKanban className="mr-2 h-4 w-4" />Workspace & projects</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/videos">Creator videos</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/showcase">Project showcase</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/about">About ExpertsTeam</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/contact">Contact</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/pricing">Plans</Link></DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Appearance settings">
-                <Palette className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
+            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Appearance settings" className="text-white/55 hover:bg-white/10 hover:text-white"><Palette className="h-4 w-4" /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuLabel>Theme</DropdownMenuLabel>
-              {THEMES.map((option) => (
-                <DropdownMenuItem
-                  key={option.id}
-                  onClick={() => setTheme(option.id)}
-                  className={cn(theme === option.id && "text-primary")}
-                >
-                  {option.label}
-                </DropdownMenuItem>
-              ))}
+              {THEMES.map((option) => <DropdownMenuItem key={option.id} onClick={() => setTheme(option.id)} className={cn(theme === option.id && "text-primary")}>{option.label}</DropdownMenuItem>)}
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Tab alignment</DropdownMenuLabel>
-              {(["left", "center", "right"] as NavAlign[]).map((align) => (
-                <DropdownMenuItem
-                  key={align}
-                  onClick={() => setNavAlign(align)}
-                  className={cn("capitalize", navAlign === align && "text-primary")}
-                >
-                  {align}
-                </DropdownMenuItem>
-              ))}
+              {(["left", "center", "right"] as NavAlign[]).map((align) => <DropdownMenuItem key={align} onClick={() => setNavAlign(align)} className={cn("capitalize", navAlign === align && "text-primary")}>{align}</DropdownMenuItem>)}
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="secondary" className="max-w-40 gap-2 truncate px-2 sm:px-3">
-                  <Avatar className="h-7 w-7">
-                    <AvatarImage src={profile?.avatar_url ?? undefined} />
-                    <AvatarFallback>
-                      {(profile?.display_name || profile?.username || "A")
-                        .slice(0, 1)
-                        .toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="hidden truncate sm:inline">
-                    {profile?.display_name || profile?.username || "Account"}
-                  </span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuItem asChild>
-                  <Link to="/dashboard">My dashboard</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/vault">Personal Vault</Link>
-                </DropdownMenuItem>
-                {isAdmin && (
-                  <DropdownMenuItem asChild>
-                    <Link to="/admin">
-                      <Shield className="mr-2 h-4 w-4" /> Admin panel
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => void signOut()}>
-                  <LogOut className="mr-2 h-4 w-4" /> Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Link to="/auth">
-              <Button size="sm">Sign in</Button>
-            </Link>
-          )}
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            aria-label="Menu"
-            aria-expanded={open}
-            onClick={() => setOpen((value) => !value)}
-          >
-            <Menu className="h-4 w-4" />
-          </Button>
+          {user ? <DropdownMenu>
+            <DropdownMenuTrigger asChild><Button variant="ghost" className="max-w-40 gap-2 rounded-xl border border-white/10 bg-white/[.045] px-2 text-white hover:bg-white/10 sm:px-3">
+              <Avatar className="h-7 w-7"><AvatarImage src={profile?.avatar_url ?? undefined} /><AvatarFallback>{(profile?.display_name || profile?.username || "A").slice(0,1).toUpperCase()}</AvatarFallback></Avatar>
+              <span className="hidden truncate text-xs sm:inline">{profile?.display_name || profile?.username || "Account"}</span>
+            </Button></DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem asChild><Link to="/dashboard">My dashboard</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/vault">Personal Vault</Link></DropdownMenuItem>
+              {isAdmin && <DropdownMenuItem asChild><Link to="/admin"><Shield className="mr-2 h-4 w-4" />Admin panel</Link></DropdownMenuItem>}
+              <DropdownMenuSeparator /><DropdownMenuItem onClick={() => void signOut()}><LogOut className="mr-2 h-4 w-4" />Sign out</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu> : <Link to="/auth"><Button size="sm" className="rounded-xl bg-[#c9f36b] font-bold text-[#11150b] hover:bg-[#d8ff83]">Sign in</Button></Link>}
+          <Button variant="ghost" size="icon" className="md:hidden text-white" aria-label="Menu" aria-expanded={open} onClick={() => setOpen(v => !v)}><Menu className="h-4 w-4" /></Button>
         </div>
       </div>
 
-      {open && (
-        <nav
-          aria-label="Mobile navigation"
-          className="border-t border-border/70 px-3 pb-4 md:hidden"
-        >
-          <div className="grid grid-cols-2 gap-2 py-3">
-            <Link
-              to="/"
-              onClick={() => setOpen(false)}
-              className="rounded-xl border border-border px-3 py-3 text-sm font-semibold"
-            >
-              Home
-            </Link>
-            <Link
-              to="/explore"
-              onClick={() => setOpen(false)}
-              className="rounded-xl border border-border px-3 py-3 text-sm font-semibold"
-            >
-              Explore
-            </Link>
-            <Link
-              to="/learn"
-              onClick={() => setOpen(false)}
-              className="rounded-xl border border-border px-3 py-3 text-sm font-semibold"
-            >
-              Learn
-            </Link>
-            <Link
-              to="/community"
-              onClick={() => setOpen(false)}
-              className="rounded-xl border border-border px-3 py-3 text-sm font-semibold"
-            >
-              Community
-            </Link>
-            <Link
-              to="/ai"
-              onClick={() => setOpen(false)}
-              className="rounded-xl border border-border px-3 py-3 text-sm font-semibold"
-            >
-              ExpertAI Studio
-            </Link>
-            <Link
-              to="/messages"
-              onClick={() => setOpen(false)}
-              className="rounded-xl border border-border px-3 py-3 text-sm font-semibold"
-            >
-              Messages
-            </Link>
-            {user && (
-              <Link
-                to="/vault"
-                onClick={() => setOpen(false)}
-                className="rounded-xl border border-border px-3 py-3 text-sm font-semibold"
-              >
-                Personal Vault
-              </Link>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-1 border-t border-border/70 pt-3">
-            {MOBILE_LINKS.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary"
-              >
-                {item.label}
-              </Link>
-            ))}
-            {isAdmin && (
-              <Link
-                to="/admin"
-                onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary"
-              >
-                Admin panel
-              </Link>
-            )}
-            {user && (
-              <Link
-                to="/dashboard"
-                onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary"
-              >
-                My dashboard
-              </Link>
-            )}
-          </div>
-        </nav>
-      )}
+      {open && <nav aria-label="Mobile navigation" className="grid grid-cols-2 gap-2 border-t border-white/10 bg-[#090b10] p-3 md:hidden">
+        {LINKS.map(item => <Link key={item.to} to={item.to} onClick={() => setOpen(false)} className={cn("flex items-center gap-2 rounded-xl border px-3 py-3 text-xs font-semibold", pathname === item.to ? "border-[#c9f36b]/35 bg-[#c9f36b]/10 text-[#d8ff83]" : "border-white/10 text-white/65")}>
+          <item.icon className="h-4 w-4" />{item.label}
+        </Link>)}
+        <Link to="/explore" onClick={() => setOpen(false)} className="rounded-xl border border-white/10 px-3 py-3 text-xs font-semibold text-white/65">Explore all spaces</Link>
+        {user && <Link to="/vault" onClick={() => setOpen(false)} className="rounded-xl border border-white/10 px-3 py-3 text-xs font-semibold text-white/65">Personal Vault</Link>}
+        {isAdmin && <Link to="/admin" onClick={() => setOpen(false)} className="rounded-xl border border-white/10 px-3 py-3 text-xs font-semibold text-white/65">Admin panel</Link>}
+      </nav>}
+
+      <style>{`
+        .et-nav-tab{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;border:1px solid transparent;border-radius:11px;padding:10px 12px;color:rgba(244,242,233,.55);font-size:12px;font-weight:650;letter-spacing:.01em;transition:all .18s ease}
+        .et-nav-tab:hover{color:#f5f2e9;background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.07)}
+        .et-nav-active{color:#d8ff83;background:rgba(201,243,107,.09);border-color:rgba(201,243,107,.22);box-shadow:inset 0 0 18px rgba(201,243,107,.035)}
+        .et-topbar{box-shadow:0 12px 40px rgba(0,0,0,.24)}
+      `}</style>
     </header>
   );
 }
