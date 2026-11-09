@@ -253,8 +253,10 @@ export const Route = createFileRoute("/api/ai/stream")({
             }
           }
 
-          // Prefer Gemini for image inputs because the text-only providers cannot inspect them.
-          if (geminiKey && orderedProviders[0] === "gemini" && !isProviderCoolingDown("gemini")) {
+          // Prefer Gemini for image inputs, or when it is the first available fallback after Ollama.
+          const preferredProvider =
+            orderedProviders[0] === "ollama" ? orderedProviders[1] : orderedProviders[0];
+          if (geminiKey && preferredProvider === "gemini" && !isProviderCoolingDown("gemini")) {
             const model =
               process.env["GEMINI_CHAT_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.8-flash";
             try {
