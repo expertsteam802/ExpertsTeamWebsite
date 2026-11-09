@@ -60,7 +60,80 @@ create policy "Conversation members receive call signals"
   using (
     realtime.topic() ~ '^call:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
     and private.is_direct_conversation_member(
+      case
+        when split_part(realtime.topic(), ':', 2) ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}
+  );
+
+drop policy if exists "Conversation members send call signals" on realtime.messages;
+create policy "Conversation members send call signals"
+  on realtime.messages for insert to authenticated
+  with check (
+    payload ->> 'sender_id' = (select auth.uid())::text
+    and realtime.topic() ~ '^call:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+    and private.is_direct_conversation_member(
+      case
+        when split_part(realtime.topic(), ':', 2) ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}
+  );
+
+-- Extend (rather than replace) the current direct-message MIME allowlist.
+update storage.buckets
+set allowed_mime_types = (
+  select array_agg(distinct mime_type)
+  from unnest(coalesce(allowed_mime_types, '{}'::text[]) || array[
+    'audio/webm', 'audio/webm;codecs=opus', 'audio/mp4',
+    'audio/mpeg', 'audio/ogg', 'audio/wav'
+  ]) as mime_type
+)
+where id = 'direct-messages';
+
+        then split_part(realtime.topic(), ':', 2)::uuid
+        else null
+      end
+    )
+  );
+
+drop policy if exists "Conversation members send call signals" on realtime.messages;
+create policy "Conversation members send call signals"
+  on realtime.messages for insert to authenticated
+  with check (
+    realtime.messages.payload ->> 'sender_id' = (select auth.uid())::text
+    and realtime.topic() ~ '^call:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+    and private.is_direct_conversation_member(
       split_part(realtime.topic(), ':', 2)::uuid
+    )
+  );
+
+-- Extend (rather than replace) the current direct-message MIME allowlist.
+update storage.buckets
+set allowed_mime_types = (
+  select array_agg(distinct mime_type)
+  from unnest(coalesce(allowed_mime_types, '{}'::text[]) || array[
+    'audio/webm', 'audio/webm;codecs=opus', 'audio/mp4',
+    'audio/mpeg', 'audio/ogg', 'audio/wav'
+  ]) as mime_type
+)
+where id = 'direct-messages';
+
+        then split_part(realtime.topic(), ':', 2)::uuid
+        else null
+      end
+    )
+  );
+
+-- Extend (rather than replace) the current direct-message MIME allowlist.
+update storage.buckets
+set allowed_mime_types = (
+  select array_agg(distinct mime_type)
+  from unnest(coalesce(allowed_mime_types, '{}'::text[]) || array[
+    'audio/webm', 'audio/webm;codecs=opus', 'audio/mp4',
+    'audio/mpeg', 'audio/ogg', 'audio/wav'
+  ]) as mime_type
+)
+where id = 'direct-messages';
+
+        then split_part(realtime.topic(), ':', 2)::uuid
+        else null
+      end
     )
   );
 
