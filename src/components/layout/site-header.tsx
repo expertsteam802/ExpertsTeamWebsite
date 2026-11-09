@@ -43,7 +43,7 @@ export function SiteHeader() {
           <img
             src={settings.logo_url || "/experts-team-mark.svg"}
             alt={`${settings.site_name} logo`}
-            className="h-10 w-10 rounded-full object-cover ring-1 ring-primary/50"
+            className="h-10 w-10 rounded-xl object-contain ring-1 ring-primary/50"
           />
           <span className="font-display text-lg font-semibold tracking-tight">
             {settings.site_name}
