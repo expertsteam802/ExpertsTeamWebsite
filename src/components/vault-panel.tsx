@@ -15,7 +15,7 @@ type VaultFile = {
   mime_type: string | null; size_bytes: number; storage_path: string; created_at: string;
 };
 
-const vaultTable = () => supabase.from("vault_files" as "files");
+const vaultTable = () => supabase.from("vault_files");
 
 export function VaultPanel() {
   const { user } = useAuth();
