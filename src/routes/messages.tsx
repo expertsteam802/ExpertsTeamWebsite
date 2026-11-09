@@ -16,6 +16,8 @@ import {
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { ConversationCall } from "@/components/conversation-call";
+import { VoiceRecorder } from "@/components/voice-recorder";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -449,8 +451,8 @@ function MessagesPage() {
 
   function chooseAttachment(file?: File) {
     if (!file) return;
-    if (!file.type.startsWith("image/") || file.size > 8 * 1024 * 1024) {
-      toast.error("Choose an image up to 8 MB.");
+    if (!(file.type.startsWith("image/") || file.type.startsWith("audio/")) || file.size > 8 * 1024 * 1024) {
+      toast.error("Choose an image or audio recording up to 8 MB.");
       return;
     }
     if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
@@ -712,6 +714,7 @@ function MessagesPage() {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </header>
+                <div className="shrink-0 px-3 pt-3"><ConversationCall conversationId={activeConversation.id} recipientId={recipient.id} recipientName={personName(recipient)} /></div>
                 <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-5 sm:px-7">
                   <div className="mb-7 text-center">
                     <Avatar className="mx-auto h-16 w-16">
@@ -747,15 +750,13 @@ function MessagesPage() {
                         <div
                           className={`max-w-[min(82%,520px)] rounded-3xl px-4 py-3 shadow-sm ${mine ? "rounded-br-md bg-gradient-to-br from-primary to-primary/80 text-primary-foreground" : "rounded-bl-md border border-border/70 bg-card"}`}
                         >
-                          {message.media_url && (
+                          {message.media_url && ( /\.(webm|m4a|mp3|ogg|wav|mp4)$/i.test(message.media_path ?? "") ? (
+                            <audio controls preload="metadata" src={message.media_url} className="mb-2 max-w-full" />
+                          ) : (
                             <a href={message.media_url} target="_blank" rel="noreferrer">
-                              <img
-                                src={message.media_url}
-                                alt="Shared attachment"
-                                className="mb-2 max-h-80 rounded-2xl object-cover"
-                              />
+                              <img src={message.media_url} alt="Shared attachment" className="mb-2 max-h-80 rounded-2xl object-cover" />
                             </a>
-                          )}
+                          ))}
                           {message.body && (
                             <p className="whitespace-pre-wrap break-words text-sm leading-6">
                               {message.body}
@@ -800,11 +801,7 @@ function MessagesPage() {
                 >
                   {attachmentPreview && (
                     <div className="mb-3 flex items-center gap-3 rounded-xl border border-border bg-card p-2">
-                      <img
-                        src={attachmentPreview}
-                        alt="Attachment preview"
-                        className="h-14 w-14 rounded-lg object-cover"
-                      />
+                      {attachment?.type.startsWith("audio/") ? <audio controls src={attachmentPreview} className="max-w-[220px]" /> : <img src={attachmentPreview} alt="Attachment preview" className="h-14 w-14 rounded-lg object-cover" />}
                       <span className="min-w-0 flex-1 truncate text-xs">{attachment?.name}</span>
                       <Button
                         type="button"
@@ -827,11 +824,12 @@ function MessagesPage() {
                       <ImagePlus className="h-5 w-5" />
                       <input
                         type="file"
-                        accept="image/png,image/jpeg,image/webp,image/gif"
+                        accept="image/png,image/jpeg,image/webp,image/gif,audio/webm,audio/mp4,audio/mpeg,audio/ogg,audio/wav"
                         className="sr-only"
                         onChange={(event) => chooseAttachment(event.target.files?.[0])}
                       />
                     </label>
+                    <VoiceRecorder disabled={sendMessage.isPending || Boolean(attachment)} onRecorded={chooseAttachment} />
                     <textarea
                       value={draft}
                       onChange={(event) => updateDraft(event.target.value)}
