@@ -201,7 +201,7 @@ async function resolveOllamaConfig(): Promise<OllamaConfig> {
   ).trim();
   if (!supabaseUrl || !serviceKey) {
     if (!ollamaMissingConfigLogged) {
-      console.info("[ExpertAI] Qwen/Ollama is not configured; provider fallback is active.");
+      console.warn("[ExpertAI] Cannot read Qwen/Ollama settings: server-side Supabase credentials are unavailable; provider fallback is active.");
       ollamaMissingConfigLogged = true;
     }
     ollamaConfigCache = { value: null, expiresAt: Date.now() + 15000 };
