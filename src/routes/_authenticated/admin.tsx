@@ -31,6 +31,7 @@ import { UploadDialog } from "@/components/upload-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
@@ -69,6 +70,7 @@ type SettingsForm = {
   ai_subscription_credits: string;
   ai_free_credits: string;
   payout_account: string;
+  navigation_labels_json: string;
 };
 
 function AdminPage() {
@@ -298,6 +300,18 @@ function AdminPage() {
         ai_subscription_credits: String(settings.ai_subscription_credits ?? 500),
         ai_free_credits: String(settings.ai_free_credits ?? 25),
         payout_account: settings.payout_account ?? "",
+        navigation_labels_json: (() => {
+          const root = settings.site_branding_settings && typeof settings.site_branding_settings === "object" && !Array.isArray(settings.site_branding_settings)
+            ? settings.site_branding_settings as Record<string, unknown>
+            : {};
+          const saved = root.siteNavigation;
+          return JSON.stringify(saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {
+            home: "Home", learn: "Learn", community: "Community", expertai: "ExpertAI",
+            messages: "Messages", discover: "Discover", explore: "Explore all spaces",
+            workspace: "Workspace & projects", videos: "Creator videos", showcase: "Project showcase",
+            about: "About", contact: "Contact", plans: "Plans", vault: "Personal Vault", admin: "Admin",
+          }, null, 2);
+        })(),
       });
     }
   }, [settings, form]);
@@ -308,6 +322,26 @@ function AdminPage() {
       const studioPrice = Number(form.ai_subscription_price);
       const studioCredits = Number(form.ai_subscription_credits);
       const freeCredits = Number(form.ai_free_credits);
+      let navigationLabels: Record<string, string>;
+      try {
+        const parsed = JSON.parse(form.navigation_labels_json || "{}") as unknown;
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          throw new Error("Navigation labels must be a JSON object.");
+        }
+        const entries = Object.entries(parsed as Record<string, unknown>);
+        if (entries.some(([key, value]) => !/^[a-z_]+$/.test(key) || typeof value !== "string" || value.trim().length > 32)) {
+          throw new Error("Each navigation label must be text (maximum 32 characters).");
+        }
+        navigationLabels = Object.fromEntries(entries.map(([key, value]) => [key, (value as string).trim()]));
+      } catch (error) {
+        throw error instanceof Error ? error : new Error("Navigation labels JSON is invalid.");
+      }
+      const existingBranding = settings.site_branding_settings && typeof settings.site_branding_settings === "object" && !Array.isArray(settings.site_branding_settings)
+        ? settings.site_branding_settings as Record<string, unknown>
+        : {};
+      const existingSiteBranding = existingBranding.siteBranding && typeof existingBranding.siteBranding === "object" && !Array.isArray(existingBranding.siteBranding)
+        ? existingBranding.siteBranding as Record<string, unknown>
+        : {};
       if (!Number.isInteger(freeCredits) || freeCredits < 0 || freeCredits > 100000)
         throw new Error("Free AI credits must be between 0 and 100,000.");
       if (!Number.isFinite(studioPrice) || studioPrice < 0.01 || studioPrice > 1000)
@@ -320,10 +354,13 @@ function AdminPage() {
           site_name: form.site_name.trim().slice(0, 60),
           logo_url: form.logo_url.trim() || null,
           site_branding_settings: {
+            ...existingBranding,
             siteBranding: {
+              ...existingSiteBranding,
               background_image_url: form.background_image_url.trim(),
               banner_image_url: form.banner_image_url.trim(),
             },
+            siteNavigation: navigationLabels,
           } as Json,
           youtube_url: form.youtube_url.trim(),
           instagram_url: form.instagram_url.trim(),
@@ -595,6 +632,12 @@ function AdminPage() {
                   className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
                 >
                   <Settings className="h-4 w-4" /> Site settings
+                </TabsTrigger>
+                <TabsTrigger
+                  value="navigation"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
+                  <Settings className="h-4 w-4" /> Navigation & text
                 </TabsTrigger>
                 <TabsTrigger
                   value="system"
@@ -1048,6 +1091,37 @@ function AdminPage() {
                   >
                     Read AI provider setup guide
                   </a>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="navigation" className="mt-0 space-y-5">
+                <Card className="max-w-3xl gap-4 p-6">
+                  <div>
+                    <h2 className="font-display text-lg font-semibold">Navigation labels</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Rename the main tabs and the links shown beneath them in the bottom navigation. Keep the JSON keys unchanged; edit only the text values.
+                    </p>
+                  </div>
+                  {form ? (
+                    <>
+                      <Textarea
+                        rows={14}
+                        value={form.navigation_labels_json}
+                        onChange={(event) => setForm({ ...form, navigation_labels_json: event.target.value })}
+                        className="font-mono text-xs"
+                        aria-label="Navigation label settings"
+                      />
+                      <Button onClick={() => saveSettings.mutate()} disabled={saveSettings.isPending}>
+                        {saveSettings.isPending ? "Saving…" : "Save navigation labels"}
+                      </Button>
+                    </>
+                  ) : <p className="text-sm text-muted-foreground">Loading settings…</p>}
+                </Card>
+                <Card className="max-w-3xl gap-3 p-6">
+                  <h2 className="font-display text-lg font-semibold">Edit website text</h2>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    On any website page, use the blue “Edit site text” control to turn on editing, then select a heading, paragraph, or label to change it. Your changes are saved in the site settings and reused wherever that same website text appears.
+                  </p>
                 </Card>
               </TabsContent>
 
