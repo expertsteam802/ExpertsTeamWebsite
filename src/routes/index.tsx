@@ -28,13 +28,13 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ExpertsTeam — Learn, Code, Play & Download Free Apps" },
+      { title: "ExpertsTeam — Learn, Code, Play & Free Downloads" },
       {
         name: "description",
         content:
-          "Learn coding, build apps, play games and download free files. Join ExpertsTeam to learn, create and connect.",
+          "Learn coding, build apps, play games and download free apps, games and files.",
       },
-      { property: "og:title", content: "ExpertsTeam | Learn, Build, Connect & Create" },
+      { property: "og:title", content: "ExpertsTeam — Learn, Code, Play & Free Downloads" },
       {
         property: "og:description",
         content:
@@ -291,36 +291,30 @@ function Index() {
       <section className="border-y border-border/60 bg-surface/40 px-4 py-14 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-4xl">
           <p className="text-xs font-semibold tracking-[0.22em] text-primary">
-            OFFICIAL BRAND & CREATOR HOME
+            ONE COMMUNITY. MANY WAYS TO CREATE.
           </p>
           <h2 className="mt-3 font-display text-2xl font-bold sm:text-3xl">
-            Expertsteam802 — the official ExpertsTeam website
+            Welcome to ExpertsTeam
           </h2>
           <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-base">
-            Expertsteam802 is the online home of ExpertsTeam, a creative technology platform by
-            Chris Expert. Explore AI-assisted app building, practical programming resources, creator
-            videos, community projects and beginner-friendly coding lessons.
+            Learn programming, explore practical tutorials, share questions with the community,
+            build websites and apps, and discover free games, apps and downloadable resources.
+            Whether you are just starting or already creating, ExpertsTeam gives you useful tools
+            and a place to grow.
           </p>
           <p className="mt-3 text-sm leading-7 text-muted-foreground sm:text-base">
-            Find the platform through searches for Expertsteam802, ExpertsTeam, Chris Expert,
-            ChrisPrograms, AngeloCodes, Dismas, ExpertsTeamCoders, CodeWithExperts and
-            LearnCodingWithChris. Ask any question in our community and get help, or start with the{" "}
-            <Link to="/learn" className="font-medium text-primary hover:underline">
-              coding lessons
-            </Link>
-            , explore the{" "}
-            <Link to="/videos" className="font-medium text-primary hover:underline">
-              creator video library
-            </Link>
-            , or try the{" "}
-            <Link to="/ai" className="font-medium text-primary hover:underline">
-              ExpertAI app-building workspace
-            </Link>
-            .
+            Start with{" "}
+            <Link to="/learn" className="font-medium text-primary hover:underline">coding lessons</Link>,
+            browse{" "}
+            <Link to="/entertainment" className="font-medium text-primary hover:underline">free games, apps and files</Link>,
+            meet creators in the{" "}
+            <Link to="/community" className="font-medium text-primary hover:underline">community</Link>,
+            or open{" "}
+            <Link to="/ai" className="font-medium text-primary hover:underline">ExpertAI Studio</Link>
+            {" "}when you want help building.
           </p>
         </div>
       </section>
-
       <section className="px-4 pb-20 sm:px-6 lg:px-8">
         <div className="relative mx-auto max-w-7xl overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 via-card to-accent/10 p-8 sm:p-12 lg:p-14">
           <div className="absolute -right-12 -top-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
