@@ -168,7 +168,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
           !segments.some((part) => part.startsWith(".experts-")) &&
           !secretName.test(filename) &&
           !binaryExtensions.test(filename) &&
-          (entry.size ?? 0) <= 150000
+          (entry.size ?? 0) <= 500000
         );
       })
       .sort((left, right) => {
@@ -182,9 +182,9 @@ export const importGitHubProject = createServerFn({ method: "POST" })
       });
     if (!candidates.length)
       throw new Error("No supported text source files were found in this repository.");
-    if (candidates.length > 120)
+    if (candidates.length > 400)
       throw new Error(
-        "This repository contains more than 120 supported text files. Reduce the repository size and try again.",
+        "This repository contains more than 400 supported text files. Reduce the repository size and try again.",
       );
 
     const files: Record<string, string> = {};
@@ -205,16 +205,16 @@ export const importGitHubProject = createServerFn({ method: "POST" })
             path.split("/").map(encodeURIComponent).join("/");
           const response = await request(rawUrl, "text/plain");
           const buffer = Buffer.from(await response.arrayBuffer());
-          if (buffer.byteLength > 150000 || buffer.includes(0)) return null;
+          if (buffer.byteLength > 500000 || buffer.includes(0)) return null;
           return { path, content: buffer.toString("utf8"), size: buffer.byteLength };
         }),
       );
       for (const file of downloaded) {
         if (!file) continue;
         totalBytes += file.size;
-        if (totalBytes > 1_000_000)
+        if (totalBytes > 3_000_000)
           throw new Error(
-            "The repository's text files exceed the current 1 MB project import limit. Use a smaller repository or remove generated files.",
+            "The repository's text files exceed the current 3 MB project import limit. Use a smaller repository or remove generated files.",
           );
         files[file.path] = file.content;
       }
@@ -254,12 +254,12 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
 const previewRequest = z
   .object({
     projectId: z.string().uuid(),
-    files: z.record(z.string().max(512), z.string().max(150000)),
+    files: z.record(z.string().max(512), z.string().max(500000)),
   })
   .refine(
     ({ files }) =>
-      Object.keys(files).length <= 120 &&
-      Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 1_000_000,
+      Object.keys(files).length <= 400 &&
+      Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 3_000_000,
     "The project is too large to preview.",
   );
 
