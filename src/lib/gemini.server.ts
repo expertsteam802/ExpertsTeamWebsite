@@ -289,8 +289,8 @@ async function callOllama(request: GeminiRequest): Promise<GeminiResponse> {
     signal: AbortSignal.timeout(60000),
   });
   if (!response.ok) {
-    const detail = (await response.text()).slice(0, 300);
-    throw new Error(`Qwen/Ollama HTTP ${response.status}: ${detail}`);
+    await response.body?.cancel();
+    throw new Error(`Qwen/Ollama HTTP ${response.status}.`);
   }
   const data = (await response.json()) as {
     choices?: { message?: { content?: string | null } }[];
@@ -327,8 +327,8 @@ export async function streamOllamaContent(
       : AbortSignal.timeout(65000),
   });
   if (!upstream.ok) {
-    const detail = (await upstream.text()).slice(0, 300);
-    throw new Error(`Qwen/Ollama HTTP ${upstream.status}: ${detail}`);
+    await upstream.body?.cancel();
+    throw new Error(`Qwen/Ollama HTTP ${upstream.status}.`);
   }
   if (!upstream.body) throw new Error("Qwen/Ollama did not return a streaming response.");
 
@@ -372,8 +372,8 @@ export async function streamOllamaContent(
           const { done, value } = await reader.read();
           if (done) {
             buffer += decoder.decode();
-            if (buffer.trim()) emitLine(buffer.trim(), controller);
-            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            const emittedDone = buffer.trim() ? emitLine(buffer.trim(), controller) : false;
+            if (!emittedDone) controller.enqueue(encoder.encode("data: [DONE]\n\n"));
             finished = true;
             controller.close();
             return;
@@ -429,8 +429,9 @@ export async function generateGeminiContent(
     ? ["gemini"]
     : [
         ...new Set([
-          ...requestedOrder.filter((item) => availableProviders.includes(item)),
-          ...availableProviders,
+          "ollama",
+          ...requestedOrder.filter((item) => availableProviders.includes(item) && item !== "ollama"),
+          ...availableProviders.filter((item) => item !== "ollama"),
         ]),
       ];
   const failures: string[] = [];
