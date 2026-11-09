@@ -10,6 +10,7 @@ import { FileGrid, type CommunityFile } from "@/components/file-grid";
 import { PageShell } from "@/components/layout/page-shell";
 import { UpgradeDialog } from "@/components/upgrade-dialog";
 import { UploadDialog } from "@/components/upload-dialog";
+import { VaultPanel } from "@/components/vault-panel";
 
 import { VideoGrid, type VideoItem } from "@/components/video-grid";
 import {
@@ -234,10 +235,14 @@ function DashboardPage() {
       <section className="mx-auto max-w-7xl px-4 pb-16">
         <Tabs defaultValue="files" orientation="vertical" className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
           <TabsList className="flex h-fit flex-row flex-wrap gap-2 lg:flex-col lg:items-stretch">
+            <TabsTrigger value="vault">Private Vault</TabsTrigger>
             <TabsTrigger value="files">My files</TabsTrigger>
             <TabsTrigger value="videos">My videos</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
+          <TabsContent value="vault" className="min-w-0 pt-0">
+            <VaultPanel />
+          </TabsContent>
           <TabsContent value="files" className="min-w-0 pt-0">
             <FileGrid files={files ?? []} />
           </TabsContent>
