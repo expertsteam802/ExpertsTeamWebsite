@@ -59,6 +59,7 @@ type SettingsForm = {
   logo_url: string;
   background_image_url: string;
   banner_image_url: string;
+  ollama_url: string;
   youtube_url: string;
   instagram_url: string;
   owner_email: string;
@@ -279,6 +280,12 @@ function AdminPage() {
             : undefined;
           return typeof branding?.banner_image_url === "string" ? branding.banner_image_url : "";
         })(),
+        ollama_url: (() => {
+          const branding = settings.ad_settings && typeof settings.ad_settings === "object" && !Array.isArray(settings.ad_settings)
+            ? (settings.ad_settings as Record<string, unknown>).siteBranding as Record<string, unknown> | undefined
+            : undefined;
+          return typeof branding?.ollama_url === "string" ? branding.ollama_url : "";
+        })(),
         youtube_url: settings.youtube_url,
         instagram_url: settings.instagram_url,
         owner_email: settings.owner_email,
@@ -320,6 +327,10 @@ function AdminPage() {
         throw new Error("Studio AI credits must be between 1 and 100,000.");
       if (form.popunder_enabled && !form.popunder_script_url.trim().startsWith("https://"))
         throw new Error("The popunder script URL must use HTTPS.");
+      const existingBranding =
+        settings.ad_settings && typeof settings.ad_settings === "object" && !Array.isArray(settings.ad_settings)
+          ? ((settings.ad_settings as Record<string, unknown>).siteBranding as Record<string, unknown> | undefined) ?? {}
+          : {};
       const { error } = await supabase
         .from("site_settings")
         .update({
@@ -332,8 +343,10 @@ function AdminPage() {
             popunderEnabled: form.popunder_enabled,
             popunderScriptUrl: form.popunder_script_url.trim(),
             siteBranding: {
+              ...existingBranding,
               background_image_url: form.background_image_url.trim(),
               banner_image_url: form.banner_image_url.trim(),
+              ...(form.ollama_url.trim() ? { ollama_url: form.ollama_url.trim() } : {}),
             },
           } as Json,
           youtube_url: form.youtube_url.trim(),
@@ -869,6 +882,7 @@ function AdminPage() {
                           ["logo_url", "Logo image URL"],
                           ["background_image_url", "Website background image URL"],
                           ["banner_image_url", "Top banner image URL"],
+                          ["ollama_url", "Qwen/Ollama endpoint (server-side)"],
                           ["youtube_url", "YouTube channel URL"],
                           ["instagram_url", "Instagram URL"],
                           ["owner_email", "Owner email"],
@@ -886,16 +900,23 @@ function AdminPage() {
                           <Input
                             id={key}
                             value={form[key]}
+                            type={key === "ollama_url" ? "url" : "text"}
                             placeholder={
                               key === "owner_email" ? "hello@yourwebsite.com" :
                               key === "instagram_url" ? "https://instagram.com/yourhandle" :
                               key === "youtube_url" ? "https://youtube.com/@yourchannel" :
                               key === "logo_url" ? "https://example.com/logo.png" :
                               key === "background_image_url" ? "https://example.com/background.jpg" :
-                              key === "banner_image_url" ? "https://example.com/banner.jpg" : ""
+                              key === "banner_image_url" ? "https://example.com/banner.jpg" :
+                              key === "ollama_url" ? "https://your-public-tunnel.example" : ""
                             }
                             onChange={(event) => setForm({ ...form, [key]: event.target.value })}
                           />
+                          {key === "ollama_url" && (
+                            <p className="text-xs text-muted-foreground">
+                              Public HTTPS OpenAI-compatible tunnel URL. Used only by the server; URL-only changes take effect without redeploying. Leave blank to preserve the current setting.
+                            </p>
+                          )}
                         </div>
                       ))}
                       <div className="rounded-xl border border-border p-4">
