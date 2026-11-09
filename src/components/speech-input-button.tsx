@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ type SpeechWindow = Window & { SpeechRecognition?: new () => Recognition; webkit
 export function SpeechInputButton({ onTranscript, disabled=false }: { onTranscript: (text: string) => void; disabled?: boolean }) {
   const recognition = useRef<Recognition|null>(null);
   const [listening,setListening] = useState(false);
+  useEffect(() => () => recognition.current?.stop(), []);
   function toggle() {
     if (listening) { recognition.current?.stop(); setListening(false); return; }
     const Speech = (window as SpeechWindow).SpeechRecognition ?? (window as SpeechWindow).webkitSpeechRecognition;
