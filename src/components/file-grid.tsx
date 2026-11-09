@@ -94,12 +94,12 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
       if (downloadError) throw downloadError;
       const safeName = file.file_name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-180);
       const path = user.id + "/" + crypto.randomUUID() + "-" + safeName;
-      const { error: uploadError } = await supabase.storage.from("private-vault").upload(path, blob, {
+      const { error: uploadError } = await supabase.storage.from("personal-vault").upload(path, blob, {
         cacheControl: "3600", upsert: false, contentType: file.mime_type || blob.type || "application/octet-stream",
       });
       if (uploadError) throw uploadError;
-      const { error } = await supabase.from("vault_files").insert({
-        user_id: user.id, title: file.title.slice(0, 140), file_name: file.file_name.slice(0, 255),
+      const { error } = await supabase.from("personal_vault_files").insert({
+        user_id: user.id, file_name: file.file_name.slice(0, 255),
         mime_type: file.mime_type, size_bytes: file.size_bytes, storage_path: path,
       });
       if (error) {
