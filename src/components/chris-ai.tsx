@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { SpeechInputButton } from "@/components/speech-input-button";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { generateExpertImage } from "@/lib/ai.functions";
@@ -777,6 +778,7 @@ export function ChrisAiChat({
           >
             <Paperclip className="h-4 w-4" />
           </Button>
+          <SpeechInputButton disabled={chatIsFull || guestCreditsExhausted} onTranscript={(text) => setInput((current) => [current.trim(), text].filter(Boolean).join(" "))} />
           <Textarea
             value={input}
             rows={1}
