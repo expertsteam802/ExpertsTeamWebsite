@@ -256,11 +256,11 @@ export async function runAgent(
     .map(({ name, content }) => "--- " + name + " ---\\n" + content)
     .join("\\n\\n");
 
-  const configured = (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
+  const configured = (process.env["AI_PROVIDER_ORDER"] || "ollama,groq,gemini,openrouter")
     .split(",")
     .map((item) => item.trim().toLowerCase())
-    .filter((item) => ["groq", "gemini", "openrouter"].includes(item));
-  const providerSequence = [...new Set(["groq", ...configured.filter((provider) => provider !== "groq"), "gemini", "openrouter"])];
+     .filter((item) => ["ollama", "groq", "gemini", "openrouter"].includes(item));
+  const providerSequence = [...new Set(["ollama", ...configured, "groq", "gemini", "openrouter"])];
   const completedFiles: Record<string, string | null> = {};
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
