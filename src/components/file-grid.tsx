@@ -90,6 +90,7 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
     mutationFn: async (file: CommunityFile) => {
       if (!user || file.user_id !== user.id) throw new Error("Only the file owner can save a private Vault copy.");
       if (!file.storage_path) throw new Error("External links cannot be copied into private storage.");
+      if (file.size_bytes > 100 * 1024 * 1024) throw new Error("This upload is larger than the Personal Vault's 100 MB per-file limit.");
       const { data: blob, error: downloadError } = await supabase.storage.from("uploads").download(file.storage_path);
       if (downloadError) throw downloadError;
       const safeName = file.file_name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-180);
