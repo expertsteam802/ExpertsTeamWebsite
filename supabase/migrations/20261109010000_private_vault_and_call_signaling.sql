@@ -59,7 +59,24 @@ drop policy if exists "Conversation members send call signals" on realtime.messa
 create policy "Conversation members send call signals"
   on realtime.messages for insert to authenticated
   with check (
-    realtime.topic() ~ '^call:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+    (realtime.messages.payload ->> 'sender_id') = (select auth.uid())::text
+    and realtime.topic() ~ '^call:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}
+      case
+        when split_part(realtime.topic(), ':', 2) ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+        then split_part(realtime.topic(), ':', 2)::uuid
+        else null
+      end
+    )
+  );
+
+-- Permit private voice notes in the existing conversation media bucket.
+update storage.buckets
+set allowed_mime_types = array[
+  'image/jpeg','image/png','image/webp','image/gif',
+  'audio/webm','audio/webm;codecs=opus','audio/mp4','audio/mpeg','audio/ogg','audio/wav'
+]::text[]
+where id='direct-messages';
+
     and private.is_direct_conversation_member(
       case
         when split_part(realtime.topic(), ':', 2) ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
