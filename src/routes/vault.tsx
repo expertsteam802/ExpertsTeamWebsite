@@ -36,7 +36,7 @@ export const Route = createFileRoute("/vault")({
 type VaultFile = {
   id: string;
   user_id: string;
-  storage_path: string;
+  storage_path: string | null;
   file_name: string;
   file_url: string | null;
   entry_type: "file" | "link";
@@ -128,21 +128,18 @@ function PersonalVaultPage() {
   const remove = useMutation({
     mutationFn: async (file: VaultFile) => {
       if (!user) throw new Error("Sign in to manage your files.");
+      if (file.storage_path) {
+        const { error: storageError } = await supabase.storage
+          .from("personal-vault")
+          .remove([file.storage_path]);
+        if (storageError) throw storageError;
+      }
       const { error: rowError } = await supabase
         .from("personal_vault_files")
         .delete()
         .eq("id", file.id)
         .eq("user_id", user.id);
       if (rowError) throw rowError;
-      if (file.storage_path) {
-        const { error: storageError } = await supabase.storage
-          .from("personal-vault")
-          .remove([file.storage_path]);
-        if (storageError)
-          throw new Error(
-            "The file entry was removed, but its stored copy could not be cleaned up.",
-          );
-      }
     },
     onSuccess: async () => {
       toast.success("File deleted from your vault.");
@@ -190,6 +187,10 @@ function PersonalVaultPage() {
   const totalBytes = files.reduce((total, file) => total + file.size_bytes, 0);
 
   async function download(file: VaultFile) {
+    if (file.entry_type !== "file" || !file.storage_path) {
+      toast.error("This vault item is a saved link, not an uploaded file.");
+      return;
+    }
     const { data, error } = await supabase.storage
       .from("personal-vault")
       .download(file.storage_path);
@@ -234,8 +235,8 @@ function PersonalVaultPage() {
             </div>
             <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Personal Vault</h1>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-              Your private space for documents, images and files. Other members cannot browse or
-              download your files.
+              Keep private uploads and useful web links together. Only your signed-in account can
+              access the items saved here.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -373,7 +374,7 @@ function PersonalVaultPage() {
             <p className="mt-2 max-w-md text-sm text-muted-foreground">
               {search
                 ? "Try another file name."
-                : "Upload your first file. It will be private to your account, not part of the public community library."}
+                : "Upload a file or save a web link. Your vault is private to your account and separate from the public community library."}
             </p>
             {!search && (
               <Button className="mt-5" onClick={() => fileInput.current?.click()}>
