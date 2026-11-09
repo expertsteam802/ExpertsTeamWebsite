@@ -17,18 +17,20 @@ import { useSiteSettings } from "@/hooks/use-site-settings";
 import { THEMES, useTheme, type NavAlign } from "@/hooks/use-theme";
 import { cn } from "@/lib/utils";
 
-const NAV_ITEMS = [
-  { to: "/", label: "Home" },
-  { to: "/explore", label: "Explore" },
-  { to: "/community", label: "Community" },
-  { to: "/learn", label: "Learn" },
-] as const;
-
 const ALIGN: Record<NavAlign, string> = {
   left: "justify-start",
   center: "justify-center",
   right: "justify-end",
 };
+
+const MOBILE_LINKS = [
+  { to: "/entertainment", label: "Games, apps & files" },
+  { to: "/projects", label: "Apply to ExpertsTeam" },
+  { to: "/contact", label: "Contact" },
+  { to: "/pricing", label: "Pricing" },
+  { to: "/privacy", label: "Privacy" },
+  { to: "/terms", label: "Terms of Use" },
+] as const;
 
 export function SiteHeader() {
   const settings = useSiteSettings();
@@ -36,104 +38,56 @@ export function SiteHeader() {
   const { theme, setTheme, navAlign, setNavAlign } = useTheme();
   const [open, setOpen] = useState(false);
 
+  const tabClass =
+    "shrink-0 rounded-xl px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground data-[status=active]:bg-primary/10 data-[status=active]:text-primary";
+
   return (
-    <header className="sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4">
+    <header className="sticky top-0 z-50 border-b border-border/70 bg-background/90 backdrop-blur-xl">
+      <div className="mx-auto flex min-h-16 max-w-7xl items-center gap-3 px-3 sm:px-4">
         <Link to="/" className="flex shrink-0 items-center gap-2">
           <img
             src={settings.logo_url || "/experts-team-mark.svg"}
-            alt={`${settings.site_name} logo`}
-            className="h-10 w-10 rounded-xl object-contain ring-1 ring-primary/50"
+            alt="ExpertsTeam"
+            className="h-9 w-9 rounded-full object-cover"
           />
-          <span className="font-display text-lg font-semibold tracking-tight">
-            {settings.site_name}
+          <span className="font-display text-base font-bold tracking-tight sm:text-lg">
+            ExpertsTeam
           </span>
         </Link>
 
-        <nav className={cn("hidden min-w-0 flex-1 items-center gap-1 lg:flex", ALIGN[navAlign])}>
-          <Link
-            to="/"
-            activeOptions={{ exact: true }}
-            className="rounded-lg px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary data-[status=active]:bg-secondary data-[status=active]:text-foreground"
-          >
-            Home
-          </Link>
+        <nav
+          aria-label="Main navigation"
+          className={cn(
+            "hidden min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex",
+            ALIGN[navAlign],
+          )}
+        >
+          <Link to="/" activeOptions={{ exact: true }} className={tabClass}>Home</Link>
+          <Link to="/explore" className={tabClass}>Explore</Link>
+          <Link to="/learn" className={tabClass}>Learn</Link>
+          <Link to="/community" className={tabClass}>Community</Link>
+          <Link to="/ai" className={tabClass}>ExpertAI</Link>
+          <Link to="/messages" className={tabClass}>Messages</Link>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2 text-sm font-semibold">
-                Discover <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-              <DropdownMenuLabel>Explore & learn</DropdownMenuLabel>
-              <DropdownMenuItem asChild>
-                <Link to="/explore">Explore the platform</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/learn">Learn to code</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/community">Community</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/entertainment">Games, apps & free files</Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2 text-sm font-semibold">
-                Create <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-              <DropdownMenuLabel>Build & contribute</DropdownMenuLabel>
-              <DropdownMenuItem asChild>
-                <Link to="/ai">ExpertAI Studio</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/projects">Apply to ExpertsTeam</Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2 text-sm font-semibold">
-                Connect <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-              <DropdownMenuLabel>Your network</DropdownMenuLabel>
-              <DropdownMenuItem asChild>
-                <Link to="/messages">Messages</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/contact">Contact</Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2 text-sm font-semibold">
+              <Button variant="ghost" size="sm" className="shrink-0 gap-1.5 rounded-xl px-3 font-semibold">
                 More <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem asChild>
-                <Link to="/pricing">Pricing</Link>
-              </DropdownMenuItem>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>More from ExpertsTeam</DropdownMenuLabel>
+              <DropdownMenuItem asChild><Link to="/entertainment">Games, apps & free files</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/projects">Apply to ExpertsTeam</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/contact">Contact</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/pricing">Pricing</Link></DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/privacy">Privacy</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/terms">Terms of Use</Link>
-              </DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/privacy">Privacy</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/terms">Terms of Use</Link></DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" aria-label="Appearance settings">
@@ -168,29 +122,24 @@ export function SiteHeader() {
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="secondary" className="max-w-48 gap-2 truncate">
+                <Button variant="secondary" className="max-w-40 gap-2 truncate px-2 sm:px-3">
                   <Avatar className="h-7 w-7">
                     <AvatarImage src={profile?.avatar_url ?? undefined} />
                     <AvatarFallback>
-                      {(profile?.display_name || profile?.username || "A")
-                        .slice(0, 1)
-                        .toUpperCase()}
+                      {(profile?.display_name || profile?.username || "A").slice(0, 1).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="truncate">
+                  <span className="hidden truncate sm:inline">
                     {profile?.display_name || profile?.username || "Account"}
                   </span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem asChild>
-                  <Link to="/dashboard">My dashboard</Link>
-                </DropdownMenuItem>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem asChild><Link to="/dashboard">My dashboard</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link to="/vault">Personal Vault</Link></DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem asChild>
-                    <Link to="/admin">
-                      <Shield className="mr-2 h-4 w-4" /> Admin panel
-                    </Link>
+                    <Link to="/admin"><Shield className="mr-2 h-4 w-4" /> Admin panel</Link>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
@@ -200,15 +149,13 @@ export function SiteHeader() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Link to="/auth">
-              <Button>Sign in</Button>
-            </Link>
+            <Link to="/auth"><Button size="sm">Sign in</Button></Link>
           )}
 
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className="md:hidden"
             aria-label="Menu"
             aria-expanded={open}
             onClick={() => setOpen((value) => !value)}
@@ -219,60 +166,24 @@ export function SiteHeader() {
       </div>
 
       {open && (
-        <nav className="animate-rise border-t border-border/70 px-4 pb-5 md:hidden">
-          <div className="grid grid-cols-2 gap-2 py-4">
-            <Link
-              to="/"
-              onClick={() => setOpen(false)}
-              className="rounded-xl border border-border px-3 py-3 text-sm font-semibold"
-            >
-              Home
-            </Link>
-            <Link
-              to="/explore"
-              onClick={() => setOpen(false)}
-              className="rounded-xl border border-border px-3 py-3 text-sm font-semibold"
-            >
-              Explore
-            </Link>
-            <Link
-              to="/learn"
-              onClick={() => setOpen(false)}
-              className="rounded-xl border border-border px-3 py-3 text-sm font-semibold"
-            >
-              Learn
-            </Link>
-            <Link
-              to="/community"
-              onClick={() => setOpen(false)}
-              className="rounded-xl border border-border px-3 py-3 text-sm font-semibold"
-            >
-              Community
-            </Link>
+        <nav aria-label="Mobile navigation" className="border-t border-border/70 px-3 pb-4 md:hidden">
+          <div className="grid grid-cols-2 gap-2 py-3">
+            <Link to="/" onClick={() => setOpen(false)} className="rounded-xl border border-border px-3 py-3 text-sm font-semibold">Home</Link>
+            <Link to="/explore" onClick={() => setOpen(false)} className="rounded-xl border border-border px-3 py-3 text-sm font-semibold">Explore</Link>
+            <Link to="/learn" onClick={() => setOpen(false)} className="rounded-xl border border-border px-3 py-3 text-sm font-semibold">Learn</Link>
+            <Link to="/community" onClick={() => setOpen(false)} className="rounded-xl border border-border px-3 py-3 text-sm font-semibold">Community</Link>
+            <Link to="/ai" onClick={() => setOpen(false)} className="rounded-xl border border-border px-3 py-3 text-sm font-semibold">ExpertAI Studio</Link>
+            <Link to="/messages" onClick={() => setOpen(false)} className="rounded-xl border border-border px-3 py-3 text-sm font-semibold">Messages</Link>
+            {user && <Link to="/vault" onClick={() => setOpen(false)} className="rounded-xl border border-border px-3 py-3 text-sm font-semibold">Personal Vault</Link>}
           </div>
-          <div className="grid grid-cols-2 gap-2 border-t border-border/70 pt-4">
-            <p className="col-span-2 px-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Create & connect
-            </p>
-            {[
-              { to: "/ai", label: "ExpertAI Studio" },
-              { to: "/projects", label: "Apply to ExpertsTeam" },
-              { to: "/messages", label: "Messages" },
-              { to: "/entertainment", label: "Games, apps & files" },
-              { to: "/pricing", label: "Pricing" },
-              { to: "/contact", label: "Contact" },
-              { to: "/privacy", label: "Privacy" },
-              { to: "/terms", label: "Terms of Use" },
-            ].map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary"
-              >
+          <div className="grid grid-cols-2 gap-1 border-t border-border/70 pt-3">
+            {MOBILE_LINKS.map((item) => (
+              <Link key={item.to} to={item.to} onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary">
                 {item.label}
               </Link>
             ))}
+            {isAdmin && <Link to="/admin" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary">Admin panel</Link>}
+            {user && <Link to="/dashboard" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary">My dashboard</Link>}
           </div>
         </nav>
       )}
