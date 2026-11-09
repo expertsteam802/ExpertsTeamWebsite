@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LogOut, Menu, Palette, Shield, Compass, GraduationCap, Users, Sparkles, MessageCircle, Gamepad2, FolderKanban } from "lucide-react";
+import { LogOut, Menu, Palette, Shield, Compass, GraduationCap, Users, Sparkles, MessageCircle, Gamepad2 } from "lucide-react";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
