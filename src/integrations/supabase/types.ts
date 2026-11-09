@@ -634,6 +634,39 @@ export type Database = {
           },
         ]
       }
+      vault_files: {
+        Row: {
+          created_at: string
+          file_name: string
+          id: string
+          mime_type: string | null
+          size_bytes: number
+          storage_path: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number
+          storage_path: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number
+          storage_path?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       files: {
         Row: {
           category: string
