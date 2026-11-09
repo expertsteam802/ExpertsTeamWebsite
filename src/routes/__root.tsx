@@ -121,7 +121,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "ExpertsTeam | Code, Create & Connect in One Digital Hub" },
       {
         name: "description",
-        content: "Learn to code, build with ExpertAI, connect with creators, and discover useful apps and downloads on ExpertsTeam.",
+        content:
+          "Learn to code, build with ExpertAI, connect with creators, and discover useful apps and downloads on ExpertsTeam.",
       },
 
       {

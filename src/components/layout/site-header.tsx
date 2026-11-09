@@ -62,27 +62,55 @@ export function SiteHeader() {
             ALIGN[navAlign],
           )}
         >
-          <Link to="/" activeOptions={{ exact: true }} className={tabClass}>Home</Link>
-          <Link to="/explore" className={tabClass}>Explore</Link>
-          <Link to="/learn" className={tabClass}>Learn</Link>
-          <Link to="/community" className={tabClass}>Community</Link>
-          <Link to="/ai" className={tabClass}>ExpertAI</Link>
-          <Link to="/messages" className={tabClass}>Messages</Link>
+          <Link to="/" activeOptions={{ exact: true }} className={tabClass}>
+            Home
+          </Link>
+          <Link to="/explore" className={tabClass}>
+            Explore
+          </Link>
+          <Link to="/learn" className={tabClass}>
+            Learn
+          </Link>
+          <Link to="/community" className={tabClass}>
+            Community
+          </Link>
+          <Link to="/ai" className={tabClass}>
+            ExpertAI
+          </Link>
+          <Link to="/messages" className={tabClass}>
+            Messages
+          </Link>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="shrink-0 gap-1.5 rounded-xl px-3 font-semibold">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 gap-1.5 rounded-xl px-3 font-semibold"
+              >
                 More <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>More from ExpertsTeam</DropdownMenuLabel>
-              <DropdownMenuItem asChild><Link to="/entertainment">Games, apps & free files</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link to="/projects">Apply to ExpertsTeam</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link to="/contact">Contact</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link to="/pricing">Pricing</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/entertainment">Games, apps & free files</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/projects">Apply to ExpertsTeam</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/contact">Contact</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/pricing">Pricing</Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild><Link to="/privacy">Privacy</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link to="/terms">Terms of Use</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/privacy">Privacy</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/terms">Terms of Use</Link>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </nav>
@@ -126,7 +154,9 @@ export function SiteHeader() {
                   <Avatar className="h-7 w-7">
                     <AvatarImage src={profile?.avatar_url ?? undefined} />
                     <AvatarFallback>
-                      {(profile?.display_name || profile?.username || "A").slice(0, 1).toUpperCase()}
+                      {(profile?.display_name || profile?.username || "A")
+                        .slice(0, 1)
+                        .toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <span className="hidden truncate sm:inline">
@@ -135,11 +165,17 @@ export function SiteHeader() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuItem asChild><Link to="/dashboard">My dashboard</Link></DropdownMenuItem>
-                <DropdownMenuItem asChild><Link to="/vault">Personal Vault</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard">My dashboard</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/vault">Personal Vault</Link>
+                </DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem asChild>
-                    <Link to="/admin"><Shield className="mr-2 h-4 w-4" /> Admin panel</Link>
+                    <Link to="/admin">
+                      <Shield className="mr-2 h-4 w-4" /> Admin panel
+                    </Link>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
@@ -149,7 +185,9 @@ export function SiteHeader() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Link to="/auth"><Button size="sm">Sign in</Button></Link>
+            <Link to="/auth">
+              <Button size="sm">Sign in</Button>
+            </Link>
           )}
 
           <Button
@@ -166,24 +204,92 @@ export function SiteHeader() {
       </div>
 
       {open && (
-        <nav aria-label="Mobile navigation" className="border-t border-border/70 px-3 pb-4 md:hidden">
+        <nav
+          aria-label="Mobile navigation"
+          className="border-t border-border/70 px-3 pb-4 md:hidden"
+        >
           <div className="grid grid-cols-2 gap-2 py-3">
-            <Link to="/" onClick={() => setOpen(false)} className="rounded-xl border border-border px-3 py-3 text-sm font-semibold">Home</Link>
-            <Link to="/explore" onClick={() => setOpen(false)} className="rounded-xl border border-border px-3 py-3 text-sm font-semibold">Explore</Link>
-            <Link to="/learn" onClick={() => setOpen(false)} className="rounded-xl border border-border px-3 py-3 text-sm font-semibold">Learn</Link>
-            <Link to="/community" onClick={() => setOpen(false)} className="rounded-xl border border-border px-3 py-3 text-sm font-semibold">Community</Link>
-            <Link to="/ai" onClick={() => setOpen(false)} className="rounded-xl border border-border px-3 py-3 text-sm font-semibold">ExpertAI Studio</Link>
-            <Link to="/messages" onClick={() => setOpen(false)} className="rounded-xl border border-border px-3 py-3 text-sm font-semibold">Messages</Link>
-            {user && <Link to="/vault" onClick={() => setOpen(false)} className="rounded-xl border border-border px-3 py-3 text-sm font-semibold">Personal Vault</Link>}
+            <Link
+              to="/"
+              onClick={() => setOpen(false)}
+              className="rounded-xl border border-border px-3 py-3 text-sm font-semibold"
+            >
+              Home
+            </Link>
+            <Link
+              to="/explore"
+              onClick={() => setOpen(false)}
+              className="rounded-xl border border-border px-3 py-3 text-sm font-semibold"
+            >
+              Explore
+            </Link>
+            <Link
+              to="/learn"
+              onClick={() => setOpen(false)}
+              className="rounded-xl border border-border px-3 py-3 text-sm font-semibold"
+            >
+              Learn
+            </Link>
+            <Link
+              to="/community"
+              onClick={() => setOpen(false)}
+              className="rounded-xl border border-border px-3 py-3 text-sm font-semibold"
+            >
+              Community
+            </Link>
+            <Link
+              to="/ai"
+              onClick={() => setOpen(false)}
+              className="rounded-xl border border-border px-3 py-3 text-sm font-semibold"
+            >
+              ExpertAI Studio
+            </Link>
+            <Link
+              to="/messages"
+              onClick={() => setOpen(false)}
+              className="rounded-xl border border-border px-3 py-3 text-sm font-semibold"
+            >
+              Messages
+            </Link>
+            {user && (
+              <Link
+                to="/vault"
+                onClick={() => setOpen(false)}
+                className="rounded-xl border border-border px-3 py-3 text-sm font-semibold"
+              >
+                Personal Vault
+              </Link>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-1 border-t border-border/70 pt-3">
             {MOBILE_LINKS.map((item) => (
-              <Link key={item.to} to={item.to} onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary">
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={() => setOpen(false)}
+                className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary"
+              >
                 {item.label}
               </Link>
             ))}
-            {isAdmin && <Link to="/admin" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary">Admin panel</Link>}
-            {user && <Link to="/dashboard" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary">My dashboard</Link>}
+            {isAdmin && (
+              <Link
+                to="/admin"
+                onClick={() => setOpen(false)}
+                className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary"
+              >
+                Admin panel
+              </Link>
+            )}
+            {user && (
+              <Link
+                to="/dashboard"
+                onClick={() => setOpen(false)}
+                className="rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary"
+              >
+                My dashboard
+              </Link>
+            )}
           </div>
         </nav>
       )}
