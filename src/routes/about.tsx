@@ -51,8 +51,8 @@ function AboutPage() {
           <Card className="p-6">
             <h2 className="font-display text-xl font-semibold">Build with code</h2>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Use the browser workspace, editable project files, live previews and isolated sandbox tools.
-              ExpertAI helps members plan, generate, edit and improve projects.
+              Use the browser workspace, editable project files, live previews and isolated sandbox
+              tools. ExpertAI helps members plan, generate, edit and improve projects.
             </p>
           </Card>
           <Card className="p-6">
