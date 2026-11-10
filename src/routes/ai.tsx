@@ -8,6 +8,7 @@ import { CodeAgent } from "@/components/code-agent";
 export const Route = createFileRoute("/ai")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "ExpertsTeam — ExpertAI Studio" },
       {
         name: "description",
