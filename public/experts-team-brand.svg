@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 670" role="img" aria-labelledby="title desc">
+<title id="title">ExpertsTeam — Make the Uncommon</title><desc id="desc">The ExpertsTeam ET emblem in electric cyan and gold, with the ExpertsTeam wordmark and Make the Uncommon tagline.</desc>
+<defs>
+ <radialGradient id="bg"><stop stop-color="#081a2c"/><stop offset=".62" stop-color="#030b17"/><stop offset="1" stop-color="#020712"/></radialGradient>
+ <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#13f5ff"/><stop offset=".55" stop-color="#00b8e8"/><stop offset="1" stop-color="#0875c7"/></linearGradient>
+ <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff09a"/><stop offset=".48" stop-color="#ffc52e"/><stop offset="1" stop-color="#d98508"/></linearGradient>
+ <linearGradient id="silver" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#aab9cc"/></linearGradient>
+ <filter id="glowC" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="13" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <filter id="glowG" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="13" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <clipPath id="left"><rect x="0" y="0" width="600" height="500"/></clipPath><clipPath id="right"><rect x="600" y="0" width="600" height="500"/></clipPath>
+</defs>
+<rect width="1200" height="670" fill="url(#bg)"/>
+<g opacity=".7" fill="none" stroke-linecap="round">
+ <g stroke="#00dfff" filter="url(#glowC)" opacity=".8"><path d="M600 270 420 55M600 270 290 125M600 270 120 245M600 270 250 390M600 270 420 480M600 270 520 15" stroke-width="3"/><path d="M600 270 355 25M600 270 160 170M600 270 70 300M600 270 350 455" stroke-width="1.5"/></g>
+ <g stroke="#ffc33d" filter="url(#glowG)" opacity=".8"><path d="M600 270 780 55M600 270 910 125M600 270 1080 245M600 270 950 390M600 270 780 480M600 270 680 15" stroke-width="3"/><path d="M600 270 845 25M600 270 1040 170M600 270 1130 300M600 270 850 455" stroke-width="1.5"/></g>
+</g>
+<g fill="#fff"><circle cx="170" cy="112" r="3"/><circle cx="272" cy="63" r="2"/><circle cx="1022" cy="93" r="3"/><circle cx="934" cy="48" r="2"/><circle cx="345" cy="430" r="2"/><circle cx="870" cy="425" r="2"/></g>
+<g transform="translate(0 5)">
+ <path d="M600 96 720 154 832 150 797 221 820 296 766 393 600 482 434 393 380 296 403 221 368 150 480 154Z" fill="#020814" stroke="url(#cyan)" stroke-width="12" clip-path="url(#left)" filter="url(#glowC)"/>
+ <path d="M600 96 720 154 832 150 797 221 820 296 766 393 600 482 434 393 380 296 403 221 368 150 480 154Z" fill="#020814" stroke="url(#gold)" stroke-width="12" clip-path="url(#right)" filter="url(#glowG)"/>
+ <path d="M600 130 692 174 775 171 749 226 767 292 728 363 600 435 472 363 433 292 451 226 425 171 508 174Z" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="4"/>
+ <path d="M600 112V470" stroke="#fff" stroke-opacity=".5" stroke-width="2"/>
+ <g font-family="Arial,Helvetica,sans-serif" font-weight="900" text-anchor="middle" font-size="230" letter-spacing="-22">
+  <text x="505" y="340" fill="url(#cyan)" stroke="#00131e" stroke-width="8" paint-order="stroke">E</text>
+  <text x="690" y="340" fill="url(#gold)" stroke="#201500" stroke-width="8" paint-order="stroke">T</text>
+ </g>
+</g>
+<text x="600" y="555" text-anchor="middle" fill="url(#silver)" font-family="Arial,Helvetica,sans-serif" font-size="62" font-weight="800" letter-spacing="5">EXPERTSTEAM</text>
+<text x="600" y="600" text-anchor="middle" fill="#b7d7f5" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="500" letter-spacing="8">MAKE THE UNCOMMON</text>
+</svg>
