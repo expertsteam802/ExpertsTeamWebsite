@@ -145,16 +145,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "Learn coding, build apps, play games and download free apps, games and files with ExpertsTeam.",
       },
-      { property: "og:image", content: "https://expertsteam.giize.com/social-preview.png" },
+      { property: "og:image", content: "https://expertsteam.giize.com/experts-team-brand.svg" },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
       { property: "og:image:alt", content: "ExpertsTeam logo" },
-      { name: "twitter:image", content: "https://expertsteam.giize.com/social-preview.png" },
+      { name: "twitter:image", content: "https://expertsteam.giize.com/experts-team-brand.svg" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", type: "image/svg+xml", href: "/experts-team-mark.svg" },
-      { rel: "apple-touch-icon", href: "/experts-team-mark.svg" },
+      { rel: "apple-touch-icon", type: "image/svg+xml", href: "/experts-team-mark.svg" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
