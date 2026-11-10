@@ -44,6 +44,7 @@ import { paymentMethodLabel, type UpgradeRequest } from "@/lib/subscription";
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Admin panel — ExpertsTeam" },
       {
         name: "description",
