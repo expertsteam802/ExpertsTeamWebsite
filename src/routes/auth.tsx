@@ -17,7 +17,6 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { AdsterraGateDialog } from "@/components/ads/adsterra-gate-dialog";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -44,12 +43,6 @@ function AuthPage() {
   const [username, setUsername] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
-  const [gateOpen, setGateOpen] = useState(false);
-  const [authGateRequired, setAuthGateRequired] = useState(false);
-  const [pendingSignupResult, setPendingSignupResult] = useState<{
-    email: string;
-    needsConfirmation: boolean;
-  } | null>(null);
   const signupFlow = useRef(false);
   const [signupResult, setSignupResult] = useState<{
     email: string;
@@ -58,28 +51,19 @@ function AuthPage() {
 
   useEffect(() => {
     if (!user) return;
-    // OAuth providers return to the site after redirect; resume the same gate.
-    if (window.sessionStorage.getItem("expertsteam-pending-ad-gate") === "1") {
-      window.sessionStorage.removeItem("expertsteam-pending-ad-gate");
-      setAuthGateRequired(true);
-      setGateOpen(true);
-      return;
-    }
-    if (!signupFlow.current && !authGateRequired && !gateOpen) {
-      void navigate({ to: "/dashboard", replace: true });
-    }
-  }, [user, navigate, authGateRequired, gateOpen]);
+    if (!signupFlow.current) void navigate({ to: "/dashboard", replace: true });
+  }, [user, navigate]);
 
   async function signIn(): Promise<void> {
     setBusy(true);
-    setAuthGateRequired(true);
+
     try {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (error) throw error;
       toast.success("Welcome back!");
-      setGateOpen(true);
+      void navigate({ to: "/dashboard", replace: true });
     } catch (error) {
-      setAuthGateRequired(false);
+
       toast.error(error instanceof Error ? error.message : "Could not sign in. Please try again.");
     } finally {
       setBusy(false);
@@ -96,7 +80,7 @@ function AuthPage() {
       return;
     }
     setBusy(true);
-    setAuthGateRequired(true);
+
     signupFlow.current = true;
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -139,11 +123,10 @@ function AuthPage() {
           );
         }
       }
-      setPendingSignupResult({ email: email.trim(), needsConfirmation: !data.session });
-      setGateOpen(true);
+      setSignupResult({ email: email.trim(), needsConfirmation: !data.session });
     } catch (error) {
       signupFlow.current = false;
-      setAuthGateRequired(false);
+
       toast.error(
         error instanceof Error ? error.message : "Could not create your account. Please try again.",
       );
@@ -154,7 +137,7 @@ function AuthPage() {
 
   async function google(): Promise<void> {
     setBusy(true);
-    window.sessionStorage.setItem("expertsteam-pending-ad-gate", "1");
+
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -162,7 +145,7 @@ function AuthPage() {
       });
       if (error) throw error;
     } catch (error) {
-      window.sessionStorage.removeItem("expertsteam-pending-ad-gate");
+
       toast.error(
         error instanceof Error ? error.message : "Google sign-in failed. Please try again.",
       );
@@ -288,22 +271,6 @@ function AuthPage() {
           </Tabs>
         </Card>
       </div>
-      <AdsterraGateDialog
-        open={gateOpen}
-        title="Welcome to ExpertsTeam"
-        description="View the sponsor placement for a few seconds before entering your account."
-        onContinue={() => {
-          setGateOpen(false);
-          if (pendingSignupResult) {
-            setSignupResult(pendingSignupResult);
-            setPendingSignupResult(null);
-          } else {
-            setAuthGateRequired(false);
-            signupFlow.current = false;
-            void navigate({ to: "/dashboard", replace: true });
-          }
-        }}
-      />
       <Dialog
         open={!!signupResult}
         onOpenChange={(open) => {
@@ -311,7 +278,7 @@ function AuthPage() {
             const shouldGoToDashboard = !signupResult?.needsConfirmation;
             setSignupResult(null);
             signupFlow.current = false;
-            setAuthGateRequired(false);
+
             if (shouldGoToDashboard) void navigate({ to: "/dashboard", replace: true });
           }
         }}
@@ -333,7 +300,7 @@ function AuthPage() {
               const shouldGoToDashboard = !signupResult?.needsConfirmation;
               setSignupResult(null);
               signupFlow.current = false;
-              setAuthGateRequired(false);
+
               if (shouldGoToDashboard) void navigate({ to: "/dashboard", replace: true });
             }}
           >
