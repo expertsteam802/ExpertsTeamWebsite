@@ -17,6 +17,7 @@ import { Card } from "@/components/ui/card";
 export const Route = createFileRoute("/explore")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Explore ExpertsTeam — Community, videos and tools" },
       {
         name: "description",
