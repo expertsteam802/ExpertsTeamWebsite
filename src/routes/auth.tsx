@@ -63,7 +63,6 @@ function AuthPage() {
       toast.success("Welcome back!");
       void navigate({ to: "/dashboard", replace: true });
     } catch (error) {
-
       toast.error(error instanceof Error ? error.message : "Could not sign in. Please try again.");
     } finally {
       setBusy(false);
@@ -145,7 +144,6 @@ function AuthPage() {
       });
       if (error) throw error;
     } catch (error) {
-
       toast.error(
         error instanceof Error ? error.message : "Google sign-in failed. Please try again.",
       );
