@@ -8,6 +8,7 @@ import { buildSrcDoc, type ProjectFiles } from "@/lib/sandbox";
 export const Route = createFileRoute("/apps/$slug")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Published app" },
       {
         name: "description",
