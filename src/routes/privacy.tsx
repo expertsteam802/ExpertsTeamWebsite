@@ -109,8 +109,9 @@ function PrivacyPage() {
               Essential browser storage supports sign-in, security and preferences. Google
               advertising and embedded media may use their own cookies or similar technologies. You
               can control cookies through your browser and use the privacy controls offered by
-              Google and other providers. Where applicable, advertising consent choices are
-              presented through the consent tools configured for the relevant region. See our{" "}
+              Google and other providers. Where required, the site operator must configure an appropriate consent-management solution
+              before serving personalised ads. Google requires a certified CMP for personalised ads
+              in the EEA, UK and Switzerland. See our{" "}
               <Link to="/cookies" className="text-primary underline">
                 Cookie Notice
               </Link>
