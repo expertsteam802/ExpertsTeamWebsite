@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/entertainment")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Games, Apps & Files — ExpertsTeam" },
       {
         name: "description",
