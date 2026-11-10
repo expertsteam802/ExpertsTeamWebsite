@@ -28,6 +28,7 @@ declare global {
   }
 }
 let youtubeApiPromise: Promise<YouTubeApi> | null = null;
+const PLAYER_TIMEOUT_MS = 3000;
 
 /**
  * Load the YouTube IFrame API safely, including when another component has
@@ -110,7 +111,7 @@ function loadYouTubeApi(): Promise<YouTubeApi> {
     const pollId = window.setInterval(checkReady, 100);
     const timeoutId = window.setTimeout(() => {
       finish(new Error("YouTube's player took too long to load. Refresh the page and try again."));
-    }, 15000);
+    }, PLAYER_TIMEOUT_MS);
     checkReady();
   }).catch((error: unknown) => {
     youtubeApiPromise = null;
@@ -220,7 +221,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
           playerRef.current = null;
           setLoading(false);
           setUseNativeEmbed(true);
-        }, 12000);
+        }, PLAYER_TIMEOUT_MS);
       })
       .catch((error: unknown) => {
         if (readyTimeout !== undefined) window.clearTimeout(readyTimeout);
