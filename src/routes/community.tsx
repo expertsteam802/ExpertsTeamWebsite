@@ -31,6 +31,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/community")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "ExpertsTeam Community — Ask questions, get answers and solutions" },
       {
         name: "description",
