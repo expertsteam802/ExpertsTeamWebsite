@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 
+import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { buildSrcDoc, type ProjectFiles } from "@/lib/sandbox";
 
@@ -28,8 +29,10 @@ export const Route = createFileRoute("/apps/$slug")({
 
 function LiveApp() {
   const { slug } = Route.useParams();
+  const { user, loading: authLoading } = useAuth();
   const { data, isLoading } = useQuery({
     queryKey: ["live-app", slug],
+    enabled: Boolean(user),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agent_projects")
@@ -55,6 +58,38 @@ function LiveApp() {
     },
   });
   const srcDoc = useMemo(() => (data?.files ? buildSrcDoc(data.files) : ""), [data]);
+
+  if (authLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-white text-sm text-slate-500">
+        Checking your sign-in…
+      </main>
+    );
+  }
+
+  if (!user) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-white px-6 text-center text-slate-900">
+        <div className="grid h-14 w-14 place-items-center rounded-2xl bg-slate-100 text-2xl" aria-hidden="true">
+          🔒
+        </div>
+        <h1 className="text-2xl font-semibold">Sign in to access this app</h1>
+        <p className="max-w-md text-sm text-slate-600">
+          Published ExpertsTeam apps are available to signed-in members. Sign in or create a free
+          account to continue.
+        </p>
+        <Link
+          to="/auth"
+          className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700"
+        >
+          Sign in or create account
+        </Link>
+        <Link to="/" className="text-sm text-slate-500 underline underline-offset-4">
+          Back to ExpertsTeam
+        </Link>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen w-screen overflow-hidden bg-white text-slate-900">
