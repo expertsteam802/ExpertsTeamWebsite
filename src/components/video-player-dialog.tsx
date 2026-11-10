@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { AdsterraGateDialog } from "@/components/ads/adsterra-gate-dialog";
 
 type YouTubePlayer = { destroy: () => void; getIframe: () => HTMLIFrameElement };
 type YouTubeApi = {
@@ -143,14 +142,12 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [useNativeEmbed, setUseNativeEmbed] = useState(false);
-  const [gateVideoId, setGateVideoId] = useState<string | null>(null);
-  const shouldLoadLesson = !!videoId && gateVideoId === videoId;
+  const shouldLoadLesson = !!videoId;
 
   useEffect(() => {
     setPlaybackError(null);
     setLoading(false);
     setUseNativeEmbed(false);
-    setGateVideoId(null);
   }, [videoId]);
 
   useEffect(() => {
@@ -242,18 +239,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
 
   return (
     <>
-      <AdsterraGateDialog
-        open={!!videoId && gateVideoId !== videoId}
-        title="Before your lesson starts"
-        description="Please view the sponsor placement while the short countdown runs. Your lesson will start when you continue."
-        onContinue={() => {
-          if (videoId) setGateVideoId(videoId);
-        }}
-      />
-      <Dialog
-        open={!!videoId && gateVideoId === videoId}
-        onOpenChange={(open) => !open && onClose()}
-      >
+      <Dialog open={!!videoId} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="max-h-[94vh] w-[min(96vw,1280px)] max-w-[1280px] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="pr-8 text-left">{title}</DialogTitle>
