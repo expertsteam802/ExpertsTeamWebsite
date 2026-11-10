@@ -17,6 +17,7 @@ type PublishedProject = {
 export const Route = createFileRoute("/showcase")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Project Showcase — Apps built with ExpertsTeam" },
       {
         name: "description",
