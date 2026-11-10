@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 
 import { PageShell } from "@/components/layout/page-shell";
-import { AdsterraBanner } from "@/components/ads/adsterra-banner";
 import { VideoGrid, type VideoItem } from "@/components/video-grid";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -182,7 +181,6 @@ function Index() {
           </div>
         </div>
       </section>
-      <AdsterraBanner />
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
         <div className="mx-auto max-w-2xl text-center">
           <span className="text-xs font-semibold tracking-[0.22em] text-primary">
