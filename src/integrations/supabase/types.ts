@@ -956,7 +956,6 @@ export type Database = {
       };
       site_settings: {
         Row: {
-          ad_settings: Json;
           ai_free_credits: number;
           ai_subscription_credits: number;
           ai_subscription_price: number;
@@ -975,7 +974,6 @@ export type Database = {
           youtube_url: string;
         };
         Insert: {
-          ad_settings?: Json;
           ai_free_credits?: number;
           ai_subscription_credits?: number;
           ai_subscription_price?: number;
@@ -994,7 +992,6 @@ export type Database = {
           youtube_url?: string;
         };
         Update: {
-          ad_settings?: Json;
           ai_free_credits?: number;
           ai_subscription_credits?: number;
           ai_subscription_price?: number;
