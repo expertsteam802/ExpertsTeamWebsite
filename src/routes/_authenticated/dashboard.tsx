@@ -40,6 +40,7 @@ import { formatBytes, formatDate } from "@/lib/format";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "My dashboard — ExpertsTeam" },
       {
         name: "description",
