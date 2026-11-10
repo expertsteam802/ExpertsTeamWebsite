@@ -215,6 +215,122 @@ function LearnPage() {
           )}
         </div>
       </section>
+
+      <section className="mx-auto max-w-7xl px-4 pb-16" aria-labelledby="learning-guides-title">
+        <div className="mb-7 max-w-3xl">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Original learning guides</p>
+          <h2 id="learning-guides-title" className="mt-2 font-display text-2xl font-bold sm:text-3xl">
+            A practical path from first line of code to a working web app
+          </h2>
+          <p className="mt-3 text-sm leading-7 text-muted-foreground">
+            These beginner-friendly notes explain the ideas behind each stage, show small examples
+            you can run yourself, and give you a task to practise. Work through them in order and
+            change the examples rather than only copying them.
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">Written for the ExpertsTeam learning community · Updated November 10, 2026</p>
+        </div>
+        <div className="grid gap-5 lg:grid-cols-2">
+          <article className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6">
+            <h3 className="font-display text-xl font-semibold">1. How a program runs</h3>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              A program is a set of instructions a computer follows. Most beginner programs run
+              statements in order, from top to bottom. The browser can run JavaScript directly, so
+              you can experiment without installing a compiler. Save a file as <code>index.html</code>,
+              open it in a browser and use the developer console to inspect errors.
+            </p>
+            <pre className="mt-3 overflow-x-auto rounded-xl bg-[#07111f] p-4 text-xs leading-6 text-sky-100"><code>{'console.log("Hello, ExpertsTeam!");\nconsole.log("This is my first program.");'}</code></pre>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              The first line prints a message; the second runs after it. If a program stops, read
+              the first error carefully: the line number and message often point to the cause.
+            </p>
+            <p className="mt-3 text-sm font-medium">Practice: change the messages, add a third line, then create a deliberate spelling error and read the browser console.</p>
+          </article>
+          <article className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6">
+            <h3 className="font-display text-xl font-semibold">2. Variables and data</h3>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              Variables give useful names to values. Use <code>const</code> when you do not plan
+              to reassign a value and <code>let</code> when it must change. JavaScript commonly
+              works with strings, numbers, booleans, arrays and objects. Choose names that describe
+              what the value means.
+            </p>
+            <pre className="mt-3 overflow-x-auto rounded-xl bg-[#07111f] p-4 text-xs leading-6 text-sky-100"><code>{'const learner = "Chris";\nlet completedLessons = 1;\nconst isEnrolled = true;\ncompletedLessons += 1;\nconsole.log(learner, completedLessons, isEnrolled);'}</code></pre>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              An array stores an ordered list; an object groups related properties. Keep data in
+              the type that matches how you will use it, and validate values received from forms.
+            </p>
+            <p className="mt-3 text-sm font-medium">Practice: store a product name, price and stock count, then calculate the total stock value.</p>
+          </article>
+          <article className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6">
+            <h3 className="font-display text-xl font-semibold">3. Decisions, loops and logic</h3>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              Conditions let a program choose what to do. A loop repeats a task while a condition
+              remains true or for each item in a collection. Use clear conditions and make sure a
+              <code> while</code> loop eventually stops; otherwise it can freeze the page.
+            </p>
+            <pre className="mt-3 overflow-x-auto rounded-xl bg-[#07111f] p-4 text-xs leading-6 text-sky-100"><code>{'const scores = [62, 85, 47, 91];\nfor (const score of scores) {\n  if (score >= 50) {\n    console.log(score, "passed");\n  } else {\n    console.log(score, "try again");\n  }\n}'}</code></pre>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              Test boundary values as well as normal ones. If the pass mark is 50, check what
+              happens at 49, 50 and 51 so the rule behaves exactly as intended.
+            </p>
+            <p className="mt-3 text-sm font-medium">Practice: loop through five prices and print only the items costing less than 1,000.</p>
+          </article>
+          <article className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6">
+            <h3 className="font-display text-xl font-semibold">4. Functions and reusable code</h3>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              A function packages a task behind a name. It can accept inputs (parameters), perform
+              work and return a result. Small functions are easier to test and reuse than one large
+              block of code. Prefer returning a value when another part of the program needs it.
+            </p>
+            <pre className="mt-3 overflow-x-auto rounded-xl bg-[#07111f] p-4 text-xs leading-6 text-sky-100"><code>{'function calculateTotal(price, quantity) {\n  if (price < 0 || quantity < 0) {\n    throw new Error("Values cannot be negative");\n  }\n  return price * quantity;\n}\nconsole.log(calculateTotal(250, 4)); // 1000'}</code></pre>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              Validate inputs at the boundary of your application. A function should have one
+              clear responsibility and a name that explains its result.
+            </p>
+            <p className="mt-3 text-sm font-medium">Practice: write a function that converts a temperature from Celsius to Fahrenheit.</p>
+          </article>
+          <article className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6">
+            <h3 className="font-display text-xl font-semibold">5. Build a small web page</h3>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              HTML describes the page structure, CSS controls its appearance, and JavaScript adds
+              behaviour. Start with semantic HTML elements such as <code>header</code>,
+              <code> main</code> and <code>button</code>. Use labels for form controls and provide
+              text alternatives for meaningful images.
+            </p>
+            <pre className="mt-3 overflow-x-auto rounded-xl bg-[#07111f] p-4 text-xs leading-6 text-sky-100"><code>{'<button id="greet">Say hello</button>\n<p id="message" aria-live="polite"></p>\n<script>\n  document.querySelector("#greet").addEventListener("click", () => {\n    document.querySelector("#message").textContent = "Welcome!";\n  });\n</script>'}</code></pre>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              Build for small screens first, keep text readable and test the page using only a
+              keyboard. Do not use a clickable-looking element unless it performs the action it
+              promises.
+            </p>
+            <p className="mt-3 text-sm font-medium">Practice: add a labelled name input and show a personalised greeting when the button is pressed.</p>
+          </article>
+          <article className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6">
+            <h3 className="font-display text-xl font-semibold">6. Databases and the web</h3>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              A browser application often sends requests to a server, which reads or writes data in
+              a database. A table stores records in rows and columns. Use stable IDs to identify
+              records, validate input on the server and enforce access rules in the database—not
+              only in the interface.
+            </p>
+            <pre className="mt-3 overflow-x-auto rounded-xl bg-[#07111f] p-4 text-xs leading-6 text-sky-100"><code>{'// Example request to a public API\nconst response = await fetch("/api/products");\nif (!response.ok) {\n  throw new Error("Could not load products");\n}\nconst products = await response.json();\nconsole.log(products);'}</code></pre>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              Never put service-role keys, passwords or private API secrets in browser code.
+              Authentication identifies a user; database row-level security decides which records
+              that user is allowed to read or change.
+            </p>
+            <p className="mt-3 text-sm font-medium">Practice: sketch a products table with an ID, name, price and owner ID. Decide which records a signed-in user may edit.</p>
+          </article>
+        </div>
+        <div className="mt-6 rounded-2xl border border-primary/20 bg-primary/5 p-5">
+          <h3 className="font-semibold">How to get the most from these guides</h3>
+          <p className="mt-2 text-sm leading-7 text-muted-foreground">
+            Run every example, change one thing at a time, and write down what changed. When an
+            error appears, reproduce it, read the message and test a small fix. You can continue
+            practising in the ExpertsTeam workspace, then share a finished project with the
+            community when you are ready.
+          </p>
+        </div>
+      </section>
     </PageShell>
   );
 }
