@@ -31,6 +31,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/messages")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Messages — ExpertsTeam" },
       {
         name: "description",
