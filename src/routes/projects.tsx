@@ -18,6 +18,7 @@ import { formatDate } from "@/lib/format";
 export const Route = createFileRoute("/projects")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Apply to ExpertsTeam | Contributor Community" },
       {
         name: "description",
