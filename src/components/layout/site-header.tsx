@@ -50,18 +50,10 @@ export function SiteHeader() {
       <div className="mx-auto flex min-h-[70px] max-w-[1680px] items-center gap-3 px-3 sm:px-5 lg:px-7">
         <Link to="/" className="group flex shrink-0 items-center gap-2.5">
           <img
-            src={settings.logo_url || "/experts-team-mark.svg"}
-            alt="ExpertsTeam"
-            className="h-10 w-10 rounded-xl object-cover shadow-[0_0_26px_rgba(77,141,255,.12)] ring-1 ring-white/15 transition group-hover:scale-[1.04]"
+            src={settings.logo_url || "/experts-team-brand.svg"}
+            alt="ExpertsTeam — Make the Uncommon"
+            className="h-12 w-[112px] object-contain transition group-hover:scale-[1.03] sm:h-14 sm:w-[126px]"
           />
-          <span className="leading-none">
-            <span className="block font-display text-[15px] font-bold tracking-[-.055em] text-[#f5f2e9] sm:text-[17px]">
-              EXPERTS<span className="text-[#4d8dff]">TEAM</span>
-            </span>
-            <span className="mt-1 block text-[8px] font-semibold tracking-[.28em] text-white/35">
-              MAKE THE UNCOMMON
-            </span>
-          </span>
         </Link>
 
         <nav
