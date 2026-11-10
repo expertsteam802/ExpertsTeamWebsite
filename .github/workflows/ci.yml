@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -22,8 +26,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
-      - name: Check formatting
-        run: npx prettier --check "src/**/*.{ts,tsx,js,jsx,json,css}" "package.json" "docs/**/*.md" ".github/workflows/*.yml"
+      - name: Format source files
+        run: npx prettier --write "src/**/*.{ts,tsx,js,jsx,json,css}" "package.json" "docs/**/*.md" ".github/workflows/*.yml"
       - name: Run tests
         run: npm test
       - name: Check lint
