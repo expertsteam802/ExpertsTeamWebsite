@@ -26,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/vault")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Personal Vault — ExpertsTeam" },
       { name: "description", content: "A private place for your personal files on ExpertsTeam." },
     ],
