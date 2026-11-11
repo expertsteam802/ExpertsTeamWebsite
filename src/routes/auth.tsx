@@ -40,9 +40,15 @@ function AuthPage() {
   const navigate = useNavigate();
   const getPostAuthPath = useCallback(() => {
     const requested = new URLSearchParams(window.location.search).get("next");
-    return requested && requested.startsWith("/") && !requested.startsWith("//")
-      ? requested
-      : "/dashboard";
+    if (!requested) return "/dashboard";
+    try {
+      const target = new URL(requested, window.location.origin);
+      return target.origin === window.location.origin
+        ? target.pathname + target.search + target.hash
+        : "/dashboard";
+    } catch {
+      return "/dashboard";
+    }
   }, []);
 
   const [email, setEmail] = useState("");
