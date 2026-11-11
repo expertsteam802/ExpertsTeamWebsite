@@ -13,6 +13,7 @@ export const Route = createFileRoute("/privacy")({
           "How ExpertsTeam handles account information, community content, AI requests, cookies and advertising data.",
       },
     ],
+    links: [{ rel: "canonical", href: "https://expertsteam.giize.com/privacy" }],
   }),
   component: PrivacyPage,
 });
