@@ -250,9 +250,9 @@ export async function runAgent(
     .sort((a, b) => b.score - a.score);
 
   const selected: Array<{ name: string; content: string }> = [];
-  let remainingCharacters = 4200;
+  let remainingCharacters = 18000;
   for (const entry of rankedEntries) {
-    if (remainingCharacters <= 0 || selected.length >= 12) break;
+    if (remainingCharacters <= 0 || selected.length >= 24) break;
     const content = entry.content.slice(0, Math.min(entry.content.length, remainingCharacters));
     if (!content) continue;
     selected.push({ name: entry.name, content });
@@ -262,18 +262,24 @@ export async function runAgent(
     .map(({ name, content }) => "--- " + name + " ---\\n" + content)
     .join("\\n\\n");
 
-  const configured = (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
+  const configured = (process.env["AI_PROVIDER_ORDER"] || "gemini,groq,kilo,openrouter")
     .split(",")
     .map((item) => item.trim().toLowerCase())
-    .filter((item) => ["groq", "gemini", "openrouter"].includes(item));
-  const providerSequence = [...new Set([...configured, "groq", "gemini", "openrouter"])];
+    .filter((item) => ["gemini", "groq", "kilo", "openrouter"].includes(item));
+  const providerSequence = [...new Set([...configured, "gemini", "groq", "kilo", "openrouter"])];
   const completedFiles: Record<string, string | null> = {};
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
-  const maxRounds = 12;
+  const maxRounds = 24;
 
   for (let round = 0; round < maxRounds; round++) {
     const existingNames = Object.keys(completedFiles);
+    const collaborationRole =
+      round % 3 === 0
+        ? "ARCHITECT / PLANNER: check the full request, identify dependencies and decide the next smallest complete batch."
+        : round % 3 === 1
+          ? "IMPLEMENTER: create the next complete files, respecting the architecture and handoff from previous experts."
+          : "INDEPENDENT REVIEWER: inspect the already completed files, find missing requirements or integration defects, then add or correct only what is needed.";
     const continuation =
       round === 0
         ? "User request: " +
@@ -284,7 +290,7 @@ export async function runAgent(
             "Continue implementation of this same request: " + cleanPrompt,
             "Return only additional files still required. Do not repeat completed files unless correcting a specific inconsistency.",
             "Already completed files: " + (existingNames.join(", ") || "(none)") + ".",
-            "Keep this response small: return at most 2 complete files. If more remain, set complete:false. Set complete:true only when the requested app/change is fully implemented.",
+            "Keep this response small: return at most 3 complete files. If more remain, set complete:false. Set complete:true only when the requested app/change is fully implemented.",
             "If a previous response was truncated, regenerate the missing file from scratch. Never return half a file as completed.",
             "Previously generated file names and short contents:",
             ...Object.entries(completedFiles).map(
@@ -300,7 +306,10 @@ export async function runAgent(
       '- Return JSON: {"message":"...","files":{"path":"full file content"},"complete":false}.\\n' +
       "- Set complete:true only after all necessary files have been supplied across continuation rounds.\\n" +
       "- Never intentionally truncate a file. Finish the current file, stop, and set complete:false if output budget is low.\\n" +
-      "- Do not repeat files already supplied unless fixing a specific inconsistency.";
+      "- Do not repeat files already supplied unless fixing a specific inconsistency.\n" +
+      "Experts Routing collaboration: each round is a separate expert handoff. Review prior decisions, share a concise progress summary, and continue from the last complete file. The current role is: " +
+      collaborationRole +
+      "\nDo not claim completion while required screens, files, tests or interactions remain.";
 
     const startAt = round % providerSequence.length;
     const rotatedProviders = [
@@ -311,7 +320,7 @@ export async function runAgent(
       const response = await generateGeminiContent(
         {
           systemInstruction: { parts: [{ text: systemPrompt }] },
-          generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1400 },
+          generationConfig: { responseMimeType: "application/json", maxOutputTokens: 2600 },
           contents: [
             ...history.slice(-4).map((message) => ({
               role: message.role === "assistant" ? ("model" as const) : ("user" as const),
