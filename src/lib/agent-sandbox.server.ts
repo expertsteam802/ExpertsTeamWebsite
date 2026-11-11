@@ -402,7 +402,7 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
     "});",
     'sockets.on("connection", (client) => {',
     "  if (activeShell) { try { activeShell.kill(); } catch {} activeShell = null; }",
-    '  const shell = spawn("script", ["-q", "-f", "-c", "/bin/bash --login", "/dev/null"], { cwd: process.env.TERMINAL_CWD || "/vercel/sandbox", env: { ...process.env, TERM: "xterm-256color", COLORTERM: "truecolor" }, stdio: ["pipe", "pipe", "pipe"] });',
+    '  const shell = spawn("script", ["-q", "-f", "-c", "/bin/bash --login", "/dev/null"], { cwd: process.env.TERMINAL_CWD || "/vercel/sandbox", env: { ...process.env, PS1: (process.env.TERMINAL_USERNAME || "linux") + "@expertsteam:\\w$ ", TERM: "xterm-256color", COLORTERM: "truecolor" }, stdio: ["pipe", "pipe", "pipe"] });',
     "  activeShell = shell;",
     '  shell.stdout.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
     '  shell.stderr.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
@@ -477,7 +477,7 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
       cmd: "node",
       args: ["server.cjs"],
       cwd: bridgeDir,
-      env: { TERMINAL_TOKEN: token, TERMINAL_CWD: WORKDIR, TERMINAL_PORT: "4174" },
+      env: { TERMINAL_TOKEN: token, TERMINAL_CWD: WORKDIR, TERMINAL_PORT: "4174", TERMINAL_USERNAME: "ExpertsTeam" },
       detached: true,
     });
   }
