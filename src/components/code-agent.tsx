@@ -266,6 +266,7 @@ export function CodeAgent() {
   const [projectNameEditing, setProjectNameEditing] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [runtimeBusy, setRuntimeBusy] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [runtimeUrl, setRuntimeUrl] = useState<string | null>(null);
   const [previewAddress, setPreviewAddress] = useState("");
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
@@ -652,6 +653,9 @@ export function CodeAgent() {
   }
 
   async function publishProject() {
+    if (publishing) return;
+    setPublishing(true);
+    setPublishedUrl(null);
     try {
       const activeProjectId = await persist();
       const existingSlug = projects.find((project) => project.id === activeProjectId)?.slug;
@@ -674,6 +678,8 @@ export function CodeAgent() {
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not publish this app.");
+    } finally {
+      setPublishing(false);
     }
   }
 
@@ -1315,10 +1321,11 @@ export function CodeAgent() {
             size="sm"
             variant="outline"
             onClick={() => void publishProject()}
+            disabled={publishing}
             className="h-8 border-emerald-400/25 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/20"
           >
-            <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-            Publish
+            {publishing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />}
+            {publishing ? "Publishing…" : "Publish"}
           </Button>
           <Button
             size="sm"
