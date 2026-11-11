@@ -1464,8 +1464,8 @@ export function CodeAgent() {
                   ExpertAI workspace
                 </div>
                 <p className="mt-2 text-[11px] leading-5 text-slate-500">
-                  Edit project files, run your app and use the Linux sandbox. AI prompt-based coding
-                  is under development.
+                  Ask ExpertAI to create or update files, run coding agents in the Linux terminal,
+                  and import their changes back into this project.
                 </p>
               </div>
             </div>
@@ -1908,7 +1908,7 @@ export function CodeAgent() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-white">ExpertAI</p>
-                      <p className="text-[9px] text-amber-300">AI tools under development</p>
+                      <p className="text-[9px] text-amber-300">AI coding assistant</p>
                     </div>
                   </div>
                   <button
