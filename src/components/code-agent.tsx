@@ -813,15 +813,21 @@ export function CodeAgent() {
         const result = await syncTerminalFiles({ data: { projectId } });
         if (cancelled) return;
         const importedFiles = result.files;
-        if (JSON.stringify(importedFiles) === JSON.stringify(files)) return;
+        const changed =
+          Object.keys(importedFiles).length !== Object.keys(files).length ||
+          Object.entries(importedFiles).some(([path, content]) => files[path] !== content);
+        if (!changed) return;
         const { error } = await supabase
           .from("agent_projects")
-          .update({ files: importedFiles as unknown as Json })
+          .update({
+            files: importedFiles as unknown as Json,
+            updated_at: new Date().toISOString(),
+          })
           .eq("id", projectId)
           .eq("user_id", user.id);
         if (error) throw error;
         setFiles(importedFiles);
-        setActiveFile((current) => Object.hasOwn(importedFiles, current)
+        setActiveFile((current) => Object.prototype.hasOwnProperty.call(importedFiles, current)
           ? current
           : Object.keys(importedFiles)[0] ?? "index.html");
         runtimeFilesRef.current = { ...importedFiles };
