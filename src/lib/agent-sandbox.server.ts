@@ -72,8 +72,8 @@ async function waitForPreview(url: string) {
         const body = await response.text();
         if (body.includes("Blocked request") && body.includes("not allowed")) {
           lastError = "Vite is still blocking the sandbox preview hostname.";
-        } else if (response.status < 500) {
-          return;
+        } else {
+          lastError = "The preview server rejected the request (HTTP 403). Check its host and access settings.";
         }
       } else if (response.status === 410) {
         lastError = "The preview sandbox stopped. Restarting the cloud preview…";
