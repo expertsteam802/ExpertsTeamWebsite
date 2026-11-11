@@ -120,11 +120,17 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   const devScript = activeScripts[scriptName ?? ""] ?? "";
   const isNext = /next\s+dev|next\s+start/.test(devScript);
   const isVite = !scriptName || /vite/.test(devScript);
-  // Vite's dev server listens on 5173 by default. Framework and custom Node
-  // servers (Express, Socket.IO, Fastify, Next, etc.) use 3000 unless their
-  // own script overrides PORT. Do not route a plain "node index.js" project
-  // to 5173: its assets and Socket.IO client would then 404 in the preview.
-  const port = isVite ? 5173 : 3000;
+  // Prefer an explicit script/source port, then the framework default.
+  // This matters for Node apps such as Express + Socket.IO: their source may
+  // declare "process.env.PORT || 3000", while Vite uses 5173 by default.
+  const sourceText = Object.values(files).join("\\n");
+  const scriptPort = devScript.match(/--port(?:=|\\s+)(\\d{2,5})/i)?.[1];
+  const envPort = sourceText.match(/process\\.env\\.PORT\\s*(?:\\|\\||\\?\\?)\\s*(\\d{2,5})/i)?.[1];
+  const listenPort = sourceText.match(/(?:\\.listen|listen)\\(\\s*(\\d{2,5})\\b/i)?.[1];
+  const detectedPort = Number(scriptPort ?? envPort ?? listenPort ?? (isVite ? 5173 : 3000));
+  const port = Number.isInteger(detectedPort) && detectedPort > 0 && detectedPort <= 65535
+    ? detectedPort
+    : isVite ? 5173 : 3000;
   const name = sandboxName(projectId);
   const sandbox = await Sandbox.getOrCreate({
     name,
