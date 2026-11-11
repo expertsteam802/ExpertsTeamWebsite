@@ -18,6 +18,7 @@ export const Route = createFileRoute("/about")({
         content: "A place to learn, build and share technology projects.",
       },
     ],
+    links: [{ rel: "canonical", href: "https://expertsteam.giize.com/about" }],
   }),
   component: AboutPage,
 });
