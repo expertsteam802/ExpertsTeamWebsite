@@ -85,6 +85,7 @@ type ProjectRow = {
   published: boolean;
   slug: string | null;
   deployment_url: string | null;
+  thumbnail_url: string | null;
   github_repo: string | null;
   updated_at: string;
 };
@@ -267,6 +268,7 @@ export function CodeAgent() {
   const [runtimeBusy, setRuntimeBusy] = useState(false);
   const [runtimeUrl, setRuntimeUrl] = useState<string | null>(null);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState("Not started");
   const [terminalReady, setTerminalReady] = useState(false);
   const [terminalConnection, setTerminalConnection] = useState<{
@@ -399,7 +401,7 @@ export function CodeAgent() {
       if (!user) return [];
       const { data, error } = await supabase
         .from("agent_projects")
-        .select("id,name,files,messages,published,slug,deployment_url,github_repo,updated_at")
+        .select("id,name,files,messages,published,slug,deployment_url,thumbnail_url,github_repo,updated_at")
         .eq("user_id", user.id)
         .order("updated_at", { ascending: false });
       if (error) throw error;
@@ -636,6 +638,38 @@ export function CodeAgent() {
     }
   }
 
+  async function setProjectThumbnail() {
+    if (!user) {
+      toast.error("Sign in to add a project thumbnail.");
+      return;
+    }
+    const value = window.prompt("Paste a public HTTPS image URL for this project's thumbnail or logo. Leave blank to remove it.", thumbnailUrl ?? "");
+    if (value === null) return;
+    const trimmed = value.trim();
+    if (trimmed) {
+      try {
+        if (new URL(trimmed).protocol !== "https:") throw new Error();
+      } catch {
+        toast.error("Enter a valid HTTPS image URL.");
+        return;
+      }
+    }
+    try {
+      const activeProjectId = projectId ?? (await persist());
+      const { error } = await supabase
+        .from("agent_projects")
+        .update({ thumbnail_url: trimmed || null })
+        .eq("id", activeProjectId)
+        .eq("user_id", user.id);
+      if (error) throw error;
+      setThumbnailUrl(trimmed || null);
+      await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
+      toast.success(trimmed ? "Project thumbnail saved" : "Project thumbnail removed");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save the project thumbnail.");
+    }
+  }
+
   async function saveProjectName() {
     const nextName = name.trim() || "Untitled project";
     const previousName = projects.find((project) => project.id === projectId)?.name ?? name;
@@ -819,6 +853,7 @@ export function CodeAgent() {
       resetRuntimeForProjectChange();
       setProjectId(data.id);
       setPublishedUrl(null);
+      setThumbnailUrl(null);
       setName(imported.name);
       setFiles(imported.files);
       setMessages([]);
@@ -917,6 +952,7 @@ export function CodeAgent() {
     resetRuntimeForProjectChange();
     setProjectId(null);
     setPublishedUrl(null);
+    setThumbnailUrl(null);
     setName("Untitled project");
     setFiles(STARTER_FILES);
     setMessages([]);
@@ -931,6 +967,7 @@ export function CodeAgent() {
     resetRuntimeForProjectChange();
     setProjectId(project.id);
     setPublishedUrl(project.deployment_url);
+    setThumbnailUrl(project.thumbnail_url);
     setName(project.name);
     setFiles(project.files && Object.keys(project.files).length ? project.files : STARTER_FILES);
     const savedMessages = Array.isArray(project.messages) ? (project.messages as Message[]) : [];
@@ -1160,7 +1197,17 @@ export function CodeAgent() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => void publishProject()}
+            onClick={() => void setProjectThumbnail()}
+            className="h-8 border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/10"
+            title="Set project thumbnail or logo"
+          >
+            <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
+            Thumbnail
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void publishProject()
             className="h-8 border-emerald-400/25 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/20"
           >
             <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
@@ -1285,7 +1332,7 @@ export function CodeAgent() {
                           : "text-slate-400 hover:text-white"
                       }`}
                     >
-                      <Folder className="h-3.5 w-3.5 shrink-0 text-amber-300" />
+                      {project.thumbnail_url ? <img src={project.thumbnail_url} alt="" className="h-6 w-6 shrink-0 rounded-md border border-white/10 object-cover" /> : <Folder className="h-3.5 w-3.5 shrink-0 text-amber-300" />}
                       <span className="min-w-0 flex-1 truncate">{project.name}</span>
                       {project.github_repo && (
                         <Github
