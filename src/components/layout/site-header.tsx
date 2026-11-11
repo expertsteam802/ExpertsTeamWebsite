@@ -57,9 +57,9 @@ export function SiteHeader() {
             />
           ) : (
             <img
-              src="/experts-team-brand.svg"
-              alt="ExpertsTeam — Make the Uncommon"
-              className="h-12 w-[112px] object-contain transition group-hover:scale-[1.03] sm:h-14 sm:w-[126px]"
+              src="/experts-team-mark.svg"
+              alt="ExpertsTeam logo"
+              className="h-11 w-11 rounded-full border border-blue-400/35 bg-white/5 object-cover shadow-lg transition group-hover:scale-[1.04] sm:h-12 sm:w-12"
             />
           )}
         </Link>
