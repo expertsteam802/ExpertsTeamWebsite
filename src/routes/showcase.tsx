@@ -48,6 +48,7 @@ function ShowcasePage() {
         .select("id,name,slug,updated_at,thumbnail_url")
         .eq("published", true)
         .not("slug", "is", null)
+        .not("deployment_url", "is", null)
         .order("updated_at", { ascending: false })
         .limit(24);
       if (error) throw error;
