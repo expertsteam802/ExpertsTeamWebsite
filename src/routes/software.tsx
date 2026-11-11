@@ -110,7 +110,7 @@ function SoftwareRequestPage() {
           <Card className="overflow-hidden p-6 sm:p-8">
             <div className="mb-5 rounded-2xl border border-primary/25 bg-primary/5 p-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-primary">Starting price</p>
-              <p className="mt-1 font-display text-3xl font-bold">$10</p>
+              <p className="mt-1 font-display text-3xl font-bold">$5</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">Final pricing is confirmed after we review the features and project scope.</p>
             </div>
             <div className="flex items-center gap-3">
