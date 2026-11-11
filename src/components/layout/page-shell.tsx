@@ -32,13 +32,13 @@ export function PageShell({ children, hideFooter = false }: { children: ReactNod
     { to: "/learn", label: labels.learn || "Learn", icon: GraduationCap },
     { to: "/community", label: labels.community || "Community", icon: Users },
     { to: "/ai", label: labels.expertai || "ExpertAI", icon: Sparkles },
+    { to: "/software", label: "Request software", icon: BriefcaseBusiness },
     { to: "/messages", label: labels.messages || "Messages", icon: MessageCircle },
     { to: "/entertainment", label: labels.discover || "Discover", icon: Gamepad2 },
   ];
   const secondaryLinks = [
     { to: "/explore", label: labels.explore || "Explore all spaces", icon: Compass },
     { to: "/projects", label: labels.workspace || "Workspace & projects", icon: FolderKanban },
-    { to: "/software", label: "Request software", icon: BriefcaseBusiness },
     { to: "/videos", label: labels.videos || "Creator videos", icon: Video },
     { to: "/showcase", label: labels.showcase || "Project showcase", icon: Images },
     { to: "/about", label: labels.about || "About", icon: Info },
