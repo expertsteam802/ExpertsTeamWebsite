@@ -245,7 +245,7 @@ export const Route = createFileRoute("/api/ai/stream")({
                 sourceText.length <= perAttachmentTextBudget
                   ? sourceText
                   : sourceText.slice(0, Math.floor(perAttachmentTextBudget * 0.4)) +
-                    "\\n[Middle of this attachment omitted to fit the shared context budget]\\n" +
+                    "\n[Middle of this attachment omitted to fit the shared context budget]\n" +
                     sourceText.slice(-Math.floor(perAttachmentTextBudget * 0.6));
               parts.push({ text });
             } else if (file.dataUrl) {
