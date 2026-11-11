@@ -12,6 +12,7 @@ type PublishedProject = {
   name: string;
   slug: string | null;
   updated_at: string;
+  thumbnail_url: string | null;
 };
 
 export const Route = createFileRoute("/showcase")({
@@ -44,7 +45,7 @@ function ShowcasePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agent_projects")
-        .select("id,name,slug,updated_at")
+        .select("id,name,slug,updated_at,thumbnail_url")
         .eq("published", true)
         .not("slug", "is", null)
         .order("updated_at", { ascending: false })
@@ -91,9 +92,13 @@ function ShowcasePage() {
                 className="group flex min-h-52 flex-col justify-between overflow-hidden p-5 transition-colors hover:border-primary/40"
               >
                 <div>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <Code2 className="h-5 w-5" />
-                  </div>
+                  {project.thumbnail_url ? (
+                    <img src={project.thumbnail_url} alt={project.name + " project thumbnail"} loading="lazy" className="mb-4 aspect-video w-full rounded-xl border border-border/60 bg-secondary object-cover" />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Code2 className="h-5 w-5" />
+                    </div>
+                  )}
                   <h2 className="mt-5 font-display text-xl font-semibold">{project.name}</h2>
                   <p className="mt-2 text-xs text-muted-foreground">
                     Updated {new Date(project.updated_at).toLocaleDateString()}
