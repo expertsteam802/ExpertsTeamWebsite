@@ -272,6 +272,7 @@ export function CodeAgent() {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState("Not started");
   const [terminalReady, setTerminalReady] = useState(false);
+  const [terminalAutoSync, setTerminalAutoSync] = useState(true);
   const [terminalConnection, setTerminalConnection] = useState<{
     url: string;
     token: string;
@@ -681,31 +682,47 @@ export function CodeAgent() {
       toast.error("Sign in to add a project thumbnail.");
       return;
     }
-    const value = window.prompt("Paste a public HTTPS image URL for this project's thumbnail or logo. Leave blank to remove it.", thumbnailUrl ?? "");
-    if (value === null) return;
-    const trimmed = value.trim();
-    if (trimmed) {
-      try {
-        if (new URL(trimmed).protocol !== "https:") throw new Error();
-      } catch {
-        toast.error("Enter a valid HTTPS image URL.");
-        return;
-      }
-    }
-    try {
-      const activeProjectId = projectId ?? (await persist());
-      const { error } = await supabase
-        .from("agent_projects")
-        .update({ thumbnail_url: trimmed || null })
-        .eq("id", activeProjectId)
-        .eq("user_id", user.id);
-      if (error) throw error;
-      setThumbnailUrl(trimmed || null);
-      await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
-      toast.success(trimmed ? "Project thumbnail saved" : "Project thumbnail removed");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save the project thumbnail.");
-    }
+    const picker = document.createElement("input");
+    picker.type = "file";
+    picker.accept = "image/png,image/jpeg,image/webp,image/gif";
+    picker.onchange = () => {
+      const file = picker.files?.[0];
+      if (!file) return;
+      void (async () => {
+        if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) {
+          toast.error("Choose a PNG, JPG, WebP or GIF image up to 5 MB.");
+          return;
+        }
+        try {
+          const activeProjectId = projectId ?? (await persist());
+          const extension = file.type === "image/png" ? "png"
+            : file.type === "image/webp" ? "webp"
+            : file.type === "image/gif" ? "gif" : "jpg";
+          const path = `${user.id}/project-thumbnails/${activeProjectId}-${crypto.randomUUID()}. ${extension}`.replace(". ", ".");
+          const { error: uploadError } = await supabase.storage
+            .from("uploads")
+            .upload(path, file, {
+              cacheControl: "3600",
+              upsert: false,
+              contentType: file.type,
+            });
+          if (uploadError) throw uploadError;
+          const publicUrl = supabase.storage.from("uploads").getPublicUrl(path).data.publicUrl;
+          const { error: saveError } = await supabase
+            .from("agent_projects")
+            .update({ thumbnail_url: publicUrl })
+            .eq("id", activeProjectId)
+            .eq("user_id", user.id);
+          if (saveError) throw saveError;
+          setThumbnailUrl(publicUrl);
+          await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
+          toast.success("Project thumbnail or logo uploaded");
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Could not upload the project thumbnail.");
+        }
+      })();
+    };
+    picker.click();
   }
 
   async function saveProjectName() {
@@ -782,6 +799,52 @@ export function CodeAgent() {
     await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
     return data.id;
   }
+
+  // Keep files edited by Kilo/OpenCode in the terminal reflected in the editor
+  // and saved project record. Manual editor changes take priority while dirty.
+  useEffect(() => {
+    if (!terminalAutoSync || !terminalReady || !projectId || !user || busy || dirty) return;
+    let cancelled = false;
+    let syncing = false;
+    const timer = window.setInterval(async () => {
+      if (cancelled || syncing || busy || dirty) return;
+      syncing = true;
+      try {
+        const result = await syncTerminalFiles({ data: { projectId } });
+        if (cancelled) return;
+        const importedFiles = result.files;
+        if (JSON.stringify(importedFiles) === JSON.stringify(files)) return;
+        const { error } = await supabase
+          .from("agent_projects")
+          .update({ files: importedFiles as unknown as Json })
+          .eq("id", projectId)
+          .eq("user_id", user.id);
+        if (error) throw error;
+        setFiles(importedFiles);
+        setActiveFile((current) => Object.hasOwn(importedFiles, current)
+          ? current
+          : Object.keys(importedFiles)[0] ?? "index.html");
+        runtimeFilesRef.current = { ...importedFiles };
+        setDirty(false);
+        await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
+        setLogs((current) => [...current.slice(-199), {
+          type: "runtime",
+          message: "Terminal changes synced and saved to this project.",
+        }]);
+      } catch (error) {
+        if (!cancelled) {
+          const message = error instanceof Error ? error.message : "Terminal auto-sync failed.";
+          setLogs((current) => [...current.slice(-199), { type: "warn", message }]);
+        }
+      } finally {
+        syncing = false;
+      }
+    }, 6000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [terminalAutoSync, terminalReady, projectId, user, busy, dirty, files, syncTerminalFiles, queryClient]);
 
   async function saveCheckpoint(label: string) {
     if (!user) throw new Error("Sign in to create a checkpoint.");
@@ -1814,10 +1877,19 @@ export function CodeAgent() {
                     <button
                       type="button"
                       disabled={!terminalReady}
+                      onClick={() => setTerminalAutoSync((value) => !value)}
+                      className={`rounded border px-2 py-1 text-[10px] disabled:opacity-30 ${terminalAutoSync ? "border-emerald-400/25 text-emerald-200" : "border-white/10 text-slate-400"}`}
+                      title="Automatically save terminal changes into the project files"
+                    >
+                      Auto-sync {terminalAutoSync ? "ON" : "OFF"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!terminalReady}
                       onClick={() => void importTerminalChanges()}
                       className="rounded border border-cyan-400/20 px-2 py-1 text-[10px] text-cyan-200 hover:bg-cyan-400/10 disabled:opacity-30"
                     >
-                      Import files
+                      Import now
                     </button>
                     {!terminalReady && (
                       <button
