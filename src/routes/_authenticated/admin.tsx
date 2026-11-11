@@ -205,6 +205,40 @@ function AdminPage() {
     },
   });
 
+  const {
+    data: softwareRequests = [],
+    isLoading: softwareRequestsLoading,
+    isError: softwareRequestsError,
+  } = useQuery({
+    queryKey: ["admin", "software-requests"],
+    enabled: isAdmin,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("software_requests")
+        .select("id,full_name,email,business_name,project_type,description,budget,contact_method,status,admin_note,created_at")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const updateSoftwareRequest = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await supabase
+        .from("software_requests")
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Software request status updated");
+      void queryClient.invalidateQueries({ queryKey: ["admin", "software-requests"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const updateContactMessage = useMutation({
     mutationFn: async ({ id, read }: { id: string; read: boolean }) => {
       const { error } = await supabase
@@ -631,6 +665,17 @@ function AdminPage() {
                   className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
                 >
                   <Code2 className="h-4 w-4" /> Developer requests
+                </TabsTrigger>
+                <TabsTrigger
+                  value="software-requests"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
+                  <Code2 className="h-4 w-4" /> Software requests
+                  {softwareRequests.filter((item) => item.status === "pending").length > 0 && (
+                    <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                      {softwareRequests.filter((item) => item.status === "pending").length}
+                    </span>
+                  )}
                 </TabsTrigger>
                 <TabsTrigger
                   value="contact"
@@ -1422,6 +1467,60 @@ function AdminPage() {
                   {!projectRequests?.length && (
                     <p className="text-sm text-muted-foreground">No developer applications yet.</p>
                   )}
+                </div>
+              </TabsContent>
+              <TabsContent value="software-requests" className="mt-0 space-y-4">
+                <div>
+                  <h2 className="font-display text-xl font-semibold">Custom software requests</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Review business and individual enquiries, contact the requester and track delivery progress.
+                  </p>
+                </div>
+                {softwareRequestsLoading && <p className="text-sm text-muted-foreground">Loading software requests…</p>}
+                {softwareRequestsError && (
+                  <Card className="p-4 text-sm text-destructive">
+                    Could not load software requests. Check the software request migration and admin permissions.
+                  </Card>
+                )}
+                {!softwareRequestsLoading && !softwareRequestsError && softwareRequests.length === 0 && (
+                  <Card className="p-6 text-center text-sm text-muted-foreground">No software requests have been submitted yet.</Card>
+                )}
+                <div className="space-y-3">
+                  {softwareRequests.map((request) => (
+                    <Card key={request.id} className="gap-3 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-semibold">{request.project_type}</h3>
+                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold capitalize text-primary">{request.status.replace("_", " ")}</span>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {request.full_name}{request.business_name ? " · " + request.business_name : ""} · {formatDate(request.created_at)}
+                          </p>
+                          <p className="mt-1 text-xs">
+                            <a className="text-primary hover:underline" href={`mailto:${request.email}?subject=${encodeURIComponent("Re: " + request.project_type)}`}>{request.email}</a>
+                            {request.contact_method ? " · Preferred contact: " + request.contact_method : ""}
+                            {request.budget ? " · Budget: " + request.budget : ""}
+                          </p>
+                        </div>
+                        <select
+                          aria-label={"Update status for " + request.full_name}
+                          className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+                          value={request.status}
+                          disabled={updateSoftwareRequest.isPending}
+                          onChange={(event) => updateSoftwareRequest.mutate({ id: request.id, status: event.target.value })}
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="reviewing">Reviewing</option>
+                          <option value="in_progress">In progress</option>
+                          <option value="delivered">Delivered</option>
+                          <option value="declined">Declined</option>
+                        </select>
+                      </div>
+                      <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{request.description}</p>
+                      {request.admin_note && <p className="rounded-lg bg-secondary p-3 text-xs">Team note: {request.admin_note}</p>}
+                    </Card>
+                  ))}
                 </div>
               </TabsContent>
               <TabsContent value="contact" className="mt-0 space-y-4">
