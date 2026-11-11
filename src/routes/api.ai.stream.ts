@@ -271,85 +271,65 @@ export const Route = createFileRoute("/api/ai/stream")({
           const compactedContents = compactSmartContents(contents);
           const systemText =
             "You are ExpertAI, a practical assistant for developers and creators on ExpertsTeam. Answer the exact question first. Keep ordinary answers brief: usually 1–5 short sentences or a few bullets. Expand only when the user asks for detail, a tutorial, a plan, or code. Avoid long introductions, repeated conclusions, filler, and unnecessary jargon. For code requests, provide complete usable code and explain only the key integration steps. Ask one focused clarification only when essential. Be friendly, accurate, and honest about what you have not tested.";
-          // Guests use the OpenRouter free/normal API path only.
-          // Signed-in members use Gemini first, with Groq as the only fallback.
-          const orderedProviders = isGuest ? ["openrouter"] : ["gemini", "groq"];
-          const geminiKey = process.env["GEMINI_API_KEY"]?.trim();
+          // Experts Routing: use provider fallback plus resumable continuation rounds.
+          // Images remain on Gemini because the other configured adapters are text-only.
+          const orderedProviders = isGuest
+            ? ["openrouter", "kilo"]
+            : ["gemini", "groq", "kilo", "openrouter"];
           const hasImageAttachments = attachments.some((file) => Boolean(file.dataUrl));
-
-          // Prefer Gemini for image inputs because the text-only providers cannot inspect them.
-          if (geminiKey && orderedProviders[0] === "gemini" && !isProviderCoolingDown("gemini")) {
-            const model =
-              process.env["GEMINI_CHAT_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.8-flash";
-            try {
-              const upstream = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`,
-                {
-                  method: "POST",
-                  headers: { "x-goog-api-key": geminiKey, "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    systemInstruction: { parts: [{ text: systemText }] },
-                    contents: compactedContents,
-                    generationConfig: { maxOutputTokens: 700 },
-                  }),
-                  signal: AbortSignal.any([request.signal, AbortSignal.timeout(25000)]),
-                },
-              );
-              if (upstream.ok && upstream.body) {
-                const creditError = await consumeCredit();
-                if (creditError) {
-                  await upstream.body.cancel();
-                  return Response.json({ error: creditError }, { status: 402 });
-                }
-                return new Response(upstream.body, {
-                  headers: {
-                    "Content-Type": "text/event-stream; charset=utf-8",
-                    "Cache-Control": "no-cache, no-transform",
-                    "X-Accel-Buffering": "no",
-                  },
-                });
-              }
-              if (!upstream.ok) {
-                await upstream.text();
-                if (upstream.status === 429 || upstream.status === 413)
-                  markProviderCoolingDown("gemini", 60);
-                else if ([401, 403, 404].includes(upstream.status))
-                  markProviderCoolingDown("gemini", 300);
-                else if (upstream.status >= 500) markProviderCoolingDown("gemini", 20);
-              }
-            } catch (error) {
-              if (request.signal.aborted) throw error;
-              markProviderCoolingDown("gemini", 20);
-              console.error("[ExpertAI Gemini stream; trying fallback]", error);
-            }
-          }
-
-          // Guest and signed-in chats share this exact provider chain. If the
-          // optional Gemini streaming attempt fails, let the standard adapter
-          // retry/fallback across the same configured providers.
-          const fallbackOrder = orderedProviders;
-          const result = await generateGeminiContent(
+          const routingOrder = hasImageAttachments ? ["gemini"] : orderedProviders;
+          const outputBudgetPerRound = 2200;
+          let result = await generateGeminiContent(
             {
               systemInstruction: { parts: [{ text: systemText }] },
-              contents: compactedContents.map((item) => ({
-                role: item.role === "model" ? ("model" as const) : ("user" as const),
-                parts: item.parts.filter(
-                  (part): part is { text: string } => typeof part.text === "string",
-                ),
-              })),
-              generationConfig: { maxOutputTokens: 700 },
+              contents: compactedContents,
+              generationConfig: { maxOutputTokens: outputBudgetPerRound },
             },
             undefined,
-            fallbackOrder,
+            routingOrder,
           );
+          let answerText =
+            result.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
+          let finishReason = result.candidates?.[0]?.finishReason ?? "STOP";
+
+          // Continue a long answer in bounded pieces instead of silently accepting
+          // a provider's per-response output ceiling.
+          for (let round = 0; round < 4 && finishReason === "MAX_TOKENS" && answerText.trim(); round++) {
+            result = await generateGeminiContent(
+              {
+                systemInstruction: { parts: [{ text: systemText }] },
+                contents: [
+                  ...compactedContents,
+                  { role: "model", parts: [{ text: answerText.slice(-12000) }] },
+                  {
+                    role: "user",
+                    parts: [{
+                      text:
+                        "Continue the answer from the exact point where it stopped. Do not repeat or summarize the previous answer. Complete any unfinished explanation, list, code block or file. Original request: " +
+                        prompt.slice(0, 4000),
+                    }],
+                  },
+                ],
+                generationConfig: { maxOutputTokens: outputBudgetPerRound },
+              },
+              undefined,
+              routingOrder,
+            );
+            const nextText =
+              result.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
+            if (!nextText.trim()) break;
+            answerText += nextText;
+            finishReason = result.candidates?.[0]?.finishReason ?? "STOP";
+          }
+          if (finishReason === "MAX_TOKENS") {
+            answerText +=
+              "\n\nI reached the current multi-round response limit. Ask me to continue and I will pick up from here.";
+          }
 
           const creditError = await consumeCredit();
           if (creditError) {
             return Response.json({ error: creditError }, { status: 402 });
           }
-
-          const answerText =
-            result.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
           const encoder = new TextEncoder();
           let cursor = 0;
           const typedStream = new ReadableStream<Uint8Array>({
