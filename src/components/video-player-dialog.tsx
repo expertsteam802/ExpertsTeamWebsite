@@ -18,7 +18,7 @@ type YouTubeApi = {
       };
     },
   ) => YouTubePlayer;
-  PlayerState: { PLAYING: number };
+  PlayerState: { PLAYING: number; BUFFERING: number; PAUSED: number; ENDED: number };
 };
 declare global {
   interface Window {
@@ -186,6 +186,8 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
               iframe.className = "h-full w-full";
             },
             onStateChange: (event) => {
+              if (event.data === YT.PlayerState.BUFFERING) setLoading(true);
+              if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) setLoading(false);
               if (event.data === YT.PlayerState.PLAYING) {
                 setLoading(false);
                 if (!countedRef.current) {
@@ -203,6 +205,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
               if (readyTimeout !== undefined) window.clearTimeout(readyTimeout);
               setLoading(false);
               if (event.data === 153) {
+                setLoading(true);
                 setUseNativeEmbed(true);
               } else {
                 setPlaybackError(playerErrorMessage(event.data));
@@ -216,14 +219,14 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
           if (cancelled) return;
           playerRef.current?.destroy();
           playerRef.current = null;
-          setLoading(false);
+          setLoading(true);
           setUseNativeEmbed(true);
         }, PLAYER_TIMEOUT_MS);
       })
       .catch((error: unknown) => {
         if (readyTimeout !== undefined) window.clearTimeout(readyTimeout);
         if (!cancelled) {
-          setLoading(false);
+          setLoading(true);
           console.warn("[Video player] IFrame API unavailable; using standard embed:", error);
           setUseNativeEmbed(true);
         }
@@ -257,6 +260,8 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
                   referrerPolicy="strict-origin-when-cross-origin"
+                  onLoad={() => setLoading(false)}
+                  onError={() => { setLoading(false); setPlaybackError("The video could not be loaded. Check the video link or open it on YouTube."); }}
                 />
               ) : (
                 <div ref={playerContainerRef} className="h-full w-full" />
