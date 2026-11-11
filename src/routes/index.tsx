@@ -29,17 +29,17 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Expertsteam802 | ExpertsTeam Coding & AI Studio" },
+      { title: "ExpertsTeam | Developer Community, Coding & ExpertAI Studio" },
       {
         name: "description",
         content:
-          "Expertsteam802 is the official ExpertsTeam website to ask any question and get help, learn to code and become a pro coder, build apps with AI, and explore creator videos and developer projects.",
+          "Join the ExpertsTeam developer community to learn coding, share practical projects, ask technical questions, watch tutorials and build applications with ExpertAI Studio.",
       },
-      { property: "og:title", content: "Expertsteam802 | ExpertsTeam Coding & AI Studio" },
+      { property: "og:title", content: "ExpertsTeam | Developer Community, Coding & ExpertAI Studio" },
       {
         property: "og:description",
         content:
-          "Visit Expertsteam802 to get community answers, learn to code and become a pro coder, build with ExpertAI and explore developer resources.",
+          "Learn to code, collaborate with developers, share projects and build applications with ExpertAI Studio on ExpertsTeam.",
       },
     ],
   }),
