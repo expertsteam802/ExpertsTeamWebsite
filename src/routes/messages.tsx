@@ -382,8 +382,10 @@ function MessagesPage() {
     }
     if (callState !== "calling") return;
     callTimeoutRef.current = window.setTimeout(() => {
-      toast.error("No connection after 45 seconds. Check that the other person accepted and that both networks allow WebRTC calls.");
-      void endCall(false);
+      toast.error("The call did not connect within 45 seconds. The call has been ended for both people. If both accepted, the network may require a TURN relay.");
+      // Notify the other participant too; otherwise their incoming/calling UI can
+      // remain open after this side times out.
+      void endCall(true);
     }, 45_000);
     return () => {
       if (callTimeoutRef.current !== null) {
