@@ -831,7 +831,38 @@ export async function publishCloudProject(
   const { data } = storageClient.storage
     .from("published-apps")
     .getPublicUrl(`${prefix}/index.html`);
-  return { url: data.publicUrl, slug, releaseId, fileCount: outputFiles.length };
+  const publicUrl = data.publicUrl;
+  if (!publicUrl) throw new Error("The publishing service did not return a public app URL.");
+
+  // Do not report success until the public entry point can actually be fetched.
+  // Storage writes can become visible a moment after the upload request returns.
+  let verified = false;
+  let lastStatus = "no response";
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const response = await fetch(publicUrl, {
+        method: "HEAD",
+        cache: "no-store",
+        signal: AbortSignal.timeout(5000),
+      });
+      if (response.ok) {
+        verified = true;
+        break;
+      }
+      lastStatus = "HTTP " + response.status;
+    } catch (error) {
+      lastStatus = error instanceof Error ? error.message : "network error";
+    }
+    if (attempt < 4) await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+  }
+  if (!verified)
+    throw new Error(
+      "The build was uploaded, but its public URL could not be verified (" +
+        lastStatus +
+        "). Check the published-apps bucket's public read policy and try again.",
+    );
+
+  return { url: publicUrl, slug, releaseId, fileCount: outputFiles.length };
 }
 
 export async function stopCloudProjectPreview(projectId: string) {
