@@ -83,7 +83,11 @@ export function PageShell({ children, hideFooter = false }: { children: ReactNod
             <Link
               key={item.to}
               to={item.to}
-              className="inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-semibold text-white/65 transition hover:bg-blue-400/10 hover:text-blue-200"
+              className={
+                item.to === "/software"
+                  ? "inline-flex shrink-0 items-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-[11px] font-bold text-cyan-100 transition hover:bg-cyan-300/20"
+                  : "inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-semibold text-white/65 transition hover:bg-blue-400/10 hover:text-blue-200"
+              }
             >
               <item.icon className="h-3.5 w-3.5" />
               {item.label}
