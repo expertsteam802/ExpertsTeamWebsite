@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
-type Signal = { sender_id: string; target_id: string; kind: "offer"|"answer"|"ice"|"hangup"; sdp?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit };
+type Signal = { sender_id: string; target_id: string; kind: "offer"|"answer"|"ice"|"hangup"; media?: "audio"|"video"; sdp?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit };
 const ICE_SERVERS: RTCIceServer[] = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
@@ -21,10 +21,11 @@ export function ConversationCall({ conversationId, recipientId, recipientName }:
   const remoteVideo = useRef<HTMLVideoElement>(null);
   const localVideo = useRef<HTMLVideoElement>(null);
   const pendingIce = useRef<RTCIceCandidateInit[]>([]);
-  const incomingOffer = useRef<{sdp:RTCSessionDescriptionInit; senderId:string}|null>(null);
+  const incomingOffer = useRef<{sdp:RTCSessionDescriptionInit; senderId:string; media:"audio"|"video"}|null>(null);
   const [status,setStatus] = useState<"idle"|"calling"|"incoming"|"connected">("idle");
   const [muted,setMuted] = useState(false);
   const [cameraOff,setCameraOff] = useState(false);
+  const [mediaMode,setMediaMode] = useState<"audio"|"video">("video");
   const [channelReady,setChannelReady] = useState(false);
   const [localStream,setLocalStream] = useState<MediaStream|null>(null);
   const [remoteStream,setRemoteStream] = useState<MediaStream|null>(null);
@@ -55,7 +56,8 @@ export function ConversationCall({ conversationId, recipientId, recipientName }:
       try {
         if (signal.kind === "hangup") { cleanup(); setStatus("idle"); return; }
         if (signal.kind === "offer" && signal.sdp) {
-          incomingOffer.current={sdp:signal.sdp,senderId:signal.sender_id};
+          incomingOffer.current={sdp:signal.sdp,senderId:signal.sender_id,media:signal.media === "audio" ? "audio" : "video"};
+          setMediaMode(signal.media === "audio" ? "audio" : "video");
           setStatus("incoming");
         }
         if (signal.kind === "answer" && signal.sdp && peerRef.current) {
@@ -78,11 +80,11 @@ export function ConversationCall({ conversationId, recipientId, recipientName }:
     return () => { setChannelReady(false); cleanup(); channelRef.current=null; void supabase.removeChannel(channel); };
   },[userId,conversationId]);
 
-  async function preparePeer() {
+  async function preparePeer(withVideo = true) {
     if (!user) throw new Error("Sign in to call.");
     const channel=channelRef.current;
     if (!channel || !channelReady) throw new Error("Secure call channel is still connecting. Try again in a moment.");
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true,video:true});
+    const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1},video:withVideo?{width:{ideal:1280},height:{ideal:720},frameRate:{ideal:24,max:30}}:false});
     localRef.current=stream;
     setLocalStream(stream);
     const peer=new RTCPeerConnection({iceServers:ICE_SERVERS});
@@ -91,6 +93,7 @@ export function ConversationCall({ conversationId, recipientId, recipientName }:
     peer.ontrack=event=>setRemoteStream(event.streams[0] ?? new MediaStream([event.track]));
     peer.onicecandidate=event=>{if(event.candidate) void channel.send({type:"broadcast",event:"signal",payload:{sender_id:user.id,target_id:recipientId,kind:"ice",candidate:event.candidate.toJSON()}});};
     peer.onconnectionstatechange=()=>{if(peer.connectionState==="connected") setStatus("connected"); if(["failed","closed"].includes(peer.connectionState)){cleanup();setStatus("idle");}};
+    peer.oniceconnectionstatechange=()=>{if(peer.iceConnectionState==="failed") toast.error("This network could not connect the call directly. Try audio-only or another network; some networks require a TURN relay.");};
     return {peer,channel};
   }
 
@@ -100,7 +103,7 @@ export function ConversationCall({ conversationId, recipientId, recipientName }:
       setStatus("calling");
       const offer=await peer.createOffer();
       await peer.setLocalDescription(offer);
-      await channel.send({type:"broadcast",event:"signal",payload:{sender_id:user!.id,target_id:recipientId,kind:"offer",sdp:offer}});
+      await channel.send({type:"broadcast",event:"signal",payload:{sender_id:user!.id,target_id:recipientId,kind:"offer",media:mode,sdp:offer}});
     } catch(error) { cleanup(); setStatus("idle"); toast.error(error instanceof Error ? error.message : "Allow camera and microphone access to start a call."); }
   }
 
@@ -134,10 +137,10 @@ export function ConversationCall({ conversationId, recipientId, recipientName }:
 
   return <Card className="space-y-3 p-3">
     <div className="flex items-center justify-between gap-2"><div><p className="text-sm font-semibold">Video call</p><p className="text-xs text-muted-foreground">{status==="connected"?"Connected":status==="incoming"?"Incoming call":status==="calling"?"Connecting…":"Call "+recipientName}</p></div>
-      {status==="idle" ? <Button size="sm" disabled={!channelReady} onClick={()=>void startCall()}><Video className="mr-2 h-4 w-4"/>Start call</Button> : status==="incoming" ? <div className="flex gap-2"><Button size="sm" onClick={()=>void answerCall()}><Phone className="mr-2 h-4 w-4"/>Answer</Button><Button size="sm" variant="destructive" onClick={()=>void declineCall()}><PhoneOff className="mr-2 h-4 w-4"/>Decline</Button></div> : <Button size="sm" variant="destructive" onClick={()=>void hangup()}><PhoneOff className="mr-2 h-4 w-4"/>End</Button>}
+      {status==="idle" ? <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={!channelReady} onClick={()=>void startCall("audio")}><Phone className="mr-2 h-4 w-4"/>Audio call</Button><Button size="sm" disabled={!channelReady} onClick={()=>void startCall("video")}><Video className="mr-2 h-4 w-4"/>Video call</Button></div> : status==="incoming" ? <div className="flex gap-2"><Button size="sm" onClick={()=>void answerCall()}><Phone className="mr-2 h-4 w-4"/>Answer</Button><Button size="sm" variant="destructive" onClick={()=>void declineCall()}><PhoneOff className="mr-2 h-4 w-4"/>Decline</Button></div> : <Button size="sm" variant="destructive" onClick={()=>void hangup()}><PhoneOff className="mr-2 h-4 w-4"/>End</Button>}
     </div>
-    {status!=="idle" && status!=="incoming" && <div className="grid grid-cols-2 gap-2"><video ref={remoteVideo} autoPlay playsInline className="aspect-video w-full rounded-xl bg-black"/><video ref={localVideo} autoPlay muted playsInline className="aspect-video w-full rounded-xl bg-black"/></div>}
+    {status!=="idle" && status!=="incoming" && <div className={mediaMode==="video"?"grid grid-cols-2 gap-2":"hidden"}><video ref={remoteVideo} autoPlay playsInline className="aspect-video w-full rounded-xl bg-black"/><video ref={localVideo} autoPlay muted playsInline className="aspect-video w-full rounded-xl bg-black"/></div>{mediaMode==="audio" && <><video ref={remoteVideo} autoPlay playsInline className="hidden"/><video ref={localVideo} autoPlay muted playsInline className="hidden"/><p className="rounded-xl bg-secondary/60 px-3 py-2 text-center text-xs text-muted-foreground">Audio call · noise suppression and echo cancellation enabled</p></>}}
     {status!=="idle" && status!=="incoming" && <div className="flex gap-2"><Button size="icon" variant="outline" aria-label="Toggle microphone" onClick={()=>{const track=localRef.current?.getAudioTracks()[0]; if(track){track.enabled=!track.enabled;setMuted(!track.enabled);}}}>{muted?<MicOff/>:<Mic/>}</Button><Button size="icon" variant="outline" aria-label="Toggle camera" onClick={()=>{const track=localRef.current?.getVideoTracks()[0]; if(track){track.enabled=!track.enabled;setCameraOff(!track.enabled);}}}>{cameraOff?<VideoOff/>:<Video/>}</Button></div>}
-    <p className="text-[11px] text-muted-foreground">Camera and microphone access are required. Some networks require a TURN relay; this connection currently uses public STUN servers.</p>
+    <p className="text-[11px] text-muted-foreground">Calls are user-initiated. Microphone processing reduces echo and background noise. Video uses adaptive browser capture up to 720p. Direct peer connections may need a TURN relay on restrictive networks; no relay credentials are currently configured.</p>
   </Card>;
 }
