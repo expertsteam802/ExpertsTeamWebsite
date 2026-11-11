@@ -8,11 +8,11 @@ import { Card } from "@/components/ui/card";
 export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
-      { title: "Free Plan — $0 | ExpertsTeam" },
+      { title: "ExpertsTeam Pricing — Custom Software from $10" },
       {
         name: "description",
         content:
-          "Start with ExpertsTeam for $0. Learn, connect, build projects, use the browser workspace and publish apps with transparent usage limits.",
+          "Join ExpertsTeam for free. Custom software projects start at $10, with scope and final pricing confirmed before work begins.",
       },
       { property: "og:title", content: "ExpertsTeam Free Plan — $0" },
       {
@@ -44,11 +44,11 @@ function PricingPage() {
             <Sparkles className="h-3.5 w-3.5" /> Straightforward access
           </span>
           <h1 className="mt-5 font-display text-4xl font-bold tracking-tight sm:text-6xl">
-            Build more. <span className="brand-text">Pay nothing to start.</span>
+            Start free. <span className="brand-text">Build from $10.</span>
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
-            Get the tools to learn, connect and turn ideas into working software. Start at zero cost,
-            with usage limits shown honestly wherever they apply.
+            Learn, connect and use the platform for free. When you need a custom website, business
+            system or application built by our team, projects start at $10.
           </p>
         </div>
 
@@ -88,9 +88,19 @@ function PricingPage() {
               <ShieldCheck className="h-6 w-6 text-primary" />
               <h2 className="mt-3 font-display text-xl font-semibold">No surprise charges</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                ExpertsTeam does not charge a subscription on this plan. We will show the price and
-                terms clearly before introducing any paid product.
+                The community platform can be used for free. Custom software development is a separate
+                service, with a starting price of $10 and a confirmed quote before work begins.
               </p>
+            </Card>
+            <Card className="border-primary/30 p-6">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary">Custom software</p>
+              <p className="mt-2 font-display text-4xl font-bold">$10<span className="ml-2 text-sm font-medium text-muted-foreground">starting price</span></p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Request a website, POS, business system or custom app. We confirm the final quote after reviewing your requirements.
+              </p>
+              <Link to="/software" className="mt-4 inline-flex items-center text-sm font-semibold text-primary hover:underline">
+                Request a project <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
             </Card>
             <Card className="p-6">
               <Sparkles className="h-6 w-6 text-primary" />
