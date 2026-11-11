@@ -21,7 +21,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { useAuth } from "@/hooks/use-auth";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 
-export function PageShell({ children }: { children: ReactNode }) {
+export function PageShell({ children, hideFooter = false }: { children: ReactNode; hideFooter?: boolean }) {
   const settings = useSiteSettings();
   const { user, isAdmin } = useAuth();
   const labels = settings.navigation_labels;
@@ -66,8 +66,11 @@ export function PageShell({ children }: { children: ReactNode }) {
           />
         </div>
       )}
-      <main className="et-main relative z-10 min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
-        <div className="et-page-content min-h-full">{children}<SiteFooter /></div>
+      <main className={`et-main relative z-10 min-h-0 flex-1 overflow-x-hidden ${hideFooter ? "overflow-hidden" : "overflow-y-auto overscroll-contain"}`}>
+        <div className={`et-page-content min-h-full ${hideFooter ? "flex h-full min-h-0 flex-col" : ""}`}>
+          {children}
+          {!hideFooter && <SiteFooter />}
+        </div>
       </main>
       <footer className="relative z-20 shrink-0 border-t border-blue-400/20 bg-[#080d18]/95 shadow-[0_-12px_40px_rgba(0,0,0,.28)] backdrop-blur-2xl">
         <nav
