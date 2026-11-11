@@ -444,6 +444,31 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
     throw new Error(
       "This Vercel Sandbox image does not include the util-linux script command required to allocate a terminal.",
     );
+  // Install a compact CTF/security-analysis toolkit once per persistent sandbox.
+  // These utilities are intended for authorized labs and challenge environments.
+  const toolkitMarker = WORKDIR + "/.experts-ctf-toolkit-v1";
+  const toolkitCheck = await sandbox.runCommand({ cmd: "test", args: ["-f", toolkitMarker], cwd: WORKDIR });
+  let toolkitStatus: "ready" | "skipped" | "unavailable" = toolkitCheck.exitCode === 0 ? "ready" : "skipped";
+  if (toolkitCheck.exitCode !== 0) {
+    const toolkitInstall = await sandbox.runCommand({
+      cmd: "sh",
+      args: ["-lc", [
+        'if [ "$(id -u)" -ne 0 ] || ! command -v apt-get >/dev/null 2>&1; then exit 4; fi',
+        "export DEBIAN_FRONTEND=noninteractive",
+        "apt-get update -qq",
+        "apt-get install -y --no-install-recommends nmap sqlmap john hashcat binwalk libimage-exiftool-perl tshark gdb python3-pwntools python3-pip python3-venv git curl wget jq unzip zip file ripgrep netcat-openbsd dnsutils tcpdump",
+      ].join(" && ")],
+      cwd: WORKDIR,
+      timeoutMs: 240_000,
+    });
+    if (toolkitInstall.exitCode === 0) {
+      await sandbox.writeFiles([{ path: toolkitMarker, content: Buffer.from("installed", "utf8") }]);
+      toolkitStatus = "ready";
+    } else {
+      toolkitStatus = "unavailable";
+    }
+  }
+
   const installed = await sandbox.runCommand({
     cmd: "test",
     args: ["-d", bridgeDir + "/node_modules/ws"],
@@ -517,7 +542,7 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
         (await selfTestResult.stderr()).slice(-2000),
     );
 
-  return { url: sandbox.domain(4174).replace(/^https:/, "wss:") + "/terminal", token };
+  return { url: sandbox.domain(4174).replace(/^https:/, "wss:") + "/terminal", token, toolkitStatus };
 }
 
 export async function readCloudProjectFiles(projectId: string) {
