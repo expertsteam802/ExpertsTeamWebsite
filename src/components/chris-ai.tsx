@@ -364,6 +364,12 @@ export function ChrisAiChat({
       });
       if (!response.ok) {
         const errorBody = (await response.json().catch(() => ({}))) as { error?: string };
+        if (response.status === 504) {
+          throw new Error("ExpertAI took too long to respond. Your chat is still here—try a shorter prompt or retry in a moment.");
+        }
+        if (response.status === 503 || response.status === 502) {
+          throw new Error(errorBody.error || "ExpertAI is temporarily unavailable. Please retry shortly.");
+        }
         throw new Error(errorBody.error || `ExpertAI request failed (${response.status}).`);
       }
       if (!response.body) throw new Error("The AI response stream was unavailable.");
