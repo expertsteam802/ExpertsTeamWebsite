@@ -1225,7 +1225,7 @@ export function CodeAgent() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => void publishProject()
+            onClick={() => void publishProject()}
             className="h-8 border-emerald-400/25 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/20"
           >
             <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
