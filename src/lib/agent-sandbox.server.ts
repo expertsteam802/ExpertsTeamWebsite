@@ -674,10 +674,18 @@ export async function publishCloudProject(
   let outputFiles: Array<{ path: string; content: Buffer }> = [];
 
   if (buildScript) {
+    const buildArgs = ["run", "build"];
+    const buildEnv: Record<string, string> = {};
+    // Published apps are hosted beneath a release-specific storage path, not
+    // the domain root. Relative Vite/CRA asset URLs keep CSS and JS inside
+    // that release when it is opened through /apps/:slug.
+    if (/vite/i.test(buildScript)) buildArgs.push("--", "--base", "./");
+    if (/react-scripts/i.test(buildScript)) buildEnv.PUBLIC_URL = ".";
     const build = await sandbox.runCommand({
       cmd: "npm",
-      args: ["run", "build"],
+      args: buildArgs,
       cwd: WORKDIR,
+      env: buildEnv,
       timeoutMs: 240_000,
     });
     if (build.exitCode !== 0) {
