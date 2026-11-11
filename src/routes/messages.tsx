@@ -92,7 +92,7 @@ function MessagesPage() {
   const { user, profile } = useAuth();
   const userId = user?.id ?? null;
   const queryClient = useQueryClient();
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(() => typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("conversation"));
   const [search, setSearch] = useState("");
   const [peopleOpen, setPeopleOpen] = useState(false);
   const [draft, setDraft] = useState("");
@@ -100,7 +100,7 @@ function MessagesPage() {
   const [attachmentPreview, setAttachmentPreview] = useState("");
   const [typing, setTyping] = useState(false);
   const [onlineIds, setOnlineIds] = useState<string[]>([]);
-  const [mobileChatOpen, setMobileChatOpen] = useState(false);
+  const [mobileChatOpen, setMobileChatOpen] = useState(() => typeof window !== "undefined" && Boolean(new URLSearchParams(window.location.search).get("conversation")));
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
