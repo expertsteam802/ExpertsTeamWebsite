@@ -322,7 +322,7 @@ function cleanTerminalOutput(value: string) {
   );
 }
 
-export async function startCloudProjectTerminal(projectId: string, sourceFiles: AgentProjectFiles) {
+export async function startCloudProjectTerminal(projectId: string, sourceFiles: AgentProjectFiles, username = "ExpertsTeam") {
   const files = repairMissingStylesheetImports({ ...sourceFiles });
   validateFiles(files);
   const name = sandboxName(projectId);
@@ -477,7 +477,7 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
       cmd: "node",
       args: ["server.cjs"],
       cwd: bridgeDir,
-      env: { TERMINAL_TOKEN: token, TERMINAL_CWD: WORKDIR, TERMINAL_PORT: "4174", TERMINAL_USERNAME: "ExpertsTeam" },
+      env: { TERMINAL_TOKEN: token, TERMINAL_CWD: WORKDIR, TERMINAL_PORT: "4174", TERMINAL_USERNAME: username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam" },
       detached: true,
     });
   }
