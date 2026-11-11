@@ -1,15 +1,3 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
 User-agent: *
 Allow: /
 Disallow: /admin
@@ -18,4 +6,5 @@ Disallow: /dashboard
 Disallow: /vault
 Disallow: /auth
 Disallow: /api/
+
 Sitemap: https://expertsteam.giize.com/sitemap.xml
