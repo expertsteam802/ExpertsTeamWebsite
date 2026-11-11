@@ -17,10 +17,10 @@ export type SmartRequest = {
   };
 };
 
-const DEFAULT_TEXT_BUDGET = 9_000;
-const SYSTEM_TEXT_BUDGET = 2_000;
-const HISTORY_TEXT_BUDGET = 1_800;
-const LATEST_MESSAGE_BUDGET = 7_200;
+const DEFAULT_TEXT_BUDGET = 20_000;
+const SYSTEM_TEXT_BUDGET = 2_500;
+const HISTORY_TEXT_BUDGET = 2_400;
+const LATEST_MESSAGE_BUDGET = 16_000;
 
 function trimText(value: string, limit: number): string {
   if (value.length <= limit) return value;
@@ -64,7 +64,7 @@ export function compactSmartContents(
       .map((part) => part.text ?? "")
       .join("\n");
     if (!text || historyRemaining <= 0) continue;
-    const kept = trimText(text, Math.min(text.length, Math.min(700, historyRemaining)));
+    const kept = trimText(text, Math.min(text.length, Math.min(900, historyRemaining)));
     historyRemaining -= kept.length;
     compactedHistory.unshift({ role: item.role, parts: [{ text: kept }] });
   }
