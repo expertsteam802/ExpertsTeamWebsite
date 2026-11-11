@@ -266,7 +266,7 @@ export async function runAgent(
     .split(",")
     .map((item) => item.trim().toLowerCase())
     .filter((item) => ["gemini", "groq", "kilo", "openrouter"].includes(item) && !(item === "kilo" && process.env["KILO_ENABLED"] === "false"));
-  const providerSequence = [...new Set([...configured, "gemini", "groq", ...(process.env["KILO_ENABLED"] === "false" ? [] : ["kilo"]), "openrouter"])];
+  const providerSequence = [...new Set([...configured, "gemini", "groq", ...(process.env["KILO_ENABLED"] === "true" ? ["kilo"] : []), "openrouter"])];
   const completedFiles: Record<string, string | null> = {};
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
