@@ -7,6 +7,7 @@ import {
   Code2,
   Command,
   Copy,
+  Download,
   ExternalLink,
   Eye,
   File,
@@ -557,7 +558,7 @@ export function CodeAgent() {
     try {
       const activeProjectId = await persist();
       const connection = await connectTerminal({
-        data: { projectId: activeProjectId, files },
+        data: { projectId: activeProjectId, files, username: profile?.username || "ExpertsTeam" },
       });
       setTerminalConnection(connection);
     } catch (error) {
@@ -565,6 +566,26 @@ export function CodeAgent() {
         error instanceof Error ? error.message : "Could not connect to the Linux terminal.";
       toast.error(message);
     }
+  }
+
+  function downloadProjectBundle() {
+    const payload = {
+      format: "expertsteam-project",
+      version: 1,
+      name: name.trim() || "Untitled project",
+      exportedAt: new Date().toISOString(),
+      files,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = (name.trim() || "expertsteam-project").replace(/[^a-z0-9-_]+/gi, "-") + ".expertsteam-project.json";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    toast.success("Project files exported");
   }
 
   function navigatePreview() {
@@ -1327,6 +1348,16 @@ export function CodeAgent() {
           >
             {publishing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />}
             {publishing ? "Publishing…" : "Publish"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={downloadProjectBundle}
+            className="h-8 border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/10"
+            title="Download all project files as a portable ExpertsTeam project bundle"
+          >
+            <Download className="mr-1.5 h-3.5 w-3.5" />
+            Download
           </Button>
           <Button
             size="sm"
