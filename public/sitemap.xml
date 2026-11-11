@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://expertsteam.giize.com/</loc></url>
+  <url><loc>https://expertsteam.giize.com/about</loc></url>
+  <url><loc>https://expertsteam.giize.com/community</loc></url>
   <url><loc>https://expertsteam.giize.com/learn</loc></url>
   <url><loc>https://expertsteam.giize.com/videos</loc></url>
-  <url><loc>https://expertsteam.giize.com/community</loc></url>
   <url><loc>https://expertsteam.giize.com/projects</loc></url>
   <url><loc>https://expertsteam.giize.com/entertainment</loc></url>
   <url><loc>https://expertsteam.giize.com/contact</loc></url>
-  <url><loc>https://expertsteam.giize.com/ai</loc></url>
+  <url><loc>https://expertsteam.giize.com/privacy-policy</loc></url>
+  <url><loc>https://expertsteam.giize.com/terms</loc></url>
+  <url><loc>https://expertsteam.giize.com/copyright</loc></url>
 </urlset>
