@@ -233,10 +233,21 @@ export const Route = createFileRoute("/api/ai/stream")({
           };
 
           const { prompt, history = [], attachments = [] } = parsed.data;
+          const perAttachmentTextBudget = Math.max(
+            1200,
+            Math.floor(12000 / Math.max(1, attachments.length)),
+          );
           const attachmentParts = attachments.flatMap((file): SmartPart[] => {
             const parts: SmartPart[] = [{ text: `Attachment: ${file.name}` }];
             if (file.text) {
-              parts.push({ text: file.text.slice(0, 3500) });
+              const sourceText = file.text;
+              const text =
+                sourceText.length <= perAttachmentTextBudget
+                  ? sourceText
+                  : sourceText.slice(0, Math.floor(perAttachmentTextBudget * 0.4)) +
+                    "\\n[Middle of this attachment omitted to fit the shared context budget]\\n" +
+                    sourceText.slice(-Math.floor(perAttachmentTextBudget * 0.6));
+              parts.push({ text });
             } else if (file.dataUrl) {
               const match = file.dataUrl.match(/^data:([^;,]+);base64,([\s\S]+)$/);
               if (match) {
