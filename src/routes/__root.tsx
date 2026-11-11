@@ -144,7 +144,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "twitter:description",
         content:
-          "Learn coding, build apps, play games and download free apps, games and files with ExpertsTeam.",
+          "Learn coding, build software, connect with creators and request custom apps with ExpertsTeam.",
       },
       { property: "og:image", content: "https://expertsteam.giize.com/experts-team-brand.svg" },
       { property: "og:image:width", content: "1200" },
