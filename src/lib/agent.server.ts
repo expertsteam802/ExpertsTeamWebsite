@@ -302,7 +302,7 @@ export async function runAgent(
       AGENT_PROMPT +
       "\\n\\nResponse style: keep progress notes and explanations concise, direct, and useful. Use short sentences and small lists. Do not add long introductions, repeat the request, or explain obvious steps. Put implementation effort into complete working files, not verbose commentary.\\n" +
       "Smart Processing rules:\\n" +
-      "- Work in resumable batches of no more than 2 complete files per response.\\n" +
+      "- Work in resumable batches of no more than 3 complete files per response.\\n" +
       '- Return JSON: {"message":"...","files":{"path":"full file content"},"complete":false}.\\n' +
       "- Set complete:true only after all necessary files have been supplied across continuation rounds.\\n" +
       "- Never intentionally truncate a file. Finish the current file, stop, and set complete:false if output budget is low.\\n" +
