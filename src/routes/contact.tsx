@@ -26,6 +26,7 @@ export const Route = createFileRoute("/contact")({
       { property: "og:title", content: "Contact ExpertsTeam" },
       { property: "og:description", content: "Get in touch with Chris Expert." },
     ],
+    links: [{ rel: "canonical", href: "https://expertsteam.giize.com/contact" }],
   }),
   component: ContactPage,
 });
