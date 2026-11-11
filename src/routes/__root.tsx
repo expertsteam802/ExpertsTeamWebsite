@@ -123,7 +123,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Learn to code, build with ExpertAI, connect with creators, and discover useful apps and downloads on ExpertsTeam.",
+          "Learn to code, build software with ExpertAI, connect with creators and request custom applications from ExpertsTeam.",
       },
 
       {
@@ -188,6 +188,9 @@ function RootShell({ children }: { children: ReactNode }) {
               "@type": "Organization",
               name: "ExpertsTeam",
               alternateName: ["Experts Team", "expertsteam.giize.com"],
+              logo: "https://expertsteam.giize.com/experts-team-mark.svg",
+              sameAs: ["https://www.youtube.com/@expertchris", "https://instagram.com/m.chris_t2011"],
+              contactPoint: [{ "@type": "ContactPoint", contactType: "customer support", email: "mucyochristhecla@gmail.com" }],
               url: "https://expertsteam.giize.com/",
               description:
                 "ExpertsTeam is a digital hub to learn coding, build apps with ExpertAI, connect with creators, and discover useful downloads.",
