@@ -211,7 +211,8 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
         : packageManager === "bun"
           ? ["install"]
           : ["install", "--no-audit", "--no-fund"];
-    installOutput = await runChecked(sandbox, packageManager, installArgs, 240_000);
+    const installCommand = packageManagerInvocation(packageManager, installArgs);
+    installOutput = await runChecked(sandbox, installCommand.cmd, installCommand.args, 240_000);
     await sandbox.writeFiles([
       {
         path: PACKAGE_HASH_FILE,
@@ -697,6 +698,15 @@ function publishedContentType(path: string) {
 
 type ProjectPackageManager = "npm" | "pnpm" | "yarn" | "bun";
 
+function packageManagerInvocation(
+  manager: ProjectPackageManager,
+  args: string[],
+): { cmd: string; args: string[] } {
+  if (manager === "npm") return { cmd: "npm", args };
+  if (manager === "bun") return { cmd: "npx", args: ["--yes", "bun", ...args] };
+  return { cmd: "corepack", args: [manager, ...args] };
+}
+
 function detectProjectPackageManager(
   files: AgentProjectFiles,
   packageJson: Record<string, unknown>,
@@ -761,9 +771,10 @@ export async function publishCloudProject(
     if (/vite/i.test(buildScript)) buildArgs.push("--", "--base", "./");
     if (/react-scripts/i.test(buildScript)) buildEnv.PUBLIC_URL = ".";
     if (/next/i.test(buildScript) && /export/i.test(buildScript)) buildEnv.NEXT_PUBLIC_BASE_PATH = "";
+    const buildCommand = packageManagerInvocation(packageManager, buildArgs);
     const build = await sandbox.runCommand({
-      cmd: packageManager,
-      args: buildArgs,
+      cmd: buildCommand.cmd,
+      args: buildCommand.args,
       cwd: WORKDIR,
       env: buildEnv,
       timeoutMs: 300_000,
