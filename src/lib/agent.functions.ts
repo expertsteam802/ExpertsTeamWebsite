@@ -290,6 +290,7 @@ export const startAgentPreview = createServerFn({ method: "POST" })
 const terminalStartRequest = z
   .object({
     projectId: z.string().uuid(),
+    username: z.string().trim().min(1).max(39).regex(/^[a-zA-Z0-9_-]+$/).optional(),
     files: z.record(z.string().max(512), z.string().max(150000)),
   })
   .refine(
@@ -305,7 +306,7 @@ export const startAgentTerminal = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
     const { startCloudProjectTerminal } = await import("./agent-sandbox.server");
-    return startCloudProjectTerminal(data.projectId, data.files);
+    return startCloudProjectTerminal(data.projectId, data.files, data.username ?? "ExpertsTeam");
   });
 
 const publishRequest = z
