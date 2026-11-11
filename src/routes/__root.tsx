@@ -139,7 +139,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         property: "og:description",
         content:
-          "Learn to code, build with ExpertAI, connect with creators, and discover useful apps and downloads on ExpertsTeam.",
+          "Learn to code, build software with ExpertAI, connect with creators and request custom applications from ExpertsTeam.",
       },
       {
         name: "twitter:description",
