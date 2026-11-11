@@ -102,8 +102,8 @@ function SoftwareRequestPage() {
               <a href={`mailto:${settings.owner_email}?subject=Custom%20software%20request`}>
                 <Button size="lg" variant="outline"><Mail className="mr-2 h-4 w-4" /> Email our team</Button>
               </a>
-              <Link to="/messages">
-                <Button size="lg" variant="ghost"><MessageCircle className="mr-2 h-4 w-4" /> Direct message</Button>
+              <Link to="/messages" search={{ to: "xpert" } as never}>
+                <Button size="lg" variant="ghost"><MessageCircle className="mr-2 h-4 w-4" /> DM Chris Expert</Button>
               </Link>
             </div>
           </div>
