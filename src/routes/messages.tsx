@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -94,6 +94,10 @@ function shortTime(value?: string) {
 function MessagesPage() {
   const { user, profile } = useAuth();
   const userId = user?.id ?? null;
+  const requestedRecipient = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("to")
+    : null;
+  const requestedRecipientRef = useRef<string | null>(null);
   const queryClient = useQueryClient();
   const [activeId, setActiveId] = useState<string | null>(() => typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("conversation"));
   const [search, setSearch] = useState("");
@@ -738,7 +742,7 @@ function MessagesPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  async function startConversation(person: Person) {
+  const startConversation = useCallback(async (person: Person) => {
     if (!user) return;
     const pairKey = [user.id, person.id].sort().join(":");
     try {
@@ -788,7 +792,24 @@ function MessagesPage() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not start this conversation.");
     }
-  }
+  }, [user, queryClient]);
+
+  useEffect(() => {
+    if (!user || !requestedRecipient || requestedRecipientRef.current === requestedRecipient) return;
+    requestedRecipientRef.current = requestedRecipient;
+    void (async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id,username,display_name,avatar_url")
+        .eq("username", requestedRecipient)
+        .maybeSingle();
+      if (error || !data) {
+        toast.error("That ExpertsTeam contact could not be found.");
+        return;
+      }
+      await startConversation(data as Person);
+    })();
+  }, [user, requestedRecipient, startConversation]);
 
   function updateDraft(value: string) {
     setDraft(value);
@@ -839,7 +860,7 @@ function MessagesPage() {
             Sign in to start private conversations with the ExpertsTeam community.
           </p>
           <a
-            href="/auth"
+            href={`/auth?next=${encodeURIComponent(typeof window === "undefined" ? "/messages" : window.location.pathname + window.location.search)}`}
             className="mt-5 inline-flex rounded-xl bg-primary px-5 py-3 font-semibold text-primary-foreground"
           >
             Sign in
