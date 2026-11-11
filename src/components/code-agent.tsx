@@ -705,7 +705,7 @@ export function CodeAgent() {
       const slug = existingSlug || `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
       const result = await publish({ data: { projectId: activeProjectId, files, slug } });
       await queryClient.invalidateQueries({ queryKey: ["agent-projects", user?.id] });
-      const url = publishedProjectUrl(result.slug);
+      const url = result.publicUrl;
       setPublishedUrl(url);
       toast.success("Your app is built and published", {
         action: {
