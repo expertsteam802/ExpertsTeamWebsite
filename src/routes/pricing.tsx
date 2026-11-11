@@ -12,7 +12,7 @@ export const Route = createFileRoute("/pricing")({
       {
         name: "description",
         content:
-          "Join ExpertsTeam for free. Custom software projects start at $10, with scope and final pricing confirmed before work begins.",
+          "Join ExpertsTeam for free. Custom software projects start at $5, with scope and final pricing confirmed before work begins.",
       },
       { property: "og:title", content: "ExpertsTeam Pricing — Custom Software from $5" },
       {
@@ -48,7 +48,7 @@ function PricingPage() {
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
             Learn, connect and use the platform for free. When you need a custom website, business
-            system or application built by our team, projects start at $10.
+            system or application built by our team, projects start at $5.
           </p>
         </div>
 
@@ -89,7 +89,7 @@ function PricingPage() {
               <h2 className="mt-3 font-display text-xl font-semibold">No surprise charges</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 The community platform can be used for free. Custom software development is a separate
-                service, with a starting price of $10 and a confirmed quote before work begins.
+                service, with a starting price of $5 and a confirmed quote before work begins.
               </p>
             </Card>
             <Card className="border-primary/30 p-6">
