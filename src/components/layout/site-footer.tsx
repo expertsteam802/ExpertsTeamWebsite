@@ -13,7 +13,7 @@ function socialLabel(value: string, fallback: string) {
   }
 }
 
-function FooterLink({ to, children }: { to: string; children: React.ReactNode }) {
+function FooterLink({ to, children }: { to: string; children: string }) {
   return <Link to={to as never} className="block text-muted-foreground transition-colors hover:text-foreground">{children}</Link>;
 }
 
