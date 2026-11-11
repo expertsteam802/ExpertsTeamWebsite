@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -145,12 +145,12 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
   const nativeEmbedTimeoutRef = useRef<number | null>(null);
   const shouldLoadLesson = !!videoId;
 
-  function clearNativeEmbedTimeout() {
+  const clearNativeEmbedTimeout = useCallback(() => {
     if (nativeEmbedTimeoutRef.current !== null) {
       window.clearTimeout(nativeEmbedTimeoutRef.current);
       nativeEmbedTimeoutRef.current = null;
     }
-  }
+  }, []);
 
   useEffect(() => {
     if (!useNativeEmbed || !videoId) return;
@@ -161,7 +161,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
       setPlaybackError("YouTube did not respond. The video may be unavailable or may block playback on other websites.");
     }, 12000);
     return clearNativeEmbedTimeout;
-  }, [useNativeEmbed, videoId]);
+  }, [useNativeEmbed, videoId, clearNativeEmbedTimeout]);
 
   useEffect(() => {
     setPlaybackError(null);
