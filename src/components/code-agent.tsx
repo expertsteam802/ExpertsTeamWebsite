@@ -267,6 +267,7 @@ export function CodeAgent() {
   const [dirty, setDirty] = useState(false);
   const [runtimeBusy, setRuntimeBusy] = useState(false);
   const [runtimeUrl, setRuntimeUrl] = useState<string | null>(null);
+  const [previewAddress, setPreviewAddress] = useState("");
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState("Not started");
@@ -563,6 +564,22 @@ export function CodeAgent() {
     }
   }
 
+  function navigatePreview() {
+    if (!runtimeUrl) return;
+    try {
+      const base = new URL(runtimeUrl);
+      const target = new URL(previewAddress || runtimeUrl, base);
+      if (target.origin !== base.origin) {
+        toast.error("The preview browser can only open pages inside this sandbox.");
+        return;
+      }
+      setPreviewAddress(target.toString());
+      setPreviewKey((value) => value + 1);
+    } catch {
+      toast.error("Enter a valid preview path or URL.");
+    }
+  }
+
   async function runProject() {
     if (runtimeBusy) return;
     setRuntimeBusy(true);
@@ -574,6 +591,7 @@ export function CodeAgent() {
       autoStartedProjectRef.current = activeProjectId;
       const result = await startPreview({ data: { projectId: activeProjectId, files } });
       setRuntimeUrl(result.url);
+      setPreviewAddress(result.url);
       setRuntimeStatus("Running in Vercel Sandbox");
       runtimeFilesRef.current = { ...files };
       if (result.installOutput) setLogs([{ type: "runtime", message: result.installOutput }]);
@@ -610,6 +628,7 @@ export function CodeAgent() {
     try {
       await stopPreview({ data: { projectId } });
       setRuntimeUrl(null);
+      setPreviewAddress("");
       setRuntimeStatus("Stopped · sandbox saved");
       setTerminalReady(false);
       toast.success("Cloud preview stopped");
@@ -626,6 +645,7 @@ export function CodeAgent() {
     setTerminalReady(false);
     setTerminalConnection(null);
     setRuntimeUrl(null);
+    setPreviewAddress("");
     setRuntimeStatus("Not started");
     runtimeFilesRef.current = {};
   }
@@ -1625,15 +1645,16 @@ export function CodeAgent() {
                       <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Preview URL</span>
                       <input
                         aria-label="Cloud preview address"
-                        readOnly
-                        value={runtimeUrl}
-                        onFocus={(event) => event.currentTarget.select()}
+                        value={previewAddress || runtimeUrl}
+                        onChange={(event) => setPreviewAddress(event.target.value)}
+                        onKeyDown={(event) => { if (event.key === "Enter") navigatePreview(); }}
                         className="h-8 min-w-0 flex-1 rounded-md border border-white/10 bg-black/30 px-2 text-xs text-cyan-100 outline-none"
                       />
-                      <Button size="sm" variant="ghost" className="h-8 shrink-0 px-2 text-slate-300" onClick={() => void navigator.clipboard.writeText(runtimeUrl).then(() => toast.success("Preview URL copied")).catch(() => toast.error("Could not copy the preview URL"))}>
+                      <Button size="sm" variant="ghost" className="h-8 shrink-0 px-2 text-slate-300" onClick={navigatePreview}>Go</Button>
+                      <Button size="sm" variant="ghost" className="h-8 shrink-0 px-2 text-slate-300" onClick={() => void navigator.clipboard.writeText(previewAddress || runtimeUrl).then(() => toast.success("Preview URL copied")).catch(() => toast.error("Could not copy the preview URL"))}>
                         <Copy className="mr-1 h-3.5 w-3.5" /> Copy
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-8 shrink-0 px-2 text-slate-300" onClick={() => window.open(runtimeUrl, "_blank", "noopener,noreferrer")}>
+                      <Button size="sm" variant="ghost" className="h-8 shrink-0 px-2 text-slate-300" onClick={() => window.open(previewAddress || runtimeUrl, "_blank", "noopener,noreferrer")}>
                         <ExternalLink className="mr-1 h-3.5 w-3.5" /> Open
                       </Button>
                     </div>
@@ -1643,7 +1664,7 @@ export function CodeAgent() {
                       ref={iframeRef}
                       key={previewKey}
                       title="ExpertsTeam project preview"
-                      src={runtimeUrl ?? undefined}
+                      src={runtimeUrl ? previewAddress || runtimeUrl : undefined}
                       srcDoc={runtimeUrl ? undefined : srcDoc}
                       sandbox={
                         runtimeUrl
