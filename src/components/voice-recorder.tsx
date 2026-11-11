@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 export function VoiceRecorder({ onRecorded, disabled=false }: { onRecorded: (file: File) => void; disabled?: boolean }) {
   const recorder = useRef<MediaRecorder|null>(null);
   const chunks = useRef<Blob[]>([]);
-  const stream = useRef<MediaStream|null>(null);\n  const sizeRef = useRef(0);
+  const stream = useRef<MediaStream|null>(null);
+  const sizeRef = useRef(0);
   const [recording,setRecording] = useState(false);
 
   useEffect(() => () => {
