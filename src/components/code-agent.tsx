@@ -588,6 +588,11 @@ export function CodeAgent() {
     toast.success("Project files exported");
   }
 
+  useEffect(() => {
+    if (!projectId || !user || terminalConnection) return;
+    void openTerminal();
+  }, [projectId, user?.id, terminalConnection]);
+
   function navigatePreview() {
     if (!runtimeUrl) return;
     try {
