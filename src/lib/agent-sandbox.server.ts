@@ -897,33 +897,80 @@ export async function publishCloudProject(
   const publicUrl = data.publicUrl;
   if (!publicUrl) throw new Error("The publishing service did not return a public app URL.");
 
-  // Do not report success until the public entry point can actually be fetched.
-  // Storage writes can become visible a moment after the upload request returns.
-  let verified = false;
+  // Verify the actual HTML response, not just HEAD. A successful HEAD can
+  // still hide a text/plain entry point or broken relative asset URLs.
+  let entryHtml = "";
   let lastStatus = "no response";
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const response = await fetch(publicUrl, {
-        method: "HEAD",
         cache: "no-store",
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(8000),
       });
-      if (response.ok) {
-        verified = true;
-        break;
+      if (!response.ok) {
+        lastStatus = "HTTP " + response.status;
+      } else {
+        const contentType = response.headers.get("content-type") ?? "";
+        if (!contentType.toLowerCase().includes("text/html")) {
+          lastStatus = "entry point returned " + (contentType || "no content type") + " instead of text/html";
+        } else {
+          entryHtml = await response.text();
+          const normalizedHtml = entryHtml.replace(/^\\uFEFF/, "").trimStart().toLowerCase();
+          if (normalizedHtml.startsWith("<!doctype html") || normalizedHtml.startsWith("<html")) {
+            lastStatus = "";
+            break;
+          }
+          entryHtml = "";
+          lastStatus = "entry point response is not an HTML document";
+        }
       }
-      lastStatus = "HTTP " + response.status;
     } catch (error) {
       lastStatus = error instanceof Error ? error.message : "network error";
     }
     if (attempt < 4) await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
   }
-  if (!verified)
+  if (!entryHtml)
     throw new Error(
-      "The build was uploaded, but its public URL could not be verified (" +
+      "The files were uploaded, but the public entry point is not serving a valid HTML page (" +
         lastStatus +
-        "). Check the published-apps bucket's public read policy and try again.",
+        "). Check the published-apps bucket and the project's index.html.",
     );
+
+  // Check the local assets directly referenced by the entry HTML. This catches
+  // common broken deployments where the page exists but its CSS or JavaScript
+  // is missing because the build used root-relative asset paths.
+  const assetUrls = new Set<string>();
+  const tagPattern = /<(script|img|source|link)\\b[^>]*>/gi;
+  let tagMatch: RegExpExecArray | null;
+  while ((tagMatch = tagPattern.exec(entryHtml)) !== null) {
+    const tag = tagMatch[0];
+    const tagName = tagMatch[1].toLowerCase();
+    const rel = tag.match(/\\brel\\s*=\\s*["']([^"']+)["']/i)?.[1]?.toLowerCase() ?? "";
+    if (tagName === "link" && !/(stylesheet|icon|preload|modulepreload)/.test(rel)) continue;
+    const reference = tag.match(tagName === "link" ? /\\bhref\\s*=\\s*["']([^"']+)["']/i : /\\bsrc\\s*=\\s*["']([^"']+)["']/i)?.[1];
+    if (!reference || /^(?:[a-z][a-z0-9+.-]*:|\\/\\/|#)/i.test(reference)) continue;
+    try {
+      assetUrls.add(new URL(reference, publicUrl).toString());
+    } catch {
+      // Ignore malformed optional references; the browser will report them.
+    }
+  }
+  if (assetUrls.size > 40)
+    throw new Error("The published entry page references more than 40 local assets; simplify the entry page and publish again.");
+  for (const assetUrl of assetUrls) {
+    const response = await fetch(assetUrl, {
+      method: "GET",
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok)
+      throw new Error(
+        "The app entry page is available, but a required asset could not be loaded (" +
+          response.status +
+          "): " +
+          new URL(assetUrl).pathname.split("/").pop(),
+      );
+  }
 
   return { url: publicUrl, slug, releaseId, fileCount: outputFiles.length };
 }
