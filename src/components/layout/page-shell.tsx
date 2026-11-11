@@ -15,6 +15,7 @@ import {
   CreditCard,
   LockKeyhole,
   Shield,
+  BriefcaseBusiness,
 } from "lucide-react";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -37,6 +38,7 @@ export function PageShell({ children, hideFooter = false }: { children: ReactNod
   const secondaryLinks = [
     { to: "/explore", label: labels.explore || "Explore all spaces", icon: Compass },
     { to: "/projects", label: labels.workspace || "Workspace & projects", icon: FolderKanban },
+    { to: "/software", label: "Request software", icon: BriefcaseBusiness },
     { to: "/videos", label: labels.videos || "Creator videos", icon: Video },
     { to: "/showcase", label: labels.showcase || "Project showcase", icon: Images },
     { to: "/about", label: labels.about || "About", icon: Info },
