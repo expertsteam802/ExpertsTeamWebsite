@@ -189,7 +189,7 @@ function RootShell({ children }: { children: ReactNode }) {
               name: "ExpertsTeam",
               alternateName: ["Experts Team", "expertsteam.giize.com"],
               logo: "https://expertsteam.giize.com/experts-team-mark.svg",
-              sameAs: ["https://www.youtube.com/@expertchris", "https://instagram.com/m.chris_t2011"],
+              sameAs: ["https://www.youtube.com/@expertchris", "https://instagram.com/m_chris_t"],
               contactPoint: [{ "@type": "ContactPoint", contactType: "customer support", email: "mucyochristhecla@gmail.com" }],
               url: "https://expertsteam.giize.com/",
               description:
