@@ -24,6 +24,7 @@ export const Route = createFileRoute("/videos")({
         content: "The full Chris Expert YouTube archive, playable inside ExpertsTeam.",
       },
     ],
+    links: [{ rel: "canonical", href: "https://expertsteam.giize.com/videos" }],
   }),
   component: VideosPage,
 });
