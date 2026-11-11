@@ -32,7 +32,7 @@ export const Route = createFileRoute("/")({
         name: "description",
         content: "Learn to code, build software with ExpertAI, connect with developers and request custom business applications.",
       },
-      { property: "og:title", content: "ExpertsTeam — Learn, Code, Play & Free Downloads" },
+      { property: "og:title", content: "ExpertsTeam — Learn, Build & Connect" },
       {
         property: "og:description",
         content:
