@@ -450,22 +450,19 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
   const toolkitCheck = await sandbox.runCommand({ cmd: "test", args: ["-f", toolkitMarker], cwd: WORKDIR });
   let toolkitStatus: "ready" | "skipped" | "unavailable" = toolkitCheck.exitCode === 0 ? "ready" : "skipped";
   if (toolkitCheck.exitCode !== 0) {
-    const toolkitInstall = await sandbox.runCommand({
+    await sandbox.runCommand({
       cmd: "sh",
       args: ["-lc", [
         'if [ "$(id -u)" -ne 0 ] || ! command -v apt-get >/dev/null 2>&1; then exit 4; fi',
         "export DEBIAN_FRONTEND=noninteractive",
         "apt-get update -qq",
         "apt-get install -y --no-install-recommends nmap sqlmap john hashcat binwalk libimage-exiftool-perl tshark gdb python3-pwntools python3-pip python3-venv git curl wget jq unzip zip file ripgrep netcat-openbsd dnsutils tcpdump",
+        "touch " + toolkitMarker,
       ].join(" && ")],
       cwd: WORKDIR,
-      timeoutMs: 240_000,
+      detached: true,
     });
-    if (toolkitInstall.exitCode === 0) {
-      await sandbox.writeFiles([{ path: toolkitMarker, content: Buffer.from("installed", "utf8") }]);
-      toolkitStatus = "ready";
-    } else {
-      toolkitStatus = "unavailable";
+    toolkitStatus = "installing";
     }
   }
 
