@@ -1918,12 +1918,12 @@ export function CodeAgent() {
                   Persistent Bash session in an isolated Vercel Linux microVM. Install Kilo with
                   <code className="text-emerald-200">npm install -g @kilocode/cli</code> and run
                   <code className="text-emerald-200">kilo</code>; choose <code className="text-emerald-200">kilo-auto/free</code>
-                  or use <code className="text-emerald-200">/models</code> and filter for free models.
-                  OpenCode is another open-source option: <code className="text-emerald-200">npm install -g @opencode/cli</code>
-                  then <code className="text-emerald-200">opencode</code>, but choose a free provider/model to avoid charges.
-                  After either agent edits files, select <strong className="text-cyan-200">Import files</strong>
-                  to sync changes back into your ExpertsTeam project. Free models can be rate limited and
-                  may log prompts; never send secrets or private customer data to them.
+                  for its zero-cost model tier when available. OpenCode is another open-source option:
+                  <code className="text-emerald-200">npm install -g @opencode/cli</code> then
+                  <code className="text-emerald-200">opencode</code>; use a free model or local Ollama model to avoid inference charges.
+                  Terminal edits auto-sync into your saved project every few seconds; use
+                  <strong className="text-cyan-200">Import now</strong> for an immediate sync. Free hosted models may be rate limited
+                  and some providers log prompts, so never send secrets or private customer data.
                 </p>
               </div>
 
