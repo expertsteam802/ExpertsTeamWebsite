@@ -682,7 +682,18 @@ export async function publishCloudProject(
   if (!/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(slug))
     throw new Error("The public app address is invalid.");
 
-  await startCloudProjectPreview(projectId, sourceFiles);
+  // Publishing is a production build, not a preview-health check. Prepare the
+  // sandbox first, but do not block a valid production build merely because the
+  // temporary preview hostname/server cannot be reached.
+  try {
+    await startCloudProjectPreview(projectId, sourceFiles);
+  } catch (previewError) {
+    try {
+      await Sandbox.get({ name: sandboxName(projectId) });
+    } catch {
+      throw previewError;
+    }
+  }
   const sandbox = await Sandbox.get({ name: sandboxName(projectId) });
   let packageJson: Record<string, unknown> = {};
   try {
