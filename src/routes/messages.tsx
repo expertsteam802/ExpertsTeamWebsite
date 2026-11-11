@@ -425,7 +425,8 @@ function MessagesPage() {
                 new RTCSessionDescription(payload as unknown as RTCSessionDescriptionInit),
               );
               await flushPendingIce(peerConnectionRef.current);
-              setCallState("connected");
+              // Wait for the ICE/peer connection to actually connect before showing
+              // the call as connected; receiving SDP alone is not a live media path.
             } else if (signal.signal_type === "ice") {
               const candidate = payload.candidate as RTCIceCandidateInit | undefined;
               if (candidate) {
