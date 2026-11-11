@@ -142,7 +142,26 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [useNativeEmbed, setUseNativeEmbed] = useState(false);
+  const nativeEmbedTimeoutRef = useRef<number | null>(null);
   const shouldLoadLesson = !!videoId;
+
+  function clearNativeEmbedTimeout() {
+    if (nativeEmbedTimeoutRef.current !== null) {
+      window.clearTimeout(nativeEmbedTimeoutRef.current);
+      nativeEmbedTimeoutRef.current = null;
+    }
+  }
+
+  useEffect(() => {
+    if (!useNativeEmbed || !videoId) return;
+    setLoading(true);
+    nativeEmbedTimeoutRef.current = window.setTimeout(() => {
+      nativeEmbedTimeoutRef.current = null;
+      setLoading(false);
+      setPlaybackError("YouTube did not respond. The video may be unavailable or may block playback on other websites.");
+    }, 12000);
+    return clearNativeEmbedTimeout;
+  }, [useNativeEmbed, videoId]);
 
   useEffect(() => {
     setPlaybackError(null);
@@ -260,8 +279,8 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
                   referrerPolicy="strict-origin-when-cross-origin"
-                  onLoad={() => setLoading(false)}
-                  onError={() => { setLoading(false); setPlaybackError("The video could not be loaded. Check the video link or open it on YouTube."); }}
+                  onLoad={() => { clearNativeEmbedTimeout(); setLoading(false); }}
+                  onError={() => { clearNativeEmbedTimeout(); setLoading(false); setPlaybackError("The video could not be loaded. Check the video link or open it on YouTube."); }}
                 />
               ) : (
                 <div ref={playerContainerRef} className="h-full w-full" />
