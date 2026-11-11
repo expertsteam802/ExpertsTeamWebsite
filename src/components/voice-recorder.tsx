@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 export function VoiceRecorder({ onRecorded, disabled=false }: { onRecorded: (file: File) => void; disabled?: boolean }) {
   const recorder = useRef<MediaRecorder|null>(null);
   const chunks = useRef<Blob[]>([]);
-  const stream = useRef<MediaStream|null>(null);
+  const stream = useRef<MediaStream|null>(null);\n  const sizeRef = useRef(0);
   const [recording,setRecording] = useState(false);
 
   useEffect(() => () => {
@@ -21,18 +21,18 @@ export function VoiceRecorder({ onRecorded, disabled=false }: { onRecorded: (fil
       return;
     }
     try {
-      const audioStream = await navigator.mediaDevices.getUserMedia({audio:true});
+      const audioStream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
       stream.current=audioStream;
       const mimeType = ["audio/webm;codecs=opus","audio/webm","audio/mp4"].find(type=>MediaRecorder.isTypeSupported(type));
       const instance = new MediaRecorder(audioStream,mimeType?{mimeType}:undefined);
       chunks.current=[];
-      instance.ondataavailable=event=>{if(event.data.size) chunks.current.push(event.data);};
+      instance.ondataavailable=event=>{if(event.data.size){sizeRef.current+=event.data.size;if(sizeRef.current>8*1024*1024){toast.error("Voice note reached the 8 MB limit and was stopped.");if(instance.state==="recording")instance.stop();return;}chunks.current.push(event.data);}};
       instance.onerror=()=>{audioStream.getTracks().forEach(track=>track.stop());setRecording(false);toast.error("Recording failed. Please try again.");};
       instance.onstop=()=>{
         const blob=new Blob(chunks.current,{type:instance.mimeType||"audio/webm"});
         audioStream.getTracks().forEach(track=>track.stop());
         stream.current=null;
-        if(blob.size>0) onRecorded(new File([blob],"voice-note."+((instance.mimeType||"audio/webm").includes("mp4")?"m4a":"webm"),{type:blob.type}));
+        if(blob.size>0 && blob.size<=8*1024*1024) onRecorded(new File([blob],"voice-note."+((instance.mimeType||"audio/webm").includes("mp4")?"m4a":"webm"),{type:blob.type}));
       };
       recorder.current=instance;
       instance.start(250);
