@@ -77,8 +77,12 @@ async function waitForPreview(url: string) {
         }
       } else if (response.status === 410) {
         lastError = "The preview sandbox stopped. Restarting the cloud preview…";
-      } else if (response.status >= 200 && response.status < 400) {
+      } else if (response.status >= 300 && response.status < 400) {
         return;
+      } else if (response.status === 200) {
+        const body = await response.text();
+        if (body.trim()) return;
+        lastError = "The preview server returned an empty page. Check the app entry file and dev script.";
       } else if (response.status === 404) {
         lastError = "The preview server is running, but its root page returned 404. Check that the project has an index.html or a root route.";
       } else if (response.status === 401 || response.status === 403) {
