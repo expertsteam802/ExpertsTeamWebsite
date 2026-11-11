@@ -33,5 +33,17 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "(?<slug>[a-z0-9-]+)\\.expertsteam\\.giize\\.com"
+        }
+      ],
+      "destination": "/apps/:slug"
+    }
   ]
 }
