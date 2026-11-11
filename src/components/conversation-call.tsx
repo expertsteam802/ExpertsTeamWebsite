@@ -97,9 +97,12 @@ export function ConversationCall({ conversationId, recipientId, recipientName }:
     return {peer,channel};
   }
 
-  async function startCall() {
+  async function startCall(mode: "audio"|"video" = "video") {
     try {
-      const {peer,channel}=await preparePeer();
+      setMediaMode(mode);
+      setMuted(false);
+      setCameraOff(false);
+      const {peer,channel}=await preparePeer(mode === "video");
       setStatus("calling");
       const offer=await peer.createOffer();
       await peer.setLocalDescription(offer);
@@ -111,7 +114,10 @@ export function ConversationCall({ conversationId, recipientId, recipientName }:
     try {
       const invitation=incomingOffer.current;
       if(!invitation) throw new Error("This call invitation has expired. Ask them to call again.");
-      const {peer,channel}=await preparePeer();
+      setMuted(false);
+      setCameraOff(false);
+      setMediaMode(invitation.media);
+      const {peer,channel}=await preparePeer(invitation.media === "video");
       await peer.setRemoteDescription(invitation.sdp);
       const answer=await peer.createAnswer();
       await peer.setLocalDescription(answer);
