@@ -8,16 +8,16 @@ import { Card } from "@/components/ui/card";
 export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
-      { title: "ExpertsTeam Pricing — Custom Software from $10" },
+      { title: "ExpertsTeam Pricing — Custom Software from $5" },
       {
         name: "description",
         content:
           "Join ExpertsTeam for free. Custom software projects start at $10, with scope and final pricing confirmed before work begins.",
       },
-      { property: "og:title", content: "ExpertsTeam Pricing — Custom Software from $10" },
+      { property: "og:title", content: "ExpertsTeam Pricing — Custom Software from $5" },
       {
         property: "og:description",
-        content: "Use ExpertsTeam free and request custom software projects starting at $10.",
+        content: "Use ExpertsTeam free and request custom software projects starting at $5.",
       },
     ],
     links: [{ rel: "canonical", href: "https://expertsteam.giize.com/pricing" }],
@@ -44,7 +44,7 @@ function PricingPage() {
             <Sparkles className="h-3.5 w-3.5" /> Straightforward access
           </span>
           <h1 className="mt-5 font-display text-4xl font-bold tracking-tight sm:text-6xl">
-            Start free. <span className="brand-text">Build from $10.</span>
+            Start free. <span className="brand-text">Build from $5.</span>
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
             Learn, connect and use the platform for free. When you need a custom website, business
@@ -94,7 +94,7 @@ function PricingPage() {
             </Card>
             <Card className="border-primary/30 p-6">
               <p className="text-xs font-semibold uppercase tracking-wider text-primary">Custom software</p>
-              <p className="mt-2 font-display text-4xl font-bold">$10<span className="ml-2 text-sm font-medium text-muted-foreground">starting price</span></p>
+              <p className="mt-2 font-display text-4xl font-bold">$5<span className="ml-2 text-sm font-medium text-muted-foreground">starting price</span></p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 Request a website, POS, business system or custom app. We confirm the final quote after reviewing your requirements.
               </p>
