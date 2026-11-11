@@ -38,6 +38,12 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const getPostAuthPath = () => {
+    const requested = new URLSearchParams(window.location.search).get("next");
+    return requested && requested.startsWith("/") && !requested.startsWith("//")
+      ? requested
+      : "/dashboard";
+  };
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,7 +58,7 @@ function AuthPage() {
 
   useEffect(() => {
     if (!user) return;
-    if (!signupFlow.current) void navigate({ to: "/dashboard", replace: true });
+    if (!signupFlow.current) window.location.replace(getPostAuthPath());
   }, [user, navigate]);
 
   async function signIn(): Promise<void> {
@@ -62,7 +68,7 @@ function AuthPage() {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (error) throw error;
       toast.success("Welcome back!");
-      void navigate({ to: "/dashboard", replace: true });
+      window.location.assign(getPostAuthPath());
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not sign in. Please try again.");
     } finally {
@@ -141,7 +147,7 @@ function AuthPage() {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: window.location.origin },
+        options: { redirectTo: window.location.origin + getPostAuthPath() },
       });
       if (error) throw error;
     } catch (error) {
