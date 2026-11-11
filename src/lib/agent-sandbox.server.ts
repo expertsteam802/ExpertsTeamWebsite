@@ -411,7 +411,7 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
     '  shell.stdin.write("stty cols 100 rows 30\\n");',
     '  client.on("message", (buffer) => {',
     "    const value = buffer.toString();",
-    '    if (value.charCodeAt(0) === 0) { try { const control = JSON.parse(value.slice(1)); if (control.type === "resize") { const cols = Math.max(20, Math.min(300, Number(control.cols) || 100)); const rows = Math.max(5, Math.min(100, Number(control.rows) || 30)); shell.stdin.write("stty cols " + cols + " rows " + rows + "; kill -WINCH $$\\n"); } } catch {} return; }',
+    '    if (value.charCodeAt(0) === 0) { try { const control = JSON.parse(value.slice(1)); if (control.type === "resize") { /* Keep the shell input stream reserved for user keystrokes. */ } } catch {} return; }',
     "    if (shell.stdin.writable) shell.stdin.write(value);",
     "  });",
     '  client.on("close", () => { try { shell.kill("SIGHUP"); } catch {} if (activeShell === shell) activeShell = null; });',
