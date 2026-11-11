@@ -84,13 +84,14 @@ type ProjectRow = {
   messages: Message[];
   published: boolean;
   slug: string | null;
+  deployment_url: string | null;
   github_repo: string | null;
   updated_at: string;
 };
 
 type Panel = "preview" | "code" | "console" | "terminal";
 
-const CODING_AGENT_UNDER_DEVELOPMENT = true;
+const CODING_AGENT_UNDER_DEVELOPMENT = false;
 
 const EDITOR_SNIPPETS = [
   {
@@ -265,6 +266,7 @@ export function CodeAgent() {
   const [dirty, setDirty] = useState(false);
   const [runtimeBusy, setRuntimeBusy] = useState(false);
   const [runtimeUrl, setRuntimeUrl] = useState<string | null>(null);
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState("Not started");
   const [terminalReady, setTerminalReady] = useState(false);
   const [terminalConnection, setTerminalConnection] = useState<{
@@ -397,7 +399,7 @@ export function CodeAgent() {
       if (!user) return [];
       const { data, error } = await supabase
         .from("agent_projects")
-        .select("id,name,files,messages,published,slug,github_repo,updated_at")
+        .select("id,name,files,messages,published,slug,deployment_url,github_repo,updated_at")
         .eq("user_id", user.id)
         .order("updated_at", { ascending: false });
       if (error) throw error;
@@ -621,7 +623,8 @@ export function CodeAgent() {
       const slug = existingSlug || `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
       const result = await publish({ data: { projectId: activeProjectId, files, slug } });
       await queryClient.invalidateQueries({ queryKey: ["agent-projects", user?.id] });
-      const url = `${window.location.origin}/apps/${result.slug}`;
+      const url = result.url || `${window.location.origin}/apps/${result.slug}`;
+      setPublishedUrl(url);
       toast.success("Your app is built and published", {
         action: {
           label: "Open app",
@@ -815,6 +818,7 @@ export function CodeAgent() {
       if (error) throw error;
       resetRuntimeForProjectChange();
       setProjectId(data.id);
+      setPublishedUrl(null);
       setName(imported.name);
       setFiles(imported.files);
       setMessages([]);
@@ -912,6 +916,7 @@ export function CodeAgent() {
   function createProject() {
     resetRuntimeForProjectChange();
     setProjectId(null);
+    setPublishedUrl(null);
     setName("Untitled project");
     setFiles(STARTER_FILES);
     setMessages([]);
@@ -925,6 +930,7 @@ export function CodeAgent() {
   function openProject(project: ProjectRow) {
     resetRuntimeForProjectChange();
     setProjectId(project.id);
+    setPublishedUrl(project.deployment_url);
     setName(project.name);
     setFiles(project.files && Object.keys(project.files).length ? project.files : STARTER_FILES);
     const savedMessages = Array.isArray(project.messages) ? (project.messages as Message[]) : [];
@@ -1197,6 +1203,15 @@ export function CodeAgent() {
             GitHub
           </Button>
         </div>
+        {publishedUrl && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-2 text-xs">
+            <span className="font-semibold text-emerald-200">Live URL</span>
+            <a href={publishedUrl} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate text-emerald-100 underline underline-offset-2">{publishedUrl}</a>
+            <Button size="sm" variant="ghost" className="h-7 px-2 text-emerald-100" onClick={() => void navigator.clipboard.writeText(publishedUrl).then(() => toast.success("Published URL copied")).catch(() => toast.error("Could not copy URL"))}>
+              <Copy className="mr-1 h-3.5 w-3.5" /> Copy URL
+            </Button>
+          </div>
+        )}
       </header>
 
       {/* Main workspace */}
@@ -1540,6 +1555,24 @@ export function CodeAgent() {
                           : "HTML quick preview · press Run for React/Vite"}
                     </span>
                   </div>
+                  {runtimeUrl && (
+                    <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.07] bg-[#0a111d] px-3 py-2">
+                      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Preview URL</span>
+                      <input
+                        aria-label="Cloud preview address"
+                        readOnly
+                        value={runtimeUrl}
+                        onFocus={(event) => event.currentTarget.select()}
+                        className="h-8 min-w-0 flex-1 rounded-md border border-white/10 bg-black/30 px-2 text-xs text-cyan-100 outline-none"
+                      />
+                      <Button size="sm" variant="ghost" className="h-8 shrink-0 px-2 text-slate-300" onClick={() => void navigator.clipboard.writeText(runtimeUrl).then(() => toast.success("Preview URL copied")).catch(() => toast.error("Could not copy the preview URL"))}>
+                        <Copy className="mr-1 h-3.5 w-3.5" /> Copy
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-8 shrink-0 px-2 text-slate-300" onClick={() => window.open(runtimeUrl, "_blank", "noopener,noreferrer")}>
+                        <ExternalLink className="mr-1 h-3.5 w-3.5" /> Open
+                      </Button>
+                    </div>
+                  )}
                   <div className="flex min-h-0 flex-1 items-stretch justify-center overflow-hidden bg-[#111a29] p-2 sm:p-3">
                     <iframe
                       ref={iframeRef}
