@@ -203,12 +203,15 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   const installedHash = await readText(sandbox, `${WORKDIR}/${PACKAGE_HASH_FILE}`);
   let installOutput = "";
   if (installedHash !== packageHash) {
-    installOutput = await runChecked(
-      sandbox,
-      "npm",
-      ["install", "--no-audit", "--no-fund"],
-      180_000,
-    );
+    const packageManager = detectProjectPackageManager(files, packageJson);
+    const installArgs = packageManager === "pnpm"
+      ? ["install", "--no-frozen-lockfile"]
+      : packageManager === "yarn"
+        ? ["install", "--non-interactive"]
+        : packageManager === "bun"
+          ? ["install"]
+          : ["install", "--no-audit", "--no-fund"];
+    installOutput = await runChecked(sandbox, packageManager, installArgs, 240_000);
     await sandbox.writeFiles([
       {
         path: PACKAGE_HASH_FILE,
@@ -692,6 +695,23 @@ function publishedContentType(path: string) {
   return types[extension ?? ""] ?? "application/octet-stream";
 }
 
+type ProjectPackageManager = "npm" | "pnpm" | "yarn" | "bun";
+
+function detectProjectPackageManager(
+  files: AgentProjectFiles,
+  packageJson: Record<string, unknown>,
+): ProjectPackageManager {
+  const declared = typeof packageJson.packageManager === "string"
+    ? packageJson.packageManager.split("@")[0]
+    : "";
+  if (declared === "pnpm" || declared === "yarn" || declared === "bun" || declared === "npm")
+    return declared;
+  if (files["bun.lock"] || files["bun.lockb"]) return "bun";
+  if (files["pnpm-lock.yaml"]) return "pnpm";
+  if (files["yarn.lock"]) return "yarn";
+  return "npm";
+}
+
 export async function publishCloudProject(
   projectId: string,
   sourceFiles: AgentProjectFiles,
@@ -726,19 +746,27 @@ export async function publishCloudProject(
   let outputFiles: Array<{ path: string; content: Buffer }> = [];
 
   if (buildScript) {
-    const buildArgs = ["run", "build"];
+    const packageManager = detectProjectPackageManager(sourceFiles, packageJson);
+    const buildArgs = packageManager === "npm"
+      ? ["run", "build"]
+      : packageManager === "pnpm"
+        ? ["run", "build"]
+        : packageManager === "yarn"
+          ? ["build"]
+          : ["run", "build"];
     const buildEnv: Record<string, string> = {};
-    // Published apps are hosted beneath a release-specific storage path, not
-    // the domain root. Relative Vite/CRA asset URLs keep CSS and JS inside
-    // that release when it is opened through /apps/:slug.
+    // Use relative assets for static builds served from a release-specific path.
+    // Frameworks with their own base-path configuration can override this in
+    // their config; avoid injecting Vite-only flags into unrelated builders.
     if (/vite/i.test(buildScript)) buildArgs.push("--", "--base", "./");
     if (/react-scripts/i.test(buildScript)) buildEnv.PUBLIC_URL = ".";
+    if (/next/i.test(buildScript) && /export/i.test(buildScript)) buildEnv.NEXT_PUBLIC_BASE_PATH = "";
     const build = await sandbox.runCommand({
-      cmd: "npm",
+      cmd: packageManager,
       args: buildArgs,
       cwd: WORKDIR,
       env: buildEnv,
-      timeoutMs: 240_000,
+      timeoutMs: 300_000,
     });
     if (build.exitCode !== 0) {
       const stderr = await build.stderr();
@@ -750,8 +778,14 @@ export async function publishCloudProject(
       );
     }
 
+    // Framework adapters emit static sites into different locations.
+    // Check common outputs first, then discover nested Angular/monorepo outputs.
     let outputDirectory = "";
-    for (const candidate of ["dist", "build", "out"]) {
+    const outputCandidates = [
+      ".output/public", "dist", "build", "out", "dist/client", "build/client",
+      ".svelte-kit/output/client", "public", "www",
+    ];
+    for (const candidate of outputCandidates) {
       const check = await sandbox.runCommand({
         cmd: "test",
         args: ["-f", `${candidate}/index.html`],
@@ -763,8 +797,26 @@ export async function publishCloudProject(
       }
     }
     if (!outputDirectory) {
+      const nested = await sandbox.runCommand({
+        cmd: "sh",
+        args: ["-lc", "if [ -d dist ]; then find dist -type f -name index.html -print -quit; fi"],
+        cwd: WORKDIR,
+        timeoutMs: 15_000,
+      });
+      const nestedIndex = (await nested.stdout()).trim();
+      if (nested.exitCode === 0 && nestedIndex) {
+        outputDirectory = nestedIndex.slice(0, nestedIndex.lastIndexOf("/")) || ".";
+      }
+    }
+    if (!outputDirectory) {
+      const serverBuildDetected = [".next", ".output/server", "build/server", "server"].some((candidate) =>
+        Object.prototype.hasOwnProperty.call(sourceFiles, candidate + "/index.js") ||
+        Object.prototype.hasOwnProperty.call(sourceFiles, candidate + "/entry.mjs"),
+      );
       throw new Error(
-        "The build completed but no static index.html was found in dist/, build/ or out/. This publisher currently supports static frontend builds.",
+        serverBuildDetected
+          ? "This project builds a server-rendered or backend app. Static publishing cannot run its server process yet; use a server deployment target for this project."
+          : "The build finished, but no static site entry (index.html) was found. Configure the framework's static/export adapter (for example Next.js export, Nuxt generate, SvelteKit adapter-static, or Angular browser output) and publish again.",
       );
     }
 
