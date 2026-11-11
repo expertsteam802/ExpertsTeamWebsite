@@ -259,7 +259,7 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
       const args = ["run", scriptName];
       if (isNext) args.push("--", "--hostname", "0.0.0.0", "--port", String(port));
       else if (isVite)
-        args.push("--", "--host", "0.0.0.0", "--port", String(port), "--config", previewConfigPath);
+        args.push("--", "--host", "0.0.0.0", "--port", String(port), "--strictPort", "--config", previewConfigPath);
       await sandbox.runCommand({
         cmd: "npm",
         args,
@@ -274,7 +274,7 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
     } else {
       await sandbox.runCommand({
         cmd: "npx",
-        args: ["vite", "--host", "0.0.0.0", "--port", String(port), "--config", previewConfigPath],
+        args: ["vite", "--host", "0.0.0.0", "--port", String(port), "--strictPort", "--config", previewConfigPath],
         cwd: WORKDIR,
         env: { __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: previewHost },
         detached: true,
