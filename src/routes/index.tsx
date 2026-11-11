@@ -146,6 +146,11 @@ function Index() {
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>
+              <Link to="/software">
+                <Button size="lg" variant="outline" className="h-12 w-full px-6 text-sm font-semibold sm:w-auto">
+                  Request software <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
               <Link to="/ai">
                 <Button size="lg" variant="outline" className="h-12 w-full px-6 sm:w-auto">
                   <Sparkles className="mr-2 h-4 w-4" />
