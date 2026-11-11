@@ -139,7 +139,7 @@ const suggestions = [
 ];
 
 function publishedProjectUrl(slug: string) {
-  return `https://${slug}.expertsteam.giize.com`;
+  return `https://expertsteam.giize.com/apps/${encodeURIComponent(slug)}`;
 }
 
 
