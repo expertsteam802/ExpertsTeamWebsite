@@ -1004,7 +1004,7 @@ export function CodeAgent() {
   function openProject(project: ProjectRow) {
     resetRuntimeForProjectChange();
     setProjectId(project.id);
-    setPublishedUrl(project.deployment_url);
+    setPublishedUrl(project.published && project.slug ? `${window.location.origin}/apps/${project.slug}` : null);
     setThumbnailUrl(project.thumbnail_url);
     setName(project.name);
     setFiles(project.files && Object.keys(project.files).length ? project.files : STARTER_FILES);
