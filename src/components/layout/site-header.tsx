@@ -49,11 +49,19 @@ export function SiteHeader() {
     <header className="et-topbar relative z-50 shrink-0 border-b border-white/10 bg-[#090b10]/90 backdrop-blur-2xl">
       <div className="mx-auto flex min-h-[70px] max-w-[1680px] items-center gap-3 px-3 sm:px-5 lg:px-7">
         <Link to="/" className="group flex shrink-0 items-center gap-2.5">
-          <img
-            src={settings.logo_url || "/experts-team-brand.svg"}
-            alt="ExpertsTeam — Make the Uncommon"
-            className="h-12 w-[112px] object-contain transition group-hover:scale-[1.03] sm:h-14 sm:w-[126px]"
-          />
+          {settings.logo_url ? (
+            <img
+              src={settings.logo_url}
+              alt="ExpertsTeam logo"
+              className="h-11 w-11 rounded-full border border-blue-400/35 bg-white/5 object-cover shadow-lg transition group-hover:scale-[1.04] sm:h-12 sm:w-12"
+            />
+          ) : (
+            <img
+              src="/experts-team-brand.svg"
+              alt="ExpertsTeam — Make the Uncommon"
+              className="h-12 w-[112px] object-contain transition group-hover:scale-[1.03] sm:h-14 sm:w-[126px]"
+            />
+          )}
         </Link>
 
         <nav
