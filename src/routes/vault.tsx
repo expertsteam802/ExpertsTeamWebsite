@@ -44,6 +44,7 @@ type VaultFile = {
   mime_type: string | null;
   size_bytes: number;
   created_at: string;
+  storage_available?: boolean;
 };
 
 function formatBytes(bytes: number) {
@@ -83,7 +84,14 @@ function PersonalVaultPage() {
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as VaultFile[];
+      const rows = (data ?? []) as VaultFile[];
+      return Promise.all(rows.map(async (file) => {
+        if (file.entry_type !== "file" || !file.storage_path) return { ...file, storage_available: true };
+        const { data: signed, error: storageError } = await supabase.storage
+          .from("personal-vault")
+          .createSignedUrl(file.storage_path, 60);
+        return { ...file, storage_available: !storageError && Boolean(signed?.signedUrl) };
+      }));
     },
   });
 
@@ -106,6 +114,13 @@ function PersonalVaultPage() {
             contentType: file.type || "application/octet-stream",
           });
         if (uploadError) throw uploadError;
+        const { data: verification, error: verificationError } = await supabase.storage
+          .from("personal-vault")
+          .createSignedUrl(path, 60);
+        if (verificationError || !verification?.signedUrl) {
+          await supabase.storage.from("personal-vault").remove([path]);
+          throw new Error("The upload could not be verified in private storage. Please retry.");
+        }
         const { error: rowError } = await supabase.from("personal_vault_files").insert({
           user_id: user.id,
           storage_path: path,
@@ -331,9 +346,11 @@ function PersonalVaultPage() {
                       {file.file_name}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {formatBytes(file.size_bytes)} ·{" "}
-                      {new Date(file.created_at).toLocaleDateString()}
+                      {formatBytes(file.size_bytes)} · {new Date(file.created_at).toLocaleDateString()}
                     </p>
+                    {file.entry_type === "file" && !file.storage_available && (
+                      <p className="mt-1 text-xs font-medium text-destructive">Storage object missing — not downloadable</p>
+                    )}
                   </div>
                   {file.entry_type === "link" && file.file_url ? (
                     <Button
