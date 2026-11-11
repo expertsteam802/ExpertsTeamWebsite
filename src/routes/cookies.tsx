@@ -12,6 +12,7 @@ export const Route = createFileRoute("/cookies")({
           "Details about essential storage, Google AdSense advertising cookies, embedded media and browser controls on ExpertsTeam.",
       },
     ],
+    links: [{ rel: "canonical", href: "https://expertsteam.giize.com/cookies" }],
   }),
   component: CookiesPage,
 });
