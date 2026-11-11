@@ -322,7 +322,7 @@ function cleanTerminalOutput(value: string) {
   );
 }
 
-export async function startCloudProjectTerminal(projectId: string, sourceFiles: AgentProjectFiles) {
+export async function startCloudProjectTerminal(projectId: string, sourceFiles: AgentProjectFiles, username = "ExpertsTeam") {
   const files = repairMissingStylesheetImports({ ...sourceFiles });
   validateFiles(files);
   const name = sandboxName(projectId);
@@ -402,16 +402,15 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
     "});",
     'sockets.on("connection", (client) => {',
     "  if (activeShell) { try { activeShell.kill(); } catch {} activeShell = null; }",
-    '  const shell = spawn("script", ["-q", "-f", "-c", "/bin/bash --login", "/dev/null"], { cwd: process.env.TERMINAL_CWD || "/vercel/sandbox", env: { ...process.env, TERM: "xterm-256color", COLORTERM: "truecolor" }, stdio: ["pipe", "pipe", "pipe"] });',
+    '  const shell = spawn("script", ["-q", "-f", "-c", "/bin/bash --noprofile --norc -i", "/dev/null"], { cwd: process.env.TERMINAL_CWD || "/vercel/sandbox", env: { ...process.env, PS1: (process.env.TERMINAL_USERNAME || "linux") + "@expertsteam:\\w$ ", TERM: "xterm-256color", COLORTERM: "truecolor" }, stdio: ["pipe", "pipe", "pipe"] });',
     "  activeShell = shell;",
     '  shell.stdout.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
     '  shell.stderr.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
     '  shell.on("error", (error) => { if (client.readyState === 1) client.send("\\r\\nTerminal startup error: " + error.message + "\\r\\n"); });',
     '  shell.on("close", () => { if (activeShell === shell) activeShell = null; if (client.readyState === 1) client.close(); });',
-    '  shell.stdin.write("stty cols 100 rows 30\\n");',
     '  client.on("message", (buffer) => {',
     "    const value = buffer.toString();",
-    '    if (value.charCodeAt(0) === 0) { try { const control = JSON.parse(value.slice(1)); if (control.type === "resize") { const cols = Math.max(20, Math.min(300, Number(control.cols) || 100)); const rows = Math.max(5, Math.min(100, Number(control.rows) || 30)); shell.stdin.write("stty cols " + cols + " rows " + rows + "; kill -WINCH $$\\n"); } } catch {} return; }',
+    '    if (value.charCodeAt(0) === 0) { try { const control = JSON.parse(value.slice(1)); if (control.type === "resize") { /* Keep the shell input stream reserved for user keystrokes. */ } } catch {} return; }',
     "    if (shell.stdin.writable) shell.stdin.write(value);",
     "  });",
     '  client.on("close", () => { try { shell.kill("SIGHUP"); } catch {} if (activeShell === shell) activeShell = null; });',
@@ -445,6 +444,27 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
     throw new Error(
       "This Vercel Sandbox image does not include the util-linux script command required to allocate a terminal.",
     );
+  // Install a compact CTF/security-analysis toolkit once per persistent sandbox.
+  // These utilities are intended for authorized labs and challenge environments.
+  const toolkitMarker = WORKDIR + "/.experts-ctf-toolkit-v1";
+  const toolkitCheck = await sandbox.runCommand({ cmd: "test", args: ["-f", toolkitMarker], cwd: WORKDIR });
+  let toolkitStatus: "ready" | "skipped" | "unavailable" = toolkitCheck.exitCode === 0 ? "ready" : "skipped";
+  if (toolkitCheck.exitCode !== 0) {
+    await sandbox.runCommand({
+      cmd: "sh",
+      args: ["-lc", [
+        'if [ "$(id -u)" -ne 0 ] || ! command -v apt-get >/dev/null 2>&1; then exit 4; fi',
+        "export DEBIAN_FRONTEND=noninteractive",
+        "apt-get update -qq",
+        "apt-get install -y --no-install-recommends nmap sqlmap john hashcat binwalk libimage-exiftool-perl tshark gdb python3-pwntools python3-pip python3-venv git curl wget jq unzip zip file ripgrep netcat-openbsd dnsutils tcpdump",
+        "touch " + toolkitMarker,
+      ].join(" && ")],
+      cwd: WORKDIR,
+      detached: true,
+    });
+    toolkitStatus = "installing";
+  }
+
   const installed = await sandbox.runCommand({
     cmd: "test",
     args: ["-d", bridgeDir + "/node_modules/ws"],
@@ -477,7 +497,7 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
       cmd: "node",
       args: ["server.cjs"],
       cwd: bridgeDir,
-      env: { TERMINAL_TOKEN: token, TERMINAL_CWD: WORKDIR, TERMINAL_PORT: "4174" },
+      env: { TERMINAL_TOKEN: token, TERMINAL_CWD: WORKDIR, TERMINAL_PORT: "4174", TERMINAL_USERNAME: username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam" },
       detached: true,
     });
   }
@@ -518,7 +538,7 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
         (await selfTestResult.stderr()).slice(-2000),
     );
 
-  return { url: sandbox.domain(4174).replace(/^https:/, "wss:") + "/terminal", token };
+  return { url: sandbox.domain(4174).replace(/^https:/, "wss:") + "/terminal", token, toolkitStatus };
 }
 
 export async function readCloudProjectFiles(projectId: string) {

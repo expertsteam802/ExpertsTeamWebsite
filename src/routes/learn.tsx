@@ -231,6 +231,27 @@ function LearnPage() {
           <p className="mt-2 text-xs text-muted-foreground">Written for the ExpertsTeam learning community · Updated November 10, 2026</p>
         </div>
         <div className="grid gap-5 lg:grid-cols-2">
+          <article className="rounded-2xl border border-primary/25 bg-primary/[0.04] p-5 sm:p-6">
+            <h3 className="font-display text-xl font-semibold">Before you start: how to read code line by line</h3>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              Do not try to memorise a whole program at once. Read one statement, ask what value it creates,
+              then follow where that value is used. In this example, the computer stores two numbers,
+              multiplies them, saves the answer and prints it.
+            </p>
+            <pre className="mt-3 overflow-x-auto rounded-xl bg-[#07111f] p-4 text-xs leading-6 text-sky-100"><code>{'const price = 250;\nconst quantity = 4;\nconst total = price * quantity;\nconsole.log(total);'}</code></pre>
+            <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-muted-foreground">
+              <li><code>const price = 250</code> creates a named value called <code>price</code>.</li>
+              <li><code>const quantity = 4</code> stores how many items we have.</li>
+              <li><code>price * quantity</code> multiplies 250 by 4, and the result is stored in <code>total</code>.</li>
+              <li><code>console.log(total)</code> prints <strong>1000</strong> in the developer console.</li>
+            </ol>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              If the result is wrong, inspect the values before the calculation. Check spelling, brackets,
+              data types and the first error in the console. This method works for JavaScript, Python and
+              most other programming languages.
+            </p>
+            <p className="mt-3 text-sm font-medium">Practice: change the price to 125 and quantity to 6. Predict the answer before running the code, then check your prediction.</p>
+          </article>
           <article className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6">
             <h3 className="font-display text-xl font-semibold">1. How a program runs</h3>
             <p className="mt-3 text-sm leading-7 text-muted-foreground">

@@ -27,7 +27,7 @@ declare global {
   }
 }
 let youtubeApiPromise: Promise<YouTubeApi> | null = null;
-const PLAYER_TIMEOUT_MS = 3000;
+const PLAYER_TIMEOUT_MS = 12000;
 
 /**
  * Load the YouTube IFrame API safely, including when another component has
@@ -278,7 +278,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
                   className="h-full w-full border-0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
-                  referrerPolicy="strict-origin-when-cross-origin"
+                  referrerPolicy="origin"
                   onLoad={() => { clearNativeEmbedTimeout(); setLoading(false); }}
                   onError={() => { clearNativeEmbedTimeout(); setLoading(false); setPlaybackError("The video could not be loaded. Check the video link or open it on YouTube."); }}
                 />
