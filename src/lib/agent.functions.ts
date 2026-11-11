@@ -369,7 +369,11 @@ export const publishAgentProject = createServerFn({ method: "POST" })
       if (saveError)
         throw new Error("The app was built, but its published URL could not be saved.");
       if (!saved) throw new Error("The app was built, but the project is no longer available.");
-      return result;
+      return {
+        ...result,
+        // Public project links must use the agreed first-party path route, never wildcard subdomains.
+        publicUrl: `https://expertsteam.giize.com/apps/${encodeURIComponent(data.slug)}`,
+      };
     } catch (error) {
       await context.supabase
         .from("agent_projects")
