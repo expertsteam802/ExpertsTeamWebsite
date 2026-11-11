@@ -138,6 +138,11 @@ const suggestions = [
   "Make this project look more professional",
 ];
 
+function publishedProjectUrl(slug: string) {
+  return `https://${slug}.expertsteam.giize.com`;
+}
+
+
 function TypewriterText({ text, animate }: { text: string; animate: boolean }) {
   const [visibleLength, setVisibleLength] = useState(animate ? 0 : text.length);
 
@@ -700,7 +705,7 @@ export function CodeAgent() {
       const slug = existingSlug || `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
       const result = await publish({ data: { projectId: activeProjectId, files, slug } });
       await queryClient.invalidateQueries({ queryKey: ["agent-projects", user?.id] });
-      const url = `${window.location.origin}/apps/${result.slug}`;
+      const url = publishedProjectUrl(result.slug);
       setPublishedUrl(url);
       toast.success("Your app is built and published", {
         action: {
@@ -1111,7 +1116,7 @@ export function CodeAgent() {
   function openProject(project: ProjectRow) {
     resetRuntimeForProjectChange();
     setProjectId(project.id);
-    setPublishedUrl(project.published && project.slug ? `${window.location.origin}/apps/${project.slug}` : null);
+    setPublishedUrl(project.published && project.slug ? publishedProjectUrl(project.slug) : null);
     setThumbnailUrl(project.thumbnail_url);
     setName(project.name);
     setFiles(project.files && Object.keys(project.files).length ? project.files : STARTER_FILES);
