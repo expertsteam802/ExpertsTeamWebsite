@@ -617,7 +617,7 @@ export function CodeAgent() {
       return;
     }
     const startCommand = scripts.dev || scripts.start || "";
-    if (!/(vite|next|react-scripts|parcel|nodemon|\\bnode\\s+|tsx\\s+|nest\\s+start|fastify)/i.test(startCommand)) return;
+    if (!/(vite|next|react-scripts|parcel|nodemon|\bnode\s+|tsx\s+|nest\s+start|fastify)/i.test(startCommand)) return;
     autoStartedProjectRef.current = projectId;
     void runProject();
   }, [projectId, files]);
