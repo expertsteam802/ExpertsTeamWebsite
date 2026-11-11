@@ -27,7 +27,7 @@ declare global {
   }
 }
 let youtubeApiPromise: Promise<YouTubeApi> | null = null;
-const PLAYER_TIMEOUT_MS = 3000;
+const PLAYER_TIMEOUT_MS = 12000;
 
 /**
  * Load the YouTube IFrame API safely, including when another component has
