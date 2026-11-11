@@ -277,6 +277,7 @@ export function CodeAgent() {
   } | null>(null);
   const [fileLanguage, setFileLanguage] = useState<Extension[]>([]);
   const runtimeFilesRef = useRef<ProjectFiles>({});
+  const autoStartedProjectRef = useRef<string | null>(null);
   const runtimeSyncQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -570,6 +571,7 @@ export function CodeAgent() {
     setLogs([]);
     try {
       const activeProjectId = projectId ?? (await persist());
+      autoStartedProjectRef.current = activeProjectId;
       const result = await startPreview({ data: { projectId: activeProjectId, files } });
       setRuntimeUrl(result.url);
       setRuntimeStatus("Running in Vercel Sandbox");
@@ -586,6 +588,21 @@ export function CodeAgent() {
       setRuntimeBusy(false);
     }
   }
+
+  useEffect(() => {
+    if (!projectId || autoStartedProjectRef.current === projectId) return;
+    let scripts: Record<string, string> = {};
+    try {
+      const manifest = JSON.parse(files["package.json"] ?? "{}") as { scripts?: Record<string, string> };
+      scripts = manifest.scripts ?? {};
+    } catch {
+      return;
+    }
+    const startCommand = scripts.dev || scripts.start || "";
+    if (!/(vite|next|react-scripts|parcel)/i.test(startCommand)) return;
+    autoStartedProjectRef.current = projectId;
+    void runProject();
+  }, [projectId, files]);
 
   async function stopProject() {
     if (!projectId || runtimeBusy) return;
@@ -604,6 +621,7 @@ export function CodeAgent() {
   }
 
   function resetRuntimeForProjectChange() {
+    autoStartedProjectRef.current = null;
     if (projectId && runtimeUrl) void stopPreview({ data: { projectId } }).catch(() => undefined);
     setTerminalReady(false);
     setTerminalConnection(null);
