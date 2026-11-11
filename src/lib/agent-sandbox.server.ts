@@ -77,8 +77,12 @@ async function waitForPreview(url: string) {
         }
       } else if (response.status === 410) {
         lastError = "The preview sandbox stopped. Restarting the cloud preview…";
-      } else if (response.status < 500) {
+      } else if (response.status >= 200 && response.status < 400) {
         return;
+      } else if (response.status === 404) {
+        lastError = "The preview server is running, but its root page returned 404. Check that the project has an index.html or a root route.";
+      } else if (response.status === 401 || response.status === 403) {
+        lastError = `The preview server rejected the request (HTTP ${response.status}). Check the server's host and access settings.`;
       } else {
         lastError = `Preview returned HTTP ${response.status}.`;
       }
@@ -246,7 +250,7 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
     const body = response.status === 403 ? await response.text() : "";
     blockedByViteHostCheck =
       isVite && response.status === 403 && /Blocked request|not allowed|allowedHosts/i.test(body);
-    alreadyRunning = response.status < 500 && response.status !== 410 && !blockedByViteHostCheck;
+    alreadyRunning = response.status >= 200 && response.status < 400 && !blockedByViteHostCheck;
   } catch {
     alreadyRunning = false;
   }
