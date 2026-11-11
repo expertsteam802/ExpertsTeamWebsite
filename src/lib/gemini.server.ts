@@ -42,18 +42,18 @@ export function resolveGeminiApiKey(apiKey?: string): string | undefined {
   return apiKey?.trim() || process.env["GEMINI_API_KEY"]?.trim() || undefined;
 }
 
-function openAiMessages(request: GeminiRequest, maxInputCharacters = 10000) {
+function openAiMessages(request: GeminiRequest, maxInputCharacters = 18000) {
   // Smart Processing compacts the request first; this is the final adapter guard.
   const system = request.systemInstruction.parts
     .map((part) => part.text)
     .join("\n")
-    .slice(0, Math.min(1800, Math.floor(maxInputCharacters * 0.3)));
+    .slice(0, Math.min(2400, Math.floor(maxInputCharacters * 0.3)));
   const recent = request.contents.slice(-4).map((item, index, items) => ({
     role: item.role === "model" ? "assistant" : "user",
     content: item.parts
       .map((part) => part.text ?? "")
       .join("\n")
-      .slice(-(index === items.length - 1 ? 7200 : 700)),
+      .slice(-(index === items.length - 1 ? 14000 : 1000)),
   }));
   const messages = [{ role: "system", content: system }, ...recent];
   let remaining = maxInputCharacters - system.length;
@@ -71,33 +71,34 @@ function openAiMessages(request: GeminiRequest, maxInputCharacters = 10000) {
   return messages.filter((message) => message.content.length > 0);
 }
 
-function asGeminiResponse(text: string): GeminiResponse {
-  return { candidates: [{ finishReason: "STOP", content: { parts: [{ text }] } }] };
+function asGeminiResponse(text: string, finishReason = "STOP"): GeminiResponse {
+  return { candidates: [{ finishReason, content: { parts: [{ text }] } }] };
 }
 
 async function callOpenAiCompatible(
-  provider: "groq" | "openrouter",
+  provider: "groq" | "openrouter" | "kilo",
   request: GeminiRequest,
 ): Promise<GeminiResponse> {
   const isGroq = provider === "groq";
-  const apiKey = process.env[isGroq ? "GROQ_API_KEY" : "OPENROUTER_API_KEY"]?.trim();
-  if (!apiKey) throw new Error("not_configured");
-  const model =
-    process.env[isGroq ? "GROQ_MODEL" : "OPENROUTER_MODEL"] ||
-    (isGroq ? "openai/gpt-oss-120b" : "openrouter/free");
+  const isKilo = provider === "kilo";
+  const apiKey = process.env[isGroq ? "GROQ_API_KEY" : isKilo ? "KILO_API_KEY" : "OPENROUTER_API_KEY"]?.trim();
+  if (!apiKey && !isKilo) throw new Error("not_configured");
+  const model = isGroq
+    ? process.env["GROQ_MODEL"] || "openai/gpt-oss-120b"
+    : isKilo
+      ? process.env["KILO_MODEL"] || "kilo-auto/free"
+      : process.env["OPENROUTER_MODEL"] || "openrouter/free";
   const endpoint = isGroq
     ? "https://api.groq.com/openai/v1/chat/completions"
-    : "https://openrouter.ai/api/v1/chat/completions";
-  const headers = {
-    Authorization: `Bearer ${apiKey}`,
-    "Content-Type": "application/json",
-    ...(isGroq
-      ? {}
-      : {
-          "HTTP-Referer": process.env["APP_URL"] || "https://expertsteam.giize.com",
-          "X-Title": "ExpertsTeam",
-        }),
-  };
+    : isKilo
+      ? (process.env["KILO_API_BASE_URL"] || "https://ai-gateway.kilo.ai/api/v1").replace(/\/$/, "") + "/chat/completions"
+      : "https://openrouter.ai/api/v1/chat/completions";
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+  if (!isGroq && !isKilo) {
+    headers["HTTP-Referer"] = process.env["APP_URL"] || "https://expertsteam.giize.com";
+    headers["X-Title"] = "ExpertsTeam";
+  }
   const send = (inputBudget: number, outputBudget: number) =>
     fetch(endpoint, {
       method: "POST",
@@ -110,12 +111,12 @@ async function callOpenAiCompatible(
           ? { response_format: { type: "json_object" } }
           : {}),
       }),
-      signal: AbortSignal.timeout(25000),
+      signal: AbortSignal.timeout(45000),
     });
-  const requestedOutput = request.generationConfig?.maxOutputTokens ?? 1800;
-  let response = await send(isGroq ? 3800 : 10000, Math.min(requestedOutput, isGroq ? 1100 : 1800));
-  // Groq may reject an otherwise valid request when its TPM window is tight.
-  // Retry the same provider once with a materially smaller context/output budget.
+  const requestedOutput = request.generationConfig?.maxOutputTokens ?? 2200;
+  const inputBudget = isGroq ? 3800 : isKilo ? 16000 : 12000;
+  const outputLimit = isGroq ? 1100 : isKilo ? 3600 : 2600;
+  let response = await send(inputBudget, Math.min(requestedOutput, outputLimit));
   if (isGroq && response.status === 413) {
     await response.text();
     response = await send(2400, Math.min(requestedOutput, 600));
@@ -124,12 +125,14 @@ async function callOpenAiCompatible(
     throw new Error(
       `${provider} HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`,
     );
-  const data = (await response.json()) as { choices?: { message?: { content?: string | null } }[] };
-  const output = data.choices?.[0]?.message?.content;
+  const data = (await response.json()) as {
+    choices?: { finish_reason?: string; message?: { content?: string | null } }[];
+  };
+  const choice = data.choices?.[0];
+  const output = choice?.message?.content;
   if (!output) throw new Error(`${provider} returned an empty response.`);
-  return asGeminiResponse(output);
+  return asGeminiResponse(output, choice?.finish_reason === "length" ? "MAX_TOKENS" : "STOP");
 }
-
 async function callMistral(request: GeminiRequest): Promise<GeminiResponse> {
   const apiKey = process.env["MISTRAL_API_KEY"]?.trim();
   if (!apiKey) throw new Error("not_configured");
@@ -201,7 +204,7 @@ export async function generateGeminiContent(
       .split(",")
       .map((item) => item.trim().toLowerCase())
       .filter(Boolean);
-  const availableProviders = ["groq", "gemini", "openrouter", "mistral", "cloudflare"];
+  const availableProviders = ["gemini", "groq", ...(process.env["KILO_ENABLED"] === "true" ? ["kilo"] : []), "openrouter", "mistral", "cloudflare"];
   // Use every configured adapter as a fallback; credentials stay server-side.
   // An explicit order is a strict provider allowlist. This lets guest
   // chat use OpenRouter only and signed-in chat use Gemini then Groq.
@@ -242,7 +245,7 @@ export async function generateGeminiContent(
           );
         return (await response.json()) as GeminiResponse;
       }
-      if (provider === "groq" || provider === "openrouter") {
+      if (provider === "groq" || provider === "openrouter" || provider === "kilo") {
         return await callOpenAiCompatible(provider, activeRequest);
       }
       if (provider === "mistral") return await callMistral(activeRequest);

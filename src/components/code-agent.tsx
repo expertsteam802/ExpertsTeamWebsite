@@ -266,6 +266,8 @@ export function CodeAgent() {
   const [projectNameEditing, setProjectNameEditing] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [runtimeBusy, setRuntimeBusy] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [previewExpanded, setPreviewExpanded] = useState(false);
   const [runtimeUrl, setRuntimeUrl] = useState<string | null>(null);
   const [previewAddress, setPreviewAddress] = useState("");
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
@@ -652,6 +654,9 @@ export function CodeAgent() {
   }
 
   async function publishProject() {
+    if (publishing) return;
+    setPublishing(true);
+    setPublishedUrl(null);
     try {
       const activeProjectId = await persist();
       const existingSlug = projects.find((project) => project.id === activeProjectId)?.slug;
@@ -674,6 +679,8 @@ export function CodeAgent() {
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not publish this app.");
+    } finally {
+      setPublishing(false);
     }
   }
 
@@ -1315,10 +1322,11 @@ export function CodeAgent() {
             size="sm"
             variant="outline"
             onClick={() => void publishProject()}
+            disabled={publishing}
             className="h-8 border-emerald-400/25 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/20"
           >
-            <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-            Publish
+            {publishing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />}
+            {publishing ? "Publishing…" : "Publish"}
           </Button>
           <Button
             size="sm"
@@ -1691,7 +1699,13 @@ export function CodeAgent() {
             className={`grid min-h-0 flex-1 grid-cols-1 overflow-hidden ${assistantOpen ? "xl:grid-cols-[minmax(0,1fr)_5px_var(--assistant-width)]" : "xl:grid-cols-1"}`}
             style={{ "--assistant-width": `${assistantWidth}px` } as CSSProperties}
           >
-            <section className="expert-agent-canvas flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#080e19]">
+            <section
+              className={
+                previewExpanded && panel === "preview"
+                  ? "expert-agent-canvas fixed inset-x-0 top-0 z-[100] flex h-[100dvh] min-h-0 min-w-0 flex-col overflow-hidden bg-[#080e19] shadow-2xl"
+                  : "expert-agent-canvas relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#080e19]"
+              }
+            >
               {panel === "preview" && (
                 <>
                   <div className="flex h-10 items-center justify-between border-b border-white/[0.07] px-3">
@@ -1701,13 +1715,25 @@ export function CodeAgent() {
                       />
                       {runtimeUrl ? "Running project" : "Project preview"}
                     </div>
-                    <span className="max-w-[55%] truncate text-[10px] text-slate-500">
-                      {runtimeUrl
-                        ? "Vercel Sandbox · isolated cloud runtime"
-                        : runtimeBusy || runtimeStatus !== "Not started"
-                          ? runtimeStatus
-                          : "HTML quick preview · press Run for React/Vite"}
-                    </span>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="max-w-[55%] truncate text-[10px] text-slate-500">
+                        {runtimeUrl
+                          ? "Vercel Sandbox · isolated cloud runtime"
+                          : runtimeBusy || runtimeStatus !== "Not started"
+                            ? runtimeStatus
+                            : "HTML quick preview · press Run for React/Vite"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewExpanded((expanded) => !expanded)}
+                        className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 text-[10px] font-semibold text-slate-300 transition hover:border-cyan-300/30 hover:bg-cyan-300/10 hover:text-cyan-100"
+                        aria-label={previewExpanded ? "Restore preview height" : "Expand preview to full height"}
+                        title={previewExpanded ? "Restore preview" : "Expand preview vertically"}
+                      >
+                        <Maximize2 className="h-3.5 w-3.5" />
+                        {previewExpanded ? "Restore" : "Expand"}
+                      </button>
+                    </div>
                   </div>
                   {runtimeUrl && (
                     <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.07] bg-[#0a111d] px-3 py-2">
