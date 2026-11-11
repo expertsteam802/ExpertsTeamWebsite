@@ -305,7 +305,7 @@ export const Route = createFileRoute("/api/ai/stream")({
                     role: "user",
                     parts: [{
                       text:
-                        "Continue the answer from the exact point where it stopped. Do not repeat or summarize the previous answer. Complete any unfinished explanation, list, code block or file. Original request: " +
+                        "You are the next expert in Experts Routing. Review the shared draft for gaps or contradictions, then continue from the exact point where it stopped. Do not repeat completed sections. Preserve useful detail and complete unfinished explanations, lists and code blocks. Original request: " +
                         prompt.slice(0, 4000),
                     }],
                   },
@@ -313,7 +313,9 @@ export const Route = createFileRoute("/api/ai/stream")({
                 generationConfig: { maxOutputTokens: outputBudgetPerRound },
               },
               undefined,
-              routingOrder,
+              routingOrder.length > 1
+                ? [...routingOrder.slice((round + 1) % routingOrder.length), ...routingOrder.slice(0, (round + 1) % routingOrder.length)]
+                : routingOrder,
             );
             const nextText =
               result.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
