@@ -588,11 +588,6 @@ export function CodeAgent() {
     toast.success("Project files exported");
   }
 
-  useEffect(() => {
-    if (!projectId || !user || terminalConnection) return;
-    void openTerminal();
-  }, [projectId, user?.id, terminalConnection]);
-
   function navigatePreview() {
     if (!runtimeUrl) return;
     try {
@@ -623,6 +618,14 @@ export function CodeAgent() {
       setPreviewAddress(result.url);
       setRuntimeStatus("Running in Vercel Sandbox");
       runtimeFilesRef.current = { ...files };
+      if (!terminalConnection) {
+        try {
+          const connection = await connectTerminal({ data: { projectId: activeProjectId, files, username: profile?.username || "ExpertsTeam" } });
+          setTerminalConnection(connection);
+        } catch (terminalError) {
+          setLogs((current) => [...current, { type: "warn", message: terminalError instanceof Error ? terminalError.message : "Linux terminal could not auto-connect." }]);
+        }
+      }
       if (result.installOutput) setLogs([{ type: "runtime", message: result.installOutput }]);
       toast.success("Cloud preview is running");
     } catch (error) {
