@@ -292,7 +292,7 @@ export const Route = createFileRoute("/api/ai/stream")({
                     contents: compactedContents,
                     generationConfig: { maxOutputTokens: 700 },
                   }),
-                  signal: request.signal,
+                  signal: AbortSignal.any([request.signal, AbortSignal.timeout(25000)]),
                 },
               );
               if (upstream.ok && upstream.body) {
