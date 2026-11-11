@@ -26,6 +26,7 @@ export const Route = createFileRoute("/learn")({
         content: "Learn programming through coding lessons, books, videos and practical resources.",
       },
     ],
+    links: [{ rel: "canonical", href: "https://expertsteam.giize.com/learn" }],
   }),
   component: LearnPage,
 });
