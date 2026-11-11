@@ -66,6 +66,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "ExpertsTeam is a developer community to learn coding, share projects, watch practical tutorials, collaborate and build applications with ExpertAI Studio." },
       { name: "author", content: "Chris Expert" },
       { name: "google-site-verification", content: "YdY2ygzprZLok7-Cvwg_j29cI4ycK480HDQmh0d-JIg" },
+      { name: "google-adsense-account", content: "ca-pub-4535524305819415" },
       { property: "og:site_name", content: "ExpertsTeam" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -98,7 +99,6 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en" className="theme-neon dark">
       <head>
         <HeadContent />
-        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4535524305819415" crossOrigin="anonymous" />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "Organization",
