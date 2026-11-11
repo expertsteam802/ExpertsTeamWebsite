@@ -110,7 +110,7 @@ async function callOpenAiCompatible(
           ? { response_format: { type: "json_object" } }
           : {}),
       }),
-      signal: AbortSignal.timeout(isGroq ? 30000 : 60000),
+      signal: AbortSignal.timeout(25000),
     });
   const requestedOutput = request.generationConfig?.maxOutputTokens ?? 1800;
   let response = await send(isGroq ? 3800 : 10000, Math.min(requestedOutput, isGroq ? 1100 : 1800));
@@ -145,7 +145,7 @@ async function callMistral(request: GeminiRequest): Promise<GeminiResponse> {
         ? { response_format: { type: "json_object" } }
         : {}),
     }),
-    signal: AbortSignal.timeout(45000),
+    signal: AbortSignal.timeout(25000),
   });
   if (!response.ok)
     throw new Error(`Mistral HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`);
@@ -169,7 +169,7 @@ async function callCloudflare(request: GeminiRequest): Promise<GeminiResponse> {
         messages: openAiMessages(request),
         max_tokens: request.generationConfig?.maxOutputTokens ?? 8192,
       }),
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.timeout(25000),
     },
   );
   if (!response.ok)
@@ -233,7 +233,7 @@ export async function generateGeminiContent(
             method: "POST",
             headers: { "x-goog-api-key": resolvedApiKey, "Content-Type": "application/json" },
             body: JSON.stringify(activeRequest),
-            signal: AbortSignal.timeout(45000),
+            signal: AbortSignal.timeout(25000),
           },
         );
         if (!response.ok)
