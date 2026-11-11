@@ -915,7 +915,7 @@ export async function publishCloudProject(
           lastStatus = "entry point returned " + (contentType || "no content type") + " instead of text/html";
         } else {
           entryHtml = await response.text();
-          const normalizedHtml = entryHtml.replace(/^\\uFEFF/, "").trimStart().toLowerCase();
+          const normalizedHtml = entryHtml.replace(/^\uFEFF/, "").trimStart().toLowerCase();
           if (normalizedHtml.startsWith("<!doctype html") || normalizedHtml.startsWith("<html")) {
             lastStatus = "";
             break;
@@ -940,15 +940,15 @@ export async function publishCloudProject(
   // common broken deployments where the page exists but its CSS or JavaScript
   // is missing because the build used root-relative asset paths.
   const assetUrls = new Set<string>();
-  const tagPattern = /<(script|img|source|link)\\b[^>]*>/gi;
+  const tagPattern = /<(script|img|source|link)\b[^>]*>/gi;
   let tagMatch: RegExpExecArray | null;
   while ((tagMatch = tagPattern.exec(entryHtml)) !== null) {
     const tag = tagMatch[0];
     const tagName = tagMatch[1].toLowerCase();
-    const rel = tag.match(/\\brel\\s*=\\s*["']([^"']+)["']/i)?.[1]?.toLowerCase() ?? "";
+    const rel = tag.match(/\brel\s*=\s*["']([^"']+)["']/i)?.[1]?.toLowerCase() ?? "";
     if (tagName === "link" && !/(stylesheet|icon|preload|modulepreload)/.test(rel)) continue;
-    const reference = tag.match(tagName === "link" ? /\\bhref\\s*=\\s*["']([^"']+)["']/i : /\\bsrc\\s*=\\s*["']([^"']+)["']/i)?.[1];
-    if (!reference || /^(?:[a-z][a-z0-9+.-]*:|\\/\\/|#)/i.test(reference)) continue;
+    const reference = tag.match(tagName === "link" ? /\bhref\s*=\s*["']([^"']+)["']/i : /\bsrc\s*=\s*["']([^"']+)["']/i)?.[1];
+    if (!reference || /^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(reference)) continue;
     try {
       assetUrls.add(new URL(reference, publicUrl).toString());
     } catch {
