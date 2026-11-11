@@ -808,6 +808,56 @@ function PostCard({
       return count ?? 0;
     },
   });
+  const openAuthorConversation = useMutation({
+    mutationFn: async () => {
+      if (!userId) throw new Error("Sign in to message or call this developer.");
+      if (post.user_id === userId) throw new Error("This is your own profile.");
+      const pairKey = [userId, post.user_id].sort().join(":");
+      const { data: existing, error: lookupError } = await supabase
+        .from("direct_conversations")
+        .select("id")
+        .eq("pair_key", pairKey)
+        .maybeSingle();
+      if (lookupError) throw lookupError;
+      let conversation = existing;
+      if (!conversation) {
+        const created = await supabase
+          .from("direct_conversations")
+          .insert({ pair_key: pairKey, created_by: userId })
+          .select("id")
+          .single();
+        if (created.error) {
+          if (created.error.code !== "23505") throw created.error;
+          const retry = await supabase
+            .from("direct_conversations")
+            .select("id")
+            .eq("pair_key", pairKey)
+            .single();
+          if (retry.error) throw retry.error;
+          conversation = retry.data;
+        } else {
+          conversation = created.data;
+        }
+        const { error: memberError } = await supabase.from("direct_conversation_members").insert([
+          { conversation_id: conversation.id, user_id: userId },
+          { conversation_id: conversation.id, user_id: post.user_id },
+        ]);
+        if (memberError && memberError.code !== "23505") throw memberError;
+      }
+      const { error: restoreError } = await supabase
+        .from("direct_conversation_hidden")
+        .delete()
+        .eq("conversation_id", conversation.id)
+        .eq("user_id", userId);
+      if (restoreError) throw restoreError;
+      return conversation.id;
+    },
+    onSuccess: (conversationId) => {
+      window.location.assign("/messages?conversation=" + encodeURIComponent(conversationId));
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const [profileOpen, setProfileOpen] = useState(false);
   const { data: authorProfile } = useQuery({
     queryKey: ["community-author-profile", post.user_id],
@@ -1016,6 +1066,20 @@ function PostCard({
             </div>
           </div>
           {authorProfile?.bio && <p className="text-sm leading-6">{authorProfile.bio}</p>}
+          {userId && post.user_id !== userId && (
+            <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
+              <Button
+                className="w-full"
+                onClick={() => openAuthorConversation.mutate()}
+                disabled={openAuthorConversation.isPending}
+              >
+                {openAuthorConversation.isPending ? "Opening conversation…" : "Message or call this developer"}
+              </Button>
+              <p className="text-xs leading-5 text-muted-foreground">
+                Start a private chat here, then use the audio or video call controls in Messages.
+              </p>
+            </div>
+          )}
           <div className="space-y-2">
             <h3 className="text-sm font-semibold">Recent community posts</h3>
             {authorPosts.length ? (
