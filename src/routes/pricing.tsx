@@ -14,10 +14,10 @@ export const Route = createFileRoute("/pricing")({
         content:
           "Join ExpertsTeam for free. Custom software projects start at $10, with scope and final pricing confirmed before work begins.",
       },
-      { property: "og:title", content: "ExpertsTeam Free Plan — $0" },
+      { property: "og:title", content: "ExpertsTeam Pricing — Custom Software from $10" },
       {
         property: "og:description",
-        content: "Learn, create, connect and publish with ExpertsTeam. Start free with no subscription checkout.",
+        content: "Use ExpertsTeam free and request custom software projects starting at $10.",
       },
     ],
     links: [{ rel: "canonical", href: "https://expertsteam.giize.com/pricing" }],
