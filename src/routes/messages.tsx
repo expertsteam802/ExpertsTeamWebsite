@@ -21,7 +21,6 @@ import {
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
-import { SiteHeader } from "@/components/layout/site-header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -821,9 +820,8 @@ function MessagesPage() {
   }
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
-      <SiteHeader />
-      <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col overflow-hidden px-3 py-3 sm:px-5 lg:px-8">
+    <PageShell>
+      <section className="mx-auto flex h-full min-h-[560px] w-full max-w-7xl flex-col overflow-hidden px-3 py-3 sm:px-5 lg:px-8">
         <div className="mb-3 flex shrink-0 items-end justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
@@ -1392,7 +1390,7 @@ function MessagesPage() {
             )}
           </div>
         </section>
-      </main>
-    </div>
+      </section>
+    </PageShell>
   );
 }
