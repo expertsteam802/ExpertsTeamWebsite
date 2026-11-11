@@ -251,10 +251,13 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   let blockedByViteHostCheck = false;
   try {
     const response = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(1500) });
-    const body = response.status === 403 ? await response.text() : "";
+    const body =
+      response.status === 403 || response.status === 200 ? await response.text() : "";
     blockedByViteHostCheck =
       isVite && response.status === 403 && /Blocked request|not allowed|allowedHosts/i.test(body);
-    alreadyRunning = response.status >= 200 && response.status < 400 && !blockedByViteHostCheck;
+    const hasPreviewBody = response.status !== 200 || body.trim().length > 0;
+    alreadyRunning =
+      response.status >= 200 && response.status < 400 && hasPreviewBody && !blockedByViteHostCheck;
   } catch {
     alreadyRunning = false;
   }
