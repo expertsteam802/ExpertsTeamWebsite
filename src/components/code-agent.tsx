@@ -698,7 +698,7 @@ export function CodeAgent() {
           const extension = file.type === "image/png" ? "png"
             : file.type === "image/webp" ? "webp"
             : file.type === "image/gif" ? "gif" : "jpg";
-          const path = `${user.id}/project-thumbnails/${activeProjectId}-${crypto.randomUUID()}. ${extension}`.replace(". ", ".");
+          const path = `${user.id}/project-thumbnails/${activeProjectId}-${crypto.randomUUID()}.${extension}`;
           const { error: uploadError } = await supabase.storage
             .from("uploads")
             .upload(path, file, {
@@ -1993,8 +1993,8 @@ export function CodeAgent() {
                 </div>
 
                 <div className="mx-3 mt-3 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-[11px] leading-5 text-amber-100">
-                  ExpertAI prompt-based coding is under development. Your code editor, project
-                  files, save, run, preview and sandbox tools remain available.
+                  Describe a change and ExpertAI can update your project files. You can also run
+                  Kilo or OpenCode in the Linux terminal; terminal edits automatically sync here.
                 </div>
                 <div className="flex-1 space-y-4 overflow-y-auto p-4">
                   {messages.length === 0 && (
