@@ -369,6 +369,7 @@ function PersonalVaultPage() {
                       size="icon"
                       aria-label={"Download " + file.file_name}
                       onClick={() => void download(file)}
+                      disabled={file.storage_available === false}
                     >
                       <Download className="h-4 w-4" />
                     </Button>
