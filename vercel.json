@@ -11,13 +11,5 @@
         }
       ]
     }
-  ],
-  "functions": {
-    "src/routes/api.ai.stream.ts": {
-      "maxDuration": 300
-    },
-    "src/lib/agent.functions.ts": {
-      "maxDuration": 300
-    }
-  }
+  ]
 }
