@@ -10,11 +10,14 @@ import {
   Search,
   Send,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { ConversationCall } from "@/components/conversation-call";
+import { VoiceRecorder } from "@/components/voice-recorder";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -89,7 +92,7 @@ function MessagesPage() {
   const { user, profile } = useAuth();
   const userId = user?.id ?? null;
   const queryClient = useQueryClient();
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(() => typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("conversation"));
   const [search, setSearch] = useState("");
   const [peopleOpen, setPeopleOpen] = useState(false);
   const [draft, setDraft] = useState("");
@@ -97,7 +100,7 @@ function MessagesPage() {
   const [attachmentPreview, setAttachmentPreview] = useState("");
   const [typing, setTyping] = useState(false);
   const [onlineIds, setOnlineIds] = useState<string[]>([]);
-  const [mobileChatOpen, setMobileChatOpen] = useState(false);
+  const [mobileChatOpen, setMobileChatOpen] = useState(() => typeof window !== "undefined" && Boolean(new URLSearchParams(window.location.search).get("conversation")));
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -111,6 +114,33 @@ function MessagesPage() {
         .select(
           "id,pair_key,last_message_at,direct_conversation_members(user_id,last_read_at,profiles:profiles!direct_conversation_members_user_id_fkey(id,username,display_name,avatar_url))",
         )
+        .order("last_message_at", { ascending: false });
+      if (error) throw error;
+      const { data: hiddenRows, error: hiddenError } = await supabase
+        .from("direct_conversation_hidden")
+        .select("conversation_id")
+        .eq("user_id", user!.id);
+      if (hiddenError) throw hiddenError;
+      const hiddenIds = new Set((hiddenRows ?? []).map((row) => row.conversation_id));
+      return ((data ?? []) as Conversation[]).filter((conversation) => !hiddenIds.has(conversation.id));
+    },
+  });
+
+  const { data: recentlyDeleted = [] } = useQuery({
+    queryKey: ["direct-hidden-conversations", user?.id],
+    enabled: Boolean(user),
+    queryFn: async () => {
+      const { data: hiddenRows, error: hiddenError } = await supabase
+        .from("direct_conversation_hidden")
+        .select("conversation_id")
+        .eq("user_id", user!.id);
+      if (hiddenError) throw hiddenError;
+      const ids = (hiddenRows ?? []).map((row) => row.conversation_id);
+      if (!ids.length) return [] as Conversation[];
+      const { data, error } = await supabase
+        .from("direct_conversations")
+        .select("id,pair_key,last_message_at,direct_conversation_members(user_id,last_read_at,profiles:profiles!direct_conversation_members_user_id_fkey(id,username,display_name,avatar_url))")
+        .in("id", ids)
         .order("last_message_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Conversation[];
@@ -325,7 +355,10 @@ function MessagesPage() {
         body,
         media_path,
       });
-      if (error) throw error;
+      if (error) {
+        if (media_path) await supabase.storage.from("direct-messages").remove([media_path]);
+        throw error;
+      }
     },
     onSuccess: () => {
       setDraft("");
@@ -334,6 +367,65 @@ function MessagesPage() {
       void queryClient.invalidateQueries({ queryKey: ["direct-messages", activeConversation?.id] });
       void queryClient.invalidateQueries({ queryKey: ["direct-conversations", user?.id] });
       void queryClient.invalidateQueries({ queryKey: ["direct-message-previews", user?.id] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const unsendMessage = useMutation({
+    mutationFn: async (message: DirectMessage) => {
+      if (!user || message.sender_id !== user.id) throw new Error("You can only unsend your own messages.");
+      const { error } = await supabase
+        .from("direct_messages")
+        .delete()
+        .eq("id", message.id)
+        .eq("sender_id", user.id);
+      if (error) throw error;
+      if (message.media_path) {
+        await supabase.storage.from("direct-messages").remove([message.media_path]);
+      }
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["direct-messages", activeConversation?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["direct-conversations", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["direct-message-previews", user?.id] });
+      toast.success("Message unsent");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const deleteConversation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      if (!user) throw new Error("Sign in to delete a conversation.");
+      const { error } = await supabase.from("direct_conversation_hidden").insert({
+        conversation_id: conversationId,
+        user_id: user.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setActiveId(null);
+      setMobileChatOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["direct-conversations", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["direct-message-previews", user?.id] });
+      toast.success("Chat removed from your inbox");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const restoreConversation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      if (!user) throw new Error("Sign in to restore a conversation.");
+      const { error } = await supabase
+        .from("direct_conversation_hidden")
+        .delete()
+        .eq("conversation_id", conversationId)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["direct-hidden-conversations", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["direct-conversations", user?.id] });
+      toast.success("Conversation restored to your inbox");
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -371,6 +463,13 @@ function MessagesPage() {
         ]);
         if (memberError && memberError.code !== "23505") throw memberError;
       }
+      const { error: restoreError } = await supabase
+        .from("direct_conversation_hidden")
+        .delete()
+        .eq("conversation_id", conversation.id)
+        .eq("user_id", user.id);
+      if (restoreError) throw restoreError;
+      await queryClient.invalidateQueries({ queryKey: ["direct-hidden-conversations", user.id] });
       await queryClient.invalidateQueries({ queryKey: ["direct-conversations", user.id] });
       setActiveId(conversation.id);
       setMobileChatOpen(true);
@@ -401,8 +500,8 @@ function MessagesPage() {
 
   function chooseAttachment(file?: File) {
     if (!file) return;
-    if (!file.type.startsWith("image/") || file.size > 8 * 1024 * 1024) {
-      toast.error("Choose an image up to 8 MB.");
+    if (!(file.type.startsWith("image/") || file.type.startsWith("audio/")) || file.size > 8 * 1024 * 1024) {
+      toast.error("Choose an image or audio recording up to 8 MB.");
       return;
     }
     if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
@@ -452,6 +551,10 @@ function MessagesPage() {
             <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">Messages</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Private conversations, live presence and instant replies.
+            </p>
+            <p className="mt-2 inline-flex items-center gap-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              {onlineIds.length} {onlineIds.length === 1 ? "developer" : "developers"} active now
             </p>
           </div>
           <Button
@@ -614,6 +717,25 @@ function MessagesPage() {
                   </button>
                 );
               })}
+              {recentlyDeleted.length > 0 && (
+                <section className="mt-4 border-t border-border/70 px-2 pt-4">
+                  <div className="mb-2 flex items-center justify-between px-2">
+                    <span className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Recently deleted</span>
+                    <span className="text-xs text-muted-foreground">{recentlyDeleted.length}</span>
+                  </div>
+                  <p className="px-2 pb-2 text-[11px] leading-5 text-muted-foreground">Only hidden from your inbox. The other person’s chat history is unchanged.</p>
+                  {recentlyDeleted.map((conversation) => {
+                    const person = conversation.direct_conversation_members.find((item) => item.user_id !== user.id)?.profiles;
+                    return (
+                      <div key={conversation.id} className="mb-2 flex items-center gap-2 rounded-xl border border-border/70 p-2">
+                        <Avatar className="h-8 w-8"><AvatarImage src={person?.avatar_url ?? undefined} /><AvatarFallback>{initials(personName(person))}</AvatarFallback></Avatar>
+                        <span className="min-w-0 flex-1 truncate text-xs font-medium">{personName(person)}</span>
+                        <Button type="button" size="sm" variant="outline" disabled={restoreConversation.isPending} onClick={() => restoreConversation.mutate(conversation.id)}>Restore</Button>
+                      </div>
+                    );
+                  })}
+                </section>
+              )}
             </div>
           </aside>
 
@@ -648,7 +770,19 @@ function MessagesPage() {
                       </p>
                     </div>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Delete chat"
+                    title="Remove chat from your inbox"
+                    onClick={() => deleteConversation.mutate(activeConversation.id)}
+                    disabled={deleteConversation.isPending}
+                    className="shrink-0 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </header>
+                <div className="shrink-0 px-3 pt-3"><ConversationCall conversationId={activeConversation.id} recipientId={recipient.id} recipientName={personName(recipient)} /></div>
                 <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-5 sm:px-7">
                   <div className="mb-7 text-center">
                     <Avatar className="mx-auto h-16 w-16">
@@ -670,7 +804,7 @@ function MessagesPage() {
                       <Sparkles className="mx-auto h-6 w-6 text-primary" />
                       <p className="mt-2 text-sm font-semibold">Say hello</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        This is the beginning of your conversation. Send a message or share a photo.
+                        This is the beginning of your conversation. Send a message, photo or voice note.
                       </p>
                     </div>
                   )}
@@ -684,25 +818,35 @@ function MessagesPage() {
                         <div
                           className={`max-w-[min(82%,520px)] rounded-3xl px-4 py-3 shadow-sm ${mine ? "rounded-br-md bg-gradient-to-br from-primary to-primary/80 text-primary-foreground" : "rounded-bl-md border border-border/70 bg-card"}`}
                         >
-                          {message.media_url && (
+                          {message.media_url && ( /\.(webm|m4a|mp3|ogg|wav|mp4)$/i.test(message.media_path ?? "") ? (
+                            <audio controls preload="metadata" src={message.media_url} className="mb-2 max-w-full" />
+                          ) : (
                             <a href={message.media_url} target="_blank" rel="noreferrer">
-                              <img
-                                src={message.media_url}
-                                alt="Shared attachment"
-                                className="mb-2 max-h-80 rounded-2xl object-cover"
-                              />
+                              <img src={message.media_url} alt="Shared attachment" className="mb-2 max-h-80 rounded-2xl object-cover" />
                             </a>
-                          )}
+                          ))}
                           {message.body && (
                             <p className="whitespace-pre-wrap break-words text-sm leading-6">
                               {message.body}
                             </p>
                           )}
-                          <p
-                            className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}
-                          >
-                            {shortTime(message.created_at)} {mine && <Check className="h-3 w-3" />}
-                          </p>
+                          <div className="mt-1 flex items-center justify-end gap-2">
+                            <span className={`flex items-center gap-1 text-[10px] ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                              {shortTime(message.created_at)} {mine && <Check className="h-3 w-3" />}
+                            </span>
+                            {mine && (
+                              <button
+                                type="button"
+                                aria-label="Unsend message"
+                                title="Unsend message"
+                                onClick={() => unsendMessage.mutate(message)}
+                                disabled={unsendMessage.isPending}
+                                className="rounded p-1 opacity-70 transition hover:bg-black/10 hover:opacity-100"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -725,11 +869,7 @@ function MessagesPage() {
                 >
                   {attachmentPreview && (
                     <div className="mb-3 flex items-center gap-3 rounded-xl border border-border bg-card p-2">
-                      <img
-                        src={attachmentPreview}
-                        alt="Attachment preview"
-                        className="h-14 w-14 rounded-lg object-cover"
-                      />
+                      {attachment?.type.startsWith("audio/") ? <audio controls src={attachmentPreview} className="max-w-[220px]" /> : <img src={attachmentPreview} alt="Attachment preview" className="h-14 w-14 rounded-lg object-cover" />}
                       <span className="min-w-0 flex-1 truncate text-xs">{attachment?.name}</span>
                       <Button
                         type="button"
@@ -747,16 +887,17 @@ function MessagesPage() {
                   <div className="flex items-end gap-2 rounded-2xl border border-border bg-card p-2 shadow-inner">
                     <label
                       className="grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-xl text-muted-foreground transition hover:bg-secondary hover:text-primary"
-                      title="Attach photo"
+                      title="Attach image or audio"
                     >
                       <ImagePlus className="h-5 w-5" />
                       <input
                         type="file"
-                        accept="image/png,image/jpeg,image/webp,image/gif"
+                        accept="image/png,image/jpeg,image/webp,image/gif,audio/webm,audio/mp4,audio/mpeg,audio/ogg,audio/wav"
                         className="sr-only"
                         onChange={(event) => chooseAttachment(event.target.files?.[0])}
                       />
                     </label>
+                    <VoiceRecorder disabled={sendMessage.isPending || Boolean(attachment)} onRecorded={chooseAttachment} />
                     <textarea
                       value={draft}
                       onChange={(event) => updateDraft(event.target.value)}

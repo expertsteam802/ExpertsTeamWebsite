@@ -1,8 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { BannerUnlockAd } from "@/components/ads/banner-unlock-ad";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -34,10 +36,14 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  const signupFlow = useRef(false);
+  const [signupResult, setSignupResult] = useState<{ email: string; needsConfirmation: boolean } | null>(null);
+  const [signupAdFinished, setSignupAdFinished] = useState(false);
 
   useEffect(() => {
-    if (user) void navigate({ to: "/dashboard", replace: true });
+    if (user && !signupFlow.current) void navigate({ to: "/dashboard", replace: true });
   }, [user, navigate]);
 
   async function signIn(): Promise<void> {
@@ -63,6 +69,7 @@ function AuthPage() {
       return;
     }
     setBusy(true);
+    signupFlow.current = true;
     try {
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
@@ -72,14 +79,28 @@ function AuthPage() {
         },
       });
       if (error) throw error;
-      if (!data.session) {
-        toast.error(
-          "Email confirmation is still enabled in Supabase. Disable it under Authentication → Providers → Email to create accounts without verification.",
-        );
-        return;
+      if (!data.user) throw new Error("Supabase did not return a new account.");
+      if (avatarFile && data.session) {
+        try {
+          const extension = avatarFile.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+          const path = `${data.user.id}/avatar-${Date.now()}.${extension}`;
+          const { error: uploadError } = await supabase.storage.from("uploads").upload(path, avatarFile, {
+            cacheControl: "3600",
+            upsert: true,
+            contentType: avatarFile.type || "image/jpeg",
+          });
+          if (uploadError) throw uploadError;
+          const avatarUrl = supabase.storage.from("uploads").getPublicUrl(path).data.publicUrl;
+          const { error: profileError } = await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", data.user.id);
+          if (profileError) throw profileError;
+        } catch (avatarError) {
+          toast.error(avatarError instanceof Error ? "Account created. Add your profile photo later from your profile settings." : "Account created. You can add your photo later.");
+        }
       }
-      toast.success("Account created!");
+      setSignupAdFinished(false);
+      setSignupResult({ email: email.trim(), needsConfirmation: !data.session });
     } catch (error) {
+      signupFlow.current = false;
       toast.error(
         error instanceof Error ? error.message : "Could not create your account. Please try again.",
       );
@@ -189,6 +210,25 @@ function AuthPage() {
                   onChange={(event) => setPassword(event.target.value)}
                 />
               </div>
+              <div className="space-y-2 rounded-xl border border-border/70 bg-secondary/30 p-3">
+                <Label htmlFor="signup-avatar">Profile photo <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                <input
+                  id="signup-avatar"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(event) => {
+                    const selected = event.target.files?.[0] ?? null;
+                    if (selected && selected.size > 5 * 1024 * 1024) {
+                      toast.error("Choose a profile photo smaller than 5 MB.");
+                      event.target.value = "";
+                      return;
+                    }
+                    setAvatarFile(selected);
+                  }}
+                  className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary-foreground"
+                />
+                <p className="text-xs text-muted-foreground">{avatarFile ? avatarFile.name : "Add a photo now, or skip and add one later from your profile."}</p>
+              </div>
               <Button className="w-full" onClick={() => void signUp()} disabled={busy}>
                 Create account
               </Button>
@@ -196,6 +236,41 @@ function AuthPage() {
           </Tabs>
         </Card>
       </div>
+      <Dialog open={!!signupResult} onOpenChange={(open) => {
+        if (!open && signupAdFinished) {
+          const shouldGoToDashboard = !signupResult?.needsConfirmation;
+          setSignupResult(null);
+          setSignupAdFinished(false);
+          signupFlow.current = false;
+          if (shouldGoToDashboard) void navigate({ to: "/dashboard", replace: true });
+        }
+      }}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{signupAdFinished ? (signupResult?.needsConfirmation ? "Check your email" : "Your account is ready!") : "Welcome to ExpertsTeam"}</DialogTitle>
+            <DialogDescription>
+              {signupAdFinished
+                ? signupResult?.needsConfirmation
+                  ? `We created your account. Follow the confirmation link sent to ${signupResult.email} to finish signing in.`
+                  : "Your ExpertsTeam account was created successfully. You can now explore your dashboard."
+                : "Please view this short sponsor banner while we prepare your new account."}
+            </DialogDescription>
+          </DialogHeader>
+          {!signupAdFinished ? (
+            <BannerUnlockAd onUnlocked={() => setSignupAdFinished(true)} />
+          ) : (
+            <Button className="w-full sm:w-auto" onClick={() => {
+              const shouldGoToDashboard = !signupResult?.needsConfirmation;
+              setSignupResult(null);
+              setSignupAdFinished(false);
+              signupFlow.current = false;
+              if (shouldGoToDashboard) void navigate({ to: "/dashboard", replace: true });
+            }}>
+              {signupResult?.needsConfirmation ? "Back to sign in" : "Open my dashboard"}
+            </Button>
+          )}
+        </DialogContent>
+      </Dialog>
     </PageShell>
   );
 }

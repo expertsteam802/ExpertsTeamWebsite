@@ -29,17 +29,17 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Expertsteam802 | ExpertsTeam Coding & AI Studio" },
+      { title: "ExpertsTeam | Developer Community, Coding & ExpertAI Studio" },
       {
         name: "description",
         content:
-          "Expertsteam802 is the official ExpertsTeam website for AI app building, coding tutorials, creator videos, developer projects and community learning.",
+          "Join the ExpertsTeam developer community to learn coding, share practical projects, ask technical questions, watch tutorials and build applications with ExpertAI Studio.",
       },
-      { property: "og:title", content: "Expertsteam802 | ExpertsTeam Coding & AI Studio" },
+      { property: "og:title", content: "ExpertsTeam | Developer Community, Coding & ExpertAI Studio" },
       {
         property: "og:description",
         content:
-          "Visit Expertsteam802, the ExpertsTeam home for Chris Expert, coding lessons, AI-assisted app creation and developer resources.",
+          "Learn to code, collaborate with developers, share projects and build applications with ExpertAI Studio on ExpertsTeam.",
       },
     ],
   }),
@@ -71,8 +71,8 @@ const CAPABILITIES = [
   {
     icon: Users,
     number: "04",
-    title: "Learn and share together.",
-    body: "Explore creator videos, useful resources and community conversations in one place.",
+    title: "Ask anything. Get answers.",
+    body: "Get help with any question, find practical solutions and grow with creators, learners and developers in the ExpertsTeam community.",
     tag: "CREATOR COMMUNITY",
   },
 ];
@@ -417,7 +417,7 @@ function Index() {
           <p className="mt-3 text-sm leading-7 text-muted-foreground sm:text-base">
             Find the platform through searches for Expertsteam802, ExpertsTeam, Chris Expert,
             ChrisPrograms, AngeloCodes, Dismas, ExpertsTeamCoders, CodeWithExperts and
-            LearnCodingWithChris. Start with the{" "}
+            LearnCodingWithChris. Ask any question in our community and get help, or start with the{" "}
             <Link to="/learn" className="font-medium text-primary hover:underline">
               coding lessons
             </Link>

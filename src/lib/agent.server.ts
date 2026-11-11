@@ -1,6 +1,6 @@
 import { posix as path } from "node:path";
 
-import { generateGeminiContent } from "./gemini.server";
+import { generateGeminiContent, isOllamaConfigured } from "./gemini.server";
 
 type AgentInput = {
   prompt: string;
@@ -256,11 +256,18 @@ export async function runAgent(
     .map(({ name, content }) => "--- " + name + " ---\\n" + content)
     .join("\\n\\n");
 
-  const configured = (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
+  const configured = (process.env["AI_PROVIDER_ORDER"] || "ollama,groq,gemini,openrouter")
     .split(",")
     .map((item) => item.trim().toLowerCase())
-    .filter((item) => ["groq", "gemini", "openrouter"].includes(item));
-  const providerSequence = [...new Set([...configured, "groq", "gemini", "openrouter"])];
+     .filter((item) => ["ollama", "groq", "gemini", "openrouter"].includes(item));
+  const ollamaConfigured = await isOllamaConfigured();
+  const providerSequence = [...new Set([
+    ...(ollamaConfigured ? ["ollama"] : []),
+    ...configured.filter((provider) => provider !== "ollama"),
+    "groq",
+    "gemini",
+    "openrouter",
+  ])];
   const completedFiles: Record<string, string | null> = {};
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
@@ -288,7 +295,8 @@ export async function runAgent(
 
     const systemPrompt =
       AGENT_PROMPT +
-      "\\n\\nSmart Processing rules:\\n" +
+      "\\n\\nResponse style: keep progress notes and explanations concise, direct, and useful. Use short sentences and small lists. Do not add long introductions, repeat the request, or explain obvious steps. Put implementation effort into complete working files, not verbose commentary.\\n" +
+      "Smart Processing rules:\\n" +
       "- Work in resumable batches of no more than 2 complete files per response.\\n" +
       '- Return JSON: {"message":"...","files":{"path":"full file content"},"complete":false}.\\n' +
       "- Set complete:true only after all necessary files have been supplied across continuation rounds.\\n" +

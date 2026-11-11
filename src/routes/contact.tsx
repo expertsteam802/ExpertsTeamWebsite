@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Instagram, Mail, Youtube } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
@@ -37,6 +37,13 @@ function ContactPage() {
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("topic") === "ad-report") {
+      setSubject("Report an inappropriate advertisement");
+      setMessage("I would like to report an advertisement that appeared on ExpertsTeam. Please review it.");
+    }
+  }, []);
 
   const sendMessage = useMutation({
     mutationFn: async () => {
