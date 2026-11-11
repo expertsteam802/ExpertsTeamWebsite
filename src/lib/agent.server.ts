@@ -262,10 +262,10 @@ export async function runAgent(
     .map(({ name, content }) => "--- " + name + " ---\\n" + content)
     .join("\\n\\n");
 
-  const configured = (process.env["AI_PROVIDER_ORDER"] || "gemini,groq,kilo,openrouter")
+  const configured = (process.env["AI_PROVIDER_ORDER"] || "gemini,groq,openrouter")
     .split(",")
     .map((item) => item.trim().toLowerCase())
-    .filter((item) => ["gemini", "groq", "kilo", "openrouter"].includes(item) && !(item === "kilo" && process.env["KILO_ENABLED"] === "false"));
+    .filter((item) => ["gemini", "groq", "kilo", "openrouter"].includes(item) && (item !== "kilo" || process.env["KILO_ENABLED"] === "true"));
   const providerSequence = [...new Set([...configured, "gemini", "groq", ...(process.env["KILO_ENABLED"] === "true" ? ["kilo"] : []), "openrouter"])];
   const completedFiles: Record<string, string | null> = {};
   let latestMessage = "The agent generated the requested project files.";
