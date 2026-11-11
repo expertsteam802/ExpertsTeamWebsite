@@ -2155,7 +2155,7 @@ export function CodeAgent() {
                         }
                       }}
                       rows={3}
-                      placeholder="AI prompt entry is temporarily under development."
+                      placeholder="Ask ExpertAI to add a feature, fix a bug, or update your project files…"
                       className="min-h-[76px] resize-none border-0 bg-transparent px-1 text-xs text-white shadow-none placeholder:text-slate-500 focus-visible:ring-0"
                     />
                     <div className="flex items-center justify-between px-1 pt-2">
@@ -2170,7 +2170,7 @@ export function CodeAgent() {
                           <ImagePlus className="h-4 w-4" /> Reference images
                         </button>
                         <span className="hidden text-[9px] text-amber-300/80 sm:inline">
-                          Prompt feature under development
+                          Project-file editing enabled
                         </span>
                       </div>
                       <Button
