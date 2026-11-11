@@ -33,6 +33,8 @@ test("agent creates a minimal stylesheet when an imported CSS entry is missing",
 
 test("agent never uses a browser-prefixed key when server credential is missing", async () => {
   const previous = process.env["VITE_GEMINI_API_KEY"];
+  const previousKiloEnabled = process.env["KILO_ENABLED"];
+  process.env["KILO_ENABLED"] = "false";
   process.env["VITE_GEMINI_API_KEY"] = "browser-test-key";
   let calls = 0;
   globalThis.fetch = (async () => {
@@ -45,6 +47,8 @@ test("agent never uses a browser-prefixed key when server credential is missing"
   } finally {
     if (previous === undefined) delete process.env["VITE_GEMINI_API_KEY"];
     else process.env["VITE_GEMINI_API_KEY"] = previous;
+    if (previousKiloEnabled === undefined) delete process.env["KILO_ENABLED"];
+    else process.env["KILO_ENABLED"] = previousKiloEnabled;
   }
 });
 
@@ -397,6 +401,8 @@ test("AI builder forwards multiple visual references to Gemini vision", async ()
 test("Experts Routing can use Kilo's anonymous gateway and detects output truncation", async () => {
   const previousKey = process.env["KILO_API_KEY"];
   const previousBase = process.env["KILO_API_BASE_URL"];
+  const previousEnabled = process.env["KILO_ENABLED"];
+  process.env["KILO_ENABLED"] = "true";
   delete process.env["KILO_API_KEY"];
   delete process.env["KILO_API_BASE_URL"];
   let sentModel = "";
@@ -432,5 +438,7 @@ test("Experts Routing can use Kilo's anonymous gateway and detects output trunca
     else process.env["KILO_API_KEY"] = previousKey;
     if (previousBase === undefined) delete process.env["KILO_API_BASE_URL"];
     else process.env["KILO_API_BASE_URL"] = previousBase;
+    if (previousEnabled === undefined) delete process.env["KILO_ENABLED"];
+    else process.env["KILO_ENABLED"] = previousEnabled;
   }
 });
