@@ -117,6 +117,7 @@ export type Database = {
           published: boolean;
           repository_url: string | null;
           slug: string | null;
+          thumbnail_url: string | null;
           updated_at: string;
           user_id: string;
           workspace_settings: Json;
@@ -137,6 +138,7 @@ export type Database = {
           published?: boolean;
           repository_url?: string | null;
           slug?: string | null;
+          thumbnail_url?: string | null;
           updated_at?: string;
           user_id: string;
           workspace_settings?: Json;
