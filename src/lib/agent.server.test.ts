@@ -402,7 +402,7 @@ test("Experts Routing can use Kilo's anonymous gateway and detects output trunca
   let sentModel = "";
   let sentOutputBudget = 0;
   globalThis.fetch = (async (url, init) => {
-    assert.match(String(url), /ai-gateway\\.kilo\\.ai\\/api\\/v1\\/chat\\/completions$/);
+    assert.match(String(url), /ai-gateway\.kilo\.ai\/api\/v1\/chat\/completions$/);
     const body = JSON.parse(String(init?.body ?? "{}")) as {
       model?: string;
       max_tokens?: number;
