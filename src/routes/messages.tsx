@@ -853,7 +853,7 @@ function MessagesPage() {
 
   if (!user) {
     return (
-      <PageShell>
+      <PageShell hideFooter>
         <div className="mx-auto max-w-lg px-4 py-24 text-center">
           <MessageCircle className="mx-auto h-12 w-12 text-primary" />
           <h1 className="mt-4 text-2xl font-bold">Your messages</h1>
