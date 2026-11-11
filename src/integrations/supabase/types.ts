@@ -886,6 +886,54 @@ export type Database = {
         };
         Relationships: [];
       };
+      software_requests: {
+        Row: {
+          admin_note: string | null;
+          budget: string | null;
+          business_name: string | null;
+          contact_method: string | null;
+          created_at: string;
+          description: string;
+          email: string;
+          full_name: string;
+          id: string;
+          project_type: string;
+          status: string;
+          updated_at: string;
+          user_id: string | null;
+        };
+        Insert: {
+          admin_note?: string | null;
+          budget?: string | null;
+          business_name?: string | null;
+          contact_method?: string | null;
+          created_at?: string;
+          description: string;
+          email: string;
+          full_name: string;
+          id?: string;
+          project_type: string;
+          status?: string;
+          updated_at?: string;
+          user_id?: string | null;
+        };
+        Update: {
+          admin_note?: string | null;
+          budget?: string | null;
+          business_name?: string | null;
+          contact_method?: string | null;
+          created_at?: string;
+          description?: string;
+          email?: string;
+          full_name?: string;
+          id?: string;
+          project_type?: string;
+          status?: string;
+          updated_at?: string;
+          user_id?: string | null;
+        };
+        Relationships: [];
+      };
       project_requests: {
         Row: {
           admin_note: string | null;
