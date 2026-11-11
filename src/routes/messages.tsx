@@ -125,6 +125,7 @@ function MessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const callTimeoutRef = useRef<number | null>(null);
 
   const { data: conversations = [], isLoading } = useQuery({
     queryKey: ["direct-conversations", user?.id],
@@ -219,10 +220,18 @@ function MessagesPage() {
     pc.ontrack = (event) => setRemoteStream(event.streams[0] ?? new MediaStream([event.track]));
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === "connected") setCallState("connected");
-      if (pc.connectionState === "failed")
+      if (pc.connectionState === "failed") {
         toast.error("The call could not connect. Your network may require a TURN relay.");
-      if (pc.connectionState === "failed" || pc.connectionState === "closed") {
         if (peerConnectionRef.current === pc) void endCall(false);
+      }
+      if (pc.connectionState === "closed" && peerConnectionRef.current === pc) void endCall(false);
+    };
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
+        setCallState("connected");
+      } else if (pc.iceConnectionState === "failed" && peerConnectionRef.current === pc) {
+        toast.error("The call could not establish a network path. Try another network; restrictive networks need a TURN relay.");
+        void endCall(false);
       }
     };
     return pc;
@@ -365,6 +374,24 @@ function MessagesPage() {
       peerConnectionRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (callTimeoutRef.current !== null) {
+      window.clearTimeout(callTimeoutRef.current);
+      callTimeoutRef.current = null;
+    }
+    if (callState !== "calling") return;
+    callTimeoutRef.current = window.setTimeout(() => {
+      toast.error("No connection after 45 seconds. Check that the other person accepted and that both networks allow WebRTC calls.");
+      void endCall(false);
+    }, 45_000);
+    return () => {
+      if (callTimeoutRef.current !== null) {
+        window.clearTimeout(callTimeoutRef.current);
+        callTimeoutRef.current = null;
+      }
+    };
+  }, [callState, activeConversationId]);
 
   useEffect(() => {
     if (!userId || !activeConversationId) return;
