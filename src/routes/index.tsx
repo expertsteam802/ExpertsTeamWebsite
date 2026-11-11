@@ -36,9 +36,19 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Learn to code, build apps, play games and download free files with ExpertsTeam. Connect, create and grow.",
+          "Learn to code, build apps, connect with creators and request custom software from ExpertsTeam.",
       },
+      { property: "og:url", content: "https://expertsteam.giize.com/" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "ExpertsTeam — Learn, Build & Connect" },
+      {
+        name: "twitter:description",
+        content: "Learn coding, build software, connect with creators and request custom apps.",
+      },
+      { property: "og:image", content: "https://expertsteam.giize.com/experts-team-brand.svg" },
+      { name: "twitter:image", content: "https://expertsteam.giize.com/experts-team-brand.svg" },
     ],
+    links: [{ rel: "canonical", href: "https://expertsteam.giize.com/" }],
   }),
   component: Index,
 });
