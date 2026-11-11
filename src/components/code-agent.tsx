@@ -558,7 +558,7 @@ export function CodeAgent() {
     try {
       const activeProjectId = await persist();
       const connection = await connectTerminal({
-        data: { projectId: activeProjectId, files, username: profile?.username || "ExpertsTeam" },
+        data: { projectId: activeProjectId, files, username: (profile?.username || "ExpertsTeam").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam" },
       });
       setTerminalConnection(connection);
     } catch (error) {
@@ -620,7 +620,7 @@ export function CodeAgent() {
       runtimeFilesRef.current = { ...files };
       if (!terminalConnection) {
         try {
-          const connection = await connectTerminal({ data: { projectId: activeProjectId, files, username: profile?.username || "ExpertsTeam" } });
+          const connection = await connectTerminal({ data: { projectId: activeProjectId, files, username: (profile?.username || "ExpertsTeam").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam" } });
           setTerminalConnection(connection);
         } catch (terminalError) {
           setLogs((current) => [...current, { type: "warn", message: terminalError instanceof Error ? terminalError.message : "Linux terminal could not auto-connect." }]);
