@@ -463,7 +463,6 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
       detached: true,
     });
     toolkitStatus = "installing";
-    }
   }
 
   const installed = await sandbox.runCommand({
