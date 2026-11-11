@@ -1750,7 +1750,7 @@ export function CodeAgent() {
                     >
                       {terminalReady ? "CONNECTED" : "OFFLINE"}
                     </span>
-                    {["ls", "pwd", "npm run dev", "npm run build"].map((command) => (
+                    {["ls", "pwd", "npm run dev", "npm run build", "npm install -g @kilocode/cli", "kilo"].map((command) => (
                       <button
                         key={command}
                         type="button"
@@ -1797,10 +1797,14 @@ export function CodeAgent() {
                   aria-label="Interactive Linux terminal"
                   className="min-h-0 flex-1 overflow-hidden px-3 py-2"
                 />
-                <p className="border-t border-white/[0.06] px-4 py-2 text-[10px] text-slate-600">
-                  Persistent Bash session in an isolated Vercel Linux microVM. Supports terminal
-                  input, ANSI output, resizing and interactive CLI programs. Use network tools only
-                  on systems you own or are authorized to test.
+                <p className="border-t border-white/[0.06] px-4 py-2 text-[10px] leading-5 text-slate-500">
+                  Persistent Bash session in an isolated Vercel Linux microVM. For a ready-made
+                  coding agent, run <code className="text-emerald-200">npm install -g @kilocode/cli</code>,
+                  then <code className="text-emerald-200">kilo</code> and choose <code className="text-emerald-200">kilo-auto/free</code>
+                  or use <code className="text-emerald-200">/models</code> and filter for free models.
+                  After the agent edits files, select <strong className="text-cyan-200">Import files</strong>
+                  to sync its changes back into your ExpertsTeam project. Free model availability and
+                  rate limits can change; do not send secrets or private customer data to free endpoints.
                 </p>
               </div>
 
