@@ -718,7 +718,7 @@ export async function publishCloudProject(
       args: buildArgs,
       cwd: WORKDIR,
       env: buildEnv,
-      timeoutMs: 240_000,
+      timeoutMs: 600_000,
     });
     if (build.exitCode !== 0) {
       const stderr = await build.stderr();
