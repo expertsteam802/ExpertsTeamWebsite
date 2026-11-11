@@ -268,6 +268,7 @@ export async function runAgent(
     .filter((item) => ["gemini", "groq", "kilo", "openrouter"].includes(item) && (item !== "kilo" || process.env["KILO_ENABLED"] === "true"));
   const providerSequence = [...new Set([...configured, "gemini", "groq", ...(process.env["KILO_ENABLED"] === "true" ? ["kilo"] : []), "openrouter"])];
   const completedFiles: Record<string, string | null> = {};
+  const handoffNotes: string[] = [];
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
   const maxRounds = 24;
@@ -290,6 +291,7 @@ export async function runAgent(
             "Continue implementation of this same request: " + cleanPrompt,
             "Return only additional files still required. Do not repeat completed files unless correcting a specific inconsistency.",
             "Already completed files: " + (existingNames.join(", ") || "(none)") + ".",
+            "Expert handoff summaries: " + (handoffNotes.slice(-4).join(" | ") || "(first expert round)") + ".",
             "Keep this response small: return at most 3 complete files. If more remain, set complete:false. Set complete:true only when the requested app/change is fully implemented.",
             "If a previous response was truncated, regenerate the missing file from scratch. Never return half a file as completed.",
             "Previously generated file names and short contents:",
@@ -359,7 +361,10 @@ export async function runAgent(
           .join("") ?? "";
       const parsed = parseAgentFiles(responseText);
       for (const [path, content] of Object.entries(parsed.files)) completedFiles[path] = content;
-      if (parsed.message) latestMessage = parsed.message;
+      if (parsed.message) {
+        latestMessage = parsed.message;
+        handoffNotes.push(parsed.message.slice(0, 1200));
+      }
 
       if (
         parsed.complete &&
