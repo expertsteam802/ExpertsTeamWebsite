@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Instagram, Mail, Youtube } from "lucide-react";
 
 import { useSiteSettings } from "@/hooks/use-site-settings";
+import { useAuth } from "@/hooks/use-auth";
 
 function socialLabel(value: string, fallback: string) {
   try {
@@ -15,6 +16,7 @@ function socialLabel(value: string, fallback: string) {
 
 export function SiteFooter() {
   const settings = useSiteSettings();
+  const { user, isAdmin } = useAuth();
   const year = new Date().getFullYear();
 
   return (
@@ -45,6 +47,9 @@ export function SiteFooter() {
           <Link to="/messages" className="block text-white/55 transition hover:text-blue-200">Messages</Link>
           <Link to="/ai" className="block text-white/55 transition hover:text-blue-200">ExpertAI Studio</Link>
           <Link to="/projects" className="block text-white/55 transition hover:text-blue-200">Workspace & projects</Link>
+          {user && <Link to="/dashboard" className="block text-white/55 transition hover:text-blue-200">My dashboard</Link>}
+          {user && <Link to="/vault" className="block text-white/55 transition hover:text-blue-200">Personal Vault</Link>}
+          {isAdmin && <Link to="/admin" className="block text-white/55 transition hover:text-blue-200">Admin panel</Link>}
           <Link to="/entertainment" className="block text-white/55 transition hover:text-blue-200">Discover</Link>
         </nav>
 
