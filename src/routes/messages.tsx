@@ -820,8 +820,8 @@ function MessagesPage() {
   }
 
   return (
-    <PageShell>
-      <section className="mx-auto flex h-full min-h-[560px] w-full max-w-7xl flex-col overflow-hidden px-3 py-3 sm:px-5 lg:px-8">
+    <PageShell hideFooter>
+      <section className="mx-auto flex h-full min-h-0 w-full max-w-7xl flex-1 flex-col overflow-hidden px-3 py-3 sm:px-5 lg:px-8">
         <div className="mb-3 flex shrink-0 items-end justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
