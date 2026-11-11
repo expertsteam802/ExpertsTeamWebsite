@@ -12,4 +12,10 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /messages
+Disallow: /dashboard
+Disallow: /vault
+Disallow: /auth
+Disallow: /api/
 Sitemap: https://expertsteam.giize.com/sitemap.xml
