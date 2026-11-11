@@ -267,12 +267,12 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
                 <div ref={playerContainerRef} className="h-full w-full" />
               ))}
             {videoId && loading && !playbackError && (
-              <div className="absolute inset-0 grid place-items-center bg-background/70 text-sm text-muted-foreground">
+              <div className="absolute inset-0 z-20 grid place-items-center bg-background/80 text-sm text-muted-foreground">
                 Loading video…
               </div>
             )}
             {videoId && playbackError && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center">
+              <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center">
                 <p className="max-w-xl text-sm text-destructive">{playbackError}</p>
                 {videoId && (
                   <Button asChild>
