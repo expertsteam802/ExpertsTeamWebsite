@@ -9,6 +9,7 @@ export const Route = createFileRoute("/terms")({
       { title: "Terms of Use — ExpertsTeam" },
       { name: "description", content: "Short, clear rules for using ExpertsTeam." },
     ],
+    links: [{ rel: "canonical", href: "https://expertsteam.giize.com/terms" }],
   }),
   component: TermsPage,
 });
