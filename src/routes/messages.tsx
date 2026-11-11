@@ -96,7 +96,7 @@ function MessagesPage() {
   const { user, profile } = useAuth();
   const userId = user?.id ?? null;
   const queryClient = useQueryClient();
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(() => typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("conversation"));
   const [search, setSearch] = useState("");
   const [peopleOpen, setPeopleOpen] = useState(false);
   const [draft, setDraft] = useState("");
@@ -122,7 +122,7 @@ function MessagesPage() {
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const [typing, setTyping] = useState(false);
   const [onlineIds, setOnlineIds] = useState<string[]>([]);
-  const [mobileChatOpen, setMobileChatOpen] = useState(false);
+  const [mobileChatOpen, setMobileChatOpen] = useState(() => typeof window !== "undefined" && Boolean(new URLSearchParams(window.location.search).get("conversation")));
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -147,6 +147,27 @@ function MessagesPage() {
       return ((data ?? []) as Conversation[]).filter(
         (conversation) => !hiddenIds.has(conversation.id),
       );
+    },
+  });
+
+  const { data: recentlyDeleted = [] } = useQuery({
+    queryKey: ["direct-hidden-conversations", user?.id],
+    enabled: Boolean(user),
+    queryFn: async () => {
+      const { data: hiddenRows, error: hiddenError } = await supabase
+        .from("direct_conversation_hidden")
+        .select("conversation_id")
+        .eq("user_id", user!.id);
+      if (hiddenError) throw hiddenError;
+      const ids = (hiddenRows ?? []).map((row) => row.conversation_id);
+      if (!ids.length) return [] as Conversation[];
+      const { data, error } = await supabase
+        .from("direct_conversations")
+        .select("id,pair_key,last_message_at,direct_conversation_members(user_id,last_read_at,profiles:profiles!direct_conversation_members_user_id_fkey(id,username,display_name,avatar_url))")
+        .in("id", ids)
+        .order("last_message_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Conversation[];
     },
   });
 
@@ -665,6 +686,29 @@ function MessagesPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const restoreConversation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      if (!user) throw new Error("Sign in to restore a conversation.");
+      const { error } = await supabase
+        .from("direct_conversation_hidden")
+        .delete()
+        .eq("conversation_id", conversationId)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: async (_data, conversationId) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["direct-hidden-conversations", user?.id] }),
+        queryClient.invalidateQueries({ queryKey: ["direct-conversations", user?.id] }),
+        queryClient.invalidateQueries({ queryKey: ["direct-message-previews", user?.id] }),
+      ]);
+      setActiveId(conversationId);
+      setMobileChatOpen(true);
+      toast.success("Conversation restored and reopened");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   async function startConversation(person: Person) {
     if (!user) return;
     const pairKey = [user.id, person.id].sort().join(":");
@@ -698,7 +742,16 @@ function MessagesPage() {
         ]);
         if (memberError && memberError.code !== "23505") throw memberError;
       }
-      await queryClient.invalidateQueries({ queryKey: ["direct-conversations", user.id] });
+      const { error: restoreError } = await supabase
+        .from("direct_conversation_hidden")
+        .delete()
+        .eq("conversation_id", conversation.id)
+        .eq("user_id", user.id);
+      if (restoreError) throw restoreError;
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["direct-hidden-conversations", user.id] }),
+        queryClient.invalidateQueries({ queryKey: ["direct-conversations", user.id] }),
+      ]);
       setActiveId(conversation.id);
       setMobileChatOpen(true);
       setPeopleOpen(false);
@@ -945,6 +998,32 @@ function MessagesPage() {
                   </button>
                 );
               })}
+              {recentlyDeleted.length > 0 && (
+                <section className="mt-4 border-t border-border/70 px-2 pt-4">
+                  <div className="mb-2 flex items-center justify-between px-2">
+                    <span className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Recently deleted</span>
+                    <span className="text-xs text-muted-foreground">{recentlyDeleted.length}</span>
+                  </div>
+                  <p className="px-2 pb-2 text-[11px] leading-5 text-muted-foreground">
+                    Hidden only from your inbox. The other member's chat history is unchanged.
+                  </p>
+                  {recentlyDeleted.map((conversation) => {
+                    const person = conversation.direct_conversation_members.find((item) => item.user_id !== user.id)?.profiles;
+                    return (
+                      <div key={conversation.id} className="mb-2 flex items-center gap-2 rounded-xl border border-border/70 p-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={person?.avatar_url ?? undefined} />
+                          <AvatarFallback>{initials(personName(person))}</AvatarFallback>
+                        </Avatar>
+                        <span className="min-w-0 flex-1 truncate text-xs font-medium">{personName(person)}</span>
+                        <Button type="button" size="sm" variant="outline" disabled={restoreConversation.isPending} onClick={() => restoreConversation.mutate(conversation.id)}>
+                          Restore & open
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </section>
+              )}
             </div>
           </aside>
 
