@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
@@ -38,12 +38,12 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const getPostAuthPath = () => {
+  const getPostAuthPath = useCallback(() => {
     const requested = new URLSearchParams(window.location.search).get("next");
     return requested && requested.startsWith("/") && !requested.startsWith("//")
       ? requested
       : "/dashboard";
-  };
+  }, []);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -59,7 +59,7 @@ function AuthPage() {
   useEffect(() => {
     if (!user) return;
     if (!signupFlow.current) window.location.replace(getPostAuthPath());
-  }, [user, navigate]);
+  }, [user, navigate, getPostAuthPath]);
 
   async function signIn(): Promise<void> {
     setBusy(true);
