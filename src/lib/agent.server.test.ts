@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 
 import { repairMissingStylesheetImports, runAgent } from "./agent.server";
-import { resetProviderCooldowns } from "./gemini.server";
+import { generateGeminiContent, resetProviderCooldowns } from "./gemini.server";
 import { compactSmartContents, estimateSmartTokens } from "./smart-processing.server";
 
 const originalFetch = globalThis.fetch;
@@ -390,5 +390,47 @@ test("AI builder forwards multiple visual references to Gemini vision", async ()
   } finally {
     if (previousKey === undefined) delete process.env["GEMINI_API_KEY"];
     else process.env["GEMINI_API_KEY"] = previousKey;
+  }
+});
+
+
+test("Experts Routing can use Kilo's anonymous gateway and detects output truncation", async () => {
+  const previousKey = process.env["KILO_API_KEY"];
+  const previousBase = process.env["KILO_API_BASE_URL"];
+  delete process.env["KILO_API_KEY"];
+  delete process.env["KILO_API_BASE_URL"];
+  let sentModel = "";
+  let sentOutputBudget = 0;
+  globalThis.fetch = (async (url, init) => {
+    assert.match(String(url), /ai-gateway\\.kilo\\.ai\\/api\\/v1\\/chat\\/completions$/);
+    const body = JSON.parse(String(init?.body ?? "{}")) as {
+      model?: string;
+      max_tokens?: number;
+    };
+    sentModel = body.model ?? "";
+    sentOutputBudget = body.max_tokens ?? 0;
+    return Response.json({
+      choices: [{ finish_reason: "length", message: { content: "partial answer" } }],
+    });
+  }) as typeof fetch;
+
+  try {
+    const response = await generateGeminiContent(
+      {
+        systemInstruction: { parts: [{ text: "You are ExpertAI." }] },
+        contents: [{ role: "user", parts: [{ text: "Explain this in detail." }] }],
+        generationConfig: { maxOutputTokens: 2200 },
+      },
+      undefined,
+      ["kilo"],
+    );
+    assert.equal(sentModel, "kilo-auto/free");
+    assert.equal(sentOutputBudget, 2200);
+    assert.equal(response.candidates?.[0]?.finishReason, "MAX_TOKENS");
+  } finally {
+    if (previousKey === undefined) delete process.env["KILO_API_KEY"];
+    else process.env["KILO_API_KEY"] = previousKey;
+    if (previousBase === undefined) delete process.env["KILO_API_BASE_URL"];
+    else process.env["KILO_API_BASE_URL"] = previousBase;
   }
 });
