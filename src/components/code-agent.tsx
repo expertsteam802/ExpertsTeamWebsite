@@ -561,6 +561,7 @@ export function CodeAgent() {
         data: { projectId: activeProjectId, files, username: (profile?.username || "ExpertsTeam").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam" },
       });
       setTerminalConnection(connection);
+      if (connection.toolkitStatus === "installing") toast.info("The CTF starter toolkit is installing in the Linux sandbox.");
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Could not connect to the Linux terminal.";
@@ -622,6 +623,7 @@ export function CodeAgent() {
         try {
           const connection = await connectTerminal({ data: { projectId: activeProjectId, files, username: (profile?.username || "ExpertsTeam").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam" } });
           setTerminalConnection(connection);
+          if (connection.toolkitStatus === "installing") toast.info("The CTF starter toolkit is installing in the Linux sandbox.");
         } catch (terminalError) {
           setLogs((current) => [...current, { type: "warn", message: terminalError instanceof Error ? terminalError.message : "Linux terminal could not auto-connect." }]);
         }
