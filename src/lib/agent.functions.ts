@@ -339,7 +339,7 @@ export const publishAgentProject = createServerFn({ method: "POST" })
     const now = new Date().toISOString();
     const { error: startError } = await context.supabase
       .from("agent_projects")
-      .update({ last_build_status: "building", last_build_at: now })
+      .update({ last_build_status: "running", last_build_at: now })
       .eq("id", data.projectId)
       .eq("user_id", context.userId);
     if (startError) throw new Error("Could not start the app publishing job.");
