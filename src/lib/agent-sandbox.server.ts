@@ -123,10 +123,10 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   // Prefer an explicit script/source port, then the framework default.
   // This matters for Node apps such as Express + Socket.IO: their source may
   // declare "process.env.PORT || 3000", while Vite uses 5173 by default.
-  const sourceText = Object.values(files).join("\\n");
-  const scriptPort = devScript.match(/--port(?:=|\\s+)(\\d{2,5})/i)?.[1];
-  const envPort = sourceText.match(/process\\.env\\.PORT\\s*(?:\\|\\||\\?\\?)\\s*(\\d{2,5})/i)?.[1];
-  const listenPort = sourceText.match(/(?:\\.listen|listen)\\(\\s*(\\d{2,5})\\b/i)?.[1];
+  const sourceText = Object.values(files).join("\n");
+  const scriptPort = devScript.match(/--port(?:=|\s+)(\d{2,5})/i)?.[1];
+  const envPort = sourceText.match(/process\.env\.PORT\s*(?:\|\||\?\?)\s*(\d{2,5})/i)?.[1];
+  const listenPort = sourceText.match(/(?:\.listen|listen)\(\s*(\d{2,5})\b/i)?.[1];
   const detectedPort = Number(scriptPort ?? envPort ?? listenPort ?? (isVite ? 5173 : 3000));
   const port = Number.isInteger(detectedPort) && detectedPort > 0 && detectedPort <= 65535
     ? detectedPort
