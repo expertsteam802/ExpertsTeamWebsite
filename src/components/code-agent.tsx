@@ -284,8 +284,6 @@ export function CodeAgent() {
   } | null>(null);
   const [fileLanguage, setFileLanguage] = useState<Extension[]>([]);
   const runtimeFilesRef = useRef<ProjectFiles>({});
-  const autoStartedProjectRef = useRef<string | null>(null);
-  const runtimeSyncQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const terminalContainerRef = useRef<HTMLDivElement>(null);
@@ -569,7 +567,6 @@ export function CodeAgent() {
   }
 
   function resetRuntimeForProjectChange() {
-    autoStartedProjectRef.current = null;
     setTerminalReady(false);
     setTerminalConnection(null);
     setRuntimeUrl(null);
@@ -1647,17 +1644,15 @@ export function CodeAgent() {
                   <div className="flex h-10 items-center justify-between border-b border-white/[0.07] px-3">
                     <div className="flex items-center gap-2 text-xs text-slate-400">
                       <span
-                        className={`h-2 w-2 rounded-full ${runtimeUrl ? "bg-emerald-400" : "bg-amber-400"}`}
+                        className={`h-2 w-2 rounded-full ${browserPreviewActive ? "bg-emerald-400" : "bg-amber-400"}`}
                       />
-                      {runtimeUrl ? "Running project" : "Project preview"}
+                      {browserPreviewActive ? "Running in browser" : "Browser preview"}
                     </div>
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="max-w-[55%] truncate text-[10px] text-slate-500">
-                        {runtimeUrl
-                          ? "Vercel Sandbox · isolated cloud runtime"
-                          : runtimeBusy || runtimeStatus !== "Not started"
-                            ? runtimeStatus
-                            : "HTML quick preview · press Run for React/Vite"}
+                        {runtimeBusy || runtimeStatus !== "Not started"
+                          ? runtimeStatus
+                          : "Local browser runtime · HTML, CSS and JavaScript"}
                       </span>
                       <button
                         type="button"
@@ -1675,7 +1670,7 @@ export function CodeAgent() {
                     <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.07] bg-[#0a111d] px-3 py-2">
                       <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Preview URL</span>
                       <input
-                        aria-label="Cloud preview address"
+                        aria-label="Preview address"
                         value={previewAddress || runtimeUrl}
                         onChange={(event) => setPreviewAddress(event.target.value)}
                         onKeyDown={(event) => { if (event.key === "Enter") navigatePreview(); }}
