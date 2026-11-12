@@ -14,7 +14,7 @@ const PACKAGE_HASH_FILE = ".experts-agent-package-hash";
 const PREVIEW_PORT_FILE = ".experts-agent-preview-port";
 
 function sandboxName(projectId: string) {
-  return "experts-agent-pty-" + projectId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 36);
+  return "experts-agent-ephemeral-v2-" + projectId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 36);
 }
 
 function validateFiles(files: AgentProjectFiles) {
@@ -142,6 +142,9 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   const name = sandboxName(projectId);
   const sandbox = await Sandbox.getOrCreate({
     name,
+    // Project files are saved in Supabase; do not snapshot the disposable Linux VM.
+    // The v2 sandbox name prevents resuming older snapshot-backed sandbox records.
+    persistent: false,
     runtime: "node24",
     resources: { vcpus: 1 },
     timeout: 45 * 60 * 1000,
@@ -332,6 +335,9 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
   const name = sandboxName(projectId);
   const sandbox = await Sandbox.getOrCreate({
     name,
+    // Project files are saved in Supabase; do not snapshot the disposable Linux VM.
+    // The v2 sandbox name prevents resuming older snapshot-backed sandbox records.
+    persistent: false,
     runtime: "node24",
     resources: { vcpus: 1 },
     timeout: 45 * 60 * 1000,
