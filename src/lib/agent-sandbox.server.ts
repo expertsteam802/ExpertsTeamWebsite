@@ -143,7 +143,7 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   const port = Number.isInteger(detectedPort) && detectedPort > 0 && detectedPort <= 65535
     ? detectedPort
     : isVite ? 5173 : 3000;
-  const name = terminalSandboxName(userId);
+  const name = sandboxName(projectId);
   const sandbox = await Sandbox.getOrCreate({
     name,
     // Terminal sessions are scoped to the signed-in user, not a project, so switching folders
@@ -337,11 +337,12 @@ function cleanTerminalOutput(value: string) {
 export async function startCloudProjectTerminal(userId: string, sourceFiles: AgentProjectFiles, username = "ExpertsTeam") {
   const files = repairMissingStylesheetImports({ ...sourceFiles });
   validateFiles(files);
-  const name = sandboxName(projectId);
+  const name = terminalSandboxName(userId);
   const sandbox = await Sandbox.getOrCreate({
     name,
-    // Project files are saved in Supabase; do not snapshot the disposable Linux VM.
-    // The v2 sandbox name prevents resuming older snapshot-backed sandbox records.
+    // Terminal sessions are scoped to the signed-in user, not a project, so switching folders
+    // does not terminate the shell. Project source remains saved in Supabase.
+    // Never snapshot this disposable Linux VM.
     persistent: false,
     runtime: "node24",
     resources: { vcpus: 1 },
