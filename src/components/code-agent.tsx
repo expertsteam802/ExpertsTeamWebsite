@@ -226,6 +226,9 @@ const fileIcon = (name: string) => {
 
 export function CodeAgent() {
   const { user, profile } = useAuth();
+  const terminalUsername = (profile?.username || user?.email?.split("@")[0] || "user")
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .slice(0, 39) || "user";
   const queryClient = useQueryClient();
   const run = useServerFn(runCodingAgent);
   const push = useServerFn(pushProjectToGithub);
@@ -473,7 +476,7 @@ export function CodeAgent() {
             throw lastError instanceof Error
               ? lastError
               : new Error("Preview health check failed.");
-          setRuntimeStatus("Running in Vercel Sandbox");
+          setRuntimeStatus("Running · Linux sandbox");
           if (result.recovered) {
             setRuntimeUrl(result.url);
             setPreviewKey((value) => value + 1);
@@ -563,7 +566,7 @@ export function CodeAgent() {
     try {
       const activeProjectId = await persist();
       const connection = await connectTerminal({
-        data: { projectId: activeProjectId, files, username: (profile?.username || "ExpertsTeam").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam" },
+        data: { projectId: activeProjectId, files, username: terminalUsername },
       });
       setTerminalConnection(connection);
       if (connection.toolkitStatus === "installing") toast.info("The CTF starter toolkit is installing in the Linux sandbox.");
@@ -626,7 +629,7 @@ export function CodeAgent() {
       runtimeFilesRef.current = { ...files };
       if (!terminalConnection) {
         try {
-          const connection = await connectTerminal({ data: { projectId: activeProjectId, files, username: (profile?.username || "ExpertsTeam").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam" } });
+          const connection = await connectTerminal({ data: { projectId: activeProjectId, files, username: terminalUsername } });
           setTerminalConnection(connection);
           if (connection.toolkitStatus === "installing") toast.info("The CTF starter toolkit is installing in the Linux sandbox.");
         } catch (terminalError) {
@@ -668,7 +671,7 @@ export function CodeAgent() {
       await stopPreview({ data: { projectId } });
       setRuntimeUrl(null);
       setPreviewAddress("");
-      setRuntimeStatus("Stopped · sandbox saved");
+      setRuntimeStatus("Stopped · project saved to cloud");
       setTerminalReady(false);
       toast.success("Cloud preview stopped");
     } catch (error) {
@@ -1918,7 +1921,7 @@ export function CodeAgent() {
                 <div className="flex min-h-10 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] px-3 py-2">
                   <span className="flex items-center gap-2 text-xs text-slate-300">
                     <Terminal className="h-3.5 w-3.5 text-emerald-300" />
-                    Linux Bash · interactive PTY
+                    {terminalUsername}@expertsteam · Linux terminal
                   </span>
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     <span
@@ -1987,7 +1990,7 @@ export function CodeAgent() {
                   className="min-h-0 flex-1 overflow-hidden px-3 py-2"
                 />
                 <p className="border-t border-white/[0.06] px-4 py-2 text-[10px] leading-5 text-slate-500">
-                  Persistent Bash session in an isolated Vercel Linux microVM. Install Kilo with
+                  Temporary Linux session in an isolated Vercel microVM. Install Kilo with
                   <code className="text-emerald-200">npm install -g @kilocode/cli</code> and run
                   <code className="text-emerald-200">kilo</code>; choose <code className="text-emerald-200">kilo-auto/free</code>
                   for its zero-cost model tier when available. OpenCode is another open-source option:
