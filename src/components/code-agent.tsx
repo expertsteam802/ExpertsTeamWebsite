@@ -64,6 +64,7 @@ import {
   publishAgentProject,
   runCodingAgent,
   startAgentTerminal,
+  stopAgentTerminal,
   syncAgentTerminalFiles,
   startAgentPreview,
   stopAgentPreview,
@@ -236,6 +237,7 @@ export function CodeAgent() {
   const publish = useServerFn(publishAgentProject);
   const startPreview = useServerFn(startAgentPreview);
   const connectTerminal = useServerFn(startAgentTerminal);
+  const stopTerminal = useServerFn(stopAgentTerminal);
   const syncTerminalFiles = useServerFn(syncAgentTerminalFiles);
   const stopPreview = useServerFn(stopAgentPreview);
 
@@ -297,6 +299,7 @@ export function CodeAgent() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const terminalContainerRef = useRef<HTMLDivElement>(null);
   const terminalSocketRef = useRef<WebSocket | null>(null);
+  const terminalLastActivityRef = useRef(Date.now());
   const xtermRef = useRef<XTerm | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const editorRef = useRef<EditorView | null>(null);
@@ -382,6 +385,7 @@ export function CodeAgent() {
     socket.onclose = () => setTerminalReady(false);
 
     const input = terminal.onData((value) => {
+      terminalLastActivityRef.current = Date.now();
       if (socket.readyState === WebSocket.OPEN) socket.send(value);
     });
     const resize = terminal.onResize(({ cols, rows }) => {
@@ -441,10 +445,10 @@ export function CodeAgent() {
 
   useEffect(() => {
     return () => {
-      // The cloud workspace is intentionally persistent between visits.
-      // It is stopped by the workspace Stop control, not by route unmounts.
+      // Best-effort server-side cleanup when the user leaves ExpertAI Studio.
+      void stopTerminal({ data: {} }).catch(() => undefined);
     };
-  }, []);
+  }, [stopTerminal]);
 
   // Keep the preview session warm and recover it after Vercel stops an idle sandbox.
   // The server checks whether the dev server is already healthy, so this does not
@@ -562,8 +566,35 @@ export function CodeAgent() {
     }
   }
 
+  async function closeTerminalSession() {
+    const socket = terminalSocketRef.current;
+    if (socket && socket.readyState < WebSocket.CLOSING) socket.close();
+    terminalSocketRef.current = null;
+    setTerminalConnection(null);
+    setTerminalReady(false);
+    try {
+      await stopTerminal({ data: {} });
+    } catch {
+      // The sandbox also has a finite provider-side lifetime if the browser disconnects.
+    }
+  }
+
+  useEffect(() => {
+    if (!terminalConnection) return;
+    const timer = window.setInterval(() => {
+      if (Date.now() - terminalLastActivityRef.current >= 10 * 60 * 1000) {
+        void closeTerminalSession();
+        toast.info("Linux terminal closed after 10 minutes without activity.");
+      }
+    }, 15_000);
+    return () => window.clearInterval(timer);
+  }, [terminalConnection]);
+
   async function openTerminal() {
-    if (terminalReady) return;
+    if (terminalReady) {
+      terminalLastActivityRef.current = Date.now();
+      return;
+    }
     try {
       const activeProjectId = await persist();
       const connection = await connectTerminal({
@@ -685,8 +716,7 @@ export function CodeAgent() {
   function resetRuntimeForProjectChange() {
     autoStartedProjectRef.current = null;
     if (projectId && runtimeUrl) void stopPreview({ data: { projectId } }).catch(() => undefined);
-    setTerminalReady(false);
-    setTerminalConnection(null);
+    // Keep the user-scoped terminal connection alive while the project folder changes.
     setRuntimeUrl(null);
     setPreviewAddress("");
     setRuntimeStatus("Not started");
@@ -1099,6 +1129,8 @@ export function CodeAgent() {
       await persist({ messages: failedMessages });
     } finally {
       setBusy(false);
+      // The terminal is intentionally short-lived after an AI task completes.
+      await closeTerminalSession();
     }
   }
 
