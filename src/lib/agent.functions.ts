@@ -129,8 +129,14 @@ export const startAgentPreview = createServerFn({ method: "POST" })
   .validator((input: unknown) => previewRequest.parse(input))
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const { data: profile, error } = await context.supabase
+      .from("profiles")
+      .select("is_subscribed")
+      .eq("id", context.userId)
+      .single();
+    if (error) throw new Error("Could not verify the account plan before starting the preview.");
     const { startCloudProjectPreview } = await import("./agent-sandbox.server");
-    return startCloudProjectPreview(data.projectId, data.files);
+    return startCloudProjectPreview(data.projectId, data.files, profile.is_subscribed === true);
   });
 
 export const runAgentTerminalCommand = createServerFn({ method: "POST" })
@@ -154,6 +160,12 @@ export const stopAgentPreview = createServerFn({ method: "POST" })
   .validator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const { data: profile, error } = await context.supabase
+      .from("profiles")
+      .select("is_subscribed")
+      .eq("id", context.userId)
+      .single();
+    if (error) throw new Error("Could not verify the account plan before stopping the preview.");
     const { stopCloudProjectPreview } = await import("./agent-sandbox.server");
-    return stopCloudProjectPreview(data.projectId);
+    return stopCloudProjectPreview(data.projectId, profile.is_subscribed === true);
   });
