@@ -83,7 +83,11 @@ async function waitForPreview(url: string) {
   throw new Error(lastError);
 }
 
-export async function startCloudProjectPreview(projectId: string, sourceFiles: AgentProjectFiles) {
+export async function startCloudProjectPreview(
+  projectId: string,
+  sourceFiles: AgentProjectFiles,
+  isSubscribed = false,
+) {
   const files = repairMissingStylesheetImports({ ...sourceFiles });
   validateFiles(files);
   let packageJson: Record<string, unknown> = {};
@@ -115,12 +119,28 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   const isVite = !scriptName || /vite/.test(devScript);
   const port = isNext || scriptName === "start" || /react-scripts/.test(devScript) ? 3000 : 5173;
   const name = sandboxName(projectId);
+  // Free accounts must never reuse an older persistent sandbox: doing so could
+  // retain its snapshot policy. Delete the previous named sandbox, then create
+  // a fresh non-persistent session from the files already saved in the project.
+  if (!isSubscribed) {
+    try {
+      const previousSandbox = await Sandbox.get({ name });
+      await previousSandbox.delete();
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      if (!/404|not found|does not exist|no sandbox/i.test(detail)) {
+        throw new Error("Could not safely remove the previous free preview sandbox: " + detail);
+      }
+    }
+  }
+
   const sandbox = await Sandbox.getOrCreate({
     name,
     runtime: "node24",
     resources: { vcpus: 1 },
     timeout: 45 * 60 * 1000,
     ports: [port],
+    persistent: isSubscribed,
     resume: true,
   });
 
@@ -284,8 +304,14 @@ export async function runCloudProjectCommand(projectId: string, command: string)
   };
 }
 
-export async function stopCloudProjectPreview(projectId: string) {
+export async function stopCloudProjectPreview(projectId: string, isSubscribed = false) {
   const sandbox = await Sandbox.get({ name: sandboxName(projectId) });
-  await sandbox.stop();
-  return { stopped: true };
+  if (isSubscribed) {
+    await sandbox.stop();
+  } else {
+    // A free preview is disposable: delete the sandbox itself so no named
+    // sandbox or filesystem can be resumed after the user stops the preview.
+    await sandbox.delete();
+  }
+  return { stopped: true, deleted: !isSubscribed };
 }
