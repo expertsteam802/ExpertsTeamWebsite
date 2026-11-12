@@ -277,6 +277,7 @@ export function CodeAgent() {
   const [runtimeBusy, setRuntimeBusy] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [previewExpanded, setPreviewExpanded] = useState(false);
+  const [panelExpanded, setPanelExpanded] = useState(false);
   const [runtimeUrl, setRuntimeUrl] = useState<string | null>(null);
   const [previewAddress, setPreviewAddress] = useState("");
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
@@ -1740,6 +1741,17 @@ export function CodeAgent() {
               >
                 <Bot className="h-4 w-4" />
               </button>
+              {panel !== "preview" && (
+                <button
+                  type="button"
+                  onClick={() => setPanelExpanded((value) => !value)}
+                  className="ml-1 rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-cyan-200"
+                  aria-label={panelExpanded ? "Restore workspace panel" : "Expand workspace panel"}
+                  title={panelExpanded ? "Restore panel" : "Expand panel vertically and horizontally"}
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </button>
+              )}
             </div>
           </div>
 
@@ -1752,7 +1764,9 @@ export function CodeAgent() {
               className={
                 previewExpanded && panel === "preview"
                   ? "expert-agent-canvas fixed inset-x-0 top-0 z-[100] flex h-[100dvh] min-h-0 min-w-0 flex-col overflow-hidden bg-[#080e19] shadow-2xl"
-                  : "expert-agent-canvas relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#080e19]"
+                  : panelExpanded && panel !== "preview"
+                    ? "expert-agent-canvas fixed inset-0 z-[110] flex h-[100dvh] min-h-0 min-w-0 flex-col overflow-hidden bg-[#080e19] shadow-2xl"
+                    : "expert-agent-canvas relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#080e19]"
               }
             >
               {panel === "preview" && (
