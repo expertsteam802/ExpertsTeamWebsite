@@ -65,8 +65,6 @@ import {
   runCodingAgent,
   startAgentTerminal,
   syncAgentTerminalFiles,
-  startAgentPreview,
-  stopAgentPreview,
 } from "@/lib/agent.functions";
 import { buildSrcDocWithConsole, STARTER_FILES, type ProjectFiles } from "@/lib/sandbox";
 type Message = { role: "user" | "assistant"; content: string };
@@ -231,10 +229,8 @@ export function CodeAgent() {
   const push = useServerFn(pushProjectToGithub);
   const importGithub = useServerFn(importGitHubProject);
   const publish = useServerFn(publishAgentProject);
-  const startPreview = useServerFn(startAgentPreview);
   const connectTerminal = useServerFn(startAgentTerminal);
   const syncTerminalFiles = useServerFn(syncAgentTerminalFiles);
-  const stopPreview = useServerFn(stopAgentPreview);
 
   const [projectId, setProjectId] = useState<string | null>(null);
   const [name, setName] = useState("Untitled project");
@@ -275,6 +271,7 @@ export function CodeAgent() {
   const [publishing, setPublishing] = useState(false);
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [runtimeUrl, setRuntimeUrl] = useState<string | null>(null);
+  const [browserPreviewActive, setBrowserPreviewActive] = useState(false);
   const [previewAddress, setPreviewAddress] = useState("");
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
@@ -442,86 +439,6 @@ export function CodeAgent() {
     };
   }, []);
 
-  // Keep the preview session warm and recover it after Vercel stops an idle sandbox.
-  // The server checks whether the dev server is already healthy, so this does not
-  // restart a working preview on every heartbeat.
-  useEffect(() => {
-    if (!runtimeUrl || !projectId) return;
-    let active = true;
-    let checking = false;
-    const heartbeat = window.setInterval(
-      async () => {
-        if (checking || !active) return;
-        checking = true;
-        try {
-          let result: Awaited<ReturnType<typeof startPreview>> | null = null;
-          let lastError: unknown;
-          for (let attempt = 1; attempt <= 3 && active; attempt++) {
-            try {
-              result = await startPreview({ data: { projectId, files } });
-              break;
-            } catch (error) {
-              lastError = error;
-              if (attempt < 3) {
-                setRuntimeStatus("Preview reconnecting");
-                await new Promise((resolve) => window.setTimeout(resolve, attempt * 2500));
-              }
-            }
-          }
-          if (!active) return;
-          if (!result)
-            throw lastError instanceof Error
-              ? lastError
-              : new Error("Preview health check failed.");
-          setRuntimeStatus("Running in Vercel Sandbox");
-          if (result.recovered) {
-            setRuntimeUrl(result.url);
-            setPreviewKey((value) => value + 1);
-            setLogs((current) => [
-              ...current.slice(-199),
-              {
-                type: "runtime",
-                message: "Preview automatically recovered after the sandbox stopped.",
-              },
-            ]);
-          }
-        } catch (error) {
-          if (!active) return;
-          const message = error instanceof Error ? error.message : "Preview health check failed.";
-          setRuntimeStatus("Preview reconnecting");
-          setLogs((current) => [...current.slice(-199), { type: "warn", message }]);
-        } finally {
-          checking = false;
-        }
-      },
-      10 * 60 * 1000,
-    );
-    return () => {
-      active = false;
-      window.clearInterval(heartbeat);
-    };
-  }, [runtimeUrl, projectId, files, startPreview]);
-
-  useEffect(() => {
-    if (!runtimeUrl || !projectId) return;
-    if (JSON.stringify(runtimeFilesRef.current) === JSON.stringify(files)) return;
-    const nextFiles = files;
-    const timer = window.setTimeout(() => {
-      runtimeSyncQueueRef.current = runtimeSyncQueueRef.current
-        .then(async () => {
-          await startPreview({ data: { projectId, files: nextFiles } });
-          runtimeFilesRef.current = { ...nextFiles };
-          setRuntimeStatus("Running · files synced");
-        })
-        .catch((error) => {
-          const message = error instanceof Error ? error.message : "Could not sync project files.";
-          setLogs((current) => [...current.slice(-199), { type: "error", message }]);
-          setRuntimeStatus("Sync failed");
-        });
-    }, 1200);
-    return () => window.clearTimeout(timer);
-  }, [files, runtimeUrl, projectId]);
-
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
@@ -613,32 +530,28 @@ export function CodeAgent() {
   async function runProject() {
     if (runtimeBusy) return;
     setRuntimeBusy(true);
-    setRuntimeStatus("Preparing cloud sandbox…");
+    setRuntimeStatus("Preparing browser preview…");
     setPanel("preview");
     setLogs([]);
     try {
-      const activeProjectId = projectId ?? (await persist());
-      autoStartedProjectRef.current = activeProjectId;
-      const result = await startPreview({ data: { projectId: activeProjectId, files } });
-      setRuntimeUrl(result.url);
-      setPreviewAddress(result.url);
-      setRuntimeStatus("Running in Vercel Sandbox");
-      runtimeFilesRef.current = { ...files };
-      if (!terminalConnection) {
-        try {
-          const connection = await connectTerminal({ data: { projectId: activeProjectId, files, username: (profile?.username || "ExpertsTeam").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam" } });
-          setTerminalConnection(connection);
-          if (connection.toolkitStatus === "installing") toast.info("The CTF starter toolkit is installing in the Linux sandbox.");
-        } catch (terminalError) {
-          setLogs((current) => [...current, { type: "warn", message: terminalError instanceof Error ? terminalError.message : "Linux terminal could not auto-connect." }]);
-        }
-      }
-      if (result.installOutput) setLogs([{ type: "runtime", message: result.installOutput }]);
-      toast.success("Cloud preview is running");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "The cloud preview could not start.";
-      setRuntimeStatus("Could not start");
+      // Run supported front-end projects in the user's browser. This path does
+      // not create Vercel Sandbox instances or consume snapshot storage.
+      await persist();
       setRuntimeUrl(null);
+      setPreviewAddress("");
+      setBrowserPreviewActive(true);
+      setPreviewKey((value) => value + 1);
+      setRuntimeStatus("Running in your browser");
+      runtimeFilesRef.current = { ...files };
+      setLogs([{
+        type: "runtime",
+        message: "Local preview started in an isolated browser iframe. HTML, CSS and JavaScript run on this device.",
+      }]);
+      toast.success("Browser preview is running");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The browser preview could not start.";
+      setRuntimeStatus("Could not start");
+      setBrowserPreviewActive(false);
       setLogs((current) => [...current, { type: "error", message }]);
       toast.error(message);
     } finally {
@@ -646,44 +559,21 @@ export function CodeAgent() {
     }
   }
 
-  useEffect(() => {
-    if (!projectId || autoStartedProjectRef.current === projectId) return;
-    let scripts: Record<string, string> = {};
-    try {
-      const manifest = JSON.parse(files["package.json"] ?? "{}") as { scripts?: Record<string, string> };
-      scripts = manifest.scripts ?? {};
-    } catch {
-      return;
-    }
-    const startCommand = scripts.dev || scripts.start || "";
-    if (!/(vite|next|react-scripts|parcel|nodemon|\bnode\s+|tsx\s+|nest\s+start|fastify)/i.test(startCommand)) return;
-    autoStartedProjectRef.current = projectId;
-    void runProject();
-  }, [projectId, files]);
-
   async function stopProject() {
-    if (!projectId || runtimeBusy) return;
-    setRuntimeBusy(true);
-    try {
-      await stopPreview({ data: { projectId } });
-      setRuntimeUrl(null);
-      setPreviewAddress("");
-      setRuntimeStatus("Stopped · sandbox saved");
-      setTerminalReady(false);
-      toast.success("Cloud preview stopped");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not stop the preview.");
-    } finally {
-      setRuntimeBusy(false);
-    }
+    setBrowserPreviewActive(false);
+    setRuntimeUrl(null);
+    setPreviewAddress("");
+    setRuntimeStatus("Stopped");
+    setPreviewKey((value) => value + 1);
+    toast.success("Browser preview stopped");
   }
 
   function resetRuntimeForProjectChange() {
     autoStartedProjectRef.current = null;
-    if (projectId && runtimeUrl) void stopPreview({ data: { projectId } }).catch(() => undefined);
     setTerminalReady(false);
     setTerminalConnection(null);
     setRuntimeUrl(null);
+    setBrowserPreviewActive(false);
     setPreviewAddress("");
     setRuntimeStatus("Not started");
     runtimeFilesRef.current = {};
@@ -1663,15 +1553,15 @@ export function CodeAgent() {
                 ) : (
                   <Play className="mr-1.5 h-3.5 w-3.5" />
                 )}
-                {runtimeBusy ? "Starting…" : runtimeUrl ? "Restart" : "Run"}
+                {runtimeBusy ? "Starting…" : browserPreviewActive ? "Restart" : "Run"}
               </Button>
-              {runtimeUrl && !runtimeBusy && (
+              {browserPreviewActive && !runtimeBusy && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => void stopProject()}
                   className="h-8 px-2 text-slate-400 hover:text-white"
-                  title="Stop cloud sandbox and save the workspace"
+                  title="Stop the local browser preview"
                 >
                   <Square className="mr-1 h-3 w-3" />
                   Stop
@@ -1805,13 +1695,8 @@ export function CodeAgent() {
                       ref={iframeRef}
                       key={previewKey}
                       title="ExpertsTeam project preview"
-                      src={runtimeUrl ? previewAddress || runtimeUrl : undefined}
-                      srcDoc={runtimeUrl ? undefined : srcDoc}
-                      sandbox={
-                        runtimeUrl
-                          ? "allow-scripts allow-forms allow-modals allow-popups allow-same-origin allow-downloads"
-                          : "allow-scripts allow-forms allow-modals allow-popups"
-                      }
+                      srcDoc={srcDoc}
+                      sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"
                       className="h-full min-h-0 max-w-full rounded-lg border border-slate-300/20 bg-white shadow-2xl"
                       style={{
                         width:
