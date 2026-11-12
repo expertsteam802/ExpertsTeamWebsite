@@ -625,7 +625,7 @@ export function CodeAgent() {
       const result = await startPreview({ data: { projectId: activeProjectId, files } });
       setRuntimeUrl(result.url);
       setPreviewAddress(result.url);
-      setRuntimeStatus("Running in Vercel Sandbox");
+      setRuntimeStatus("Running · Linux sandbox");
       runtimeFilesRef.current = { ...files };
       if (!terminalConnection) {
         try {
