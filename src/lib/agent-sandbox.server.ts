@@ -17,6 +17,10 @@ function sandboxName(projectId: string) {
   return "experts-agent-ephemeral-v2-" + projectId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 36);
 }
 
+function terminalSandboxName(userId: string) {
+  return "experts-terminal-ephemeral-v1-" + userId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 36);
+}
+
 function validateFiles(files: AgentProjectFiles) {
   const entries = Object.entries(files);
   if (entries.length > 400)
@@ -139,11 +143,12 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   const port = Number.isInteger(detectedPort) && detectedPort > 0 && detectedPort <= 65535
     ? detectedPort
     : isVite ? 5173 : 3000;
-  const name = sandboxName(projectId);
+  const name = terminalSandboxName(userId);
   const sandbox = await Sandbox.getOrCreate({
     name,
-    // Project files are saved in Supabase; do not snapshot the disposable Linux VM.
-    // The v2 sandbox name prevents resuming older snapshot-backed sandbox records.
+    // Terminal sessions are scoped to the signed-in user, not a project, so switching folders
+    // does not terminate the shell. Project source remains saved in Supabase.
+    // Never snapshot this disposable Linux VM.
     persistent: false,
     runtime: "node24",
     resources: { vcpus: 1 },
@@ -329,7 +334,7 @@ function cleanTerminalOutput(value: string) {
   );
 }
 
-export async function startCloudProjectTerminal(projectId: string, sourceFiles: AgentProjectFiles, username = "ExpertsTeam") {
+export async function startCloudProjectTerminal(userId: string, sourceFiles: AgentProjectFiles, username = "ExpertsTeam") {
   const files = repairMissingStylesheetImports({ ...sourceFiles });
   validateFiles(files);
   const name = sandboxName(projectId);
@@ -551,8 +556,20 @@ export async function startCloudProjectTerminal(projectId: string, sourceFiles: 
   return { url: sandbox.domain(4174).replace(/^https:/, "wss:") + "/terminal", token, toolkitStatus };
 }
 
-export async function readCloudProjectFiles(projectId: string) {
-  const sandbox = await Sandbox.get({ name: sandboxName(projectId) });
+export async function stopCloudProjectTerminal(userId: string) {
+  try {
+    const sandbox = await Sandbox.get({ name: terminalSandboxName(userId) });
+    await sandbox.stop();
+    return { stopped: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/not found|does not exist|already stopped|404/i.test(message)) return { stopped: true };
+    throw error;
+  }
+}
+
+export async function readCloudProjectFiles(userId: string) {
+  const sandbox = await Sandbox.get({ name: terminalSandboxName(userId) });
   const listing = await sandbox.runCommand({
     cmd: "find",
     args: [
@@ -629,10 +646,10 @@ export async function readCloudProjectFiles(projectId: string) {
   return { files };
 }
 
-export async function runCloudProjectCommand(projectId: string, command: string) {
+export async function runCloudProjectCommand(userId: string, command: string) {
   if (!command.trim() || command.length > 3000)
     throw new Error("Enter a command under 3,000 characters.");
-  const sandbox = await Sandbox.get({ name: sandboxName(projectId) });
+  const sandbox = await Sandbox.get({ name: terminalSandboxName(userId) });
   const cwdPath = `${WORKDIR}/.experts-terminal-cwd`;
   const envPath = `${WORKDIR}/.experts-terminal-env`;
   const commandPath = `${WORKDIR}/.experts-terminal-command.sh`;
