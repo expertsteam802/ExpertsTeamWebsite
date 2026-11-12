@@ -306,7 +306,7 @@ export const startAgentTerminal = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
     const { startCloudProjectTerminal } = await import("./agent-sandbox.server");
-    return startCloudProjectTerminal(data.projectId, data.files, data.username ?? "ExpertsTeam");
+    return startCloudProjectTerminal(context.userId, data.files, data.username ?? "ExpertsTeam");
   });
 
 const publishRequest = z
@@ -322,13 +322,21 @@ const publishRequest = z
     "The project is too large to publish.",
   );
 
+export const stopAgentTerminal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({}).parse(input))
+  .handler(async ({ context }) => {
+    const { stopCloudProjectTerminal } = await import("./agent-sandbox.server");
+    return stopCloudProjectTerminal(context.userId);
+  });
+
 export const syncAgentTerminalFiles = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
     const { readCloudProjectFiles } = await import("./agent-sandbox.server");
-    return readCloudProjectFiles(data.projectId);
+    return readCloudProjectFiles(context.userId);
   });
 
 export const publishAgentProject = createServerFn({ method: "POST" })
@@ -397,7 +405,7 @@ export const runAgentTerminalCommand = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
     const { runCloudProjectCommand } = await import("./agent-sandbox.server");
-    return runCloudProjectCommand(data.projectId, data.command);
+    return runCloudProjectCommand(context.userId, data.command);
   });
 
 export const stopAgentPreview = createServerFn({ method: "POST" })
