@@ -240,6 +240,33 @@ export function CodeAgent() {
   const stopTerminal = useServerFn(stopAgentTerminal);
   const syncTerminalFiles = useServerFn(syncAgentTerminalFiles);
   const stopPreview = useServerFn(stopAgentPreview);
+  const { data: terminalIdleTimeoutMinutes = 0 } = useQuery({
+    queryKey: ["site-settings", "terminal-idle-timeout"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("site_branding_settings")
+        .limit(1)
+        .single();
+      if (error) throw error;
+      const root =
+        data.site_branding_settings &&
+        typeof data.site_branding_settings === "object" &&
+        !Array.isArray(data.site_branding_settings)
+          ? (data.site_branding_settings as Record<string, unknown>)
+          : {};
+      const terminal =
+        root.terminalSettings &&
+        typeof root.terminalSettings === "object" &&
+        !Array.isArray(root.terminalSettings)
+          ? (root.terminalSettings as Record<string, unknown>)
+          : {};
+      const minutes = Number(terminal.idleTimeoutMinutes ?? 0);
+      return Number.isInteger(minutes) && minutes >= 0 && minutes <= 1440 ? minutes : 0;
+    },
+    refetchInterval: 30_000,
+    staleTime: 0,
+  });
 
   const [projectId, setProjectId] = useState<string | null>(null);
   const [name, setName] = useState("Untitled project");
@@ -369,6 +396,7 @@ export function CodeAgent() {
     terminalSocketRef.current = socket;
 
     socket.onopen = () => {
+      terminalLastActivityRef.current = Date.now();
       setTerminalReady(true);
       terminal.focus();
       terminal.write("\r\nConnected to the isolated Linux shell.\r\n");
@@ -386,8 +414,12 @@ export function CodeAgent() {
     };
     socket.onclose = () => setTerminalReady(false);
 
-    const input = terminal.onData((value) => {
+    const markTerminalActivity = () => {
       terminalLastActivityRef.current = Date.now();
+    };
+    container.addEventListener("pointerdown", markTerminalActivity);
+    const input = terminal.onData((value) => {
+      markTerminalActivity();
       if (socket.readyState === WebSocket.OPEN) socket.send(value);
     });
     const resize = terminal.onResize(({ cols, rows }) => {
@@ -407,6 +439,7 @@ export function CodeAgent() {
       observer.disconnect();
       input.dispose();
       resize.dispose();
+      container.removeEventListener("pointerdown", markTerminalActivity);
       socket.close();
       terminal.dispose();
       if (terminalSocketRef.current === socket) terminalSocketRef.current = null;
@@ -585,15 +618,19 @@ export function CodeAgent() {
   }
 
   useEffect(() => {
-    if (!terminalConnection) return;
+    if (!terminalConnection || terminalIdleTimeoutMinutes <= 0) return;
+    const timeoutMs = terminalIdleTimeoutMinutes * 60 * 1000;
     const timer = window.setInterval(() => {
-      if (Date.now() - terminalLastActivityRef.current >= 10 * 60 * 1000) {
+      if (Date.now() - terminalLastActivityRef.current >= timeoutMs) {
+        terminalLastActivityRef.current = Date.now();
         void closeTerminalSession();
-        toast.info("Linux terminal closed after 10 minutes without activity.");
+        toast.info(
+          `Linux terminal closed after ${terminalIdleTimeoutMinutes} minutes without activity.`,
+        );
       }
     }, 15_000);
     return () => window.clearInterval(timer);
-  }, [terminalConnection]);
+  }, [terminalConnection, terminalIdleTimeoutMinutes]);
 
   async function openTerminal() {
     if (terminalReady && terminalConnection?.projectId === projectId) {
@@ -1138,8 +1175,8 @@ export function CodeAgent() {
       await persist({ messages: failedMessages });
     } finally {
       setBusy(false);
-      // The terminal is intentionally short-lived after an AI task completes.
-      await closeTerminalSession();
+      // Keep the Linux terminal available after AI tasks; only the configured
+      // inactivity policy or an explicit user action should close the session.
     }
   }
 
