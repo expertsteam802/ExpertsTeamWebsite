@@ -47,7 +47,7 @@ function LiveApp() {
         .eq("published", true)
         .maybeSingle();
       if (error) throw error;
-      if (!data?.deployment_url) return data;
+      if (!data?.deployment_url) return data ? { ...data, document: null as string | null } : null;
       const response = await fetch(data.deployment_url, { cache: "no-store" });
       if (!response.ok) {
         throw new Error(`The published app could not be loaded (HTTP ${response.status}).`);
