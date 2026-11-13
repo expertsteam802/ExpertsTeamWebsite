@@ -32,8 +32,8 @@ function assertTerminalSandboxName(userId: string, name: string) {
   return name;
 }
 
-// Non-persistent sandboxes lose their filesystem when stopped. Delete the old
-// named entity before creating a fresh VM; durable project files live in Supabase.
+// Non-persistent sandboxes lose their filesystem when stopped. Delete only the
+// exact session being closed; every new terminal launch receives a fresh name.
 async function deleteDisposableSandbox(name: string) {
   try {
     const existing = await Sandbox.get({ name });
@@ -170,8 +170,6 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   await deleteDisposableSandbox(name);
   const sandbox = await Sandbox.create({
     name,
-    // Terminal sessions are scoped to the signed-in user, not a project, so switching folders
-    // does not terminate the shell. Project source remains saved in Supabase.
     // Never snapshot this disposable Linux VM.
     persistent: false,
     runtime: "node24",
@@ -365,14 +363,33 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     name,
     // Terminal sessions are scoped to the signed-in user, not a project, so switching folders
     // does not terminate the shell. Project source remains saved in Supabase.
+    // Use Vercel's Ubuntu universal image: the legacy node24 runtime is Amazon Linux
+    // and uses dnf rather than apt-get. The terminal bootstrap currently installs
+    // Tor/proxychains/iptables from Ubuntu packages.
     // Never snapshot this disposable Linux VM.
     persistent: false,
-    runtime: "node24",
+    image: "vercel/sandbox/universal:latest",
     resources: { vcpus: 1 },
     timeout: 45 * 60 * 1000,
     networkPolicy: "allow-all",
     ports: [5173, 4175],
   });
+  // The Ubuntu universal image does not guarantee Vercel's legacy /vercel/sandbox
+  // directory exists. Create the terminal workspace from the always-present root
+  // directory before any command uses WORKDIR as its cwd.
+  const workspaceInit = await sandbox.runCommand({
+    cmd: "mkdir",
+    args: ["-p", WORKDIR],
+    cwd: "/",
+    timeoutMs: 10_000,
+    sudo: true,
+  });
+  if (workspaceInit.exitCode !== 0) {
+    throw new Error(
+      "Could not create the terminal workspace directory: " +
+        (await workspaceInit.stderr()).slice(-1200),
+    );
+  }
   const savedPort = Number((await readText(sandbox, WORKDIR + "/" + PREVIEW_PORT_FILE))?.trim());
   const previewPort =
     Number.isInteger(savedPort) && savedPort >= 1 && savedPort <= 65535 ? savedPort : 5173;
@@ -767,7 +784,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
         (await selfTestResult.stderr()).slice(-2000),
     );
 
-  return { url: sandbox.domain(4175).replace(/^https:/, "wss:") + "/terminal", token, toolkitStatus, torStatus: "connected" as const, torExitIp, torKillSwitch: true as const, torCircuitMaxAgeSeconds: 600 };
+  return { sandboxName: name, url: sandbox.domain(4175).replace(/^https:/, "wss:") + "/terminal", token, toolkitStatus, torStatus: "connected" as const, torExitIp, torKillSwitch: true as const, torCircuitMaxAgeSeconds: 600 };
 }
 
 export async function stopCloudProjectTerminal(userId: string, sessionName: string) {
