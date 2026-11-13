@@ -291,6 +291,7 @@ export function CodeAgent() {
     url: string;
     token: string;
     sandboxName: string;
+    projectId: string;
     torStatus?: "connected";
     torExitIp?: string;
     torKillSwitch?: boolean;
@@ -557,6 +558,7 @@ export function CodeAgent() {
     if (!projectId) return;
     try {
       if (!terminalConnection?.sandboxName) throw new Error("The Linux terminal session is no longer available.");
+      if (terminalConnection.projectId !== projectId) throw new Error("This shell is still attached to another project. Switch the shell to this project before importing files.");
       const result = await syncTerminalFiles({ data: { projectId, sandboxName: terminalConnection.sandboxName } });
       const importedFiles = result.files;
       await persist({ files: importedFiles });
@@ -598,16 +600,19 @@ export function CodeAgent() {
   }, [terminalConnection]);
 
   async function openTerminal() {
-    if (terminalReady) {
+    if (terminalReady && terminalConnection?.projectId === projectId) {
       terminalLastActivityRef.current = Date.now();
       return;
     }
     try {
+      if (terminalConnection && terminalConnection.projectId !== projectId) {
+        await closeTerminalSession();
+      }
       const activeProjectId = await persist();
       const connection = await connectTerminal({
         data: { projectId: activeProjectId, files, username: terminalUsername },
       });
-      setTerminalConnection(connection);
+      setTerminalConnection({ ...connection, projectId: activeProjectId });
       if (connection.toolkitStatus === "installing") toast.info("The CTF starter toolkit is installing in the Linux sandbox.");
     } catch (error) {
       const message =
@@ -669,7 +674,7 @@ export function CodeAgent() {
       if (!terminalConnection) {
         try {
           const connection = await connectTerminal({ data: { projectId: activeProjectId, files, username: terminalUsername } });
-          setTerminalConnection(connection);
+          setTerminalConnection({ ...connection, projectId: activeProjectId });
           if (connection.toolkitStatus === "installing") toast.info("The CTF starter toolkit is installing in the Linux sandbox.");
         } catch (terminalError) {
           setLogs((current) => [...current, { type: "warn", message: terminalError instanceof Error ? terminalError.message : "Linux terminal could not auto-connect." }]);
@@ -894,7 +899,7 @@ export function CodeAgent() {
       if (cancelled || syncing || busy || dirty) return;
       syncing = true;
       try {
-        if (!terminalConnection?.sandboxName) return;
+        if (!terminalConnection?.sandboxName || terminalConnection.projectId !== projectId) return;
         const result = await syncTerminalFiles({ data: { projectId, sandboxName: terminalConnection.sandboxName } });
         if (cancelled) return;
         const importedFiles = result.files;
@@ -1987,6 +1992,16 @@ export function CodeAgent() {
                     >
                       {terminalReady ? "CONNECTED" : "OFFLINE"}
                     </span>
+                    {terminalConnection && terminalConnection.projectId !== projectId && (
+                      <button
+                        type="button"
+                        onClick={() => void openTerminal()}
+                        className="rounded border border-amber-400/30 bg-amber-400/10 px-2 py-1 text-[10px] font-semibold text-amber-200"
+                        title="Reconnect the shell to the currently selected project"
+                      >
+                        SWITCH SHELL TO THIS PROJECT
+                      </button>
+                    )}
                     {terminalReady && terminalConnection?.torKillSwitch && (
                       <span
                         className="rounded border border-emerald-400/25 bg-emerald-400/10 px-2 py-1 text-[10px] font-semibold text-emerald-200"
