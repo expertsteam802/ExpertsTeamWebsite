@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { BannerUnlockAd } from "@/components/ads/banner-unlock-ad";
 
 type YouTubePlayer = { destroy: () => void; getIframe: () => HTMLIFrameElement };
 type YouTubeApi = {
@@ -143,7 +144,11 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
   const [loading, setLoading] = useState(false);
   const [useNativeEmbed, setUseNativeEmbed] = useState(false);
   const nativeEmbedTimeoutRef = useRef<number | null>(null);
-  const shouldLoadLesson = !!videoId;
+  const [unlockedVideoId, setUnlockedVideoId] = useState<string | null>(null);
+  const shouldLoadLesson = unlockedVideoId === videoId;
+  const handleAdFinished = useCallback(() => {
+    if (videoId) setUnlockedVideoId(videoId);
+  }, [videoId]);
 
   const clearNativeEmbedTimeout = useCallback(() => {
     if (nativeEmbedTimeoutRef.current !== null) {
@@ -164,6 +169,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
   }, [useNativeEmbed, videoId, clearNativeEmbedTimeout]);
 
   useEffect(() => {
+    setUnlockedVideoId(null);
     setPlaybackError(null);
     setLoading(false);
     setUseNativeEmbed(false);
@@ -269,7 +275,20 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
           <div
             className={`expertsteam-video-player relative aspect-video max-h-[72vh] w-[92%] max-w-[1200px] overflow-hidden rounded-xl bg-secondary ${alignment === "left" ? "mr-auto" : alignment === "right" ? "ml-auto" : "mx-auto"}`}
           >
-            {videoId &&
+            {videoId && !shouldLoadLesson ? (
+              <div className="flex h-full w-full flex-col items-center justify-center gap-4 overflow-y-auto bg-background p-4 text-center sm:p-6">
+                <div>
+                  <p className="font-display text-lg font-semibold">Support ExpertsTeam</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Stay for the short sponsor banner to unlock this lesson.
+                  </p>
+                </div>
+                <BannerUnlockAd onUnlocked={handleAdFinished} compact />
+                <p className="text-xs text-muted-foreground">
+                  Your lesson unlocks automatically after the sponsor countdown.
+                </p>
+              </div>
+            ) : videoId &&
               (useNativeEmbed ? (
                 <iframe
                   key={videoId}
@@ -285,12 +304,12 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
               ) : (
                 <div ref={playerContainerRef} className="h-full w-full" />
               ))}
-            {videoId && loading && !playbackError && (
+            {videoId && shouldLoadLesson && loading && !playbackError && (
               <div className="absolute inset-0 z-20 grid place-items-center bg-background/80 text-sm text-muted-foreground">
                 Loading video…
               </div>
             )}
-            {videoId && playbackError && (
+            {videoId && shouldLoadLesson && playbackError && (
               <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center">
                 <p className="max-w-xl text-sm text-destructive">{playbackError}</p>
                 {videoId && (
