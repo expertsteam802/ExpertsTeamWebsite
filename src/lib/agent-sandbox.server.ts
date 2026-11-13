@@ -532,7 +532,17 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
       sudo: true,
     });
     if (installTor.exitCode !== 0) {
-      throw new Error("Could not install the Tor client, SOCKS proxy, and dual-stack firewall packages: " + (await installTor.stderr()).slice(-1800));
+      const installStderr = await installTor.stderr();
+      const installStdout = await installTor.stdout();
+      const diagnostics = [
+        "exit code: " + installTor.exitCode,
+        "stderr:\n" + installStderr,
+        "stdout:\n" + installStdout,
+      ].filter((value) => value.trim()).join("\n").slice(-4200);
+      throw new Error(
+        "Could not install the Tor client, SOCKS proxy, and dual-stack firewall packages. " +
+          "Sandbox package-manager diagnostics:\n" + diagnostics,
+      );
     }
   }
   const torUserSetup = await sandbox.runCommand({
