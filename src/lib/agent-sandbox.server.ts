@@ -19,31 +19,14 @@ function sandboxName(projectId: string) {
 
 function terminalSandboxName(userId: string) {
   const owner = createHash("sha256").update(userId).digest("hex").slice(0, 12);
-  return `experts-terminal-${owner}-${randomUUID()}`;
+  return "experts-terminal-" + owner + "-" + randomUUID();
 }
 
 function assertTerminalSandboxName(userId: string, name: string) {
   const owner = createHash("sha256").update(userId).digest("hex").slice(0, 12);
-  if (!new RegExp(`^experts-terminal-${owner}-[a-f0-9-]{36}import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { Sandbox } from "@vercel/sandbox";
-
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
-
-import { repairMissingStylesheetImports } from "./agent.server";
-
-export type AgentProjectFiles = Record<string, string>;
-
-const WORKDIR = "/vercel/sandbox";
-const META_FILE = ".experts-agent-files.json";
-const PACKAGE_HASH_FILE = ".experts-agent-package-hash";
-const PREVIEW_PORT_FILE = ".experts-agent-preview-port";
-
-function sandboxName(projectId: string) {
-  return "experts-agent-ephemeral-v3-" + projectId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 36);
-}
-
-).test(name) || name.length > 80) {
+  const prefix = "experts-terminal-" + owner + "-";
+  const sessionId = name.startsWith(prefix) ? name.slice(prefix.length) : "";
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(sessionId)) {
     throw new Error("This terminal session does not belong to the signed-in account.");
   }
   return name;
@@ -187,6 +170,8 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
   await deleteDisposableSandbox(name);
   const sandbox = await Sandbox.create({
     name,
+    // Terminal sessions are scoped to the signed-in user, not a project, so switching folders
+    // does not terminate the shell. Project source remains saved in Supabase.
     // Never snapshot this disposable Linux VM.
     persistent: false,
     runtime: "node24",
@@ -380,33 +365,14 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     name,
     // Terminal sessions are scoped to the signed-in user, not a project, so switching folders
     // does not terminate the shell. Project source remains saved in Supabase.
-    // Use Vercel's Ubuntu universal image: the legacy node24 runtime is Amazon Linux
-    // and uses dnf rather than apt-get. The terminal bootstrap currently installs
-    // Tor/proxychains/iptables from Ubuntu packages.
     // Never snapshot this disposable Linux VM.
     persistent: false,
-    image: "vercel/sandbox/universal:latest",
+    runtime: "node24",
     resources: { vcpus: 1 },
     timeout: 45 * 60 * 1000,
     networkPolicy: "allow-all",
     ports: [5173, 4175],
   });
-  // The Ubuntu universal image does not guarantee Vercel's legacy /vercel/sandbox
-  // directory exists. Create the terminal workspace from the always-present root
-  // directory before any command uses WORKDIR as its cwd.
-  const workspaceInit = await sandbox.runCommand({
-    cmd: "mkdir",
-    args: ["-p", WORKDIR],
-    cwd: "/",
-    timeoutMs: 10_000,
-    sudo: true,
-  });
-  if (workspaceInit.exitCode !== 0) {
-    throw new Error(
-      "Could not create the terminal workspace directory: " +
-        (await workspaceInit.stderr()).slice(-1200),
-    );
-  }
   const savedPort = Number((await readText(sandbox, WORKDIR + "/" + PREVIEW_PORT_FILE))?.trim());
   const previewPort =
     Number.isInteger(savedPort) && savedPort >= 1 && savedPort <= 65535 ? savedPort : 5173;
