@@ -359,6 +359,8 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
   const files = repairMissingStylesheetImports({ ...sourceFiles });
   validateFiles(files);
   const name = terminalSandboxName(userId);
+  let stage = "creating the disposable Linux sandbox";
+  try {
   const sandbox = await Sandbox.create({
     name,
     // Terminal sessions are scoped to the signed-in user, not a project, so switching folders
@@ -377,6 +379,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
   // The Ubuntu universal image does not guarantee Vercel's legacy /vercel/sandbox
   // directory exists. Create the terminal workspace from the always-present root
   // directory before any command uses WORKDIR as its cwd.
+  stage = "creating the Linux workspace directory";
   const workspaceInit = await sandbox.runCommand({
     cmd: "mkdir",
     args: ["-p", WORKDIR],
@@ -399,6 +402,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     ports: [previewPort, 4175],
   });
 
+  stage = "restoring the saved project files";
   const previous = await readText(sandbox, WORKDIR + "/" + META_FILE);
   let previousManifest: Record<string, string> = {};
   try {
@@ -537,6 +541,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
       mode: 0o600,
     },
   ]);
+  stage = "installing the Tor client and firewall tools";
   const torTools = await sandbox.runCommand({
     cmd: "sh",
     args: ["-lc", [
@@ -603,6 +608,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
   });
   let torExitIp = "";
   let torReady = false;
+  stage = "bootstrapping and verifying the Tor connection";
   const existingTor = await torCheck();
   if (existingTor.exitCode === 0) {
     try {
@@ -662,6 +668,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
       );
   }
 
+  stage = "applying the IPv4 and IPv6 leak-prevention firewall";
   const firewallScript = [
     "set -eu",
     "TOR_UID=$(id -u experts-tor)",
@@ -729,6 +736,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     toolkitStatus = "installing";
   }
 
+  stage = "starting the interactive Linux terminal bridge";
   const ping = () =>
     sandbox.runCommand({
       cmd: "curl",
@@ -785,6 +793,15 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     );
 
   return { sandboxName: name, url: sandbox.domain(4175).replace(/^https:/, "wss:") + "/terminal", token, toolkitStatus, torStatus: "connected" as const, torExitIp, torKillSwitch: true as const, torCircuitMaxAgeSeconds: 600 };
+  } catch (error) {
+    try {
+      await deleteDisposableSandbox(name);
+    } catch {
+      // Preserve the original startup error; the provider will expire any orphaned VM.
+    }
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error("Terminal startup failed during " + stage + ": " + detail);
+  }
 }
 
 export async function stopCloudProjectTerminal(userId: string, sessionName: string) {
