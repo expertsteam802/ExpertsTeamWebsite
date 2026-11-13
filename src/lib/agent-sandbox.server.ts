@@ -618,9 +618,9 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
 
   const directLeakTest = await sandbox.runCommand({
     cmd: "sh",
-    args: ["-lc", "if env -u ALL_PROXY -u all_proxy -u HTTP_PROXY -u HTTPS_PROXY curl -4 -fsS --connect-timeout 4 --max-time 5 https://api.ipify.org >/dev/null 2>&1; then exit 9; fi; if env -u ALL_PROXY -u all_proxy -u HTTP_PROXY -u HTTPS_PROXY curl -6 -fsS --connect-timeout 4 --max-time 5 https://api64.ipify.org >/dev/null 2>&1; then exit 10; fi; exit 0"],
+    args: ["-lc", "if env -u ALL_PROXY -u all_proxy -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy curl -4 -fsS --connect-timeout 4 --max-time 5 https://api.ipify.org >/dev/null 2>&1; then exit 9; fi; if env -u ALL_PROXY -u all_proxy -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy curl -6 -fsS --connect-timeout 4 --max-time 5 https://api64.ipify.org >/dev/null 2>&1; then exit 10; fi; if dig +time=2 +tries=1 @1.1.1.1 example.com >/dev/null 2>&1; then exit 11; fi; if dig +tcp +time=2 +tries=1 @1.1.1.1 example.com >/dev/null 2>&1; then exit 12; fi; exit 0"],
     cwd: WORKDIR,
-    timeoutMs: 12_000,
+    timeoutMs: 16_000,
   });
   if (directLeakTest.exitCode !== 0) {
     throw new Error("The terminal egress kill switch did not block direct IPv4 and IPv6 requests. The terminal was not opened.");
@@ -633,6 +633,12 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
   });
   if (torProxyTest.exitCode !== 0) {
     throw new Error("The terminal's enforced Tor proxy self-test failed. The terminal was not opened.");
+  }
+  try {
+    const verified = JSON.parse((await torProxyTest.stdout()).trim()) as { IsTor?: boolean };
+    if (verified.IsTor !== true) throw new Error("Tor exit verification returned IsTor=false.");
+  } catch {
+    throw new Error("The terminal's Tor proxy did not return a verified Tor exit response.");
   }
 
   const installed = await sandbox.runCommand({
