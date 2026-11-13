@@ -909,6 +909,7 @@ export async function publishCloudProject(
             contentType: publishedContentType(file.path),
             cacheControl: "31536000",
             upsert: false,
+            headers: { "content-disposition": "inline" },
           });
         if (error) throw new Error(`Could not publish ${file.path}: ${error.message}`);
       }),
@@ -936,7 +937,10 @@ export async function publishCloudProject(
         lastStatus = "HTTP " + response.status;
       } else {
         const contentType = response.headers.get("content-type") ?? "";
-        if (!contentType.toLowerCase().includes("text/html")) {
+        const contentDisposition = response.headers.get("content-disposition") ?? "";
+        if (/attachment/i.test(contentDisposition)) {
+          lastStatus = "entry point is being served as a download instead of an inline web page";
+        } else if (!contentType.toLowerCase().includes("text/html")) {
           lastStatus = "entry point returned " + (contentType || "no content type") + " instead of text/html";
         } else {
           entryHtml = await response.text();
