@@ -437,7 +437,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
   await sandbox.writeFiles([
     { path: bridgeDir + "/package.json", content: Buffer.from(packageJson, "utf8") },
     { path: bridgeDir + "/server.cjs", content: Buffer.from(serverSource, "utf8") },
-    { path: bridgeDir + "/prompt.rc", content: Buffer.from("PS1=" + shellQuote((username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam") + "@expertsteam:\\w$ ") + "\\nexport PS1\\nPROMPT_COMMAND=\\n", "utf8") },
+    { path: bridgeDir + "/prompt.rc", content: Buffer.from("PS1=" + shellQuote((username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam") + "@expertsteam:\\w$ ") + "\nexport PS1\nPROMPT_COMMAND=\n", "utf8") },
     { path: tokenPath, content: Buffer.from(token, "utf8"), mode: 0o600 },
   ]);
   const syntaxCheck = await sandbox.runCommand({
