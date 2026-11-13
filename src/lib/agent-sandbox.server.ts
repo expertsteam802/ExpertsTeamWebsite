@@ -418,7 +418,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     "});",
     'sockets.on("connection", (client) => {',
     "  if (activeShell) { try { activeShell.kill(); } catch {} activeShell = null; }",
-    '  const shell = spawn("script", ["-q", "-f", "-c", "/bin/bash --noprofile --norc -i", "/dev/null"], { cwd: process.env.TERMINAL_CWD || "/vercel/sandbox", env: { ...process.env, PS1: (process.env.TERMINAL_USERNAME || "linux") + "@expertsteam:\\w$ ", TERM: "xterm-256color", COLORTERM: "truecolor" }, stdio: ["pipe", "pipe", "pipe"] });',
+    '  const shell = spawn("script", ["-q", "-f", "-c", "/bin/bash --noprofile --rcfile /vercel/sandbox/.experts-terminal-bridge/prompt.rc -i", "/dev/null"], { cwd: process.env.TERMINAL_CWD || "/vercel/sandbox", env: { ...process.env, TERM: "xterm-256color", COLORTERM: "truecolor" }, stdio: ["pipe", "pipe", "pipe"] });',
     "  activeShell = shell;",
     '  shell.stdout.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
     '  shell.stderr.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
@@ -437,6 +437,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
   await sandbox.writeFiles([
     { path: bridgeDir + "/package.json", content: Buffer.from(packageJson, "utf8") },
     { path: bridgeDir + "/server.cjs", content: Buffer.from(serverSource, "utf8") },
+    { path: bridgeDir + "/prompt.rc", content: Buffer.from("PS1=" + shellQuote((username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam") + "@expertsteam:\\w$ ") + "\\nexport PS1\\nPROMPT_COMMAND=\\n", "utf8") },
     { path: tokenPath, content: Buffer.from(token, "utf8"), mode: 0o600 },
   ]);
   const syntaxCheck = await sandbox.runCommand({
