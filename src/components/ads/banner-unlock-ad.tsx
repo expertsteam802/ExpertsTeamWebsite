@@ -64,7 +64,7 @@ export function BannerUnlockAd({
         <iframe
           title="ExpertsTeam sponsored banner"
           srcDoc={AD_DOCUMENT}
-          sandbox="allow-scripts allow-same-origin"
+          sandbox="allow-scripts"
           referrerPolicy="strict-origin-when-cross-origin"
           className="h-full w-full border-0"
           loading="eager"
