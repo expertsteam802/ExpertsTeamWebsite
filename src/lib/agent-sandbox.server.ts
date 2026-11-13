@@ -938,7 +938,7 @@ export async function publishCloudProject(
         const contentType = response.headers.get("content-type") ?? "";
         // Supabase Storage intentionally serves HTML objects as text/plain.
         // The public app viewer fetches this text and renders it in a sandboxed srcDoc frame.
-        if (!/^(?:text\\/html|text\\/plain)(?:;|$)/i.test(contentType)) {
+        if (!/^(?:text\/html|text\/plain)(?:;|$)/i.test(contentType)) {
           lastStatus = "entry point returned " + (contentType || "no content type") + " instead of an HTML-compatible response";
         } else {
           entryHtml = await response.text();
