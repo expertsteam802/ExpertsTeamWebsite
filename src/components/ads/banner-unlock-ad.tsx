@@ -13,8 +13,8 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f4f4f5}
 </head>
 <body>
 <div class="ad-frame">
-<script>window.atOptions={key:"502debf88d7d96769c683f2ec09cb70b",format:"iframe",height:90,width:728,params:{}};<\\/script>
-<script src="https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b"><\\/script>
+<script>window.atOptions={key:"502debf88d7d96769c683f2ec09cb70b",format:"iframe",height:90,width:728,params:{}};</script>
+<script src="https://bauval.org/22/502debf88d7d96769c683f2ec09cb70b"></script>
 </div>
 </body>
 </html>`;
