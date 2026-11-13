@@ -14,11 +14,23 @@ const PACKAGE_HASH_FILE = ".experts-agent-package-hash";
 const PREVIEW_PORT_FILE = ".experts-agent-preview-port";
 
 function sandboxName(projectId: string) {
-  return "experts-agent-ephemeral-v2-" + projectId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 36);
+  return "experts-agent-ephemeral-v3-" + projectId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 36);
 }
 
 function terminalSandboxName(userId: string) {
-  return "experts-terminal-ephemeral-v1-" + userId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 36);
+  return "experts-terminal-ephemeral-v2-" + userId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 36);
+}
+
+// Non-persistent sandboxes lose their filesystem when stopped. Delete the old
+// named entity before creating a fresh VM; durable project files live in Supabase.
+async function deleteDisposableSandbox(name: string) {
+  try {
+    const existing = await Sandbox.get({ name });
+    await existing.delete();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!/not found|does not exist|already deleted|404/i.test(message)) throw error;
+  }
 }
 
 function validateFiles(files: AgentProjectFiles) {
@@ -144,7 +156,8 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
     ? detectedPort
     : isVite ? 5173 : 3000;
   const name = sandboxName(projectId);
-  const sandbox = await Sandbox.getOrCreate({
+  await deleteDisposableSandbox(name);
+  const sandbox = await Sandbox.create({
     name,
     // Terminal sessions are scoped to the signed-in user, not a project, so switching folders
     // does not terminate the shell. Project source remains saved in Supabase.
@@ -155,7 +168,6 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
     timeout: 45 * 60 * 1000,
     networkPolicy: "allow-all",
     ports: [port, 4174],
-    resume: true,
   });
 
   // Existing named sandboxes keep their original configuration, so update the
@@ -338,7 +350,8 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
   const files = repairMissingStylesheetImports({ ...sourceFiles });
   validateFiles(files);
   const name = terminalSandboxName(userId);
-  const sandbox = await Sandbox.getOrCreate({
+  await deleteDisposableSandbox(name);
+  const sandbox = await Sandbox.create({
     name,
     // Terminal sessions are scoped to the signed-in user, not a project, so switching folders
     // does not terminate the shell. Project source remains saved in Supabase.
@@ -349,7 +362,6 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     timeout: 45 * 60 * 1000,
     networkPolicy: "allow-all",
     ports: [5173, 4175],
-    resume: true,
   });
   const savedPort = Number((await readText(sandbox, WORKDIR + "/" + PREVIEW_PORT_FILE))?.trim());
   const previewPort =
@@ -740,8 +752,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
 
 export async function stopCloudProjectTerminal(userId: string) {
   try {
-    const sandbox = await Sandbox.get({ name: terminalSandboxName(userId) });
-    await sandbox.stop();
+    await deleteDisposableSandbox(terminalSandboxName(userId));
     return { stopped: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -1183,7 +1194,6 @@ export async function publishCloudProject(
 }
 
 export async function stopCloudProjectPreview(projectId: string) {
-  const sandbox = await Sandbox.get({ name: sandboxName(projectId) });
-  await sandbox.stop();
+  await deleteDisposableSandbox(sandboxName(projectId));
   return { stopped: true };
 }
