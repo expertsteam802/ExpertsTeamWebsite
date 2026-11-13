@@ -290,6 +290,7 @@ export function CodeAgent() {
   const [terminalConnection, setTerminalConnection] = useState<{
     url: string;
     token: string;
+    sandboxName: string;
     torStatus?: "connected";
     torExitIp?: string;
     torKillSwitch?: boolean;
@@ -555,7 +556,8 @@ export function CodeAgent() {
   async function importTerminalChanges() {
     if (!projectId) return;
     try {
-      const result = await syncTerminalFiles({ data: { projectId } });
+      if (!terminalConnection?.sandboxName) throw new Error("The Linux terminal session is no longer available.");
+      const result = await syncTerminalFiles({ data: { projectId, sandboxName: terminalConnection.sandboxName } });
       const importedFiles = result.files;
       await persist({ files: importedFiles });
       setFiles(importedFiles);
@@ -571,13 +573,14 @@ export function CodeAgent() {
   }
 
   async function closeTerminalSession() {
+    const sessionName = terminalConnection?.sandboxName;
     const socket = terminalSocketRef.current;
     if (socket && socket.readyState < WebSocket.CLOSING) socket.close();
     terminalSocketRef.current = null;
     setTerminalConnection(null);
     setTerminalReady(false);
     try {
-      await stopTerminal({ data: {} });
+      if (sessionName) await stopTerminal({ data: { sandboxName: sessionName } });
     } catch {
       // The sandbox also has a finite provider-side lifetime if the browser disconnects.
     }
@@ -891,7 +894,8 @@ export function CodeAgent() {
       if (cancelled || syncing || busy || dirty) return;
       syncing = true;
       try {
-        const result = await syncTerminalFiles({ data: { projectId } });
+        if (!terminalConnection?.sandboxName) return;
+        const result = await syncTerminalFiles({ data: { projectId, sandboxName: terminalConnection.sandboxName } });
         if (cancelled) return;
         const importedFiles = result.files;
         const changed =
@@ -931,7 +935,7 @@ export function CodeAgent() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [terminalAutoSync, terminalReady, projectId, user, busy, dirty, files, syncTerminalFiles, queryClient]);
+  }, [terminalAutoSync, terminalReady, terminalConnection?.sandboxName, projectId, user, busy, dirty, files, syncTerminalFiles, queryClient]);
 
   async function saveCheckpoint(label: string) {
     if (!user) throw new Error("Sign in to create a checkpoint.");
