@@ -365,9 +365,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     name,
     // Terminal sessions are scoped to the signed-in user, not a project, so switching folders
     // does not terminate the shell. Project source remains saved in Supabase.
-    // Use Vercel's Ubuntu universal image: the legacy node24 runtime is Amazon Linux
-    // and uses dnf rather than apt-get. The terminal bootstrap currently installs
-    // Tor/proxychains/iptables from Ubuntu packages.
+    // Use Vercel's Ubuntu universal image for a consistent Linux shell and package manager.
     // Never snapshot this disposable Linux VM.
     persistent: false,
     image: "vercel/sandbox/universal:latest",
@@ -461,7 +459,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     "});",
     'sockets.on("connection", (client) => {',
     "  if (activeShell) { try { activeShell.kill(); } catch {} activeShell = null; }",
-    '  const shell = spawn("script", ["-q", "-f", "-c", "runuser -u experts-shell -- env HOME=/home/experts-shell USER=experts-shell LOGNAME=experts-shell PATH=/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin ALL_PROXY=socks5h://127.0.0.1:9050 all_proxy=socks5h://127.0.0.1:9050 HTTP_PROXY=socks5h://127.0.0.1:9050 HTTPS_PROXY=socks5h://127.0.0.1:9050 http_proxy=socks5h://127.0.0.1:9050 https_proxy=socks5h://127.0.0.1:9050 NO_PROXY=localhost,127.0.0.1,::1 no_proxy=localhost,127.0.0.1,::1 /usr/bin/proxychains4 -q -f /vercel/sandbox/.experts-terminal-bridge/proxychains.conf /bin/bash --noprofile --rcfile /vercel/sandbox/.experts-terminal-bridge/prompt.rc -i", "/dev/null"], { cwd: process.env.TERMINAL_CWD || "/vercel/sandbox", env: { ...process.env, TERM: "xterm-256color", COLORTERM: "truecolor" }, stdio: ["pipe", "pipe", "pipe"] });',
+    '  const shell = spawn("script", ["-q", "-f", "-c", "runuser -u experts-shell -- env HOME=/home/experts-shell USER=experts-shell LOGNAME=experts-shell PATH=/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin /bin/bash --noprofile --rcfile /vercel/sandbox/.experts-terminal-bridge/prompt.rc -i", "/dev/null"], { cwd: process.env.TERMINAL_CWD || "/vercel/sandbox", env: { ...process.env, TERM: "xterm-256color", COLORTERM: "truecolor" }, stdio: ["pipe", "pipe", "pipe"] });',
     "  activeShell = shell;",
     '  shell.stdout.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
     '  shell.stderr.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
@@ -504,150 +502,37 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     throw new Error(
       "This Vercel Sandbox image does not include the util-linux script command required to allocate a terminal.",
     );
-  // The Tor bootstrap packages are installed before the egress lock is applied.
-  // The larger optional security toolkit is installed through Tor after the lock is active.
+  // Keep the interactive shell unprivileged. The sandbox provides ordinary
+  // outbound networking; no Tor daemon, proxychains, or guest firewall rules.
   const toolkitMarker = WORKDIR + "/.experts-ctf-toolkit-v2";
   const toolkitCheck = await sandbox.runCommand({ cmd: "test", args: ["-f", toolkitMarker], cwd: WORKDIR });
-  let toolkitStatus: "ready" | "skipped" | "unavailable" = toolkitCheck.exitCode === 0 ? "ready" : "installing";
+  let toolkitStatus: "ready" | "skipped" | "unavailable" = toolkitCheck.exitCode === 0 ? "ready" : "unavailable";
 
-  // Route terminal child processes through Tor and enforce a dual-stack egress kill switch.
-  const torConfigPath = bridgeDir + "/torrc";
-  const proxychainsConfigPath = bridgeDir + "/proxychains.conf";
-  await sandbox.writeFiles([
-    {
-      path: torConfigPath,
-      content: Buffer.from([
-        "ClientOnly 1",
-        "SocksPort 127.0.0.1:9050 IsolateSOCKSAuth",
-        "SafeSocks 1",
-        "TestSocks 1",
-        "MaxCircuitDirtiness 600",
-        "AvoidDiskWrites 1",
-        "DataDirectory /tmp/expersteam-tor-data",
-        "Log notice file /tmp/expersteam-tor.log",
-      ].join("\n") + "\n", "utf8"),
-      mode: 0o600,
-    },
-    {
-      path: proxychainsConfigPath,
-      content: Buffer.from([
-        "strict_chain",
-        "proxy_dns",
-        "tcp_read_time_out 15000",
-        "tcp_connect_time_out 10000",
-        "[ProxyList]",
-        "socks5 127.0.0.1 9050",
-      ].join("\n") + "\n", "utf8"),
-      mode: 0o600,
-    },
-  ]);
-  stage = "installing the Tor client and firewall tools";
-  const torTools = await sandbox.runCommand({
+  stage = "preparing the unprivileged Linux shell";
+  const shellSetup = await sandbox.runCommand({
     cmd: "sh",
     args: ["-lc", [
-      "command -v tor >/dev/null && command -v proxychains4 >/dev/null && command -v iptables >/dev/null && command -v ip6tables >/dev/null && command -v runuser >/dev/null && command -v curl >/dev/null && command -v nc >/dev/null && command -v dig >/dev/null",
-    ].join(" ")],
-    cwd: WORKDIR,
-    timeoutMs: 10_000,
-  });
-  if (torTools.exitCode !== 0) {
-    const installTor = await sandbox.runCommand({
-      cmd: "sh",
-      args: ["-lc", [
-        'if [ "$(id -u)" -ne 0 ] || ! command -v apt-get >/dev/null 2>&1; then exit 4; fi',
-        "export DEBIAN_FRONTEND=noninteractive",
-        "apt-get update -qq",
-        "apt-get install -y --no-install-recommends tor proxychains4 iptables netcat-openbsd dnsutils curl",
-      ].join(" && ")],
-      cwd: WORKDIR,
-      timeoutMs: 180_000,
-      sudo: true,
-    });
-    if (installTor.exitCode !== 0) {
-      const installStderr = await installTor.stderr();
-      const installStdout = await installTor.stdout();
-      const diagnostics = [
-        "exit code: " + installTor.exitCode,
-        "stderr:\n" + installStderr,
-        "stdout:\n" + installStdout,
-      ].filter((value) => value.trim()).join("\n").slice(-4200);
-      throw new Error(
-        "Could not install the Tor client, SOCKS proxy, and dual-stack firewall packages. " +
-          "Sandbox package-manager diagnostics:\n" + diagnostics,
-      );
-    }
-  }
-  const torUserSetup = await sandbox.runCommand({
-    cmd: "sh",
-    args: ["-lc", [
-      "id -u experts-tor >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin experts-tor",
       "id -u experts-shell >/dev/null 2>&1 || useradd --create-home --shell /bin/bash experts-shell",
-      "mkdir -p /tmp/expersteam-tor-data /home/experts-shell/.npm-global",
-      "chown -R experts-tor:experts-tor /tmp/expersteam-tor-data && chmod 700 /tmp/expersteam-tor-data",
+      "mkdir -p /home/experts-shell/.npm-global",
       "chown -R experts-shell:experts-shell /home/experts-shell",
       "chown experts-shell:experts-shell " + WORKDIR + " && chmod 1755 " + WORKDIR,
       "find " + WORKDIR + " -mindepth 1 -maxdepth 1 ! -name .experts-terminal-bridge ! -name .experts-terminal-token -exec chown -R experts-shell:experts-shell {} +",
       "chown root:root " + bridgeDir + " && chmod 755 " + bridgeDir,
-      "chmod 644 " + torConfigPath + " " + proxychainsConfigPath + " " + bridgeDir + "/prompt.rc",
+      "chmod 644 " + bridgeDir + "/prompt.rc",
       "chmod 600 " + tokenPath,
       "printf 'prefix=/home/experts-shell/.npm-global\\n' > /home/experts-shell/.npmrc",
       "chown experts-shell:experts-shell /home/experts-shell/.npmrc",
+      "command -v runuser >/dev/null",
     ].join(" && ")],
     cwd: WORKDIR,
-    timeoutMs: 10_000,
+    timeoutMs: 15_000,
     sudo: true,
   });
-  if (torUserSetup.exitCode !== 0) {
-    throw new Error("Could not create the isolated Tor service account: " + (await torUserSetup.stderr()).slice(-1200));
-  }
-  const torCheck = async () => sandbox.runCommand({
-    cmd: "curl",
-    args: ["--silent", "--show-error", "--fail", "--max-time", "8", "--socks5-hostname", "127.0.0.1:9050", "https://check.torproject.org/api/ip"],
-    cwd: WORKDIR,
-    timeoutMs: 10_000,
-  });
-  let torExitIp = "";
-  let torReady = false;
-  stage = "bootstrapping and verifying the Tor connection";
-  const existingTor = await torCheck();
-  if (existingTor.exitCode === 0) {
-    try {
-      const result = JSON.parse((await existingTor.stdout()).trim()) as { IsTor?: boolean; IP?: string };
-      torReady = result.IsTor === true && typeof result.IP === "string";
-      torExitIp = torReady ? result.IP! : "";
-    } catch {
-      torReady = false;
-    }
-  }
-  if (!torReady) {
-    await sandbox.runCommand({
-      cmd: "runuser",
-      args: ["-u", "experts-tor", "--", "tor", "-f", torConfigPath],
-      cwd: WORKDIR,
-      detached: true,
-      sudo: true,
-    });
-    for (let attempt = 0; attempt < 90; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      const check = await torCheck();
-      if (check.exitCode === 0) {
-        try {
-          const result = JSON.parse((await check.stdout()).trim()) as { IsTor?: boolean; IP?: string };
-          if (result.IsTor === true && typeof result.IP === "string") {
-            torReady = true;
-            torExitIp = result.IP;
-            break;
-          }
-        } catch {
-          // Wait until Tor has a verified exit circuit.
-        }
-      }
-    }
-  }
-  if (!torReady) {
-    throw new Error("Tor could not bootstrap a verified Tor exit circuit. The terminal was not opened, so it cannot silently fall back to your direct IP. Retry after checking sandbox network access.");
+  if (shellSetup.exitCode !== 0) {
+    throw new Error("Could not prepare the unprivileged Linux shell: " + (await shellSetup.stderr()).slice(-1500));
   }
 
+  stage = "installing the terminal WebSocket runtime";
   const installed = await sandbox.runCommand({
     cmd: "test",
     args: ["-d", bridgeDir + "/node_modules/ws"],
@@ -655,85 +540,34 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
   });
   if (installed.exitCode !== 0) {
     const install = await sandbox.runCommand({
-      cmd: "proxychains4",
-      args: ["-q", "-f", proxychainsConfigPath, "npm", "install", "--no-audit", "--no-fund"],
+      cmd: "npm",
+      args: ["install", "--no-audit", "--no-fund"],
       cwd: bridgeDir,
       timeoutMs: 180_000,
       sudo: true,
     });
-    if (install.exitCode !== 0)
-      throw new Error(
-        "Could not install the JavaScript-only terminal runtime through Tor: " +
-          (await install.stderr()).slice(-3000),
-      );
+    if (install.exitCode !== 0) {
+      throw new Error("Could not install the terminal WebSocket runtime: " + (await install.stderr()).slice(-2500));
+    }
   }
 
-  stage = "applying the IPv4 and IPv6 leak-prevention firewall";
-  const firewallScript = [
-    "set -eu",
-    "TOR_UID=$(id -u experts-tor)",
-    "for FW in iptables ip6tables; do",
-    "  $FW -w -N EXPERTS_TOR_EGRESS 2>/dev/null || $FW -w -F EXPERTS_TOR_EGRESS",
-    "  $FW -w -A EXPERTS_TOR_EGRESS -o lo -j ACCEPT",
-    "  $FW -w -A EXPERTS_TOR_EGRESS -m conntrack --ctstate ESTABLISHED,RELATED --ctdir REPLY -j ACCEPT",
-    "  $FW -w -A EXPERTS_TOR_EGRESS -m owner --uid-owner $TOR_UID -p tcp -j ACCEPT",
-    "  $FW -w -A EXPERTS_TOR_EGRESS -j REJECT",
-    "  $FW -w -C OUTPUT -j EXPERTS_TOR_EGRESS 2>/dev/null || $FW -w -I OUTPUT 1 -j EXPERTS_TOR_EGRESS",
-    "done",
-  ].join("\n");
-  const firewall = await sandbox.runCommand({
-    cmd: "sh",
-    args: ["-lc", firewallScript],
-    cwd: WORKDIR,
-    timeoutMs: 15_000,
-    sudo: true,
-  });
-  if (firewall.exitCode !== 0) {
-    throw new Error(
-      "Tor connected, but this Vercel Sandbox does not allow the IPv4+IPv6 egress kill switch required to prevent direct-IP leaks. The terminal was not opened. " +
-        (await firewall.stderr()).slice(-1500),
-    );
-  }
-
-  const directLeakTest = await sandbox.runCommand({
-    cmd: "sh",
-    args: ["-lc", "if nc -4 -z -w 3 1.1.1.1 443 >/dev/null 2>&1; then exit 9; fi; if nc -6 -z -w 3 2606:4700:4700::1111 443 >/dev/null 2>&1; then exit 10; fi; if dig +time=2 +tries=1 @1.1.1.1 example.com >/dev/null 2>&1; then exit 11; fi; if dig +tcp +time=2 +tries=1 @1.1.1.1 example.com >/dev/null 2>&1; then exit 12; fi; exit 0"],
-    cwd: WORKDIR,
-    timeoutMs: 16_000,
-  });
-  if (directLeakTest.exitCode !== 0) {
-    throw new Error("The terminal egress kill switch did not block direct IPv4 and IPv6 requests. The terminal was not opened.");
-  }
-  const torProxyTest = await sandbox.runCommand({
-    cmd: "proxychains4",
-    args: ["-q", "-f", proxychainsConfigPath, "curl", "-fsS", "--max-time", "15", "https://check.torproject.org/api/ip"],
-    cwd: WORKDIR,
-    timeoutMs: 20_000,
-  });
-  if (torProxyTest.exitCode !== 0) {
-    throw new Error("The terminal's enforced Tor proxy self-test failed. The terminal was not opened.");
-  }
-  try {
-    const verified = JSON.parse((await torProxyTest.stdout()).trim()) as { IsTor?: boolean };
-    if (verified.IsTor !== true) throw new Error("Tor exit verification returned IsTor=false.");
-  } catch {
-    throw new Error("The terminal's Tor proxy did not return a verified Tor exit response.");
-  }
-
-  if (toolkitCheck.exitCode !== 0 && toolkitStatus === "installing") {
-    await sandbox.runCommand({
+  // Optional CTF tools use the sandbox's normal network. Their absence must
+  // never prevent the core Linux terminal from starting.
+  if (toolkitCheck.exitCode !== 0) {
+    const toolkitInstall = await sandbox.runCommand({
       cmd: "sh",
       args: ["-lc", [
+        "if ! command -v apt-get >/dev/null 2>&1; then exit 4; fi",
         "export DEBIAN_FRONTEND=noninteractive",
-        "proxychains4 -q -f " + proxychainsConfigPath + " apt-get update -qq",
-        "proxychains4 -q -f " + proxychainsConfigPath + " apt-get install -y --no-install-recommends nmap sqlmap john hashcat binwalk libimage-exiftool-perl tshark gdb python3-pwntools python3-pip python3-venv git wget jq unzip zip file ripgrep tcpdump",
+        "apt-get update -qq",
+        "apt-get install -y --no-install-recommends nmap sqlmap john hashcat binwalk libimage-exiftool-perl tshark gdb python3-pwntools python3-pip python3-venv git wget jq unzip zip file ripgrep tcpdump",
         "touch " + toolkitMarker,
       ].join(" && ")],
       cwd: WORKDIR,
       detached: true,
       sudo: true,
     });
-    toolkitStatus = "installing";
+    toolkitStatus = toolkitInstall.exitCode === 0 ? "installing" : "unavailable";
   }
 
   stage = "starting the interactive Linux terminal bridge";
@@ -792,7 +626,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
         (await selfTestResult.stderr()).slice(-2000),
     );
 
-  return { sandboxName: name, url: sandbox.domain(4175).replace(/^https:/, "wss:") + "/terminal", token, toolkitStatus, torStatus: "connected" as const, torExitIp, torKillSwitch: true as const, torCircuitMaxAgeSeconds: 600 };
+  return { sandboxName: name, url: sandbox.domain(4175).replace(/^https:/, "wss:") + "/terminal", token, toolkitStatus };
   } catch (error) {
     try {
       await deleteDisposableSandbox(name);
