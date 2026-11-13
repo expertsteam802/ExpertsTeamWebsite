@@ -418,7 +418,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     "});",
     'sockets.on("connection", (client) => {',
     "  if (activeShell) { try { activeShell.kill(); } catch {} activeShell = null; }",
-    '  const shell = spawn("script", ["-q", "-f", "-c", "/usr/bin/proxychains4 -q -f /vercel/sandbox/.experts-terminal-bridge/proxychains.conf /bin/bash --noprofile --rcfile /vercel/sandbox/.experts-terminal-bridge/prompt.rc -i", "/dev/null"], { cwd: process.env.TERMINAL_CWD || "/vercel/sandbox", env: { ...process.env, ALL_PROXY: "socks5h://127.0.0.1:9050", all_proxy: "socks5h://127.0.0.1:9050", HTTP_PROXY: "socks5h://127.0.0.1:9050", HTTPS_PROXY: "socks5h://127.0.0.1:9050", http_proxy: "socks5h://127.0.0.1:9050", https_proxy: "socks5h://127.0.0.1:9050", NO_PROXY: "localhost,127.0.0.1,::1", no_proxy: "localhost,127.0.0.1,::1", TERM: "xterm-256color", COLORTERM: "truecolor" }, stdio: ["pipe", "pipe", "pipe"] });',
+    '  const shell = spawn("script", ["-q", "-f", "-c", "runuser -u experts-shell -- env HOME=/home/experts-shell USER=experts-shell LOGNAME=experts-shell PATH=/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin ALL_PROXY=socks5h://127.0.0.1:9050 all_proxy=socks5h://127.0.0.1:9050 HTTP_PROXY=socks5h://127.0.0.1:9050 HTTPS_PROXY=socks5h://127.0.0.1:9050 http_proxy=socks5h://127.0.0.1:9050 https_proxy=socks5h://127.0.0.1:9050 NO_PROXY=localhost,127.0.0.1,::1 no_proxy=localhost,127.0.0.1,::1 /usr/bin/proxychains4 -q -f /vercel/sandbox/.experts-terminal-bridge/proxychains.conf /bin/bash --noprofile --rcfile /vercel/sandbox/.experts-terminal-bridge/prompt.rc -i", "/dev/null"], { cwd: process.env.TERMINAL_CWD || "/vercel/sandbox", env: { ...process.env, TERM: "xterm-256color", COLORTERM: "truecolor" }, stdio: ["pipe", "pipe", "pipe"] });',
     "  activeShell = shell;",
     '  shell.stdout.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
     '  shell.stderr.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
@@ -528,8 +528,16 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     cmd: "sh",
     args: ["-lc", [
       "id -u experts-tor >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin experts-tor",
-      "mkdir -p /tmp/expersteam-tor-data",
+      "id -u experts-shell >/dev/null 2>&1 || useradd --create-home --shell /bin/bash experts-shell",
+      "mkdir -p /tmp/expersteam-tor-data /home/experts-shell/.npm-global",
       "chown -R experts-tor:experts-tor /tmp/expersteam-tor-data",
+      "chown -R experts-shell:experts-shell /home/experts-shell",
+      "find " + WORKDIR + " -mindepth 1 -maxdepth 1 ! -name .experts-terminal-bridge ! -name .experts-terminal-token -exec chown -R experts-shell:experts-shell {} +",
+      "chown root:root " + bridgeDir + " && chmod 755 " + bridgeDir,
+      "chmod 644 " + torConfigPath + " " + proxychainsConfigPath + " " + bridgeDir + "/prompt.rc",
+      "chmod 600 " + tokenPath,
+      "printf 'prefix=/home/experts-shell/.npm-global\\n' > /home/experts-shell/.npmrc",
+      "chown experts-shell:experts-shell /home/experts-shell/.npmrc",
     ].join(" && ")],
     cwd: WORKDIR,
     timeoutMs: 10_000,
@@ -594,7 +602,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     "  $FW -w -A EXPERTS_TOR_EGRESS -j REJECT",
     "  $FW -w -C OUTPUT -j EXPERTS_TOR_EGRESS 2>/dev/null || $FW -w -I OUTPUT 1 -j EXPERTS_TOR_EGRESS",
     "done",
-  ].join(" && ");
+  ].join("\n");
   const firewall = await sandbox.runCommand({
     cmd: "sh",
     args: ["-lc", firewallScript],
