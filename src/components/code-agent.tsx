@@ -290,6 +290,10 @@ export function CodeAgent() {
   const [terminalConnection, setTerminalConnection] = useState<{
     url: string;
     token: string;
+    torStatus?: "connected";
+    torExitIp?: string;
+    torKillSwitch?: boolean;
+    torCircuitMaxAgeSeconds?: number;
   } | null>(null);
   const [fileLanguage, setFileLanguage] = useState<Extension[]>([]);
   const runtimeFilesRef = useRef<ProjectFiles>({});
@@ -1979,6 +1983,14 @@ export function CodeAgent() {
                     >
                       {terminalReady ? "CONNECTED" : "OFFLINE"}
                     </span>
+                    {terminalReady && terminalConnection?.torKillSwitch && (
+                      <span
+                        className="rounded border border-emerald-400/25 bg-emerald-400/10 px-2 py-1 text-[10px] font-semibold text-emerald-200"
+                        title="Terminal traffic is routed through Tor SOCKS5. Direct IPv4 and IPv6 egress is blocked by the sandbox firewall."
+                      >
+                        TOR ROUTED · {terminalConnection.torExitIp || "verified"}
+                      </span>
+                    )}
                     {["ls", "pwd", "npm run dev", "npm run build", "npm install -g @kilocode/cli", "kilo", "npm install -g @opencode/cli", "opencode"].map((command) => (
                       <button
                         key={command}
