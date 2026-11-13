@@ -23,6 +23,17 @@ export const Route = createFileRoute("/apps/$slug")({
   component: LiveApp,
 });
 
+function documentWithAssetBase(html: string, deploymentUrl: string) {
+  const baseUrl = new URL(".", deploymentUrl).href;
+  const safeBaseUrl = baseUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  const baseTag = `<base href="${safeBaseUrl}">`;
+  const withoutExistingBase = html.replace(/<base\\b[^>]*>/i, "");
+  if (/<head\\b[^>]*>/i.test(withoutExistingBase)) {
+    return withoutExistingBase.replace(/<head\\b[^>]*>/i, (head) => head + baseTag);
+  }
+  return `<!doctype html><html><head>${baseTag}</head><body>${withoutExistingBase}</body></html>`;
+}
+
 function LiveApp() {
   const { slug } = Route.useParams();
   const { data, isLoading, error } = useQuery({
@@ -36,7 +47,17 @@ function LiveApp() {
         .eq("published", true)
         .maybeSingle();
       if (error) throw error;
-      return data;
+      if (!data?.deployment_url) return data;
+      const response = await fetch(data.deployment_url, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`The published app could not be loaded (HTTP ${response.status}).`);
+      }
+      const html = await response.text();
+      const normalizedHtml = html.replace(/^\\uFEFF/, "").trimStart().toLowerCase();
+      if (!normalizedHtml.startsWith("<!doctype html") && !normalizedHtml.startsWith("<html")) {
+        throw new Error("The published entry file is not a valid HTML document.");
+      }
+      return { ...data, document: documentWithAssetBase(html, data.deployment_url) };
     },
   });
 
@@ -54,11 +75,11 @@ function LiveApp() {
           </p>
           <Link to="/" className="text-sm font-semibold text-blue-700 underline">Back to ExpertsTeam</Link>
         </div>
-      ) : data?.deployment_url ? (
+      ) : data?.document ? (
         <iframe
           title={data.name}
-          src={data.deployment_url}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads"
+          srcDoc={data.document}
+          sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"
           allow="clipboard-read; clipboard-write; fullscreen"
           referrerPolicy="strict-origin-when-cross-origin"
           className="fixed inset-0 h-screen w-screen border-0 bg-white"
