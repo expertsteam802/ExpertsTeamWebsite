@@ -161,9 +161,12 @@ export async function startCloudProjectPreview(projectId: string, sourceFiles: A
     name,
     // Terminal sessions are scoped to the signed-in user, not a project, so switching folders
     // does not terminate the shell. Project source remains saved in Supabase.
+    // Use Vercel's Ubuntu universal image: the legacy node24 runtime is Amazon Linux
+    // and uses dnf rather than apt-get. The terminal bootstrap currently installs
+    // Tor/proxychains/iptables from Ubuntu packages.
     // Never snapshot this disposable Linux VM.
     persistent: false,
-    runtime: "node24",
+    image: "vercel/sandbox/universal:latest",
     resources: { vcpus: 1 },
     timeout: 45 * 60 * 1000,
     networkPolicy: "allow-all",
