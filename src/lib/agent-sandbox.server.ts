@@ -348,7 +348,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     resources: { vcpus: 1 },
     timeout: 45 * 60 * 1000,
     networkPolicy: "allow-all",
-    ports: [5173, 4174],
+    ports: [5173, 4175],
     resume: true,
   });
   const savedPort = Number((await readText(sandbox, WORKDIR + "/" + PREVIEW_PORT_FILE))?.trim());
@@ -357,7 +357,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
   await sandbox.update({
     timeout: 45 * 60 * 1000,
     networkPolicy: "allow-all",
-    ports: [previewPort, 4174],
+    ports: [previewPort, 4175],
   });
 
   const previous = await readText(sandbox, WORKDIR + "/" + META_FILE);
@@ -431,7 +431,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     "  });",
     '  client.on("close", () => { try { shell.kill("SIGHUP"); } catch {} if (activeShell === shell) activeShell = null; });',
     "});",
-    'server.listen(Number(process.env.TERMINAL_PORT || 4174), "0.0.0.0");',
+    'server.listen(Number(process.env.TERMINAL_PORT || 4175), "0.0.0.0");',
   ].join("\n");
 
   await sandbox.writeFiles([
@@ -504,7 +504,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
   const ping = () =>
     sandbox.runCommand({
       cmd: "curl",
-      args: ["-fsS", "http://127.0.0.1:4174/health"],
+      args: ["-fsS", "http://127.0.0.1:4175/health"],
       cwd: WORKDIR,
       timeoutMs: 5000,
     });
@@ -514,7 +514,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
       cmd: "node",
       args: ["server.cjs"],
       cwd: bridgeDir,
-      env: { TERMINAL_TOKEN: token, TERMINAL_CWD: WORKDIR, TERMINAL_PORT: "4174", TERMINAL_USERNAME: username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam" },
+      env: { TERMINAL_TOKEN: token, TERMINAL_CWD: WORKDIR, TERMINAL_PORT: "4175", TERMINAL_USERNAME: username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam" },
       detached: true,
     });
   }
@@ -534,7 +534,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     'const WebSocket = require("ws");',
     'let output = "";',
     "let passed = false;",
-    'const socket = new WebSocket("ws://127.0.0.1:4174/terminal", ["experts-terminal", process.env.TERMINAL_TOKEN]);',
+    'const socket = new WebSocket("ws://127.0.0.1:4175/terminal", ["experts-terminal", process.env.TERMINAL_TOKEN]);',
     "const timeout = setTimeout(() => { socket.terminate(); process.exit(1); }, 12000);",
     'socket.on("open", () => socket.send("echo EXPERTS_TERMINAL_OK\\r"));',
     'socket.on("message", (data) => { output += data.toString(); if (output.includes("EXPERTS_TERMINAL_OK")) { passed = true; clearTimeout(timeout); socket.close(); } });',
@@ -555,7 +555,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
         (await selfTestResult.stderr()).slice(-2000),
     );
 
-  return { url: sandbox.domain(4174).replace(/^https:/, "wss:") + "/terminal", token, toolkitStatus };
+  return { url: sandbox.domain(4175).replace(/^https:/, "wss:") + "/terminal", token, toolkitStatus };
 }
 
 export async function stopCloudProjectTerminal(userId: string) {
