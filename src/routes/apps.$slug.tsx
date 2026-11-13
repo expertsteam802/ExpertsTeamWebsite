@@ -31,6 +31,9 @@ function documentWithAssetBase(html: string, deploymentUrl: string) {
   if (/<head\b[^>]*>/i.test(withoutExistingBase)) {
     return withoutExistingBase.replace(/<head\b[^>]*>/i, (head) => head + baseTag);
   }
+  if (/<html\b[^>]*>/i.test(withoutExistingBase)) {
+    return withoutExistingBase.replace(/<html\b[^>]*>/i, (htmlTag) => htmlTag + `<head>${baseTag}</head>`);
+  }
   return `<!doctype html><html><head>${baseTag}</head><body>${withoutExistingBase}</body></html>`;
 }
 
