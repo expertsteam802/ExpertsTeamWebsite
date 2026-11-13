@@ -418,7 +418,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     "});",
     'sockets.on("connection", (client) => {',
     "  if (activeShell) { try { activeShell.kill(); } catch {} activeShell = null; }",
-    '  const shell = spawn("script", ["-q", "-f", "-c", "/bin/bash --noprofile --rcfile /vercel/sandbox/.experts-terminal-bridge/prompt.rc -i", "/dev/null"], { cwd: process.env.TERMINAL_CWD || "/vercel/sandbox", env: { ...process.env, TERM: "xterm-256color", COLORTERM: "truecolor" }, stdio: ["pipe", "pipe", "pipe"] });',
+    '  const shell = spawn("script", ["-q", "-f", "-c", "/usr/bin/proxychains4 -q -f /vercel/sandbox/.experts-terminal-bridge/proxychains.conf /bin/bash --noprofile --rcfile /vercel/sandbox/.experts-terminal-bridge/prompt.rc -i", "/dev/null"], { cwd: process.env.TERMINAL_CWD || "/vercel/sandbox", env: { ...process.env, ALL_PROXY: "socks5h://127.0.0.1:9050", all_proxy: "socks5h://127.0.0.1:9050", HTTP_PROXY: "socks5h://127.0.0.1:9050", HTTPS_PROXY: "socks5h://127.0.0.1:9050", http_proxy: "socks5h://127.0.0.1:9050", https_proxy: "socks5h://127.0.0.1:9050", NO_PROXY: "localhost,127.0.0.1,::1", no_proxy: "localhost,127.0.0.1,::1", TERM: "xterm-256color", COLORTERM: "truecolor" }, stdio: ["pipe", "pipe", "pipe"] });',
     "  activeShell = shell;",
     '  shell.stdout.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
     '  shell.stderr.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
@@ -463,7 +463,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     );
   // Install a compact CTF/security-analysis toolkit once per persistent sandbox.
   // These utilities are intended for authorized labs and challenge environments.
-  const toolkitMarker = WORKDIR + "/.experts-ctf-toolkit-v1";
+  const toolkitMarker = WORKDIR + "/.experts-ctf-toolkit-v2";
   const toolkitCheck = await sandbox.runCommand({ cmd: "test", args: ["-f", toolkitMarker], cwd: WORKDIR });
   let toolkitStatus: "ready" | "skipped" | "unavailable" = toolkitCheck.exitCode === 0 ? "ready" : "skipped";
   if (toolkitCheck.exitCode !== 0) {
@@ -473,13 +473,158 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
         'if [ "$(id -u)" -ne 0 ] || ! command -v apt-get >/dev/null 2>&1; then exit 4; fi',
         "export DEBIAN_FRONTEND=noninteractive",
         "apt-get update -qq",
-        "apt-get install -y --no-install-recommends nmap sqlmap john hashcat binwalk libimage-exiftool-perl tshark gdb python3-pwntools python3-pip python3-venv git curl wget jq unzip zip file ripgrep netcat-openbsd dnsutils tcpdump",
+        "apt-get install -y --no-install-recommends tor proxychains4 iptables nmap sqlmap john hashcat binwalk libimage-exiftool-perl tshark gdb python3-pwntools python3-pip python3-venv git curl wget jq unzip zip file ripgrep netcat-openbsd dnsutils tcpdump",
         "touch " + toolkitMarker,
       ].join(" && ")],
       cwd: WORKDIR,
       detached: true,
     });
     toolkitStatus = "installing";
+  }
+
+  // Route terminal child processes through Tor and enforce a dual-stack egress kill switch.
+  const torConfigPath = bridgeDir + "/torrc";
+  const proxychainsConfigPath = bridgeDir + "/proxychains.conf";
+  await sandbox.writeFiles([
+    {
+      path: torConfigPath,
+      content: Buffer.from([
+        "ClientOnly 1",
+        "SocksPort 127.0.0.1:9050 IsolateSOCKSAuth",
+        "SafeSocks 1",
+        "TestSocks 1",
+        "MaxCircuitDirtiness 600",
+        "AvoidDiskWrites 1",
+        "DataDirectory /tmp/expersteam-tor-data",
+        "Log notice file /tmp/expersteam-tor.log",
+      ].join("\n") + "\n", "utf8"),
+      mode: 0o600,
+    },
+    {
+      path: proxychainsConfigPath,
+      content: Buffer.from([
+        "strict_chain",
+        "proxy_dns",
+        "tcp_read_time_out 15000",
+        "tcp_connect_time_out 10000",
+        "[ProxyList]",
+        "socks5 127.0.0.1 9050",
+      ].join("\n") + "\n", "utf8"),
+      mode: 0o600,
+    },
+  ]);
+  const torTools = await sandbox.runCommand({
+    cmd: "sh",
+    args: ["-lc", "command -v tor >/dev/null && command -v proxychains4 >/dev/null && command -v iptables >/dev/null && command -v ip6tables >/dev/null && command -v runuser >/dev/null && command -v curl >/dev/null"],
+    cwd: WORKDIR,
+    timeoutMs: 10_000,
+  });
+  if (torTools.exitCode !== 0) {
+    throw new Error(
+      "Tor networking is being prepared in this temporary Linux session. Reopen the terminal shortly; it will stay blocked rather than silently use your direct IP until Tor and its firewall are ready.",
+    );
+  }
+  const torUserSetup = await sandbox.runCommand({
+    cmd: "sh",
+    args: ["-lc", [
+      "id -u experts-tor >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin experts-tor",
+      "mkdir -p /tmp/expersteam-tor-data",
+      "chown -R experts-tor:experts-tor /tmp/expersteam-tor-data",
+    ].join(" && ")],
+    cwd: WORKDIR,
+    timeoutMs: 10_000,
+  });
+  if (torUserSetup.exitCode !== 0) {
+    throw new Error("Could not create the isolated Tor service account: " + (await torUserSetup.stderr()).slice(-1200));
+  }
+  const torCheck = async () => sandbox.runCommand({
+    cmd: "curl",
+    args: ["--silent", "--show-error", "--fail", "--max-time", "8", "--socks5-hostname", "127.0.0.1:9050", "https://check.torproject.org/api/ip"],
+    cwd: WORKDIR,
+    timeoutMs: 10_000,
+  });
+  let torExitIp = "";
+  let torReady = false;
+  const existingTor = await torCheck();
+  if (existingTor.exitCode === 0) {
+    try {
+      const result = JSON.parse((await existingTor.stdout()).trim()) as { IsTor?: boolean; IP?: string };
+      torReady = result.IsTor === true && typeof result.IP === "string";
+      torExitIp = torReady ? result.IP! : "";
+    } catch {
+      torReady = false;
+    }
+  }
+  if (!torReady) {
+    await sandbox.runCommand({
+      cmd: "runuser",
+      args: ["-u", "experts-tor", "--", "tor", "-f", torConfigPath],
+      cwd: WORKDIR,
+      detached: true,
+    });
+    for (let attempt = 0; attempt < 90; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const check = await torCheck();
+      if (check.exitCode === 0) {
+        try {
+          const result = JSON.parse((await check.stdout()).trim()) as { IsTor?: boolean; IP?: string };
+          if (result.IsTor === true && typeof result.IP === "string") {
+            torReady = true;
+            torExitIp = result.IP;
+            break;
+          }
+        } catch {
+          // Wait until Tor has a verified exit circuit.
+        }
+      }
+    }
+  }
+  if (!torReady) {
+    throw new Error("Tor could not bootstrap a verified Tor exit circuit. The terminal was not opened, so it cannot silently fall back to your direct IP. Retry after checking sandbox network access.");
+  }
+
+  const firewallScript = [
+    "set -eu",
+    "TOR_UID=$(id -u experts-tor)",
+    "for FW in iptables ip6tables; do",
+    "  $FW -w -N EXPERTS_TOR_EGRESS 2>/dev/null || $FW -w -F EXPERTS_TOR_EGRESS",
+    "  $FW -w -A EXPERTS_TOR_EGRESS -o lo -j ACCEPT",
+    "  $FW -w -A EXPERTS_TOR_EGRESS -m conntrack --ctstate ESTABLISHED,RELATED --ctdir REPLY -j ACCEPT",
+    "  $FW -w -A EXPERTS_TOR_EGRESS -m owner --uid-owner $TOR_UID -p tcp -j ACCEPT",
+    "  $FW -w -A EXPERTS_TOR_EGRESS -j REJECT",
+    "  $FW -w -C OUTPUT -j EXPERTS_TOR_EGRESS 2>/dev/null || $FW -w -I OUTPUT 1 -j EXPERTS_TOR_EGRESS",
+    "done",
+  ].join(" && ");
+  const firewall = await sandbox.runCommand({
+    cmd: "sh",
+    args: ["-lc", firewallScript],
+    cwd: WORKDIR,
+    timeoutMs: 15_000,
+  });
+  if (firewall.exitCode !== 0) {
+    throw new Error(
+      "Tor connected, but this Vercel Sandbox does not allow the IPv4+IPv6 egress kill switch required to prevent direct-IP leaks. The terminal was not opened. " +
+        (await firewall.stderr()).slice(-1500),
+    );
+  }
+
+  const directLeakTest = await sandbox.runCommand({
+    cmd: "sh",
+    args: ["-lc", "if env -u ALL_PROXY -u all_proxy -u HTTP_PROXY -u HTTPS_PROXY curl -4 -fsS --connect-timeout 4 --max-time 5 https://api.ipify.org >/dev/null 2>&1; then exit 9; fi; if env -u ALL_PROXY -u all_proxy -u HTTP_PROXY -u HTTPS_PROXY curl -6 -fsS --connect-timeout 4 --max-time 5 https://api64.ipify.org >/dev/null 2>&1; then exit 10; fi; exit 0"],
+    cwd: WORKDIR,
+    timeoutMs: 12_000,
+  });
+  if (directLeakTest.exitCode !== 0) {
+    throw new Error("The terminal egress kill switch did not block direct IPv4 and IPv6 requests. The terminal was not opened.");
+  }
+  const torProxyTest = await sandbox.runCommand({
+    cmd: "proxychains4",
+    args: ["-q", "-f", proxychainsConfigPath, "curl", "-fsS", "--max-time", "15", "https://check.torproject.org/api/ip"],
+    cwd: WORKDIR,
+    timeoutMs: 20_000,
+  });
+  if (torProxyTest.exitCode !== 0) {
+    throw new Error("The terminal's enforced Tor proxy self-test failed. The terminal was not opened.");
   }
 
   const installed = await sandbox.runCommand({
@@ -555,7 +700,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
         (await selfTestResult.stderr()).slice(-2000),
     );
 
-  return { url: sandbox.domain(4175).replace(/^https:/, "wss:") + "/terminal", token, toolkitStatus };
+  return { url: sandbox.domain(4175).replace(/^https:/, "wss:") + "/terminal", token, toolkitStatus, torStatus: "connected" as const, torExitIp, torKillSwitch: true as const, torCircuitMaxAgeSeconds: 600 };
 }
 
 export async function stopCloudProjectTerminal(userId: string) {
