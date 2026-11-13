@@ -16,6 +16,7 @@ import {
   Settings,
   ShieldAlert,
   Trash2,
+  Terminal,
   Users,
   Video,
   Eye,
@@ -71,6 +72,7 @@ type SettingsForm = {
   ai_subscription_credits: string;
   ai_free_credits: string;
   payout_account: string;
+  terminal_idle_timeout_minutes: string;
   navigation_labels_json: string;
 };
 
@@ -335,6 +337,21 @@ function AdminPage() {
         ai_subscription_credits: String(settings.ai_subscription_credits ?? 500),
         ai_free_credits: String(settings.ai_free_credits ?? 25),
         payout_account: settings.payout_account ?? "",
+        terminal_idle_timeout_minutes: (() => {
+          const root =
+            settings.site_branding_settings &&
+            typeof settings.site_branding_settings === "object" &&
+            !Array.isArray(settings.site_branding_settings)
+              ? (settings.site_branding_settings as Record<string, unknown>)
+              : {};
+          const terminal =
+            root.terminalSettings && typeof root.terminalSettings === "object" &&
+            !Array.isArray(root.terminalSettings)
+              ? (root.terminalSettings as Record<string, unknown>)
+              : {};
+          const minutes = Number(terminal.idleTimeoutMinutes ?? 0);
+          return String(Number.isInteger(minutes) && minutes >= 0 && minutes <= 1440 ? minutes : 0);
+        })(),
         navigation_labels_json: (() => {
           const root =
             settings.site_branding_settings &&
@@ -410,6 +427,15 @@ function AdminPage() {
         !Array.isArray(existingBranding.siteBranding)
           ? (existingBranding.siteBranding as Record<string, unknown>)
           : {};
+      const existingTerminalSettings =
+        existingBranding.terminalSettings &&
+        typeof existingBranding.terminalSettings === "object" &&
+        !Array.isArray(existingBranding.terminalSettings)
+          ? (existingBranding.terminalSettings as Record<string, unknown>)
+          : {};
+      const terminalIdleTimeout = Number(form.terminal_idle_timeout_minutes);
+      if (!Number.isInteger(terminalIdleTimeout) || terminalIdleTimeout < 0 || terminalIdleTimeout > 1440)
+        throw new Error("Terminal inactivity timeout must be between 0 and 1,440 minutes.");
       if (!Number.isInteger(freeCredits) || freeCredits < 0 || freeCredits > 100000)
         throw new Error("Free AI credits must be between 0 and 100,000.");
       if (!Number.isFinite(studioPrice) || studioPrice < 0.01 || studioPrice > 1000)
@@ -427,6 +453,10 @@ function AdminPage() {
               ...existingSiteBranding,
               background_image_url: form.background_image_url.trim(),
               banner_image_url: form.banner_image_url.trim(),
+            },
+            terminalSettings: {
+              ...existingTerminalSettings,
+              idleTimeoutMinutes: terminalIdleTimeout,
             },
             siteNavigation: navigationLabels,
           } as Json,
@@ -707,6 +737,12 @@ function AdminPage() {
                   <Activity className="h-4 w-4" /> Activity log
                 </TabsTrigger>
                 <TabsTrigger
+                  value="terminal-settings"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
+                  <Terminal className="h-4 w-4" /> Terminal settings
+                </TabsTrigger>
+                <TabsTrigger
                   value="branding"
                   className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
                 >
@@ -969,6 +1005,49 @@ function AdminPage() {
                       </p>
                     )}
                   </div>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="terminal-settings" className="mt-0">
+                <Card className="max-w-3xl gap-4 p-6">
+                  <div>
+                    <h2 className="font-display text-lg font-semibold">Linux terminal inactivity</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Choose how long a Linux terminal can remain without user activity before it
+                      closes automatically. This setting applies to everyone using ExpertAI Studio.
+                    </p>
+                  </div>
+                  {form ? (
+                    <>
+                      <div className="max-w-sm space-y-2">
+                        <Label htmlFor="terminal_idle_timeout_minutes">Idle timeout (minutes)</Label>
+                        <Input
+                          id="terminal_idle_timeout_minutes"
+                          type="number"
+                          min="0"
+                          max="1440"
+                          step="1"
+                          value={form.terminal_idle_timeout_minutes}
+                          onChange={(event) =>
+                            setForm({ ...form, terminal_idle_timeout_minutes: event.target.value })
+                          }
+                        />
+                        <p className="text-xs leading-5 text-muted-foreground">
+                          Enter 0 to disable automatic inactivity closure, 30 for half an hour, or
+                          60 for one hour. The cloud runtime may still enforce its own maximum
+                          session lifetime.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => saveSettings.mutate()}
+                        disabled={saveSettings.isPending}
+                      >
+                        {saveSettings.isPending ? "Saving…" : "Save terminal settings"}
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Loading settings…</p>
+                  )}
                 </Card>
               </TabsContent>
 
