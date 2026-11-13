@@ -604,6 +604,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
       args: ["-q", "-f", proxychainsConfigPath, "npm", "install", "--no-audit", "--no-fund"],
       cwd: bridgeDir,
       timeoutMs: 180_000,
+      sudo: true,
     });
     if (install.exitCode !== 0)
       throw new Error(
@@ -694,6 +695,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
       cwd: bridgeDir,
       env: { TERMINAL_TOKEN: token, TERMINAL_CWD: WORKDIR, TERMINAL_PORT: "4175", TERMINAL_USERNAME: username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam" },
       detached: true,
+      sudo: true,
     });
   }
 
