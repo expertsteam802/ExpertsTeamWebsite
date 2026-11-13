@@ -517,6 +517,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
       ].join(" && ")],
       cwd: WORKDIR,
       timeoutMs: 180_000,
+      sudo: true,
     });
     if (installTor.exitCode !== 0) {
       throw new Error("Could not install the Tor client, SOCKS proxy, and dual-stack firewall packages: " + (await installTor.stderr()).slice(-1800));
@@ -540,6 +541,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     ].join(" && ")],
     cwd: WORKDIR,
     timeoutMs: 10_000,
+    sudo: true,
   });
   if (torUserSetup.exitCode !== 0) {
     throw new Error("Could not create the isolated Tor service account: " + (await torUserSetup.stderr()).slice(-1200));
@@ -568,6 +570,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
       args: ["-u", "experts-tor", "--", "tor", "-f", torConfigPath],
       cwd: WORKDIR,
       detached: true,
+      sudo: true,
     });
     for (let attempt = 0; attempt < 90; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -626,6 +629,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     args: ["-lc", firewallScript],
     cwd: WORKDIR,
     timeoutMs: 15_000,
+    sudo: true,
   });
   if (firewall.exitCode !== 0) {
     throw new Error(
@@ -670,6 +674,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
       ].join(" && ")],
       cwd: WORKDIR,
       detached: true,
+      sudo: true,
     });
     toolkitStatus = "installing";
   }
