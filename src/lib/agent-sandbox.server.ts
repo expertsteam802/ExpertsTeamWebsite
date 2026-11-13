@@ -506,7 +506,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
   // outbound networking; no Tor daemon, proxychains, or guest firewall rules.
   const toolkitMarker = WORKDIR + "/.experts-ctf-toolkit-v2";
   const toolkitCheck = await sandbox.runCommand({ cmd: "test", args: ["-f", toolkitMarker], cwd: WORKDIR });
-  let toolkitStatus: "ready" | "skipped" | "unavailable" = toolkitCheck.exitCode === 0 ? "ready" : "unavailable";
+  let toolkitStatus: "ready" | "installing" | "skipped" | "unavailable" = toolkitCheck.exitCode === 0 ? "ready" : "unavailable";
 
   stage = "preparing the unprivileged Linux shell";
   const shellSetup = await sandbox.runCommand({
