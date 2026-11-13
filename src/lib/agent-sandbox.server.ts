@@ -364,6 +364,22 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     networkPolicy: "allow-all",
     ports: [5173, 4175],
   });
+  // The Ubuntu universal image does not guarantee Vercel's legacy /vercel/sandbox
+  // directory exists. Create the terminal workspace from the always-present root
+  // directory before any command uses WORKDIR as its cwd.
+  const workspaceInit = await sandbox.runCommand({
+    cmd: "mkdir",
+    args: ["-p", WORKDIR],
+    cwd: "/",
+    timeoutMs: 10_000,
+    sudo: true,
+  });
+  if (workspaceInit.exitCode !== 0) {
+    throw new Error(
+      "Could not create the terminal workspace directory: " +
+        (await workspaceInit.stderr()).slice(-1200),
+    );
+  }
   const savedPort = Number((await readText(sandbox, WORKDIR + "/" + PREVIEW_PORT_FILE))?.trim());
   const previewPort =
     Number.isInteger(savedPort) && savedPort >= 1 && savedPort <= 65535 ? savedPort : 5173;
