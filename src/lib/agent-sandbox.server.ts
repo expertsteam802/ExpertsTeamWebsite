@@ -18,7 +18,35 @@ function sandboxName(projectId: string) {
 }
 
 function terminalSandboxName(userId: string) {
-  return "experts-terminal-ephemeral-v2-" + userId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 36);
+  const owner = createHash("sha256").update(userId).digest("hex").slice(0, 12);
+  return `experts-terminal-${owner}-${randomUUID()}`;
+}
+
+function assertTerminalSandboxName(userId: string, name: string) {
+  const owner = createHash("sha256").update(userId).digest("hex").slice(0, 12);
+  if (!new RegExp(`^experts-terminal-${owner}-[a-f0-9-]{36}import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { Sandbox } from "@vercel/sandbox";
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+import { repairMissingStylesheetImports } from "./agent.server";
+
+export type AgentProjectFiles = Record<string, string>;
+
+const WORKDIR = "/vercel/sandbox";
+const META_FILE = ".experts-agent-files.json";
+const PACKAGE_HASH_FILE = ".experts-agent-package-hash";
+const PREVIEW_PORT_FILE = ".experts-agent-preview-port";
+
+function sandboxName(projectId: string) {
+  return "experts-agent-ephemeral-v3-" + projectId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 36);
+}
+
+).test(name) || name.length > 80) {
+    throw new Error("This terminal session does not belong to the signed-in account.");
+  }
+  return name;
 }
 
 // Non-persistent sandboxes lose their filesystem when stopped. Delete the old
@@ -348,7 +376,6 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
   const files = repairMissingStylesheetImports({ ...sourceFiles });
   validateFiles(files);
   const name = terminalSandboxName(userId);
-  await deleteDisposableSandbox(name);
   const sandbox = await Sandbox.create({
     name,
     // Terminal sessions are scoped to the signed-in user, not a project, so switching folders
@@ -777,9 +804,10 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
   return { url: sandbox.domain(4175).replace(/^https:/, "wss:") + "/terminal", token, toolkitStatus, torStatus: "connected" as const, torExitIp, torKillSwitch: true as const, torCircuitMaxAgeSeconds: 600 };
 }
 
-export async function stopCloudProjectTerminal(userId: string) {
+export async function stopCloudProjectTerminal(userId: string, sessionName: string) {
+  const name = assertTerminalSandboxName(userId, sessionName);
   try {
-    await deleteDisposableSandbox(terminalSandboxName(userId));
+    await deleteDisposableSandbox(name);
     return { stopped: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -788,8 +816,8 @@ export async function stopCloudProjectTerminal(userId: string) {
   }
 }
 
-export async function readCloudProjectFiles(userId: string) {
-  const sandbox = await Sandbox.get({ name: terminalSandboxName(userId) });
+export async function readCloudProjectFiles(userId: string, sessionName: string) {
+  const sandbox = await Sandbox.get({ name: assertTerminalSandboxName(userId, sessionName) });
   const listing = await sandbox.runCommand({
     cmd: "find",
     args: [
@@ -866,10 +894,10 @@ export async function readCloudProjectFiles(userId: string) {
   return { files };
 }
 
-export async function runCloudProjectCommand(userId: string, command: string) {
+export async function runCloudProjectCommand(userId: string, sessionName: string, command: string) {
   if (!command.trim() || command.length > 3000)
     throw new Error("Enter a command under 3,000 characters.");
-  const sandbox = await Sandbox.get({ name: terminalSandboxName(userId) });
+  const sandbox = await Sandbox.get({ name: assertTerminalSandboxName(userId, sessionName) });
   const cwdPath = `${WORKDIR}/.experts-terminal-cwd`;
   const envPath = `${WORKDIR}/.experts-terminal-env`;
   const commandPath = `${WORKDIR}/.experts-terminal-command.sh`;
