@@ -618,7 +618,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
 
   const directLeakTest = await sandbox.runCommand({
     cmd: "sh",
-    args: ["-lc", "if env -u ALL_PROXY -u all_proxy -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy curl -4 -fsS --connect-timeout 4 --max-time 5 https://api.ipify.org >/dev/null 2>&1; then exit 9; fi; if env -u ALL_PROXY -u all_proxy -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy curl -6 -fsS --connect-timeout 4 --max-time 5 https://api64.ipify.org >/dev/null 2>&1; then exit 10; fi; if dig +time=2 +tries=1 @1.1.1.1 example.com >/dev/null 2>&1; then exit 11; fi; if dig +tcp +time=2 +tries=1 @1.1.1.1 example.com >/dev/null 2>&1; then exit 12; fi; exit 0"],
+    args: ["-lc", "if nc -4 -z -w 3 1.1.1.1 443 >/dev/null 2>&1; then exit 9; fi; if nc -6 -z -w 3 2606:4700:4700::1111 443 >/dev/null 2>&1; then exit 10; fi; if dig +time=2 +tries=1 @1.1.1.1 example.com >/dev/null 2>&1; then exit 11; fi; if dig +tcp +time=2 +tries=1 @1.1.1.1 example.com >/dev/null 2>&1; then exit 12; fi; exit 0"],
     cwd: WORKDIR,
     timeoutMs: 16_000,
   });
