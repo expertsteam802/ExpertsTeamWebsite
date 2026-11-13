@@ -461,26 +461,11 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     throw new Error(
       "This Vercel Sandbox image does not include the util-linux script command required to allocate a terminal.",
     );
-  // Install a compact CTF/security-analysis toolkit once per persistent sandbox.
-  // These utilities are intended for authorized labs and challenge environments.
+  // The Tor bootstrap packages are installed before the egress lock is applied.
+  // The larger optional security toolkit is installed through Tor after the lock is active.
   const toolkitMarker = WORKDIR + "/.experts-ctf-toolkit-v2";
   const toolkitCheck = await sandbox.runCommand({ cmd: "test", args: ["-f", toolkitMarker], cwd: WORKDIR });
-  let toolkitStatus: "ready" | "skipped" | "unavailable" = toolkitCheck.exitCode === 0 ? "ready" : "skipped";
-  if (toolkitCheck.exitCode !== 0) {
-    await sandbox.runCommand({
-      cmd: "sh",
-      args: ["-lc", [
-        'if [ "$(id -u)" -ne 0 ] || ! command -v apt-get >/dev/null 2>&1; then exit 4; fi',
-        "export DEBIAN_FRONTEND=noninteractive",
-        "apt-get update -qq",
-        "apt-get install -y --no-install-recommends tor proxychains4 iptables nmap sqlmap john hashcat binwalk libimage-exiftool-perl tshark gdb python3-pwntools python3-pip python3-venv git curl wget jq unzip zip file ripgrep netcat-openbsd dnsutils tcpdump",
-        "touch " + toolkitMarker,
-      ].join(" && ")],
-      cwd: WORKDIR,
-      detached: true,
-    });
-    toolkitStatus = "installing";
-  }
+  let toolkitStatus: "ready" | "skipped" | "unavailable" = toolkitCheck.exitCode === 0 ? "ready" : "installing";
 
   // Route terminal child processes through Tor and enforce a dual-stack egress kill switch.
   const torConfigPath = bridgeDir + "/torrc";
@@ -515,14 +500,27 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
   ]);
   const torTools = await sandbox.runCommand({
     cmd: "sh",
-    args: ["-lc", "command -v tor >/dev/null && command -v proxychains4 >/dev/null && command -v iptables >/dev/null && command -v ip6tables >/dev/null && command -v runuser >/dev/null && command -v curl >/dev/null"],
+    args: ["-lc", [
+      "command -v tor >/dev/null && command -v proxychains4 >/dev/null && command -v iptables >/dev/null && command -v ip6tables >/dev/null && command -v runuser >/dev/null && command -v curl >/dev/null && command -v nc >/dev/null && command -v dig >/dev/null",
+    ].join(" ")],
     cwd: WORKDIR,
     timeoutMs: 10_000,
   });
   if (torTools.exitCode !== 0) {
-    throw new Error(
-      "Tor networking is being prepared in this temporary Linux session. Reopen the terminal shortly; it will stay blocked rather than silently use your direct IP until Tor and its firewall are ready.",
-    );
+    const installTor = await sandbox.runCommand({
+      cmd: "sh",
+      args: ["-lc", [
+        'if [ "$(id -u)" -ne 0 ] || ! command -v apt-get >/dev/null 2>&1; then exit 4; fi',
+        "export DEBIAN_FRONTEND=noninteractive",
+        "apt-get update -qq",
+        "apt-get install -y --no-install-recommends tor proxychains4 iptables netcat-openbsd dnsutils curl",
+      ].join(" && ")],
+      cwd: WORKDIR,
+      timeoutMs: 180_000,
+    });
+    if (installTor.exitCode !== 0) {
+      throw new Error("Could not install the Tor client, SOCKS proxy, and dual-stack firewall packages: " + (await installTor.stderr()).slice(-1800));
+    }
   }
   const torUserSetup = await sandbox.runCommand({
     cmd: "sh",
@@ -592,6 +590,25 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     throw new Error("Tor could not bootstrap a verified Tor exit circuit. The terminal was not opened, so it cannot silently fall back to your direct IP. Retry after checking sandbox network access.");
   }
 
+  const installed = await sandbox.runCommand({
+    cmd: "test",
+    args: ["-d", bridgeDir + "/node_modules/ws"],
+    cwd: WORKDIR,
+  });
+  if (installed.exitCode !== 0) {
+    const install = await sandbox.runCommand({
+      cmd: "proxychains4",
+      args: ["-q", "-f", proxychainsConfigPath, "npm", "install", "--no-audit", "--no-fund"],
+      cwd: bridgeDir,
+      timeoutMs: 180_000,
+    });
+    if (install.exitCode !== 0)
+      throw new Error(
+        "Could not install the JavaScript-only terminal runtime through Tor: " +
+          (await install.stderr()).slice(-3000),
+      );
+  }
+
   const firewallScript = [
     "set -eu",
     "TOR_UID=$(id -u experts-tor)",
@@ -642,23 +659,19 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     throw new Error("The terminal's Tor proxy did not return a verified Tor exit response.");
   }
 
-  const installed = await sandbox.runCommand({
-    cmd: "test",
-    args: ["-d", bridgeDir + "/node_modules/ws"],
-    cwd: WORKDIR,
-  });
-  if (installed.exitCode !== 0) {
-    const install = await sandbox.runCommand({
-      cmd: "npm",
-      args: ["install", "--no-audit", "--no-fund"],
-      cwd: bridgeDir,
-      timeoutMs: 180_000,
+  if (toolkitCheck.exitCode !== 0 && toolkitStatus === "installing") {
+    await sandbox.runCommand({
+      cmd: "sh",
+      args: ["-lc", [
+        "export DEBIAN_FRONTEND=noninteractive",
+        "proxychains4 -q -f " + proxychainsConfigPath + " apt-get update -qq",
+        "proxychains4 -q -f " + proxychainsConfigPath + " apt-get install -y --no-install-recommends nmap sqlmap john hashcat binwalk libimage-exiftool-perl tshark gdb python3-pwntools python3-pip python3-venv git wget jq unzip zip file ripgrep tcpdump",
+        "touch " + toolkitMarker,
+      ].join(" && ")],
+      cwd: WORKDIR,
+      detached: true,
     });
-    if (install.exitCode !== 0)
-      throw new Error(
-        "Could not install the JavaScript-only terminal runtime: " +
-          (await install.stderr()).slice(-3000),
-      );
+    toolkitStatus = "installing";
   }
 
   const ping = () =>
