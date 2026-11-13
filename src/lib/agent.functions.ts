@@ -324,19 +324,21 @@ const publishRequest = z
 
 export const stopAgentTerminal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => z.object({}).parse(input))
-  .handler(async ({ context }) => {
+  .validator((input: unknown) => z.object({ sandboxName: z.string().min(40).max(80) }).parse(input))
+  .handler(async ({ data, context }) => {
     const { stopCloudProjectTerminal } = await import("./agent-sandbox.server");
-    return stopCloudProjectTerminal(context.userId);
+    return stopCloudProjectTerminal(context.userId, data.sandboxName);
   });
 
 export const syncAgentTerminalFiles = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
+  .validator((input: unknown) =>
+    z.object({ projectId: z.string().uuid(), sandboxName: z.string().min(40).max(80) }).parse(input),
+  )
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
     const { readCloudProjectFiles } = await import("./agent-sandbox.server");
-    return readCloudProjectFiles(context.userId);
+    return readCloudProjectFiles(context.userId, data.sandboxName);
   });
 
 export const publishAgentProject = createServerFn({ method: "POST" })
@@ -398,6 +400,7 @@ export const runAgentTerminalCommand = createServerFn({ method: "POST" })
     z
       .object({
         projectId: z.string().uuid(),
+        sandboxName: z.string().min(40).max(80),
         command: z.string().trim().min(1).max(3000),
       })
       .parse(input),
@@ -405,7 +408,7 @@ export const runAgentTerminalCommand = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
     const { runCloudProjectCommand } = await import("./agent-sandbox.server");
-    return runCloudProjectCommand(context.userId, data.command);
+    return runCloudProjectCommand(context.userId, data.sandboxName, data.command);
   });
 
 export const stopAgentPreview = createServerFn({ method: "POST" })
