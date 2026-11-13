@@ -27,9 +27,9 @@ function documentWithAssetBase(html: string, deploymentUrl: string) {
   const baseUrl = new URL(".", deploymentUrl).href;
   const safeBaseUrl = baseUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
   const baseTag = `<base href="${safeBaseUrl}">`;
-  const withoutExistingBase = html.replace(/<base\\b[^>]*>/i, "");
-  if (/<head\\b[^>]*>/i.test(withoutExistingBase)) {
-    return withoutExistingBase.replace(/<head\\b[^>]*>/i, (head) => head + baseTag);
+  const withoutExistingBase = html.replace(/<base\b[^>]*>/i, "");
+  if (/<head\b[^>]*>/i.test(withoutExistingBase)) {
+    return withoutExistingBase.replace(/<head\b[^>]*>/i, (head) => head + baseTag);
   }
   return `<!doctype html><html><head>${baseTag}</head><body>${withoutExistingBase}</body></html>`;
 }
@@ -53,7 +53,7 @@ function LiveApp() {
         throw new Error(`The published app could not be loaded (HTTP ${response.status}).`);
       }
       const html = await response.text();
-      const normalizedHtml = html.replace(/^\\uFEFF/, "").trimStart().toLowerCase();
+      const normalizedHtml = html.replace(/^\uFEFF/, "").trimStart().toLowerCase();
       if (!normalizedHtml.startsWith("<!doctype html") && !normalizedHtml.startsWith("<html")) {
         throw new Error("The published entry file is not a valid HTML document.");
       }
