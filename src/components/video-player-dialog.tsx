@@ -206,6 +206,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
               setLoading(false);
               const iframe = event.target.getIframe();
               iframe.title = title;
+              iframe.referrerPolicy = "origin";
               iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
               iframe.allowFullscreen = true;
               iframe.className = "h-full w-full";
