@@ -174,7 +174,6 @@ const ADSENSE_PUBLIC_CONTENT_PATHS = new Set([
   "/",
   "/about",
   "/learn",
-  "/explore",
 ]);
 
 function RootShell({ children }: { children: ReactNode }) {
