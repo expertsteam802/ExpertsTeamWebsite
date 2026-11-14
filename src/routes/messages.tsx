@@ -267,7 +267,7 @@ function MessagesPage() {
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: { width: { ideal: 1280, max: 1920 }, height: { ideal: 720 }, frameRate: { ideal: 24, max: 30 } } });
       localStreamRef.current = stream;
       setLocalStream(stream);
       const pc = await createPeerConnection();
@@ -285,7 +285,7 @@ function MessagesPage() {
   async function acceptVideoCall() {
     if (!incomingCall || !user) return;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: { width: { ideal: 1280, max: 1920 }, height: { ideal: 720 }, frameRate: { ideal: 24, max: 30 } } });
       setLocalStream(stream);
       const pc = await createPeerConnection();
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
