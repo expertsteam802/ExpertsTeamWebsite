@@ -169,12 +169,13 @@ export function WorkspaceChat() {
     mutationFn: async ({ body, audio }: { body: string; audio: File | null }) => {
       if (!user || !activeGroup) throw new Error("Choose a developer workspace first.");
       let mediaPath: string | null = null;
+      const audioMimeType = audio?.type.split(";")[0] || "audio/webm";
       if (audio) {
         mediaPath = user.id + "/" + activeGroup.id + "/" + crypto.randomUUID() + "-" + audio.name.replace(/[^a-zA-Z0-9._-]/g, "-");
         const { error: uploadError } = await supabase.storage.from("workspace-media").upload(mediaPath, audio, {
           cacheControl: "60",
           upsert: false,
-          contentType: audio.type || "audio/webm",
+          contentType: audioMimeType,
         });
         if (uploadError) throw uploadError;
         const { data: signed, error: verifyError } = await supabase.storage.from("workspace-media").createSignedUrl(mediaPath, 60);
@@ -188,7 +189,7 @@ export function WorkspaceChat() {
         user_id: user.id,
         body: body.slice(0, 4000),
         media_path: mediaPath,
-        media_mime_type: audio?.type || null,
+        media_mime_type: audio ? audioMimeType : null,
         media_size_bytes: audio?.size ?? 0,
       });
       if (error) {
