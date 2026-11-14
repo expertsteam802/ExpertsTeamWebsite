@@ -650,3 +650,31 @@ select:focus,
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Keep xterm's canvas and viewport sized to the actual panel so Kilo's full-screen
+   TUI is not clipped into narrow or offset fragments during panel resizing. */
+.expert-agent-kilo-surface {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  contain: size layout paint;
+}
+.expert-agent-kilo-surface .xterm {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+}
+.expert-agent-kilo-surface .xterm-screen,
+.expert-agent-kilo-surface .xterm-viewport,
+.expert-agent-kilo-surface .xterm-scroll-area {
+  width: 100% !important;
+}
+.expert-agent-kilo-surface .xterm-viewport {
+  overflow-y: auto !important;
+  scrollbar-width: thin;
+}
