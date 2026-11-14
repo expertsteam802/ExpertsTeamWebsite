@@ -370,7 +370,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     persistent: false,
     image: "vercel/sandbox/universal:latest",
     resources: { vcpus: 1 },
-    timeout: 12 * 60 * 60 * 1000,
+    timeout: 45 * 60 * 1000,
     networkPolicy: "allow-all",
     ports: [5173, 4175],
   });
@@ -395,7 +395,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
   const previewPort =
     Number.isInteger(savedPort) && savedPort >= 1 && savedPort <= 65535 ? savedPort : 5173;
   await sandbox.update({
-    timeout: 12 * 60 * 60 * 1000,
+    timeout: 45 * 60 * 1000,
     networkPolicy: "allow-all",
     ports: [previewPort, 4175],
   });
