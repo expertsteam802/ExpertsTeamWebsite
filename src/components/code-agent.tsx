@@ -625,7 +625,7 @@ export function CodeAgent() {
           });
           recoveryFiles = synced.files;
           terminalRecoveryFilesRef.current = recoveryFiles;
-          await persist({ files: recoveryFiles });
+          await persistRef.current({ files: recoveryFiles });
           setFiles(recoveryFiles);
         } catch {
           // If the old VM has already expired, recover from the latest saved editor state.
@@ -1098,6 +1098,9 @@ export function CodeAgent() {
     await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
     return data.id;
   }
+
+  const persistRef = useRef(persist);
+  persistRef.current = persist;
 
   // Keep files edited by Kilo/OpenCode in the terminal reflected in the editor
   // and saved project record. Manual editor changes take priority while dirty.
