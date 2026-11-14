@@ -130,6 +130,7 @@ function MessagesPage() {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const callTimeoutRef = useRef<number | null>(null);
+  const turnWarningShownRef = useRef(false);
 
   const { data: conversations = [], isLoading } = useQuery({
     queryKey: ["direct-conversations", user?.id],
@@ -206,14 +207,31 @@ function MessagesPage() {
     }
   }
 
-  function createPeerConnection() {
-    const pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: "stun:stun.cloudflare.com:3478" },
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" },
-      ],
-    });
+  async function createPeerConnection() {
+    let iceServers: RTCIceServer[] = [
+      { urls: "stun:stun.cloudflare.com:3478" },
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+    ];
+    try {
+      const { data, error } = await supabase.functions.invoke("turn-credentials");
+      if (!error && Array.isArray(data?.iceServers) && data.iceServers.length) {
+        iceServers = data.iceServers as RTCIceServer[];
+        if (data.turnEnabled !== true && !turnWarningShownRef.current) {
+          turnWarningShownRef.current = true;
+          toast.info("Direct video calling is enabled. A TURN relay is still needed for some restrictive networks.");
+        }
+      } else if (!turnWarningShownRef.current) {
+        turnWarningShownRef.current = true;
+        toast.info("Video calls are using direct connectivity. Some restrictive networks may need a TURN relay.");
+      }
+    } catch {
+      if (!turnWarningShownRef.current) {
+        turnWarningShownRef.current = true;
+        toast.info("Video calls are using direct connectivity because relay credentials are unavailable.");
+      }
+    }
+    const pc = new RTCPeerConnection({ iceServers });
     peerConnectionRef.current = pc;
     pc.onicecandidate = (event) => {
       if (event.candidate) {
@@ -252,7 +270,7 @@ function MessagesPage() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
       localStreamRef.current = stream;
       setLocalStream(stream);
-      const pc = createPeerConnection();
+      const pc = await createPeerConnection();
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
@@ -269,7 +287,7 @@ function MessagesPage() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
       setLocalStream(stream);
-      const pc = createPeerConnection();
+      const pc = await createPeerConnection();
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
       await pc.setRemoteDescription(new RTCSessionDescription(incomingCall.payload));
       await flushPendingIce(pc);
