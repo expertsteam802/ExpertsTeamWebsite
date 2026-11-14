@@ -1150,7 +1150,7 @@ export function CodeAgent() {
       await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
       toast.success(
         'Imported "' + groupName + '" from Developer Vault (' + Object.keys(importedFiles).length +
-        " source files" + (skipped ? ", " + skipped + " skipped" : "") + ").",
+        " source " + (Object.keys(importedFiles).length === 1 ? "file" : "files") + (skipped ? ", " + skipped + " skipped" : "") + ").",
       );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not import this Developer Vault project.");
@@ -2650,8 +2650,8 @@ export function CodeAgent() {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm leading-6 text-slate-400">
-              Select a shared project folder. ExpertAI Studio imports supported text source files
-              into a new project in your account. Binary assets and secret files are not imported.
+              Select a project folder or an uploaded file. ExpertAI Studio copies supported text
+              source files into a new project in your account. Binary assets and secret files are not imported.
             </p>
             <div className="max-h-80 space-y-2 overflow-y-auto">
               {developerVaultLoading ? (
