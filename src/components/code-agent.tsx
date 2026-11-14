@@ -1641,11 +1641,12 @@ export function CodeAgent() {
                   {(isAdmin || isDeveloper) && (
                     <button
                       onClick={() => setVaultImportOpen(true)}
-                      className="rounded p-1 text-slate-500 hover:bg-white/10 hover:text-cyan-200"
+                      className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-semibold text-slate-400 hover:bg-white/10 hover:text-cyan-200"
                       aria-label="Import from Developer Vault"
-                      title="Import project from Developer Vault"
+                      title="Import a project or file from Developer Vault"
                     >
                       <FolderInput className="h-3.5 w-3.5" />
+                      <span>Vault</span>
                     </button>
                   )}
                   <button
