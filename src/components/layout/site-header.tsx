@@ -1,18 +1,22 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+  Archive,
+  Compass,
+  CreditCard,
+  FileVideo,
+  Gamepad2,
+  GraduationCap,
   LogOut,
   Menu,
+  MessageCircle,
+  MoreHorizontal,
   Palette,
   Shield,
-  Compass,
-  GraduationCap,
-  Users,
   Sparkles,
-  MessageCircle,
-  CreditCard,
+  Users,
   BriefcaseBusiness,
   Code2,
-  Archive,
+  FolderKanban,
 } from "lucide-react";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -30,16 +34,21 @@ import { useSiteSettings } from "@/hooks/use-site-settings";
 import { THEMES, useTheme, type NavAlign } from "@/hooks/use-theme";
 import { cn } from "@/lib/utils";
 
-const LINKS = [
+const PRIMARY_LINKS = [
   { to: "/", key: "home", label: "Home", icon: Compass, exact: true },
-  { to: "/pricing", key: "plans", label: "Pricing", icon: CreditCard },
-  { to: "/software", key: "software", label: "Request software", icon: BriefcaseBusiness },
-  { to: "/projects", key: "developerApply", label: "Developer Apply", icon: Code2 },
+  { to: "/explore", key: "explore", label: "Explore", icon: Compass },
   { to: "/learn", key: "learn", label: "Learn", icon: GraduationCap },
   { to: "/community", key: "community", label: "Community", icon: Users },
   { to: "/ai", key: "expertai", label: "ExpertAI", icon: Sparkles },
-  { to: "/messages", key: "messages", label: "Messages", icon: MessageCircle },
-  { to: "/explore", key: "explore", label: "Explore", icon: Compass },
+  { to: "/pricing", key: "plans", label: "Pricing", icon: CreditCard },
+] as const;
+
+const SECONDARY_LINKS = [
+  { to: "/software", label: "Request software", icon: BriefcaseBusiness },
+  { to: "/projects", label: "Developer Apply / Workspace", icon: Code2 },
+  { to: "/videos", label: "Video library", icon: FileVideo },
+  { to: "/entertainment", label: "Games & downloads", icon: Gamepad2 },
+  { to: "/showcase", label: "Project showcase", icon: FolderKanban },
 ] as const;
 
 export function SiteHeader() {
@@ -50,59 +59,111 @@ export function SiteHeader() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const activeClass = "et-nav-tab et-nav-active";
   const idleClass = "et-nav-tab";
+  const isActive = (to: string, exact = false) =>
+    exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
 
   return (
     <header className="et-topbar relative z-50 shrink-0 border-b border-white/10 bg-[#090b10]/90 backdrop-blur-2xl">
-      <div className="mx-auto flex min-h-[70px] max-w-[1680px] items-center gap-3 px-3 sm:px-5 lg:px-7">
-        <Link to="/" className="group flex shrink-0 items-center gap-2.5">
-          {settings.logo_url ? (
-            <img
-              src={settings.logo_url}
-              alt="ExpertsTeam logo"
-              className="h-11 w-11 rounded-full border border-blue-400/35 bg-white/5 object-cover shadow-lg transition group-hover:scale-[1.04] sm:h-12 sm:w-12"
-            />
-          ) : (
-            <img
-              src="/experts-team-mark.svg"
-              alt="ExpertsTeam logo"
-              className="h-11 w-11 rounded-full border border-blue-400/35 bg-white/5 object-cover shadow-lg transition group-hover:scale-[1.04] sm:h-12 sm:w-12"
-            />
-          )}
+      <div className="mx-auto flex min-h-[68px] max-w-[1680px] items-center gap-3 px-3 sm:px-5 lg:px-7">
+        <Link to="/" aria-label="ExpertsTeam home" className="group flex shrink-0 items-center">
+          <img
+            src={settings.logo_url || "/experts-team-mark.svg"}
+            alt="ExpertsTeam logo"
+            className="h-10 w-10 rounded-full border border-blue-400/35 bg-white/5 object-cover shadow-lg transition group-hover:scale-[1.04] sm:h-11 sm:w-11"
+          />
         </Link>
 
         <nav
           aria-label="Main navigation"
-          className="hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto px-3 md:flex [scrollbar-width:none]"
+          className="hidden min-w-0 flex-1 items-center justify-center gap-1 px-1 lg:flex"
         >
-          {LINKS.map((item) => {
-            const active = item.exact
-              ? pathname === "/"
-              : pathname === item.to || pathname.startsWith(item.to + "/");
+          {PRIMARY_LINKS.map((item) => {
+            const active = isActive(item.to, "exact" in item && item.exact);
             return (
               <Link
                 key={item.to}
                 to={item.to}
                 aria-current={active ? "page" : undefined}
-                className={active ? activeClass : item.key === "plans" ? `${idleClass} border-primary/20 bg-primary/10 text-primary` : idleClass}
+                className={cn(
+                  active ? activeClass : idleClass,
+                  item.key === "plans" && !active && "border-primary/20 bg-primary/10 text-primary",
+                )}
               >
                 <item.icon className="h-3.5 w-3.5" />
-                <span>{item.key === "plans" ? "Pricing" : settings.navigation_labels[item.key] || item.label}</span>
+                <span>
+                  {item.key === "plans"
+                    ? "Pricing"
+                    : settings.navigation_labels[item.key] || item.label}
+                </span>
               </Link>
             );
           })}
-          {(isDeveloper || isAdmin) && (
-            <a
-              href="/projects?tab=vault"
-              aria-current={pathname === "/projects" ? "page" : undefined}
-              className={pathname === "/projects" ? activeClass : idleClass}
-            >
-              <Archive className="h-3.5 w-3.5" />
-              <span>Developer Vault</span>
-            </a>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="More pages"
+                className={cn(
+                  idleClass,
+                  (SECONDARY_LINKS.some((item) => isActive(item.to)) ||
+                    ((isDeveloper || isAdmin) && pathname === "/projects")) &&
+                    activeClass,
+                )}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+                <span>More</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="w-60">
+              <DropdownMenuLabel>More from ExpertsTeam</DropdownMenuLabel>
+              {SECONDARY_LINKS.map((item) => (
+                <DropdownMenuItem key={item.to} asChild>
+                  <Link to={item.to}>
+                    <item.icon className="mr-2 h-4 w-4" />
+                    {item.label}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+              {(isDeveloper || isAdmin) && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/projects?tab=vault">
+                      <Archive className="mr-2 h-4 w-4" />
+                      Developer Vault
+                    </Link>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <Link to="/messages" aria-label="Messages" title="Messages" className="hidden sm:inline-flex">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Messages"
+              className={cn(
+                "text-white/65 hover:bg-white/10 hover:text-white",
+                isActive("/messages") && "bg-primary/15 text-primary",
+              )}
+            >
+              <MessageCircle className="h-4 w-4" />
+            </Button>
+          </Link>
+
+          <Link to="/software" className="hidden sm:inline-flex">
+            <Button
+              size="sm"
+              className="h-9 rounded-xl bg-[#4d8dff] px-3 text-xs font-bold text-white hover:bg-[#6b9fff] sm:px-4"
+            >
+              Request software
+            </Button>
+          </Link>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -166,6 +227,14 @@ export function SiteHeader() {
                 <DropdownMenuItem asChild>
                   <Link to="/vault">Personal Vault</Link>
                 </DropdownMenuItem>
+                {(isDeveloper || isAdmin) && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/projects?tab=vault">
+                      <Archive className="mr-2 h-4 w-4" />
+                      Developer Vault
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 {isAdmin && (
                   <DropdownMenuItem asChild>
                     <Link to="/admin">
@@ -191,13 +260,14 @@ export function SiteHeader() {
               </Button>
             </Link>
           )}
+
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden text-white"
+            className="lg:hidden text-white"
             aria-label="Menu"
             aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
+            onClick={() => setOpen((value) => !value)}
           >
             <Menu className="h-4 w-4" />
           </Button>
@@ -207,48 +277,78 @@ export function SiteHeader() {
       {open && (
         <nav
           aria-label="Mobile navigation"
-          className="grid grid-cols-2 gap-2 border-t border-white/10 bg-[#090b10] p-3 md:hidden"
+          className="grid grid-cols-2 gap-2 border-t border-white/10 bg-[#090b10] p-3 sm:grid-cols-3 lg:hidden"
         >
-          {LINKS.map((item) => (
+          {PRIMARY_LINKS.map((item) => {
+            const active = isActive(item.to, "exact" in item && item.exact);
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={() => setOpen(false)}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex items-center gap-2 rounded-xl border px-3 py-3 text-xs font-semibold",
+                  active
+                    ? "border-[#4d8dff]/35 bg-[#4d8dff]/10 text-[#a8c9ff]"
+                    : "border-white/10 text-white/65",
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.key === "plans"
+                  ? "Pricing"
+                  : settings.navigation_labels[item.key] || item.label}
+              </Link>
+            );
+          })}
+          <Link
+            to="/messages"
+            onClick={() => setOpen(false)}
+            className={cn(
+              "flex items-center gap-2 rounded-xl border px-3 py-3 text-xs font-semibold",
+              isActive("/messages")
+                ? "border-[#4d8dff]/35 bg-[#4d8dff]/10 text-[#a8c9ff]"
+                : "border-white/10 text-white/65",
+            )}
+          >
+            <MessageCircle className="h-4 w-4" /> Messages
+          </Link>
+          {SECONDARY_LINKS.map((item) => (
             <Link
               key={item.to}
               to={item.to}
               onClick={() => setOpen(false)}
-              className={cn(
-                "flex items-center gap-2 rounded-xl border px-3 py-3 text-xs font-semibold",
-                pathname === item.to
-                  ? "border-[#4d8dff]/35 bg-[#4d8dff]/10 text-[#a8c9ff]"
-                  : "border-white/10 text-white/65",
-              )}
+              className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-3 text-xs font-semibold text-white/65"
             >
-              <item.icon className="h-4 w-4" />
-              {item.key === "plans" ? "Pricing" : settings.navigation_labels[item.key] || item.label}
+              <item.icon className="h-4 w-4" /> {item.label}
             </Link>
           ))}
           {(isDeveloper || isAdmin) && (
-            <a
-              href="/projects?tab=vault"
-              onClick={() => setOpen(false)}
-              className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-3 text-xs font-semibold text-primary"
-            >
-              Developer Vault
-            </a>
-          )}
-          <Link
-            to="/entertainment"
-            onClick={() => setOpen(false)}
-            className="rounded-xl border border-white/10 px-3 py-3 text-xs font-semibold text-white/65"
-          >
-            Games &amp; downloads
-          </Link>
-          {user && (
             <Link
-              to="/vault"
+              to="/projects?tab=vault"
               onClick={() => setOpen(false)}
-              className="rounded-xl border border-white/10 px-3 py-3 text-xs font-semibold text-white/65"
+              className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-3 text-xs font-semibold text-primary"
             >
-              Personal Vault
+              <Archive className="h-4 w-4" /> Developer Vault
             </Link>
+          )}
+          {user && (
+            <>
+              <Link
+                to="/dashboard"
+                onClick={() => setOpen(false)}
+                className="rounded-xl border border-white/10 px-3 py-3 text-xs font-semibold text-white/65"
+              >
+                My dashboard
+              </Link>
+              <Link
+                to="/vault"
+                onClick={() => setOpen(false)}
+                className="rounded-xl border border-white/10 px-3 py-3 text-xs font-semibold text-white/65"
+              >
+                Personal Vault
+              </Link>
+            </>
           )}
           {isAdmin && (
             <Link
@@ -263,7 +363,7 @@ export function SiteHeader() {
       )}
 
       <style>{`
-        .et-nav-tab{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;border:1px solid transparent;border-radius:11px;padding:10px 12px;color:rgba(244,242,233,.55);font-size:12px;font-weight:650;letter-spacing:.01em;transition:all .18s ease}
+        .et-nav-tab{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;border:1px solid transparent;border-radius:11px;padding:9px 11px;color:rgba(244,242,233,.58);font-size:12px;font-weight:650;letter-spacing:.01em;transition:all .18s ease}
         .et-nav-tab:hover{color:#f5f2e9;background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.07)}
         .et-nav-active{color:#a8c9ff;background:rgba(77,141,255,.12);border-color:rgba(77,141,255,.28);box-shadow:inset 0 0 18px rgba(77,141,255,.05)}
         .et-topbar{box-shadow:0 12px 40px rgba(0,0,0,.24)}
