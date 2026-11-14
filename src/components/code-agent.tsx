@@ -58,6 +58,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { extractZipTextFiles } from "@/lib/zip-text-import";
 import type { Json } from "@/integrations/supabase/types";
 import {
   pushProjectToGithub,
@@ -1103,6 +1104,31 @@ export function CodeAgent() {
       const textFile = /\.(html?|css|[cm]?[jt]sx?|json|md|txt|ya?ml|toml|py|sql|sh|xml|svg|vue|svelte|go|rs|java|c|h|cpp|hpp|cs|php|rb|ipynb)$/i;
       for (const row of rows ?? []) {
         const path = row.relative_path || row.file_name;
+        if (path.toLowerCase().endsWith(".zip")) {
+          if (row.size_bytes > 25 * 1024 * 1024) {
+            skipped += 1;
+            continue;
+          }
+          const { data: archive, error: archiveError } = await supabase.storage
+            .from("developer-vault")
+            .download(row.storage_path);
+          if (archiveError || !archive) throw archiveError ?? new Error("Could not download " + path);
+          const extracted = await extractZipTextFiles(archive);
+          skipped += extracted.skipped;
+          for (const entry of extracted.files) {
+            if (
+              Object.keys(importedFiles).length >= 400 ||
+              totalBytes + entry.sizeBytes > 3 * 1024 * 1024 ||
+              Object.prototype.hasOwnProperty.call(importedFiles, entry.path)
+            ) {
+              skipped += 1;
+              continue;
+            }
+            importedFiles[entry.path] = entry.content;
+            totalBytes += entry.sizeBytes;
+          }
+          continue;
+        }
         if (!textFile.test(path) || /(^|\/)\.env($|\.)/i.test(path) || path.split("/").some((part) => part === "..") || row.size_bytes > 500 * 1024 || totalBytes + row.size_bytes > 3 * 1024 * 1024) {
           skipped += 1;
           continue;
@@ -1122,11 +1148,15 @@ export function CodeAgent() {
       if (!Object.keys(importedFiles).length) {
         throw new Error("This folder has no supported text source files to import. Binary assets and secret files are skipped.");
       }
+      const projectName =
+        groupKind === "file" && groupName.toLowerCase().endsWith(".zip")
+          ? groupName.slice(0, -4)
+          : groupName;
       const { data: saved, error: saveError } = await supabase
         .from("agent_projects")
         .insert({
           user_id: user.id,
-          name: groupName,
+          name: projectName,
           files: importedFiles as unknown as Json,
           messages: [],
           published: false,
@@ -1138,7 +1168,7 @@ export function CodeAgent() {
       setProjectId(saved.id);
       setPublishedUrl(null);
       setThumbnailUrl(null);
-      setName(groupName);
+      setName(projectName);
       setFiles(importedFiles);
       setMessages([]);
       setActiveFile(Object.keys(importedFiles).sort()[0] ?? "README.md");
@@ -1149,7 +1179,7 @@ export function CodeAgent() {
       setVaultImportOpen(false);
       await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
       toast.success(
-        'Imported "' + groupName + '" from Developer Vault (' + Object.keys(importedFiles).length +
+        'Imported "' + projectName + '" from Developer Vault (' + Object.keys(importedFiles).length +
         " source " + (Object.keys(importedFiles).length === 1 ? "file" : "files") + (skipped ? ", " + skipped + " skipped" : "") + ").",
       );
     } catch (error) {
@@ -2651,8 +2681,8 @@ export function CodeAgent() {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm leading-6 text-slate-400">
-              Select a project folder or an uploaded file. ExpertAI Studio copies supported text
-              source files into a new project in your account. Binary assets and secret files are not imported.
+              Select a project folder, a source file or a ZIP archive (up to 25 MB). ExpertAI Studio
+              imports supported text files into a new project. Binary assets and secret files are skipped.
             </p>
             <div className="max-h-80 space-y-2 overflow-y-auto">
               {developerVaultLoading ? (
