@@ -837,6 +837,48 @@ export type Database = {
         };
         Relationships: [];
       };
+      developer_vault_items: {
+        Row: {
+          created_at: string;
+          file_name: string;
+          group_id: string;
+          group_kind: "file" | "project";
+          group_name: string;
+          id: string;
+          mime_type: string | null;
+          relative_path: string;
+          size_bytes: number;
+          storage_path: string;
+          uploader_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          file_name: string;
+          group_id: string;
+          group_kind: "file" | "project";
+          group_name: string;
+          id?: string;
+          mime_type?: string | null;
+          relative_path: string;
+          size_bytes?: number;
+          storage_path: string;
+          uploader_id: string;
+        };
+        Update: {
+          created_at?: string;
+          file_name?: string;
+          group_id?: string;
+          group_kind?: "file" | "project";
+          group_name?: string;
+          id?: string;
+          mime_type?: string | null;
+          relative_path?: string;
+          size_bytes?: number;
+          storage_path?: string;
+          uploader_id?: string;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           ai_credits: number;
