@@ -10,13 +10,13 @@ export function BannerUnlockAd({ compact = false }: { compact?: boolean }) {
         <HeartHandshake className="h-4 w-4" />
       </span>
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-foreground">Support ExpertsTeam</p>
+        <p className="text-sm font-semibold text-foreground">A message from ExpertsTeam</p>
         <p className="text-xs leading-5 text-muted-foreground">
-          Sharing the platform helps more people discover free coding lessons and community resources.
+          Share these free coding resources with someone who may find them useful.
         </p>
       </div>
       <span className="ml-auto hidden shrink-0 text-[10px] font-semibold uppercase tracking-wider text-primary sm:block">
-        Community support
+        Made by ExpertsTeam
       </span>
     </div>
   );
