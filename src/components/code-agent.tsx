@@ -79,7 +79,7 @@ type ReferenceImage = {
 };
 
 type CheckpointRow = { id: string; name: string; files: ProjectFiles; created_at: string };
-type DeveloperVaultGroup = { id: string; name: string; count: number; createdAt: string };
+type DeveloperVaultGroup = { id: string; name: string; count: number; kind: "file" | "project"; createdAt: string };
 
 type ProjectRow = {
   id: string;
@@ -474,7 +474,6 @@ export function CodeAgent() {
       const { data, error } = await supabase
         .from("developer_vault_items")
         .select("group_id,group_name,group_kind,relative_path,created_at")
-        .eq("group_kind", "project")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -489,6 +488,7 @@ export function CodeAgent() {
         id: row.group_id,
         name: row.group_name,
         count: 1,
+        kind: row.group_kind,
         createdAt: row.created_at,
       });
     }
@@ -1085,7 +1085,7 @@ export function CodeAgent() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  async function importDeveloperVaultProject(groupId: string, groupName: string) {
+  async function importDeveloperVaultProject(groupId: string, groupName: string, groupKind: "file" | "project") {
     if (!user || !(isAdmin || isDeveloper) || importingVault) return;
     setImportingVault(true);
     try {
@@ -1094,7 +1094,7 @@ export function CodeAgent() {
         .from("developer_vault_items")
         .select("file_name,relative_path,storage_path,size_bytes")
         .eq("group_id", groupId)
-        .eq("group_kind", "project")
+        .eq("group_kind", groupKind)
         .order("relative_path", { ascending: true });
       if (error) throw error;
       const importedFiles: ProjectFiles = {};
@@ -2661,12 +2661,12 @@ export function CodeAgent() {
                   <Folder className="h-5 w-5 shrink-0 text-amber-300" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{group.name}</p>
-                    <p className="text-[11px] text-slate-400">{group.count} stored files</p>
+                    <p className="text-[11px] text-slate-400">{group.kind === "project" ? "Project folder · " : "File · "}{group.count} stored {group.count === 1 ? "file" : "files"}</p>
                   </div>
                   <Button
                     size="sm"
                     disabled={importingVault}
-                    onClick={() => void importDeveloperVaultProject(group.id, group.name)}
+                    onClick={() => void importDeveloperVaultProject(group.id, group.name, group.kind)}
                   >
                     {importingVault ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Import"}
                   </Button>
