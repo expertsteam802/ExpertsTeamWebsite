@@ -10,6 +10,9 @@ import {
   Sparkles,
   MessageCircle,
   Gamepad2,
+  CreditCard,
+  BriefcaseBusiness,
+  Code2,
 } from "lucide-react";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -32,6 +35,9 @@ const LINKS = [
   { to: "/learn", key: "learn", label: "Learn", icon: GraduationCap },
   { to: "/community", key: "community", label: "Community", icon: Users },
   { to: "/ai", key: "expertai", label: "ExpertAI", icon: Sparkles },
+  { to: "/pricing", key: "plans", label: "Pricing", icon: CreditCard },
+  { to: "/software", key: "software", label: "Request software", icon: BriefcaseBusiness },
+  { to: "/projects", key: "developerApply", label: "Developer Apply", icon: Code2 },
   { to: "/messages", key: "messages", label: "Messages", icon: MessageCircle },
   { to: "/entertainment", key: "discover", label: "Discover", icon: Gamepad2 },
 ] as const;
@@ -209,6 +215,27 @@ export function SiteHeader() {
               {settings.navigation_labels[item.key] || item.label}
             </Link>
           ))}
+          <Link
+            to="/pricing"
+            onClick={() => setOpen(false)}
+            className="rounded-xl border border-white/10 px-3 py-3 text-xs font-semibold text-white/65"
+          >
+            Pricing
+          </Link>
+          <Link
+            to="/software"
+            onClick={() => setOpen(false)}
+            className="rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-3 py-3 text-xs font-semibold text-cyan-100"
+          >
+            Request software
+          </Link>
+          <Link
+            to="/projects"
+            onClick={() => setOpen(false)}
+            className="rounded-xl border border-blue-400/30 bg-blue-400/10 px-3 py-3 text-xs font-semibold text-blue-100"
+          >
+            Developer Apply
+          </Link>
           <Link
             to="/explore"
             onClick={() => setOpen(false)}
