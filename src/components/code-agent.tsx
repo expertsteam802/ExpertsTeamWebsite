@@ -1975,7 +1975,7 @@ export function CodeAgent() {
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="max-w-[55%] truncate text-[10px] text-slate-500">
                         {runtimeUrl
-                          ? "Vercel Sandbox · isolated cloud runtime"
+                          ? "Cloud runtime · isolated environment"
                           : runtimeBusy || runtimeStatus !== "Not started"
                             ? runtimeStatus
                             : "HTML quick preview · press Run for React/Vite"}
