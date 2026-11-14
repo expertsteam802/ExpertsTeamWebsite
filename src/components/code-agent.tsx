@@ -466,7 +466,7 @@ export function CodeAgent() {
       if (xtermRef.current === terminal) xtermRef.current = null;
       setTerminalReady(false);
     };
-  }, [terminalConnection]);
+  }, [terminalConnection, assistantOpen]);
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["agent-projects", user?.id],
@@ -528,10 +528,10 @@ export function CodeAgent() {
 
   useEffect(() => {
     return () => {
-      // Best-effort server-side cleanup when the user leaves ExpertAI Studio.
-      void stopTerminal({ data: {} }).catch(() => undefined);
+      const sandboxName = terminalConnection?.sandboxName;
+      if (sandboxName) void stopTerminal({ data: { sandboxName } }).catch(() => undefined);
     };
-  }, [stopTerminal]);
+  }, [stopTerminal, terminalConnection?.sandboxName]);
 
   // Keep the preview session warm and recover it after Vercel stops an idle sandbox.
   // The server checks whether the dev server is already healthy, so this does not
@@ -634,7 +634,7 @@ export function CodeAgent() {
   async function importTerminalChanges() {
     if (!projectId) return;
     try {
-      if (!terminalConnection?.sandboxName) throw new Error("The Linux terminal session is no longer available.");
+      if (!terminalConnection?.sandboxName) throw new Error("The Project builder session is no longer available.");
       if (terminalConnection.projectId !== projectId) throw new Error("This shell is still attached to another project. Switch the shell to this project before importing files.");
       const result = await syncTerminalFiles({ data: { projectId, sandboxName: terminalConnection.sandboxName } });
       const importedFiles = result.files;
@@ -673,7 +673,7 @@ export function CodeAgent() {
         terminalLastActivityRef.current = Date.now();
         void closeTerminalSession();
         toast.info(
-          `Linux terminal closed after ${terminalIdleTimeoutMinutes} minutes without activity.`,
+          `Project builder paused after ${terminalIdleTimeoutMinutes} minutes without activity.`,
         );
       }
     }, 15_000);
@@ -686,9 +686,7 @@ export function CodeAgent() {
       return;
     }
     try {
-      if (terminalConnection && terminalConnection.projectId !== projectId) {
-        await closeTerminalSession();
-      }
+      if (terminalConnection) await closeTerminalSession();
       const activeProjectId = await persist();
       const connection = await connectTerminal({
         data: { projectId: activeProjectId, files, username: terminalUsername },
@@ -697,7 +695,7 @@ export function CodeAgent() {
       if (connection.toolkitStatus === "installing") toast.info("The CTF starter toolkit is installing in the Linux sandbox.");
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Could not connect to the Linux terminal.";
+        error instanceof Error ? error.message : "Could not start the project builder.";
       toast.error(message);
     }
   }
@@ -766,7 +764,7 @@ export function CodeAgent() {
           setTerminalConnection({ ...connection, projectId: activeProjectId });
           if (connection.toolkitStatus === "installing") toast.info("The CTF starter toolkit is installing in the Linux sandbox.");
         } catch (terminalError) {
-          setLogs((current) => [...current, { type: "warn", message: terminalError instanceof Error ? terminalError.message : "Linux terminal could not auto-connect." }]);
+          setLogs((current) => [...current, { type: "warn", message: terminalError instanceof Error ? terminalError.message : "Project builder could not auto-connect." }]);
         }
       }
       if (result.installOutput) setLogs([{ type: "runtime", message: result.installOutput }]);
@@ -1839,8 +1837,7 @@ export function CodeAgent() {
                   ExpertAI workspace
                 </div>
                 <p className="mt-2 text-[11px] leading-5 text-slate-500">
-                  Ask ExpertAI to create or update files, run coding agents in the Linux terminal,
-                  and import their changes back into this project.
+                  Use the interactive project builder to create apps, run commands, and sync changes into this project.
                 </p>
               </div>
             </div>
