@@ -13,6 +13,7 @@ import {
   CreditCard,
   BriefcaseBusiness,
   Code2,
+  Archive,
 } from "lucide-react";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -44,7 +45,7 @@ const LINKS = [
 
 export function SiteHeader() {
   const settings = useSiteSettings();
-  const { user, profile, isAdmin, signOut } = useAuth();
+  const { user, profile, isAdmin, isDeveloper, signOut } = useAuth();
   const { theme, setTheme, navAlign, setNavAlign } = useTheme();
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -90,6 +91,16 @@ export function SiteHeader() {
               </Link>
             );
           })}
+          {(isDeveloper || isAdmin) && (
+            <a
+              href="/projects?tab=vault"
+              aria-current={pathname === "/projects" ? "page" : undefined}
+              className={pathname === "/projects" ? activeClass : idleClass}
+            >
+              <Archive className="h-3.5 w-3.5" />
+              <span>Developer Vault</span>
+            </a>
+          )}
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
@@ -236,6 +247,15 @@ export function SiteHeader() {
           >
             Developer Apply
           </Link>
+          {(isDeveloper || isAdmin) && (
+            <a
+              href="/projects?tab=vault"
+              onClick={() => setOpen(false)}
+              className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-3 text-xs font-semibold text-primary"
+            >
+              Developer Vault
+            </a>
+          )}
           <Link
             to="/explore"
             onClick={() => setOpen(false)}
