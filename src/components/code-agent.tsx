@@ -2692,7 +2692,7 @@ export function CodeAgent() {
                   <Folder className="h-5 w-5 shrink-0 text-amber-300" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{group.name}</p>
-                    <p className="text-[11px] text-slate-400">{group.kind === "project" ? "Project folder · " : "File · "}{group.count} stored {group.count === 1 ? "file" : "files"}</p>
+                    <p className="text-[11px] text-slate-400">{group.kind === "project" ? "Project folder · " : group.name.toLowerCase().endsWith(".zip") ? "ZIP archive · " : "File · "}{group.count} stored {group.count === 1 ? "file" : "files"}</p>
                   </div>
                   <Button
                     size="sm"
