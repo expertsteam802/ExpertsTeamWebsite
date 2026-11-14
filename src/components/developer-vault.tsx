@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { uploadStorageFileWithProgress } from "@/lib/storage-upload";
 
 type DeveloperVaultItem = {
   id: string;
@@ -33,7 +34,7 @@ type DeveloperVaultItem = {
   created_at: string;
 };
 
-type UploadProgress = { completed: number; total: number; currentName: string };
+type UploadProgress = { completed: number; total: number; currentName: string; percent: number };
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return bytes + " B";
@@ -111,10 +112,17 @@ export function DeveloperVault() {
       const projectRoot = kind === "project" ? firstParts[0] : "";
       const groupName = (kind === "project" ? (projectRoot || "Developer project") : (files.length === 1 ? files[0].name : "Shared files")).slice(0, 180);
       let completed = 0;
-      setProgress({ completed, total: files.length, currentName: files[0].name });
+      let completedBytes = 0;
+      const totalBytes = files.reduce((total, file) => total + file.size, 0);
+      setProgress({ completed, total: files.length, currentName: files[0].name, percent: 0 });
       try {
         for (const file of files) {
-          setProgress({ completed, total: files.length, currentName: file.name });
+          setProgress({
+            completed,
+            total: files.length,
+            currentName: file.name,
+            percent: totalBytes ? Math.round((completedBytes / totalBytes) * 100) : Math.round((completed / files.length) * 100),
+          });
           if (file.size > 100 * 1024 * 1024) {
             throw new Error(file.name + " is larger than the 100 MB per-file limit.");
           }
@@ -126,12 +134,17 @@ export function DeveloperVault() {
             : normalized;
           const relativePath = safePath(relative);
           const storagePath = user.id + "/" + groupId + "/" + relativePath;
-          const { error: uploadError } = await supabase.storage.from("developer-vault").upload(storagePath, file, {
-            cacheControl: "60",
-            upsert: false,
-            contentType: file.type || "application/octet-stream",
+          await uploadStorageFileWithProgress({
+            bucket: "developer-vault",
+            path: storagePath,
+            file,
+            onProgress: (loaded) => {
+              const percent = totalBytes
+                ? Math.min(99, Math.round(((completedBytes + loaded) / totalBytes) * 100))
+                : Math.min(99, Math.round(((completed + loaded / Math.max(file.size, 1)) / files.length) * 100));
+              setProgress({ completed, total: files.length, currentName: file.name, percent });
+            },
           });
-          if (uploadError) throw uploadError;
           const { data: signed, error: verifyError } = await supabase.storage.from("developer-vault").createSignedUrl(storagePath, 60);
           if (verifyError || !signed?.signedUrl) {
             await supabase.storage.from("developer-vault").remove([storagePath]);
@@ -153,7 +166,13 @@ export function DeveloperVault() {
             throw rowError ?? new Error("The file was stored but its Developer Vault record could not be verified.");
           }
           completed += 1;
-          setProgress({ completed, total: files.length, currentName: file.name });
+          completedBytes += file.size;
+          setProgress({
+            completed,
+            total: files.length,
+            currentName: file.name,
+            percent: totalBytes ? Math.round((completedBytes / totalBytes) * 100) : Math.round((completed / files.length) * 100),
+          });
         }
         return { uploaded: completed, groupName };
       } catch (error) {
@@ -242,8 +261,8 @@ export function DeveloperVault() {
 
       {progress && (
         <Card className="gap-2 p-4" role="status" aria-live="polite">
-          <div className="flex items-center justify-between gap-3 text-sm"><span className="flex min-w-0 items-center gap-2 font-medium"><Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" /><span className="truncate">Uploading {progress.currentName}</span></span><span className="shrink-0 text-xs tabular-nums text-muted-foreground">{progress.completed} / {progress.total} saved</span></div>
-          <div role="progressbar" aria-label="Developer Vault upload progress" aria-valuemin={0} aria-valuemax={progress.total} aria-valuenow={progress.completed} className="h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: (progress.completed / progress.total) * 100 + "%" }} /></div>
+          <div className="flex items-center justify-between gap-3 text-sm"><span className="flex min-w-0 items-center gap-2 font-medium"><Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" /><span className="truncate">Uploading {progress.currentName}</span></span><span className="shrink-0 text-xs tabular-nums text-muted-foreground">{progress.percent}% · {progress.completed} / {progress.total} saved</span></div>
+          <div role="progressbar" aria-label="Developer Vault upload progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.percent} className="h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: progress.percent + "%" }} /></div>
         </Card>
       )}
 
