@@ -373,10 +373,16 @@ export function CodeAgent() {
 
     const terminal = new XTerm({
       cursorBlink: true,
+      cursorStyle: "bar",
       convertEol: true,
-      scrollback: 5000,
-      fontSize: 13,
-      fontFamily: '"Cascadia Code", "Fira Code", Menlo, monospace',
+      allowTransparency: false,
+      scrollback: 3000,
+      fontSize: 14,
+      lineHeight: 1.2,
+      letterSpacing: 0.15,
+      smoothScrollDuration: 0,
+      minimumContrastRatio: 4.5,
+      fontFamily: '"Cascadia Code", "Fira Code", Consolas, Menlo, monospace',
       theme: {
         background: "#050a12",
         foreground: "#dbeafe",
@@ -417,7 +423,7 @@ export function CodeAgent() {
     };
     socket.onerror = () => {
       setTerminalReady(false);
-      terminal.writeln("\r\n[terminal connection error]");
+      terminal.writeln("\r\n[connection error]");
     };
     socket.onclose = () => setTerminalReady(false);
 
@@ -433,16 +439,23 @@ export function CodeAgent() {
       if (socket.readyState === WebSocket.OPEN)
         socket.send("\u0000" + JSON.stringify({ type: "resize", cols, rows }));
     });
-    const observer = new ResizeObserver(() => {
+    let resizeFrame = 0;
+    const fitAndSync = () => {
       fit.fit();
       if (socket.readyState === WebSocket.OPEN)
         socket.send(
           "\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }),
         );
+    };
+    const observer = new ResizeObserver(() => {
+      window.cancelAnimationFrame(resizeFrame);
+      resizeFrame = window.requestAnimationFrame(fitAndSync);
     });
     observer.observe(container);
+    resizeFrame = window.requestAnimationFrame(fitAndSync);
 
     return () => {
+      window.cancelAnimationFrame(resizeFrame);
       observer.disconnect();
       input.dispose();
       resize.dispose();
