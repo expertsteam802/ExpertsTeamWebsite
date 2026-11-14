@@ -18,7 +18,6 @@ type PublishedProject = {
 export const Route = createFileRoute("/showcase")({
   head: () => ({
     meta: [
-      { name: "robots", content: "noindex, nofollow" },
       { title: "Project Showcase — Apps built with ExpertsTeam" },
       {
         name: "description",
@@ -30,7 +29,10 @@ export const Route = createFileRoute("/showcase")({
         property: "og:description",
         content: "Real projects published by the ExpertsTeam community.",
       },
+      { property: "og:url", content: "https://expertsteam.giize.com/showcase" },
+      { property: "og:image", content: "https://expertsteam.giize.com/social-preview.png" },
     ],
+    links: [{ rel: "canonical", href: "https://expertsteam.giize.com/showcase" }],
   }),
   component: ShowcasePage,
 });
