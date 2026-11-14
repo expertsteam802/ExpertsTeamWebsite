@@ -17,14 +17,21 @@ import { Card } from "@/components/ui/card";
 export const Route = createFileRoute("/explore")({
   head: () => ({
     meta: [
-      { name: "robots", content: "noindex, nofollow" },
-      { title: "Explore ExpertsTeam — Community, videos and tools" },
+      { title: "Explore ExpertsTeam — Community, learning and creative tools" },
       {
         name: "description",
         content:
-          "Explore ExpertsTeam community conversations, creator videos, games, apps, learning resources and creative tools.",
+          "Explore the ExpertsTeam platform: coding lessons, creator videos, developer community, project tools and ExpertAI Studio.",
       },
+      { property: "og:title", content: "Explore ExpertsTeam" },
+      {
+        property: "og:description",
+        content: "Choose a space to learn, connect, discover projects or build with ExpertAI.",
+      },
+      { property: "og:url", content: "https://expertsteam.giize.com/explore" },
+      { property: "og:image", content: "https://expertsteam.giize.com/social-preview.png" },
     ],
+    links: [{ rel: "canonical", href: "https://expertsteam.giize.com/explore" }],
   }),
   component: ExplorePage,
 });
