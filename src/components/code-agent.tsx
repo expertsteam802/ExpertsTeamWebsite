@@ -661,7 +661,7 @@ export function CodeAgent() {
       window.clearTimeout(timer);
       if (retryTimer !== undefined) window.clearTimeout(retryTimer);
     };
-  }, [terminalConnection?.sandboxName, connectTerminal, syncTerminalFiles, persist, stopTerminal, terminalUsername]);
+  }, [terminalConnection?.sandboxName, connectTerminal, syncTerminalFiles, stopTerminal, terminalUsername]);
 
   // Keep the preview session warm and recover it after Vercel stops an idle sandbox.
   // The server checks whether the dev server is already healthy, so this does not
