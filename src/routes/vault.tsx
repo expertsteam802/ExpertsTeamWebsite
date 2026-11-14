@@ -66,6 +66,7 @@ function PersonalVaultPage() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
+  const [uploadProgress, setUploadProgress] = useState<{ completed: number; total: number; currentName: string } | null>(null);
 
   const {
     data: files = [],
@@ -96,50 +97,75 @@ function PersonalVaultPage() {
   });
 
   const upload = useMutation({
-    mutationFn: async (selected: FileList | null) => {
+    mutationFn: async (chosen: File[]) => {
       if (!user) throw new Error("Sign in to use your Personal Vault.");
-      const chosen = Array.from(selected ?? []);
-      if (!chosen.length) return;
-      for (const file of chosen) {
-        if (file.size > 100 * 1024 * 1024) {
-          throw new Error(file.name + " is larger than the 100 MB per-file limit.");
+      if (!chosen.length) throw new Error("Choose at least one file to upload.");
+      let completed = 0;
+      setUploadProgress({ completed, total: chosen.length, currentName: chosen[0].name });
+      try {
+        for (const file of chosen) {
+          setUploadProgress({ completed, total: chosen.length, currentName: file.name });
+          if (file.size > 100 * 1024 * 1024) {
+            throw new Error(file.name + " is larger than the 100 MB per-file limit.");
+          }
+          const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-100) || "file";
+          const path = user.id + "/" + crypto.randomUUID() + "-" + safeName;
+          const { error: uploadError } = await supabase.storage
+            .from("personal-vault")
+            .upload(path, file, {
+              cacheControl: "60",
+              upsert: false,
+              contentType: file.type || "application/octet-stream",
+            });
+          if (uploadError) throw uploadError;
+          const { data: verification, error: verificationError } = await supabase.storage
+            .from("personal-vault")
+            .createSignedUrl(path, 60);
+          if (verificationError || !verification?.signedUrl) {
+            await supabase.storage.from("personal-vault").remove([path]);
+            throw new Error("The upload could not be verified in private storage. Please retry.");
+          }
+          const { data: savedRow, error: rowError } = await supabase
+            .from("personal_vault_files")
+            .insert({
+              user_id: user.id,
+              storage_path: path,
+              file_name: file.name,
+              mime_type: file.type || null,
+              size_bytes: file.size,
+            })
+            .select("id")
+            .single();
+          if (rowError || !savedRow?.id) {
+            await supabase.storage.from("personal-vault").remove([path]);
+            throw rowError ?? new Error("The file was stored but its vault record could not be verified.");
+          }
+          completed += 1;
+          setUploadProgress({ completed, total: chosen.length, currentName: file.name });
         }
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-100) || "file";
-        const path = user.id + "/" + crypto.randomUUID() + "-" + safeName;
-        const { error: uploadError } = await supabase.storage
-          .from("personal-vault")
-          .upload(path, file, {
-            cacheControl: "60",
-            upsert: false,
-            contentType: file.type || "application/octet-stream",
-          });
-        if (uploadError) throw uploadError;
-        const { data: verification, error: verificationError } = await supabase.storage
-          .from("personal-vault")
-          .createSignedUrl(path, 60);
-        if (verificationError || !verification?.signedUrl) {
-          await supabase.storage.from("personal-vault").remove([path]);
-          throw new Error("The upload could not be verified in private storage. Please retry.");
-        }
-        const { error: rowError } = await supabase.from("personal_vault_files").insert({
-          user_id: user.id,
-          storage_path: path,
-          file_name: file.name,
-          mime_type: file.type || null,
-          size_bytes: file.size,
-        });
-        if (rowError) {
-          await supabase.storage.from("personal-vault").remove([path]);
-          throw rowError;
-        }
+        return { uploaded: completed };
+      } catch (error) {
+        throw Object.assign(
+          new Error(error instanceof Error ? error.message : "The upload failed."),
+          { uploadedCount: completed },
+        );
       }
     },
-    onSuccess: async () => {
-      toast.success("Your files are safely stored in your private vault.");
+    onSuccess: async ({ uploaded }) => {
+      setUploadProgress(null);
+      if (uploaded > 0) {
+        toast.success(`${uploaded} ${uploaded === 1 ? "file" : "files"} saved in your private vault.`);
+      }
       await queryClient.invalidateQueries({ queryKey: ["personal-vault", user?.id] });
     },
-    onError: (error: Error) => {
-      toast.error(error.message);
+    onError: (error: Error & { uploadedCount?: number }) => {
+      setUploadProgress(null);
+      const partial = error.uploadedCount ?? 0;
+      toast.error(
+        partial > 0
+          ? `${partial} file(s) were saved before the upload stopped: ${error.message}`
+          : error.message,
+      );
       void queryClient.invalidateQueries({ queryKey: ["personal-vault", user?.id] });
     },
   });
@@ -271,8 +297,12 @@ function PersonalVaultPage() {
               multiple
               className="hidden"
               onChange={(event) => {
-                upload.mutate(event.target.files);
-                event.target.value = "";
+                // Snapshot File objects before clearing the native input. Passing
+                // FileList into an async mutation and clearing it first can make
+                // the mutation see an empty list and report false success.
+                const selectedFiles = Array.from(event.currentTarget.files ?? []);
+                event.currentTarget.value = "";
+                if (selectedFiles.length) upload.mutate(selectedFiles);
               }}
             />
             <Button
@@ -289,6 +319,36 @@ function PersonalVaultPage() {
             </Button>
           </div>
         </div>
+
+        {uploadProgress && (
+          <Card className="gap-2 p-4" role="status" aria-live="polite">
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="flex min-w-0 items-center gap-2 font-medium">
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
+                <span className="truncate">Uploading {uploadProgress.currentName}</span>
+              </span>
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                {uploadProgress.completed} / {uploadProgress.total} files saved
+              </span>
+            </div>
+            <div
+              role="progressbar"
+              aria-label="Files saved to your private vault"
+              aria-valuemin={0}
+              aria-valuemax={uploadProgress.total}
+              aria-valuenow={uploadProgress.completed}
+              className="h-2 overflow-hidden rounded-full bg-secondary"
+            >
+              <div
+                className="h-full rounded-full bg-primary transition-[width] duration-300"
+                style={{ width: `${(uploadProgress.completed / uploadProgress.total) * 100}%` }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Each file is checked in private storage and recorded before it is marked as saved.
+            </p>
+          </Card>
+        )}
 
         <Card className="flex flex-col gap-3 p-4 sm:flex-row">
           <div className="flex flex-1 items-center gap-2">
