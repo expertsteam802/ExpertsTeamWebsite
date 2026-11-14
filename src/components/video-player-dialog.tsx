@@ -281,12 +281,12 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
                 <div>
                   <p className="font-display text-lg font-semibold">Support ExpertsTeam</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Stay for the short sponsor banner to unlock this lesson.
+                    Stay for this short ExpertsTeam message to unlock the lesson.
                   </p>
                 </div>
                 <BannerUnlockAd onUnlocked={handleAdFinished} compact />
                 <p className="text-xs text-muted-foreground">
-                  Your lesson unlocks automatically after the sponsor countdown.
+                  Your lesson unlocks automatically after this message.
                 </p>
               </div>
             ) : videoId &&
