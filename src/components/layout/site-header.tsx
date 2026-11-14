@@ -45,7 +45,7 @@ const PRIMARY_LINKS = [
 
 const SECONDARY_LINKS = [
   { to: "/software", label: "Request software", icon: BriefcaseBusiness },
-  { to: "/projects", label: "Developer Apply / Workspace", icon: Code2 },
+  { to: "/projects", label: "Developer Apply", icon: Code2 },
   { to: "/videos", label: "Video library", icon: FileVideo },
   { to: "/entertainment", label: "Games & downloads", icon: Gamepad2 },
   { to: "/showcase", label: "Project showcase", icon: FolderKanban },
@@ -129,10 +129,10 @@ export function SiteHeader() {
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to="/projects?tab=vault">
+                    <a href="/projects?tab=vault" className="flex items-center">
                       <Archive className="mr-2 h-4 w-4" />
                       Developer Vault
-                    </Link>
+                    </a>
                   </DropdownMenuItem>
                 </>
               )}
@@ -229,10 +229,10 @@ export function SiteHeader() {
                 </DropdownMenuItem>
                 {(isDeveloper || isAdmin) && (
                   <DropdownMenuItem asChild>
-                    <Link to="/projects?tab=vault">
+                    <a href="/projects?tab=vault" className="flex items-center">
                       <Archive className="mr-2 h-4 w-4" />
                       Developer Vault
-                    </Link>
+                    </a>
                   </DropdownMenuItem>
                 )}
                 {isAdmin && (
@@ -324,13 +324,13 @@ export function SiteHeader() {
             </Link>
           ))}
           {(isDeveloper || isAdmin) && (
-            <Link
-              to="/projects?tab=vault"
+            <a
+              href="/projects?tab=vault"
               onClick={() => setOpen(false)}
               className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-3 text-xs font-semibold text-primary"
             >
               <Archive className="h-4 w-4" /> Developer Vault
-            </Link>
+            </a>
           )}
           {user && (
             <>
