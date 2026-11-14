@@ -297,7 +297,7 @@ export function CodeAgent() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [assistantOpen, setAssistantOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(248);
-  const [assistantWidth, setAssistantWidth] = useState(360);
+  const [assistantWidth, setAssistantWidth] = useState(520);
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [newFileName, setNewFileName] = useState("");
   const [renameFileOpen, setRenameFileOpen] = useState(false);
@@ -1438,7 +1438,7 @@ export function CodeAgent() {
       if (target === "sidebar") {
         setSidebarWidth(Math.min(420, Math.max(190, startWidth + delta)));
       } else {
-        setAssistantWidth(Math.min(560, Math.max(280, startWidth - delta)));
+        setAssistantWidth(Math.min(720, Math.max(380, startWidth - delta)));
       }
     };
     const onUp = () => {
