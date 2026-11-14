@@ -26,6 +26,7 @@ type AuthContextValue = {
   profile: Profile | null;
   roles: string[];
   isAdmin: boolean;
+  isDeveloper: boolean;
   signOut: () => Promise<void>;
 };
 
@@ -101,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile: profile ?? null,
       roles: roles ?? [],
       isAdmin: (roles ?? []).includes("admin"),
+      isDeveloper: (roles ?? []).includes("developer"),
       signOut: async () => {
         const id = session?.user?.id;
         if (id) {
