@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { WorkspaceChat } from "@/components/workspace-chat";
+import { DeveloperVault } from "@/components/developer-vault";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate } from "@/lib/format";
@@ -204,6 +205,7 @@ function ApplicationPanel() {
 
 function ProjectsPage() {
   const { user, isAdmin, isDeveloper } = useAuth();
+  const [workspaceTab, setWorkspaceTab] = useState<"workspace" | "vault">("workspace");
 
   const { data: approvedCount = 0, isLoading } = useQuery({
     queryKey: ["workspace-access", user?.id],
@@ -251,8 +253,26 @@ function ProjectsPage() {
         </div>
       </section>
       {user && isMember ? (
-        <section className="mx-auto max-w-6xl px-4 py-10">
-          <WorkspaceChat />
+        <section className="mx-auto max-w-6xl space-y-5 px-4 py-10">
+          <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
+            <Button
+              size="sm"
+              variant={workspaceTab === "workspace" ? "default" : "outline"}
+              onClick={() => setWorkspaceTab("workspace")}
+            >
+              Team workspace
+            </Button>
+            {(isDeveloper || isAdmin) && (
+              <Button
+                size="sm"
+                variant={workspaceTab === "vault" ? "default" : "outline"}
+                onClick={() => setWorkspaceTab("vault")}
+              >
+                Developer Vault
+              </Button>
+            )}
+          </div>
+          {workspaceTab === "vault" && (isDeveloper || isAdmin) ? <DeveloperVault /> : <WorkspaceChat />}
         </section>
       ) : isLoading && user ? (
         <p className="mx-auto max-w-6xl px-4 py-10 text-sm text-muted-foreground">
