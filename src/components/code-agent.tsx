@@ -339,10 +339,17 @@ export function CodeAgent() {
   const legacyTerminalRef = useRef<XTerm | null>(null);
   const terminalSocketRef = useRef<WebSocket | null>(null);
   const terminalLastActivityRef = useRef(Date.now());
+  const terminalRecoveryFilesRef = useRef<ProjectFiles>(files);
+  const terminalRecoveryOutputRef = useRef("");
+  const terminalRecoveryInProgressRef = useRef(false);
   const xtermRef = useRef<XTerm | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const editorRef = useRef<EditorView | null>(null);
   const srcDoc = useMemo(() => buildSrcDocWithConsole(files), [files]);
+  useEffect(() => {
+    terminalRecoveryFilesRef.current = files;
+  }, [files]);
+
   useEffect(() => {
     let cancelled = false;
     const language = LanguageDescription.matchFilename(languages, activeFile);
@@ -421,14 +428,24 @@ export function CodeAgent() {
       terminalLastActivityRef.current = Date.now();
       setTerminalReady(true);
       terminal.focus();
+      if (terminalRecoveryOutputRef.current) {
+        terminal.write(terminalRecoveryOutputRef.current);
+        terminal.writeln("\r\n[Workspace restored. The previous process was restarted automatically.]");
+      }
       terminal.write("\r\nConnected to your project workspace.\r\n");
       socket.send(
         "\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }),
       );
     };
     socket.onmessage = (event) => {
-      if (typeof event.data === "string") terminal.write(event.data);
-      else if (event.data instanceof ArrayBuffer) terminal.write(new Uint8Array(event.data));
+      const chunk = typeof event.data === "string"
+        ? event.data
+        : event.data instanceof ArrayBuffer
+          ? new TextDecoder().decode(new Uint8Array(event.data))
+          : "";
+      if (!chunk) return;
+      terminalRecoveryOutputRef.current = (terminalRecoveryOutputRef.current + chunk).slice(-24000);
+      terminal.write(chunk);
     };
     socket.onerror = () => {
       setTerminalReady(false);
@@ -587,6 +604,64 @@ export function CodeAgent() {
       if (sandboxName) void stopTerminal({ data: { sandboxName } }).catch(() => undefined);
     };
   }, [stopTerminal, terminalConnection?.sandboxName]);
+
+  // Rotate the disposable Linux VM before Vercel's 45-minute Hobby limit.
+  // Project files are synced first; visible terminal history is replayed after
+  // reconnect. An active CLI process cannot survive a provider VM replacement.
+  useEffect(() => {
+    const session = terminalConnection;
+    if (!session) return;
+    let cancelled = false;
+    let retryTimer: number | undefined;
+
+    const recoverSession = async () => {
+      if (terminalRecoveryInProgressRef.current || cancelled) return;
+      terminalRecoveryInProgressRef.current = true;
+      try {
+        let recoveryFiles = terminalRecoveryFilesRef.current;
+        try {
+          const synced = await syncTerminalFiles({
+            data: { projectId: session.projectId, sandboxName: session.sandboxName },
+          });
+          recoveryFiles = synced.files;
+          terminalRecoveryFilesRef.current = recoveryFiles;
+          await persist({ files: recoveryFiles });
+          setFiles(recoveryFiles);
+        } catch {
+          // If the old VM has already expired, recover from the latest saved editor state.
+        }
+        if (cancelled) return;
+
+        const replacement = await connectTerminal({
+          data: {
+            projectId: session.projectId,
+            files: recoveryFiles,
+            username: terminalUsername,
+          },
+        });
+        if (cancelled) {
+          void stopTerminal({ data: { sandboxName: replacement.sandboxName } }).catch(() => undefined);
+          return;
+        }
+
+        setTerminalConnection({ ...replacement, projectId: session.projectId });
+        setTerminalReady(false);
+        void stopTerminal({ data: { sandboxName: session.sandboxName } }).catch(() => undefined);
+      } catch {
+        // Retry quietly. If the old VM expired, the next attempt restores from saved files.
+        if (!cancelled) retryTimer = window.setTimeout(recoverSession, 60_000);
+      } finally {
+        terminalRecoveryInProgressRef.current = false;
+      }
+    };
+
+    const timer = window.setTimeout(recoverSession, 35 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+    };
+  }, [terminalConnection?.sandboxName, connectTerminal, syncTerminalFiles, persist, stopTerminal, terminalUsername]);
 
   // Keep the preview session warm and recover it after Vercel stops an idle sandbox.
   // The server checks whether the dev server is already healthy, so this does not
