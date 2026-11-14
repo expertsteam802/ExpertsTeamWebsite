@@ -117,7 +117,7 @@ export function DeveloperVault() {
           relative === ".env" ||
           (relative.startsWith(".env.") && relative !== ".env.example" && relative !== ".env.template") ||
           [".npmrc", ".pypirc", ".netrc", ".git-credentials", "id_rsa", "id_ed25519", "credentials.json"].includes(relative) ||
-          /\\.(pem|key|p12|pfx|keystore)$/i.test(relative) ||
+          /\.(pem|key|p12|pfx|keystore)$/i.test(relative) ||
           /^service-account.*\.json$/i.test(relative)
         );
       });
