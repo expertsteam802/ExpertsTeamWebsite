@@ -467,7 +467,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     '  shell.on("close", () => { if (activeShell === shell) activeShell = null; if (client.readyState === 1) client.close(); });',
     '  client.on("message", (buffer) => {',
     "    const value = buffer.toString();",
-    "    if (value.charCodeAt(0) === 0) { try { const control = JSON.parse(value.slice(1)); if (control.type === \"resize\") { const cols = Math.max(40, Math.min(300, Number(control.cols) || 120)); const rows = Math.max(10, Math.min(100, Number(control.rows) || 40)); const resizeCommand = \"tty=$(ps -o tty= -p \" + shell.pid + \" | xargs); case $tty in pts/*) stty -F /dev/$tty rows \" + rows + \" cols \" + cols + \" 2>/dev/null ;; esac\"; const resize = spawn(\"sh\", [\"-lc\", resizeCommand], { stdio: \"ignore\" }); resize.on(\"close\", () => { try { process.kill(shell.pid, \"SIGWINCH\"); } catch {} }); } } catch {} return; }",
+    "    if (value.charCodeAt(0) === 0) { try { const control = JSON.parse(value.slice(1)); if (control.type === \"resize\") { const cols = Math.max(40, Math.min(300, Number(control.cols) || 120)); const rows = Math.max(10, Math.min(100, Number(control.rows) || 40)); const resizeCommand = \"tty=$(ps -o tty= --ppid \" + shell.pid + \" | head -n 1 | xargs); case $tty in pts/*) stty -F /dev/$tty rows \" + rows + \" cols \" + cols + \" 2>/dev/null; pkill -WINCH -t $tty 2>/dev/null ;; esac\"; spawn(\"sh\", [\"-lc\", resizeCommand], { stdio: \"ignore\" }); } } catch {} return; }",
     "    if (shell.stdin.writable) shell.stdin.write(value);",
     "  });",
     '  client.on("close", () => { try { shell.kill("SIGHUP"); } catch {} if (activeShell === shell) activeShell = null; });',
@@ -665,6 +665,15 @@ export async function readCloudProjectFiles(userId: string, sessionName: string)
       "./.git",
       "-o",
       "-path",
+      "./.kilo",
+      "-o",
+      "-path",
+      "./.kilocode",
+      "-o",
+      "-path",
+      "./.opencode",
+      "-o",
+      "-path",
       "./dist",
       "-o",
       "-path",
@@ -704,7 +713,7 @@ export async function readCloudProjectFiles(userId: string, sessionName: string)
         path &&
         /^[a-zA-Z0-9_@./-]+$/.test(path) &&
         !path.split("/").some((part) => !part || part === "." || part === "..") &&
-        !path.split("/").some((part) => part.startsWith(".experts-")) &&
+        !path.split("/").some((part) => part.startsWith(".experts-") || [".kilo", ".kilocode", ".opencode"].includes(part)) &&
         ![".npmrc", ".netrc", ".pypirc"].includes(filename) &&
         !/^\.env(?:\.|$)/i.test(filename) &&
         !/^(?:id_rsa|id_ed25519|credentials?|secrets?)(?:\.|$)/i.test(filename) &&
