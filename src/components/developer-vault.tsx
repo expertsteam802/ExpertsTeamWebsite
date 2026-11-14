@@ -45,7 +45,7 @@ function formatBytes(bytes: number) {
 function safePath(value: string) {
   const parts = value.replace(/\\/g, "/").split("/").filter((part) => part && part !== "." && part !== "..");
   const cleaned = parts.map((part) => part.replace(/[^a-zA-Z0-9._ -]/g, "-").slice(0, 140));
-  return cleaned.filter(Boolean).join("/") || "file";
+  return (cleaned.filter(Boolean).join("/") || "file").slice(0, 1000);
 }
 
 export function DeveloperVault() {
@@ -109,7 +109,7 @@ export function DeveloperVault() {
       const firstRelative = (files[0] as File & { webkitRelativePath?: string }).webkitRelativePath || files[0].name;
       const firstParts = firstRelative.replace(/\\/g, "/").split("/").filter(Boolean);
       const projectRoot = kind === "project" ? firstParts[0] : "";
-      const groupName = kind === "project" ? (projectRoot || "Developer project") : (files.length === 1 ? files[0].name : "Shared files");
+      const groupName = (kind === "project" ? (projectRoot || "Developer project") : (files.length === 1 ? files[0].name : "Shared files")).slice(0, 180);
       let completed = 0;
       setProgress({ completed, total: files.length, currentName: files[0].name });
       try {
@@ -254,7 +254,7 @@ export function DeveloperVault() {
               <div className="flex items-start gap-3">
                 <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">{group.kind === "project" ? <Folder className="h-5 w-5" /> : <FileIcon className="h-5 w-5" />}</div>
                 <div className="min-w-0 flex-1"><p className="truncate font-semibold">{group.name}</p><p className="text-xs text-muted-foreground">{group.items.length} file(s) · {formatBytes(group.items.reduce((n, item) => n + item.size_bytes, 0))} · {new Date(group.createdAt).toLocaleDateString()}</p></div>
-                {group.kind === "project" && <a href={"/ai?developerVaultGroup=" + encodeURIComponent(group.id)} className="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90">Import to ExpertAI</a>}
+                {group.kind === "project" && <a href="/ai" className="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90">Open ExpertAI</a>}
               </div>
               <div className="max-h-44 space-y-1 overflow-y-auto border-t border-border/60 pt-2">
                 {group.items.map((item) => (
