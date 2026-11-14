@@ -203,7 +203,7 @@ function ApplicationPanel() {
 }
 
 function ProjectsPage() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isDeveloper } = useAuth();
 
   const { data: approvedCount = 0, isLoading } = useQuery({
     queryKey: ["workspace-access", user?.id],
@@ -219,7 +219,7 @@ function ProjectsPage() {
     },
   });
 
-  const isMember = isAdmin || approvedCount > 0;
+  const isMember = isAdmin || isDeveloper || approvedCount > 0;
 
   return (
     <PageShell>
