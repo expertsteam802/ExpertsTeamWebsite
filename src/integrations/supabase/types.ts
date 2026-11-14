@@ -1299,6 +1299,9 @@ export type Database = {
           created_at: string;
           group_id: string;
           id: string;
+          media_mime_type: string | null;
+          media_path: string | null;
+          media_size_bytes: number;
           user_id: string;
         };
         Insert: {
@@ -1306,6 +1309,9 @@ export type Database = {
           created_at?: string;
           group_id: string;
           id?: string;
+          media_mime_type?: string | null;
+          media_path?: string | null;
+          media_size_bytes?: number;
           user_id: string;
         };
         Update: {
@@ -1313,6 +1319,9 @@ export type Database = {
           created_at?: string;
           group_id?: string;
           id?: string;
+          media_mime_type?: string | null;
+          media_path?: string | null;
+          media_size_bytes?: number;
           user_id?: string;
         };
         Relationships: [
