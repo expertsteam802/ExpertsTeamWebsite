@@ -95,7 +95,7 @@ type ProjectRow = {
   updated_at: string;
 };
 
-type Panel = "preview" | "code" | "console" | "terminal";
+type Panel = "preview" | "code" | "console";
 
 const CODING_AGENT_UNDER_DEVELOPMENT = false;
 
@@ -328,6 +328,8 @@ export function CodeAgent() {
   const [fileLanguage, setFileLanguage] = useState<Extension[]>([]);
   const runtimeFilesRef = useRef<ProjectFiles>({});
   const autoStartedProjectRef = useRef<string | null>(null);
+  const autoStartedKiloRef = useRef(false);
+  const openTerminalRef = useRef<() => Promise<void>>(async () => {});
   const runtimeSyncQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -404,7 +406,7 @@ export function CodeAgent() {
       terminalLastActivityRef.current = Date.now();
       setTerminalReady(true);
       terminal.focus();
-      terminal.write("\r\nConnected to the isolated Linux shell.\r\n");
+      terminal.write("\r\nConnected to your project workspace.\r\n");
       socket.send(
         "\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }),
       );
@@ -686,6 +688,14 @@ export function CodeAgent() {
       toast.error(message);
     }
   }
+
+  openTerminalRef.current = openTerminal;
+
+  useEffect(() => {
+    if (!user?.id || autoStartedKiloRef.current) return;
+    autoStartedKiloRef.current = true;
+    void openTerminalRef.current();
+  }, [user?.id]);
 
   function downloadProjectBundle() {
     const payload = {
@@ -1860,7 +1870,6 @@ export function CodeAgent() {
                   ["preview", Eye, "Preview"],
                   ["code", Code2, "Code"],
                   ["console", Terminal, "Console"],
-                  ["terminal", Terminal, "Terminal"],
                 ] as const
               ).map(([value, Icon, label]) => (
                 <button
@@ -1962,7 +1971,7 @@ export function CodeAgent() {
                 className={`ml-1 rounded-lg p-2 ${
                   assistantOpen ? "bg-cyan-400/10 text-cyan-200" : "text-slate-500 hover:bg-white/5"
                 }`}
-                aria-label="Toggle ExpertAI assistant"
+                aria-label="Toggle ExpertAI builder"
               >
                 <Bot className="h-4 w-4" />
               </button>
@@ -2152,105 +2161,6 @@ export function CodeAgent() {
                 </>
               )}
 
-              <div
-                className={
-                  panel === "terminal" ? "flex min-h-0 flex-1 flex-col bg-[#050a12]" : "hidden"
-                }
-              >
-                <div className="flex min-h-10 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] px-3 py-2">
-                  <span className="flex items-center gap-2 text-xs text-slate-300">
-                    <Terminal className="h-3.5 w-3.5 text-emerald-300" />
-                    {terminalUsername}@expertsteam · Linux terminal
-                  </span>
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    <span
-                      className={
-                        terminalReady
-                          ? "text-[10px] text-emerald-300"
-                          : "text-[10px] text-slate-500"
-                      }
-                    >
-                      {terminalReady ? "CONNECTED" : "OFFLINE"}
-                    </span>
-                    {terminalConnection && terminalConnection.projectId !== projectId && (
-                      <button
-                        type="button"
-                        onClick={() => void openTerminal()}
-                        className="rounded border border-amber-400/30 bg-amber-400/10 px-2 py-1 text-[10px] font-semibold text-amber-200"
-                        title="Reconnect the shell to the currently selected project"
-                      >
-                        SWITCH SHELL TO THIS PROJECT
-                      </button>
-                    )}
-                    {["ls", "pwd", "npm run dev", "npm run build", "npm install -g @kilocode/cli", "kilo", "npm install -g @opencode/cli", "opencode"].map((command) => (
-                      <button
-                        key={command}
-                        type="button"
-                        disabled={!terminalReady}
-                        onClick={() => {
-                          if (terminalSocketRef.current?.readyState === WebSocket.OPEN)
-                            terminalSocketRef.current.send(command + "\r");
-                        }}
-                        className="rounded border border-white/10 px-2 py-1 font-mono text-[10px] text-slate-400 hover:border-emerald-400/40 hover:text-emerald-200 disabled:opacity-30"
-                      >
-                        {command}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      disabled={!terminalReady}
-                      onClick={() => xtermRef.current?.clear()}
-                      className="text-xs text-slate-500 hover:text-white disabled:opacity-30"
-                    >
-                      Clear
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!terminalReady}
-                      onClick={() => setTerminalAutoSync((value) => !value)}
-                      className={`rounded border px-2 py-1 text-[10px] disabled:opacity-30 ${terminalAutoSync ? "border-emerald-400/25 text-emerald-200" : "border-white/10 text-slate-400"}`}
-                      title="Automatically save terminal changes into the project files"
-                    >
-                      Auto-sync {terminalAutoSync ? "ON" : "OFF"}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!terminalReady}
-                      onClick={() => void importTerminalChanges()}
-                      className="rounded border border-cyan-400/20 px-2 py-1 text-[10px] text-cyan-200 hover:bg-cyan-400/10 disabled:opacity-30"
-                    >
-                      Import now
-                    </button>
-                    {!terminalReady && (
-                      <button
-                        type="button"
-                        onClick={() => void openTerminal()}
-                        className="rounded-md bg-emerald-400/15 px-2 py-1 text-xs text-emerald-200 hover:bg-emerald-400/25"
-                      >
-                        Start shell
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div
-                  ref={terminalContainerRef}
-                  role="region"
-                  aria-label="Interactive Linux terminal"
-                  className="min-h-0 flex-1 overflow-hidden px-3 py-2"
-                />
-                <p className="border-t border-white/[0.06] px-4 py-2 text-[10px] leading-5 text-slate-500">
-                  Temporary Linux session in an isolated Vercel microVM. Install Kilo with
-                  <code className="text-emerald-200">npm install -g @kilocode/cli</code> and run
-                  <code className="text-emerald-200">kilo</code>; choose <code className="text-emerald-200">kilo-auto/free</code>
-                  for its zero-cost model tier when available. OpenCode is another open-source option:
-                  <code className="text-emerald-200">npm install -g @opencode/cli</code> then
-                  <code className="text-emerald-200">opencode</code>; use a free model or local Ollama model to avoid inference charges.
-                  Terminal edits auto-sync into your saved project every few seconds; use
-                  <strong className="text-cyan-200">Import now</strong> for an immediate sync. Free hosted models may be rate limited
-                  and some providers log prompts, so never send secrets or private customer data.
-                </p>
-              </div>
-
               {panel === "console" && (
                 <>
                   <div className="flex h-10 items-center justify-between border-b border-white/[0.07] px-4">
@@ -2302,225 +2212,86 @@ export function CodeAgent() {
 
             {/* AI panel */}
             {assistantOpen && (
-              <aside className="expert-agent-assistant flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-white/[0.08] bg-[#0c1523] xl:border-l xl:border-t-0">
-                <div className="flex h-12 items-center justify-between border-b border-white/[0.08] px-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400/20 to-blue-500/20 text-cyan-200">
+              <aside className="expert-agent-assistant flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-white/[0.08] bg-[#080f1b] xl:border-l xl:border-t-0">
+                <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/[0.08] px-4">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400/20 to-blue-500/20 text-cyan-200">
                       <Sparkles className="h-4 w-4" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs font-semibold text-white">ExpertAI</p>
-                      <p className="text-[9px] text-amber-300">AI coding assistant</p>
+                      <p className="text-[9px] text-slate-500">Project builder</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setMessages([])}
-                    className="rounded-lg p-1.5 text-slate-500 hover:bg-white/5 hover:text-white"
-                    title="Clear conversation"
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <span className={terminalReady ? "h-2 w-2 rounded-full bg-emerald-400" : "h-2 w-2 rounded-full bg-amber-400"} />
+                    <span className="text-[9px] font-semibold tracking-wide text-slate-400">
+                      {terminalReady ? "READY" : terminalConnection ? "CONNECTING" : "STARTING"}
+                    </span>
+                  </div>
                 </div>
-
-                <div className="mx-3 mt-3 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-[11px] leading-5 text-amber-100">
-                  Describe a change and ExpertAI can update your project files. You can also run
-                  Kilo or OpenCode in the Linux terminal; terminal edits automatically sync here.
-                </div>
-                <div className="flex-1 space-y-4 overflow-y-auto p-4">
-                  {messages.length === 0 && (
-                    <div className="flex min-h-[400px] flex-col justify-center">
-                      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
-                        <Bot className="h-6 w-6" />
-                      </div>
-                      <h3 className="text-lg font-semibold text-white">What are we building?</h3>
-                      <p className="mt-2 text-xs leading-5 text-slate-400">
-                        Describe your idea. I'll work with your project files and help you build it.
-                      </p>
-                      <div className="mt-6 space-y-2">
-                        {suggestions.map((suggestion) => (
-                          <button
-                            key={suggestion}
-                            onClick={() => setPrompt(suggestion)}
-                            disabled={CODING_AGENT_UNDER_DEVELOPMENT}
-                            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.025] p-3 text-left text-xs leading-5 text-slate-300 transition hover:border-cyan-400/30 hover:bg-cyan-400/[0.06] hover:text-white"
-                          >
-                            {suggestion}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {messages.map((message, index) => (
-                    <div
-                      key={index}
-                      className={`flex gap-2.5 ${
-                        message.role === "user" ? "flex-row-reverse" : ""
-                      }`}
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] bg-[#0a1422] px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-slate-500">{name}</span>
+                    {terminalConnection && terminalConnection.projectId !== projectId && (
+                      <button
+                        type="button"
+                        onClick={() => void openTerminal()}
+                        className="rounded border border-amber-400/30 bg-amber-400/10 px-2 py-1 text-[10px] font-semibold text-amber-200"
+                        title="Connect this workspace to the selected project"
+                      >
+                        Switch project
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={!terminalReady}
+                      onClick={() => xtermRef.current?.clear()}
+                      className="rounded px-2 py-1 text-[10px] text-slate-500 hover:bg-white/5 hover:text-white disabled:opacity-30"
+                      title="Clear output"
                     >
-                      <div
-                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
-                          message.role === "user"
-                            ? "bg-blue-500/15 text-blue-200"
-                            : "bg-cyan-400/10 text-cyan-200"
-                        }`}
+                      Clear
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!terminalReady}
+                      onClick={() => setTerminalAutoSync((value) => !value)}
+                      className={`rounded border px-2 py-1 text-[10px] disabled:opacity-30 ${terminalAutoSync ? "border-emerald-400/25 text-emerald-200" : "border-white/10 text-slate-400"}`}
+                      title="Automatically save project changes"
+                    >
+                      Auto-save {terminalAutoSync ? "ON" : "OFF"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!terminalReady}
+                      onClick={() => void importTerminalChanges()}
+                      className="rounded border border-cyan-400/20 px-2 py-1 text-[10px] text-cyan-200 hover:bg-cyan-400/10 disabled:opacity-30"
+                      title="Save changes from the build session now"
+                    >
+                      Save files
+                    </button>
+                    {!terminalReady && (
+                      <button
+                        type="button"
+                        onClick={() => void openTerminal()}
+                        className="rounded-md bg-cyan-400/15 px-2.5 py-1 text-[10px] font-semibold text-cyan-100 hover:bg-cyan-400/25"
                       >
-                        {message.role === "user" ? (
-                          <span className="text-[10px] font-bold">YOU</span>
-                        ) : (
-                          <Sparkles className="h-3.5 w-3.5" />
-                        )}
-                      </div>
-                      <div
-                        className={`max-w-[88%] whitespace-pre-wrap rounded-xl px-3 py-2.5 text-xs leading-6 ${
-                          message.role === "user"
-                            ? "bg-blue-500/15 text-blue-50"
-                            : "border border-white/[0.07] bg-white/[0.035] text-slate-200"
-                        }`}
-                      >
-                        <TypewriterText
-                          text={message.content}
-                          animate={index === typingMessageIndex}
-                        />
-                      </div>
-                    </div>
-                  ))}
-
-                  {busy && (
-                    <div className="flex items-center gap-2 text-xs text-cyan-200">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Working on your project…
-                    </div>
-                  )}
-                </div>
-
-                <div className="border-t border-white/[0.08] p-3">
-                  {referenceImages.length > 0 && (
-                    <div className="mb-2 flex flex-wrap gap-2">
-                      {referenceImages.map((image, index) => (
-                        <div
-                          key={image.name + "-" + index}
-                          className="flex max-w-full items-center gap-2 rounded-lg border border-cyan-400/20 bg-cyan-400/[0.06] px-3 py-2 text-[11px] text-cyan-100"
-                        >
-                          <ImagePlus className="h-4 w-4 shrink-0" />
-                          <span className="max-w-48 truncate">{image.name}</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setReferenceImages((current) =>
-                                current.filter((_, itemIndex) => itemIndex !== index),
-                              );
-                              if (referenceInputRef.current) referenceInputRef.current.value = "";
-                            }}
-                            className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white"
-                            aria-label={"Remove " + image.name}
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <input
-                    ref={referenceInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    multiple
-                    className="hidden"
-                    onChange={(event) => {
-                      const selected = Array.from(event.target.files ?? []);
-                      const remaining = Math.max(0, 3 - referenceImages.length);
-                      if (!selected.length) return;
-                      if (selected.length > remaining) {
-                        toast.error("Attach up to three reference images per request.");
-                      }
-                      const candidates = selected.slice(0, remaining);
-                      const valid = candidates.filter((file) => {
-                        if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-                          toast.error(file.name + ": use PNG, JPG or WebP.");
-                          return false;
-                        }
-                        if (file.size > 12 * 1024 * 1024) {
-                          toast.error(
-                            file.name + ": choose an image under 12 MB before compression.",
-                          );
-                          return false;
-                        }
-                        return true;
-                      });
-                      event.target.value = "";
-                      void Promise.all(
-                        valid.map(async (file) => {
-                          try {
-                            return await compressReferenceImage(file);
-                          } catch (error) {
-                            toast.error(
-                              error instanceof Error
-                                ? error.message
-                                : "Could not compress " + file.name + ".",
-                            );
-                            return null;
-                          }
-                        }),
-                      ).then((images) => {
-                        setReferenceImages((current) =>
-                          [
-                            ...current,
-                            ...images.filter((image): image is ReferenceImage => Boolean(image)),
-                          ].slice(0, 3),
-                        );
-                      });
-                    }}
-                  />
-                  <div className="rounded-xl border border-white/[0.12] bg-[#101c2d] p-2 focus-within:border-cyan-400/40">
-                    <Textarea
-                      ref={promptRef}
-                      value={prompt}
-                      disabled={CODING_AGENT_UNDER_DEVELOPMENT}
-                      onChange={(event) => setPrompt(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" && !event.shiftKey) {
-                          event.preventDefault();
-                          void sendPrompt();
-                        }
-                      }}
-                      rows={3}
-                      placeholder="Ask ExpertAI to add a feature, fix a bug, or update your project files…"
-                      className="min-h-[76px] resize-none border-0 bg-transparent px-1 text-xs text-white shadow-none placeholder:text-slate-500 focus-visible:ring-0"
-                    />
-                    <div className="flex items-center justify-between px-1 pt-2">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => referenceInputRef.current?.click()}
-                          disabled={busy || CODING_AGENT_UNDER_DEVELOPMENT}
-                          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] text-slate-400 transition hover:bg-white/5 hover:text-cyan-200"
-                          title="Attach up to three screenshots or design references"
-                        >
-                          <ImagePlus className="h-4 w-4" /> Reference images
-                        </button>
-                        <span className="hidden text-[9px] text-amber-300/80 sm:inline">
-                          Project-file editing enabled
-                        </span>
-                      </div>
-                      <Button
-                        size="icon"
-                        onClick={() => void sendPrompt()}
-                        disabled={CODING_AGENT_UNDER_DEVELOPMENT || busy || !prompt.trim()}
-                        className="h-8 w-8 bg-cyan-400 text-slate-950 hover:bg-cyan-300"
-                        aria-label="Send prompt"
-                      >
-                        {busy ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
+                        Reconnect
+                      </button>
+                    )}
                   </div>
-                  <p className="mt-2 text-center text-[9px] text-slate-600">
-                    AI can make mistakes. Review generated changes before publishing.
-                  </p>
+                </div>
+                <div
+                  ref={terminalContainerRef}
+                  role="region"
+                  aria-label="ExpertAI project builder"
+                  className="expert-agent-kilo-surface min-h-0 flex-1 overflow-hidden px-3 py-3"
+                />
+                <div className="flex shrink-0 items-center justify-between gap-2 border-t border-white/[0.06] px-3 py-2 text-[9px] text-slate-600">
+                  <span>Changes are synced into your project automatically</span>
+                  <span>{Object.keys(files).length} files</span>
                 </div>
               </aside>
             )}
