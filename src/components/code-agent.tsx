@@ -14,6 +14,7 @@ import {
   FileCode2,
   FilePlus2,
   Folder,
+  FolderInput,
   Github,
   ImagePlus,
   Loader2,
@@ -78,6 +79,7 @@ type ReferenceImage = {
 };
 
 type CheckpointRow = { id: string; name: string; files: ProjectFiles; created_at: string };
+type DeveloperVaultGroup = { id: string; name: string; count: number; createdAt: string };
 
 type ProjectRow = {
   id: string;
@@ -226,7 +228,7 @@ const fileIcon = (name: string) => {
 };
 
 export function CodeAgent() {
-  const { user, profile } = useAuth();
+  const { user, profile, isAdmin, isDeveloper } = useAuth();
   const terminalUsername = (profile?.username || user?.email?.split("@")[0] || "user")
     .replace(/[^a-zA-Z0-9_-]/g, "")
     .slice(0, 39) || "user";
@@ -287,6 +289,8 @@ export function CodeAgent() {
   const [importRepoUrl, setImportRepoUrl] = useState("");
   const [importToken, setImportToken] = useState("");
   const [importingRepo, setImportingRepo] = useState(false);
+  const [vaultImportOpen, setVaultImportOpen] = useState(false);
+  const [importingVault, setImportingVault] = useState(false);
   const [githubToken, setGithubToken] = useState("");
   const [githubRepo, setGithubRepo] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -462,6 +466,34 @@ export function CodeAgent() {
       return (data ?? []) as unknown as ProjectRow[];
     },
   });
+
+  const { data: developerVaultRows = [], isLoading: developerVaultLoading } = useQuery({
+    queryKey: ["developer-vault-import-list", user?.id],
+    enabled: Boolean(user && (isAdmin || isDeveloper)),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("developer_vault_items")
+        .select("group_id,group_name,group_kind,relative_path,created_at")
+        .eq("group_kind", "project")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const developerVaultGroups = useMemo(() => {
+    const grouped = new Map<string, DeveloperVaultGroup>();
+    for (const row of developerVaultRows) {
+      const current = grouped.get(row.group_id);
+      if (current) current.count += 1;
+      else grouped.set(row.group_id, {
+        id: row.group_id,
+        name: row.group_name,
+        count: 1,
+        createdAt: row.created_at,
+      });
+    }
+    return Array.from(grouped.values());
+  }, [developerVaultRows]);
 
   const { data: checkpoints = [] } = useQuery({
     queryKey: ["agent-project-checkpoints", projectId],
@@ -1053,6 +1085,81 @@ export function CodeAgent() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  async function importDeveloperVaultProject(groupId: string, groupName: string) {
+    if (!user || !(isAdmin || isDeveloper) || importingVault) return;
+    setImportingVault(true);
+    try {
+      if (dirty) await persist();
+      const { data: rows, error } = await supabase
+        .from("developer_vault_items")
+        .select("file_name,relative_path,storage_path,size_bytes")
+        .eq("group_id", groupId)
+        .eq("group_kind", "project")
+        .order("relative_path", { ascending: true });
+      if (error) throw error;
+      const importedFiles: ProjectFiles = {};
+      let totalBytes = 0;
+      let skipped = 0;
+      const textFile = /\\.(html?|css|[cm]?[jt]sx?|json|md|txt|ya?ml|toml|py|sql|sh|xml|svg|vue|svelte|go|rs|java|c|h|cpp|hpp|cs|php|rb|ipynb)$/i;
+      for (const row of rows ?? []) {
+        const path = row.relative_path || row.file_name;
+        const lowerPath = path.toLowerCase();
+        if (!textFile.test(path) || /(^|\\/)\\.env($|\\.)/i.test(path) || path.split("/").some((part) => part === "..") || row.size_bytes > 500 * 1024 || totalBytes + row.size_bytes > 3 * 1024 * 1024) {
+          skipped += 1;
+          continue;
+        }
+        if (Object.keys(importedFiles).length >= 400) {
+          skipped += 1;
+          continue;
+        }
+        const { data: fileData, error: downloadError } = await supabase.storage
+          .from("developer-vault")
+          .download(row.storage_path);
+        if (downloadError || !fileData) throw downloadError ?? new Error("Could not download " + path);
+        const content = await fileData.text();
+        importedFiles[path] = content;
+        totalBytes += row.size_bytes;
+      }
+      if (!Object.keys(importedFiles).length) {
+        throw new Error("This folder has no supported text source files to import. Binary assets and secret files are skipped.");
+      }
+      const { data: saved, error: saveError } = await supabase
+        .from("agent_projects")
+        .insert({
+          user_id: user.id,
+          name: groupName,
+          files: importedFiles as unknown as Json,
+          messages: [],
+          published: false,
+        })
+        .select("id")
+        .single();
+      if (saveError) throw saveError;
+      resetRuntimeForProjectChange();
+      setProjectId(saved.id);
+      setPublishedUrl(null);
+      setThumbnailUrl(null);
+      setName(groupName);
+      setFiles(importedFiles);
+      setMessages([]);
+      setActiveFile(Object.keys(importedFiles).sort()[0] ?? "README.md");
+      setGithubRepo("");
+      setLogs([]);
+      setPanel("code");
+      setDirty(false);
+      setVaultImportOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
+      toast.success(
+        'Imported "' + groupName + '" from Developer Vault (' + Object.keys(importedFiles).length +
+        " source files" + (skipped ? ", " + skipped + " skipped" : "") + ").",
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not import this Developer Vault project.");
+    } finally {
+      setImportingVault(false);
+    }
+  }
+
   async function cloneGithubRepository() {
     if (!user || importingRepo) return;
     const repoUrl = importRepoUrl.trim();
@@ -1532,6 +1639,16 @@ export function CodeAgent() {
                   Project Explorer
                 </span>
                 <div className="flex items-center gap-1">
+                  {(isAdmin || isDeveloper) && (
+                    <button
+                      onClick={() => setVaultImportOpen(true)}
+                      className="rounded p-1 text-slate-500 hover:bg-white/10 hover:text-cyan-200"
+                      aria-label="Import from Developer Vault"
+                      title="Import project from Developer Vault"
+                    >
+                      <FolderInput className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                   <button
                     onClick={() => setImportOpen(true)}
                     className="rounded p-1 text-slate-500 hover:bg-white/10 hover:text-white"
@@ -2519,6 +2636,52 @@ export function CodeAgent() {
                 </button>
               );
             })}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import a shared project folder from the approved Developer Vault */}
+      <Dialog open={vaultImportOpen} onOpenChange={setVaultImportOpen}>
+        <DialogContent className="border-slate-700 bg-[#101a29] text-white sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FolderInput className="h-5 w-5" />
+              Import from Developer Vault
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm leading-6 text-slate-400">
+              Select a shared project folder. ExpertAI Studio imports supported text source files
+              into a new project in your account. Binary assets and secret files are not imported.
+            </p>
+            <div className="max-h-80 space-y-2 overflow-y-auto">
+              {developerVaultLoading ? (
+                <p className="py-6 text-center text-sm text-slate-400">Loading team projects…</p>
+              ) : developerVaultGroups.length ? developerVaultGroups.map((group) => (
+                <div key={group.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <Folder className="h-5 w-5 shrink-0 text-amber-300" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{group.name}</p>
+                    <p className="text-[11px] text-slate-400">{group.count} stored files</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    disabled={importingVault}
+                    onClick={() => void importDeveloperVaultProject(group.id, group.name)}
+                  >
+                    {importingVault ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Import"}
+                  </Button>
+                </div>
+              )) : (
+                <p className="py-6 text-center text-sm text-slate-400">
+                  No project folders are in the Developer Vault yet. Upload one from the team workspace.
+                </p>
+              )}
+            </div>
+            <p className="text-[11px] leading-5 text-slate-500">
+              Import limit: 400 text files, 500 KB per file and 3 MB total source text. Files are
+              copied into your own ExpertAI project; the shared vault copy is unchanged.
+            </p>
           </div>
         </DialogContent>
       </Dialog>
