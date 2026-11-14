@@ -33,12 +33,12 @@ import { cn } from "@/lib/utils";
 
 const LINKS = [
   { to: "/", key: "home", label: "Home", icon: Compass, exact: true },
-  { to: "/learn", key: "learn", label: "Learn", icon: GraduationCap },
-  { to: "/community", key: "community", label: "Community", icon: Users },
-  { to: "/ai", key: "expertai", label: "ExpertAI", icon: Sparkles },
   { to: "/pricing", key: "plans", label: "Pricing", icon: CreditCard },
   { to: "/software", key: "software", label: "Request software", icon: BriefcaseBusiness },
   { to: "/projects", key: "developerApply", label: "Developer Apply", icon: Code2 },
+  { to: "/learn", key: "learn", label: "Learn", icon: GraduationCap },
+  { to: "/community", key: "community", label: "Community", icon: Users },
+  { to: "/ai", key: "expertai", label: "ExpertAI", icon: Sparkles },
   { to: "/messages", key: "messages", label: "Messages", icon: MessageCircle },
   { to: "/entertainment", key: "discover", label: "Discover", icon: Gamepad2 },
 ] as const;
@@ -84,10 +84,10 @@ export function SiteHeader() {
                 key={item.to}
                 to={item.to}
                 aria-current={active ? "page" : undefined}
-                className={active ? activeClass : idleClass}
+                className={active ? activeClass : item.key === "plans" ? `${idleClass} border-primary/20 bg-primary/10 text-primary` : idleClass}
               >
                 <item.icon className="h-3.5 w-3.5" />
-                <span>{settings.navigation_labels[item.key] || item.label}</span>
+                <span>{item.key === "plans" ? "Pricing" : settings.navigation_labels[item.key] || item.label}</span>
               </Link>
             );
           })}
@@ -223,30 +223,9 @@ export function SiteHeader() {
               )}
             >
               <item.icon className="h-4 w-4" />
-              {settings.navigation_labels[item.key] || item.label}
+              {item.key === "plans" ? "Pricing" : settings.navigation_labels[item.key] || item.label}
             </Link>
           ))}
-          <Link
-            to="/pricing"
-            onClick={() => setOpen(false)}
-            className="rounded-xl border border-white/10 px-3 py-3 text-xs font-semibold text-white/65"
-          >
-            Pricing
-          </Link>
-          <Link
-            to="/software"
-            onClick={() => setOpen(false)}
-            className="rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-3 py-3 text-xs font-semibold text-cyan-100"
-          >
-            Request software
-          </Link>
-          <Link
-            to="/projects"
-            onClick={() => setOpen(false)}
-            className="rounded-xl border border-blue-400/30 bg-blue-400/10 px-3 py-3 text-xs font-semibold text-blue-100"
-          >
-            Developer Apply
-          </Link>
           {(isDeveloper || isAdmin) && (
             <a
               href="/projects?tab=vault"
