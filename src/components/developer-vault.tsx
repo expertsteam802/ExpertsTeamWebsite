@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 import {
   Archive,
   Download,
-  File,
+  File as FileIcon,
   Folder,
   FolderUp,
   Loader2,
@@ -252,7 +252,7 @@ export function DeveloperVault() {
           {groups.map((group) => (
             <Card key={group.id} className="gap-3 p-4">
               <div className="flex items-start gap-3">
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">{group.kind === "project" ? <Folder className="h-5 w-5" /> : <File className="h-5 w-5" />}</div>
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">{group.kind === "project" ? <Folder className="h-5 w-5" /> : <FileIcon className="h-5 w-5" />}</div>
                 <div className="min-w-0 flex-1"><p className="truncate font-semibold">{group.name}</p><p className="text-xs text-muted-foreground">{group.items.length} file(s) · {formatBytes(group.items.reduce((n, item) => n + item.size_bytes, 0))} · {new Date(group.createdAt).toLocaleDateString()}</p></div>
                 {group.kind === "project" && <a href={"/ai?developerVaultGroup=" + encodeURIComponent(group.id)} className="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90">Import to ExpertAI</a>}
               </div>
