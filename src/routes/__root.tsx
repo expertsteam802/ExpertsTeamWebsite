@@ -170,16 +170,41 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+const ADSENSE_PUBLIC_CONTENT_PATHS = new Set([
+  "/",
+  "/about",
+  "/learn",
+  "/explore",
+  "/entertainment",
+  "/showcase",
+]);
+
 function RootShell({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const shouldLoadAdsense = ADSENSE_PUBLIC_CONTENT_PATHS.has(pathname);
+
+  useEffect(() => {
+    if (shouldLoadAdsense) return;
+    // Do not leave auto-ad placements visible on private tools, forms, messaging,
+    // video unlock screens or account pages after client-side navigation.
+    document
+      .querySelectorAll(
+        'script[src*="pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"], ins.adsbygoogle, .google-auto-placed, iframe[id^="google_ads_iframe"], iframe[src*="googlesyndication.com"]',
+      )
+      .forEach((element) => element.remove());
+  }, [shouldLoadAdsense]);
+
   return (
     <html lang="en" className="theme-neon dark">
       <head>
         <HeadContent />
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4535524305819415"
-          crossOrigin="anonymous"
-        />
+        {shouldLoadAdsense && (
+          <script
+            async
+            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4535524305819415"
+            crossOrigin="anonymous"
+          />
+        )}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
