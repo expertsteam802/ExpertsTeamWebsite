@@ -455,7 +455,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     '  if (request.url !== "/terminal") { socket.destroy(); return; }',
     '  const protocols = String(request.headers["sec-websocket-protocol"] || "").split(",").map((value) => value.trim());',
     '  if (!process.env.TERMINAL_TOKEN || !protocols.includes(process.env.TERMINAL_TOKEN)) { socket.write("HTTP/1.1 401 Unauthorized\\r\\nConnection: close\\r\\n\\r\\n"); socket.destroy(); return; }',
-    '  sockets.handleUpgrade(request, socket, head, (client) => { client.expertsSkipKilo = protocols.includes("experts-terminal-probe"); sockets.emit("connection", client); });',
+    '  sockets.handleUpgrade(request, socket, head, (client) => { client.expertsSkipKilo = protocols.includes("experts-terminal-probe") || protocols.includes("experts-terminal-plain"); sockets.emit("connection", client); });',
     "});",
     'sockets.on("connection", (client) => {',
     "  if (activeShell) { try { activeShell.kill(); } catch {} activeShell = null; }",
