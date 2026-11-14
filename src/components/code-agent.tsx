@@ -401,8 +401,14 @@ export function CodeAgent() {
     const fit = new FitAddon();
     terminal.loadAddon(fit);
     terminal.open(container);
-    fit.fit();
     xtermRef.current = terminal;
+    const fitWhenVisible = () => {
+      if (container.clientWidth < 2 || container.clientHeight < 2) return;
+      fit.fit();
+      terminal.refresh(0, Math.max(0, terminal.rows - 1));
+    };
+    void document.fonts?.ready.then(() => requestAnimationFrame(fitWhenVisible));
+    requestAnimationFrame(() => requestAnimationFrame(fitWhenVisible));
 
     const socket = new WebSocket(terminalConnection.url, [
       "experts-terminal",
@@ -444,7 +450,9 @@ export function CodeAgent() {
     });
     let resizeFrame = 0;
     const fitAndSync = () => {
+      if (container.clientWidth < 2 || container.clientHeight < 2) return;
       fit.fit();
+      terminal.refresh(0, Math.max(0, terminal.rows - 1));
       if (socket.readyState === WebSocket.OPEN)
         socket.send(
           "\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }),
@@ -469,7 +477,7 @@ export function CodeAgent() {
       if (xtermRef.current === terminal) xtermRef.current = null;
       setTerminalReady(false);
     };
-  }, [terminalConnection, assistantOpen]);
+  }, [terminalConnection]);
 
   useEffect(() => {
     const container = legacyTerminalContainerRef.current;
@@ -486,7 +494,7 @@ export function CodeAgent() {
     const socket = new WebSocket(terminalConnection.url, ["experts-terminal-plain", terminalConnection.token]);
     socket.binaryType = "arraybuffer";
     socket.onopen = () => {
-      terminal.writeln("\\r\\nConnected to your original Linux shell.");
+      terminal.writeln("\r\nConnected to your original Linux shell.");
       socket.send("\\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
       terminal.focus();
     };
@@ -494,7 +502,7 @@ export function CodeAgent() {
       if (typeof event.data === "string") terminal.write(event.data);
       else if (event.data instanceof ArrayBuffer) terminal.write(new Uint8Array(event.data));
     };
-    socket.onerror = () => terminal.writeln("\\r\\n[Linux shell connection error]");
+    socket.onerror = () => terminal.writeln("\r\n[Linux shell connection error]");
     const input = terminal.onData((value) => { if (socket.readyState === WebSocket.OPEN) socket.send(value); });
     const resize = terminal.onResize(({ cols, rows }) => {
       if (socket.readyState === WebSocket.OPEN) socket.send("\\u0000" + JSON.stringify({ type: "resize", cols, rows }));
@@ -712,20 +720,8 @@ export function CodeAgent() {
     }
   }
 
-  useEffect(() => {
-    if (!terminalConnection || terminalIdleTimeoutMinutes <= 0) return;
-    const timeoutMs = terminalIdleTimeoutMinutes * 60 * 1000;
-    const timer = window.setInterval(() => {
-      if (Date.now() - terminalLastActivityRef.current >= timeoutMs) {
-        terminalLastActivityRef.current = Date.now();
-        void closeTerminalSession();
-        toast.info(
-          `Project builder paused after ${terminalIdleTimeoutMinutes} minutes without activity.`,
-        );
-      }
-    }, 15_000);
-    return () => window.clearInterval(timer);
-  }, [terminalConnection, terminalIdleTimeoutMinutes]);
+  // Keep the project sandbox alive for the full lifetime of ExpertAI Studio.
+  // It is stopped by the Studio unmount cleanup, not by idle typing time.
 
   async function openTerminal() {
     if (terminalReady && terminalConnection?.projectId === projectId) {
@@ -748,6 +744,11 @@ export function CodeAgent() {
   }
 
   openTerminalRef.current = openTerminal;
+
+  useEffect(() => {
+    if (!projectId || !terminalConnection || terminalConnection.projectId === projectId) return;
+    void openTerminalRef.current();
+  }, [projectId, terminalConnection?.projectId]);
 
   useEffect(() => {
     if (!user?.id || autoStartedKiloRef.current) return;
@@ -2279,8 +2280,7 @@ export function CodeAgent() {
             )}
 
             {/* AI panel */}
-            {assistantOpen && (
-              <aside className="expert-agent-assistant flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-white/[0.08] bg-[#080f1b] xl:border-l xl:border-t-0">
+            <aside className={`${assistantOpen ? "flex" : "hidden"} expert-agent-assistant min-h-0 min-w-0 flex-col overflow-hidden border-t border-white/[0.08] bg-[#080f1b] xl:border-l xl:border-t-0`}>
                 <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/[0.08] px-4">
                   <div className="flex min-w-0 items-center gap-2">
                     <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400/20 to-blue-500/20 text-cyan-200">
@@ -2362,7 +2362,6 @@ export function CodeAgent() {
                   <span>{Object.keys(files).length} files</span>
                 </div>
               </aside>
-            )}
           </div>
 
           {/* Bottom status bar */}
