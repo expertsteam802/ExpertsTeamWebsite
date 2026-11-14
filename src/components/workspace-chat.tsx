@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Hash, Loader2, Lock, Plus, Search, Send, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Hash, Loader2, Lock, Mic, Plus, Search, Send, Square, Trash2, Video, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,10 @@ type WorkspaceMessage = {
   body: string;
   user_id: string;
   created_at: string;
+  media_path: string | null;
+  media_mime_type: string | null;
+  media_size_bytes: number;
+  media_url: string | null;
   profiles: { username: string; display_name: string | null; avatar_url: string | null } | null;
 };
 
@@ -49,6 +53,11 @@ export function WorkspaceChat() {
   const [category, setCategory] = useState<string>("general");
   const [description, setDescription] = useState("");
   const [groupSearch, setGroupSearch] = useState("");
+  const [recording, setRecording] = useState(false);
+  const [voiceNote, setVoiceNote] = useState<File | null>(null);
+  const [voiceNotePreview, setVoiceNotePreview] = useState("");
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
 
   const {
     data: groups = [],
@@ -109,11 +118,17 @@ export function WorkspaceChat() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("workspace_messages")
-        .select("id, body, user_id, created_at, profiles(username, display_name, avatar_url)")
+        .select("id, body, user_id, created_at, media_path, media_mime_type, media_size_bytes, profiles(username, display_name, avatar_url)")
         .eq("group_id", activeGroup!.id)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return data as unknown as WorkspaceMessage[];
+      return Promise.all((data ?? []).map(async (row) => {
+        if (!row.media_path) return { ...row, media_url: null };
+        const { data: signed, error: signedError } = await supabase.storage
+          .from("workspace-media")
+          .createSignedUrl(row.media_path, 60 * 60);
+        return { ...row, media_url: signedError ? null : (signed?.signedUrl ?? null) };
+      })) as unknown as WorkspaceMessage[];
     },
   });
 
@@ -151,16 +166,44 @@ export function WorkspaceChat() {
   });
 
   const send = useMutation({
-    mutationFn: async (body: string) => {
-      const { error } = await supabase
-        .from("workspace_messages")
-        .insert({ group_id: activeGroup!.id, user_id: user!.id, body: body.slice(0, 4000) });
-      if (error) throw error;
+    mutationFn: async ({ body, audio }: { body: string; audio: File | null }) => {
+      if (!user || !activeGroup) throw new Error("Choose a developer workspace first.");
+      let mediaPath: string | null = null;
+      if (audio) {
+        mediaPath = user.id + "/" + activeGroup.id + "/" + crypto.randomUUID() + "-" + audio.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+        const { error: uploadError } = await supabase.storage.from("workspace-media").upload(mediaPath, audio, {
+          cacheControl: "60",
+          upsert: false,
+          contentType: audio.type || "audio/webm",
+        });
+        if (uploadError) throw uploadError;
+        const { data: signed, error: verifyError } = await supabase.storage.from("workspace-media").createSignedUrl(mediaPath, 60);
+        if (verifyError || !signed?.signedUrl) {
+          await supabase.storage.from("workspace-media").remove([mediaPath]);
+          throw new Error("The voice note could not be verified in private workspace storage.");
+        }
+      }
+      const { error } = await supabase.from("workspace_messages").insert({
+        group_id: activeGroup.id,
+        user_id: user.id,
+        body: body.slice(0, 4000),
+        media_path: mediaPath,
+        media_mime_type: audio?.type || null,
+        media_size_bytes: audio?.size ?? 0,
+      });
+      if (error) {
+        if (mediaPath) await supabase.storage.from("workspace-media").remove([mediaPath]);
+        throw error;
+      }
     },
-    onSuccess: () =>
-      void queryClient.invalidateQueries({ queryKey: ["workspace-messages", activeGroup?.id] }),
-    onError: (error: Error, body: string) => {
-      setDraft(body);
+    onSuccess: () => {
+      setVoiceNote(null);
+      if (voiceNotePreview) URL.revokeObjectURL(voiceNotePreview);
+      setVoiceNotePreview("");
+      void queryClient.invalidateQueries({ queryKey: ["workspace-messages", activeGroup?.id] });
+    },
+    onError: (error: Error, variables) => {
+      setDraft(variables.body);
       toast.error(error.message);
     },
   });
@@ -177,10 +220,73 @@ export function WorkspaceChat() {
 
   function submit() {
     const body = draft.trim();
-    if (!body || !activeGroup || send.isPending) return;
+    if ((!body && !voiceNote) || !activeGroup || send.isPending || recording) return;
     setDraft("");
-    send.mutate(body);
+    send.mutate({ body, audio: voiceNote });
   }
+
+  async function startVoiceRecording() {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      toast.error("Voice recording is not supported by this browser.");
+      return;
+    }
+    if (voiceNote) {
+      toast.error("Send or remove the current voice note first.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const options = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? { mimeType: "audio/webm;codecs=opus" }
+        : undefined;
+      const recorder = new MediaRecorder(stream, options);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+        if (blob.size > 8 * 1024 * 1024) {
+          toast.error("Voice notes must be 8 MB or smaller.");
+          stream.getTracks().forEach((track) => track.stop());
+          recordingStreamRef.current = null;
+          recorderRef.current = null;
+          setRecording(false);
+          return;
+        }
+        const extension = blob.type.includes("ogg") ? "ogg" : blob.type.includes("mp4") ? "m4a" : "webm";
+        const file = new File([blob], "workspace-voice-" + Date.now() + "." + extension, {
+          type: blob.type || "audio/webm",
+        });
+        if (voiceNotePreview) URL.revokeObjectURL(voiceNotePreview);
+        setVoiceNote(file);
+        setVoiceNotePreview(URL.createObjectURL(blob));
+        stream.getTracks().forEach((track) => track.stop());
+        recordingStreamRef.current = null;
+        recorderRef.current = null;
+        setRecording(false);
+      };
+      recordingStreamRef.current = stream;
+      recorderRef.current = recorder;
+      recorder.start();
+      setRecording(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Allow microphone access to record a voice note.");
+    }
+  }
+
+  function stopVoiceRecording() {
+    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+  }
+
+  useEffect(() => () => {
+    if (recorderRef.current?.state === "recording") {
+      recorderRef.current.onstop = null;
+      recorderRef.current.stop();
+    }
+    recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+    if (voiceNotePreview) URL.revokeObjectURL(voiceNotePreview);
+  }, [voiceNotePreview]);
 
   return (
     <div className="grid min-h-[72vh] overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-0">
@@ -390,11 +496,27 @@ export function WorkspaceChat() {
                       )}
                     >
                       {!mine && (
-                        <p className="mb-1 text-[11px] font-semibold text-primary">{displayName}</p>
+                        <div className="mb-1 flex flex-wrap items-center gap-2">
+                          <p className="text-[11px] font-semibold text-primary">{displayName}</p>
+                          {message.profiles?.username && (
+                            <a
+                              href={"/messages?to=" + encodeURIComponent(message.profiles.username)}
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary/80 hover:underline"
+                              title={"Open a private conversation and video call " + displayName}
+                            >
+                              <Video className="h-3 w-3" /> Message / call
+                            </a>
+                          )}
+                        </div>
                       )}
-                      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-                        {message.body}
-                      </p>
+                      {message.media_url && (
+                        <audio controls preload="metadata" src={message.media_url} className="mb-2 max-w-full" />
+                      )}
+                      {message.body && (
+                        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+                          {message.body}
+                        </p>
+                      )}
                       <div className="mt-1 flex items-center justify-end gap-2 text-[10px] opacity-65">
                         <span>
                           {new Date(message.created_at).toLocaleTimeString([], {
@@ -417,7 +539,19 @@ export function WorkspaceChat() {
               })}
             </div>
 
-            <div className="flex items-end gap-2 border-t border-border/70 bg-card p-4 sm:px-5">
+            <div className="border-t border-border/70 bg-card p-4 sm:px-5">
+              {voiceNotePreview && (
+                <div className="mb-3 flex items-center gap-3 rounded-xl border border-border bg-secondary/40 p-2">
+                  <audio controls src={voiceNotePreview} className="min-w-0 flex-1" />
+                  <span className="max-w-32 truncate text-xs text-muted-foreground">{voiceNote?.name}</span>
+                  <Button type="button" size="icon" variant="ghost" onClick={() => {
+                    setVoiceNote(null);
+                    URL.revokeObjectURL(voiceNotePreview);
+                    setVoiceNotePreview("");
+                  }} aria-label="Remove voice note"><X className="h-4 w-4" /></Button>
+                </div>
+              )}
+              <div className="flex items-end gap-2">
               <Textarea
                 rows={1}
                 value={draft}
@@ -432,13 +566,25 @@ export function WorkspaceChat() {
                 className="min-h-11 resize-none rounded-2xl bg-secondary/50 px-4 py-3"
               />
               <Button
+                type="button"
+                variant={recording ? "destructive" : "outline"}
+                onClick={() => recording ? stopVoiceRecording() : void startVoiceRecording()}
+                disabled={send.isPending || Boolean(voiceNote && !recording)}
+                aria-label={recording ? "Stop voice note" : "Record voice note"}
+                title={recording ? "Stop recording" : "Record voice note"}
+                className="h-11 w-11 shrink-0 rounded-full"
+              >
+                {recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </Button>
+              <Button
                 onClick={submit}
-                disabled={send.isPending}
+                disabled={send.isPending || recording || (!draft.trim() && !voiceNote)}
                 aria-label="Send message"
                 className="h-11 w-11 shrink-0 rounded-full"
               >
                 <Send className="h-4 w-4" />
               </Button>
+              </div>
             </div>
           </>
         ) : (
