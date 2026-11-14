@@ -150,9 +150,10 @@ export function DeveloperVault() {
             await supabase.storage.from("developer-vault").remove([storagePath]);
             throw new Error("Could not verify " + file.name + " in private Developer Vault storage.");
           }
+          const currentGroupName = (kind === "project" ? groupName : file.name).slice(0, 180);
           const { data: saved, error: rowError } = await supabase.from("developer_vault_items").insert({
             group_id: groupId,
-            group_name: groupName,
+            group_name: currentGroupName,
             group_kind: kind,
             uploader_id: user.id,
             file_name: file.name,
