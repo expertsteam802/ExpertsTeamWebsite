@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CheckCircle2, Clock, XCircle } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
@@ -206,6 +206,12 @@ function ApplicationPanel() {
 function ProjectsPage() {
   const { user, isAdmin, isDeveloper } = useAuth();
   const [workspaceTab, setWorkspaceTab] = useState<"workspace" | "vault">("workspace");
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "vault") {
+      setWorkspaceTab("vault");
+    }
+  }, []);
 
   const { data: approvedCount = 0, isLoading } = useQuery({
     queryKey: ["workspace-access", user?.id],
