@@ -22,6 +22,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { uploadStorageFileWithProgress } from "@/lib/storage-upload";
 
 export const Route = createFileRoute("/vault")({
   head: () => ({
@@ -66,7 +67,12 @@ function PersonalVaultPage() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
-  const [uploadProgress, setUploadProgress] = useState<{ completed: number; total: number; currentName: string } | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{
+    completed: number;
+    total: number;
+    currentName: string;
+    percent: number;
+  } | null>(null);
 
   const {
     data: files = [],
@@ -101,23 +107,28 @@ function PersonalVaultPage() {
       if (!user) throw new Error("Sign in to use your Personal Vault.");
       if (!chosen.length) throw new Error("Choose at least one file to upload.");
       let completed = 0;
-      setUploadProgress({ completed, total: chosen.length, currentName: chosen[0].name });
+      let completedBytes = 0;
+      const totalBytes = chosen.reduce((total, file) => total + file.size, 0);
+      setUploadProgress({ completed, total: chosen.length, currentName: chosen[0].name, percent: 0 });
       try {
         for (const file of chosen) {
-          setUploadProgress({ completed, total: chosen.length, currentName: file.name });
+          setUploadProgress({ completed, total: chosen.length, currentName: file.name, percent: totalBytes ? Math.round((completedBytes / totalBytes) * 100) : Math.round((completed / chosen.length) * 100) });
           if (file.size > 100 * 1024 * 1024) {
             throw new Error(file.name + " is larger than the 100 MB per-file limit.");
           }
           const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-100) || "file";
           const path = user.id + "/" + crypto.randomUUID() + "-" + safeName;
-          const { error: uploadError } = await supabase.storage
-            .from("personal-vault")
-            .upload(path, file, {
-              cacheControl: "60",
-              upsert: false,
-              contentType: file.type || "application/octet-stream",
-            });
-          if (uploadError) throw uploadError;
+          await uploadStorageFileWithProgress({
+            bucket: "personal-vault",
+            path,
+            file,
+            onProgress: (loaded) => {
+              const percent = totalBytes
+                ? Math.min(99, Math.round(((completedBytes + loaded) / totalBytes) * 100))
+                : Math.min(99, Math.round(((completed + loaded / Math.max(file.size, 1)) / chosen.length) * 100));
+              setUploadProgress({ completed, total: chosen.length, currentName: file.name, percent });
+            },
+          });
           const { data: verification, error: verificationError } = await supabase.storage
             .from("personal-vault")
             .createSignedUrl(path, 60);
@@ -141,7 +152,13 @@ function PersonalVaultPage() {
             throw rowError ?? new Error("The file was stored but its vault record could not be verified.");
           }
           completed += 1;
-          setUploadProgress({ completed, total: chosen.length, currentName: file.name });
+          completedBytes += file.size;
+          setUploadProgress({
+            completed,
+            total: chosen.length,
+            currentName: file.name,
+            percent: totalBytes ? Math.round((completedBytes / totalBytes) * 100) : Math.round((completed / chosen.length) * 100),
+          });
         }
         return { uploaded: completed };
       } catch (error) {
@@ -328,20 +345,20 @@ function PersonalVaultPage() {
                 <span className="truncate">Uploading {uploadProgress.currentName}</span>
               </span>
               <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                {uploadProgress.completed} / {uploadProgress.total} files saved
+                {uploadProgress.percent}% · {uploadProgress.completed} / {uploadProgress.total} files saved
               </span>
             </div>
             <div
               role="progressbar"
               aria-label="Files saved to your private vault"
               aria-valuemin={0}
-              aria-valuemax={uploadProgress.total}
-              aria-valuenow={uploadProgress.completed}
+              aria-valuemax={100}
+              aria-valuenow={uploadProgress.percent}
               className="h-2 overflow-hidden rounded-full bg-secondary"
             >
               <div
                 className="h-full rounded-full bg-primary transition-[width] duration-300"
-                style={{ width: `${(uploadProgress.completed / uploadProgress.total) * 100}%` }}
+                style={{ width: `${uploadProgress.percent}%` }}
               />
             </div>
             <p className="text-xs text-muted-foreground">
