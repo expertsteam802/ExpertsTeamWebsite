@@ -157,6 +157,12 @@ function Index() {
                   Open ExpertAI
                 </Button>
               </Link>
+              <Link to="/projects">
+                <Button size="lg" variant="outline" className="h-12 w-full px-6 sm:w-auto">
+                  <Code2 className="mr-2 h-4 w-4" />
+                  Developer Apply
+                </Button>
+              </Link>
             </div>
 
             <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-border/60 pt-5 text-xs text-muted-foreground">
