@@ -50,10 +50,8 @@ async function inflateRaw(compressed: Uint8Array, maxOutputBytes: number): Promi
   }
   let stream: ReadableStream<Uint8Array>;
   try {
-    const copy = compressed.buffer.slice(
-      compressed.byteOffset,
-      compressed.byteOffset + compressed.byteLength,
-    );
+    const copy = new ArrayBuffer(compressed.byteLength);
+    new Uint8Array(copy).set(compressed);
     stream = new Blob([copy]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
   } catch {
     throw new Error("This browser does not support the ZIP compression used by this archive.");
@@ -174,7 +172,7 @@ export async function extractZipTextFiles(blob: Blob): Promise<ZipTextImportResu
     const localExtraLength = view.getUint16(localHeaderOffset + 28, true);
     const dataStart = localHeaderOffset + 30 + localNameLength + localExtraLength;
     const dataEnd = dataStart + compressedSize;
-    if (dataEnd > bytes.length) {
+    if (dataEnd > centralOffset || dataEnd > bytes.length) {
       skipped += 1;
       continue;
     }
