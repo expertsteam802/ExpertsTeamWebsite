@@ -126,7 +126,7 @@ export function WorkspaceChat() {
         if (!row.media_path) return { ...row, media_url: null };
         const { data: signed, error: signedError } = await supabase.storage
           .from("workspace-media")
-          .createSignedUrl(row.media_path, 60 * 60);
+          .createSignedUrl(row.media_path, 7 * 24 * 60 * 60);
         return { ...row, media_url: signedError ? null : (signed?.signedUrl ?? null) };
       })) as unknown as WorkspaceMessage[];
     },
