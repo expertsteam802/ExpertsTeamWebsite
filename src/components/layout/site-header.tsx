@@ -9,7 +9,6 @@ import {
   Users,
   Sparkles,
   MessageCircle,
-  Gamepad2,
   CreditCard,
   BriefcaseBusiness,
   Code2,
@@ -40,7 +39,7 @@ const LINKS = [
   { to: "/community", key: "community", label: "Community", icon: Users },
   { to: "/ai", key: "expertai", label: "ExpertAI", icon: Sparkles },
   { to: "/messages", key: "messages", label: "Messages", icon: MessageCircle },
-  { to: "/entertainment", key: "discover", label: "Discover", icon: Gamepad2 },
+  { to: "/explore", key: "explore", label: "Explore", icon: Compass },
 ] as const;
 
 export function SiteHeader() {
@@ -236,11 +235,11 @@ export function SiteHeader() {
             </a>
           )}
           <Link
-            to="/explore"
+            to="/entertainment"
             onClick={() => setOpen(false)}
             className="rounded-xl border border-white/10 px-3 py-3 text-xs font-semibold text-white/65"
           >
-            Explore all spaces
+            Games &amp; downloads
           </Link>
           {user && (
             <Link
