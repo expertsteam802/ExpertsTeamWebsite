@@ -370,7 +370,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     persistent: false,
     image: "vercel/sandbox/universal:latest",
     resources: { vcpus: 1 },
-    timeout: 45 * 60 * 1000,
+    timeout: 12 * 60 * 60 * 1000,
     networkPolicy: "allow-all",
     ports: [5173, 4175],
   });
@@ -395,7 +395,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
   const previewPort =
     Number.isInteger(savedPort) && savedPort >= 1 && savedPort <= 65535 ? savedPort : 5173;
   await sandbox.update({
-    timeout: 45 * 60 * 1000,
+    timeout: 12 * 60 * 60 * 1000,
     networkPolicy: "allow-all",
     ports: [previewPort, 4175],
   });
@@ -445,7 +445,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     'const http = require("node:http");',
     'const { spawn } = require("node:child_process");',
     'const { WebSocketServer } = require("ws");',
-    "let activeShell = null;",
+    "const activeShells = new Set();",
     "const server = http.createServer((request, response) => {",
     '  if (request.url === "/health") { response.writeHead(200, { "content-type": "text/plain", "cache-control": "no-store" }); response.end("ok"); return; }',
     "  response.writeHead(404); response.end();",
@@ -458,19 +458,19 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     '  sockets.handleUpgrade(request, socket, head, (client) => { client.expertsSkipKilo = protocols.includes("experts-terminal-probe") || protocols.includes("experts-terminal-plain"); sockets.emit("connection", client); });',
     "});",
     'sockets.on("connection", (client) => {',
-    "  if (activeShell) { try { activeShell.kill(); } catch {} activeShell = null; }",
+
     "  const shell = spawn(\"script\", [\"-q\", \"-f\", \"-c\", \"stty rows 40 cols 120 2>/dev/null || true; runuser -u experts-shell -- env HOME=/home/experts-shell USER=experts-shell LOGNAME=experts-shell PATH=/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin /bin/bash --noprofile --rcfile /vercel/sandbox/.experts-terminal-bridge/prompt.rc -i\", \"/dev/null\"], { cwd: process.env.TERMINAL_CWD || \"/vercel/sandbox\", env: { ...process.env, EXPERTS_SKIP_KILO: client.expertsSkipKilo ? \"1\" : \"0\", TERM: \"xterm-256color\", COLORTERM: \"truecolor\" }, stdio: [\"pipe\", \"pipe\", \"pipe\"] });",
-    "  activeShell = shell;",
+    "  activeShells.add(shell);",
     '  shell.stdout.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
     '  shell.stderr.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
     '  shell.on("error", (error) => { if (client.readyState === 1) client.send("\\r\\nTerminal startup error: " + error.message + "\\r\\n"); });',
-    '  shell.on("close", () => { if (activeShell === shell) activeShell = null; if (client.readyState === 1) client.close(); });',
+    '  shell.on("close", () => { activeShells.delete(shell); if (client.readyState === 1) client.close(); });',
     '  client.on("message", (buffer) => {',
     "    const value = buffer.toString();",
     "    if (value.charCodeAt(0) === 0) { try { const control = JSON.parse(value.slice(1)); if (control.type === \"resize\") { const cols = Math.max(40, Math.min(300, Number(control.cols) || 120)); const rows = Math.max(10, Math.min(100, Number(control.rows) || 40)); const resizeCommand = \"tty=$(ps -o tty= -p \" + shell.pid + \" | xargs); case $tty in pts/*) stty -F /dev/$tty rows \" + rows + \" cols \" + cols + \" 2>/dev/null ;; esac\"; const resize = spawn(\"sh\", [\"-lc\", resizeCommand], { stdio: \"ignore\" }); resize.on(\"close\", () => { try { process.kill(shell.pid, \"SIGWINCH\"); } catch {} }); } } catch {} return; }",
     "    if (shell.stdin.writable) shell.stdin.write(value);",
     "  });",
-    '  client.on("close", () => { try { shell.kill("SIGHUP"); } catch {} if (activeShell === shell) activeShell = null; });',
+    '  client.on("close", () => { try { shell.kill("SIGHUP"); } catch {} activeShells.delete(shell); });',
     "});",
     'server.listen(Number(process.env.TERMINAL_PORT || 4175), "0.0.0.0");',
   ].join("\n");
