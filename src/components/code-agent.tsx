@@ -1100,7 +1100,9 @@ export function CodeAgent() {
   }
 
   const persistRef = useRef(persist);
-  persistRef.current = persist;
+  useEffect(() => {
+    persistRef.current = persist;
+  });
 
   // Keep files edited by Kilo/OpenCode in the terminal reflected in the editor
   // and saved project record. Manual editor changes take priority while dirty.
