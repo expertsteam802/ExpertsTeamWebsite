@@ -1,5 +1,4 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,19 +25,7 @@ Deno.serve(async (request: Request) => {
   const authorization = request.headers.get("Authorization");
   if (!authorization) return json({ error: "Sign in before requesting call connectivity." }, 401);
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return json({ iceServers: fallbackIceServers, turnEnabled: false, warning: "TURN service is not configured." });
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: authorization } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const { data: authData, error: authError } = await supabase.auth.getUser();
-  if (authError || !authData.user) return json({ error: "Your session could not be verified." }, 401);
-
+  // Supabase Edge Function JWT verification is enabled for this function.
   const turnKeyId = Deno.env.get("CLOUDFLARE_TURN_KEY_ID");
   const turnKeySecret = Deno.env.get("CLOUDFLARE_TURN_KEY_SECRET");
   if (!turnKeyId || !turnKeySecret) {
