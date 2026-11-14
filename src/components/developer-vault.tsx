@@ -71,6 +71,7 @@ export function DeveloperVault() {
     },
   });
   const canAccess = roleRows.some((row) => row.role === "developer" || row.role === "admin");
+  const isAdmin = roleRows.some((row) => row.role === "admin");
 
   const { data: items = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["developer-vault-items"],
@@ -282,7 +283,9 @@ export function DeveloperVault() {
                     <span className="min-w-0 flex-1 truncate" title={item.relative_path}>{item.relative_path}</span>
                     <span className="shrink-0 text-muted-foreground">{formatBytes(item.size_bytes)}</span>
                     <Button variant="ghost" size="icon" className="h-7 w-7" title={"Download " + item.file_name} onClick={() => void downloadItem(item)}><Download className="h-3.5 w-3.5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title={"Delete " + item.file_name} disabled={remove.isPending} onClick={() => remove.mutate(item)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    {(isAdmin || item.uploader_id === user.id) && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title={"Delete " + item.file_name} disabled={remove.isPending} onClick={() => remove.mutate(item)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    )}
                   </div>
                 ))}
               </div>
