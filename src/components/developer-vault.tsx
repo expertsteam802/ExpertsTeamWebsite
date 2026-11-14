@@ -107,6 +107,25 @@ export function DeveloperVault() {
       if (!user) throw new Error("Sign in to use the Developer Vault.");
       if (!canAccess) throw new Error("Only mapped developers and admins can upload to this vault.");
       if (!files.length) throw new Error("Choose files before uploading.");
+      const sensitiveFiles = files.filter((file) => {
+        const relative = ((file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name)
+          .replace(/\\\\/g, "/")
+          .split("/")
+          .pop()
+          ?.toLowerCase() ?? "";
+        return (
+          relative === ".env" ||
+          (relative.startsWith(".env.") && relative !== ".env.example" && relative !== ".env.template") ||
+          [".npmrc", ".pypirc", ".netrc", ".git-credentials", "id_rsa", "id_ed25519", "credentials.json"].includes(relative) ||
+          /\\.(pem|key|p12|pfx|keystore)$/i.test(relative) ||
+          /^service-account.*\\.json$/i.test(relative)
+        );
+      });
+      if (sensitiveFiles.length) {
+        throw new Error(
+          "The shared Developer Vault blocks real environment files, credentials and private keys. Store secrets in your private Personal Vault instead.",
+        );
+      }
       const projectId = kind === "project" ? crypto.randomUUID() : null;
       const firstRelative = (files[0] as File & { webkitRelativePath?: string }).webkitRelativePath || files[0].name;
       const firstParts = firstRelative.replace(/\\/g, "/").split("/").filter(Boolean);
@@ -244,6 +263,7 @@ export function DeveloperVault() {
           <h2 className="mt-1 font-display text-2xl font-bold">Developer Vault</h2>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">A shared private library for approved developers and admins. Store project folders and files here, then import project folders into ExpertAI Studio.</p>
           <p className="mt-2 text-xs text-muted-foreground">{items.length} files · {formatBytes(totalBytes)} stored</p>
+          <p className="mt-1 text-xs text-amber-600 dark:text-amber-300">Shared with approved developers and admins. Do not upload passwords, API tokens, real .env files or private keys.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <input ref={fileInput} type="file" multiple className="hidden" onChange={(event) => {
