@@ -1100,11 +1100,10 @@ export function CodeAgent() {
       const importedFiles: ProjectFiles = {};
       let totalBytes = 0;
       let skipped = 0;
-      const textFile = /\\.(html?|css|[cm]?[jt]sx?|json|md|txt|ya?ml|toml|py|sql|sh|xml|svg|vue|svelte|go|rs|java|c|h|cpp|hpp|cs|php|rb|ipynb)$/i;
+      const textFile = /\.(html?|css|[cm]?[jt]sx?|json|md|txt|ya?ml|toml|py|sql|sh|xml|svg|vue|svelte|go|rs|java|c|h|cpp|hpp|cs|php|rb|ipynb)$/i;
       for (const row of rows ?? []) {
         const path = row.relative_path || row.file_name;
-        const lowerPath = path.toLowerCase();
-        if (!textFile.test(path) || /(^|\\/)\\.env($|\\.)/i.test(path) || path.split("/").some((part) => part === "..") || row.size_bytes > 500 * 1024 || totalBytes + row.size_bytes > 3 * 1024 * 1024) {
+        if (!textFile.test(path) || /(^|\/)\.env($|\.)/i.test(path) || path.split("/").some((part) => part === "..") || row.size_bytes > 500 * 1024 || totalBytes + row.size_bytes > 3 * 1024 * 1024) {
           skipped += 1;
           continue;
         }
