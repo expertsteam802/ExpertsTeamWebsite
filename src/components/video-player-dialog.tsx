@@ -144,11 +144,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
   const [loading, setLoading] = useState(false);
   const [useNativeEmbed, setUseNativeEmbed] = useState(false);
   const nativeEmbedTimeoutRef = useRef<number | null>(null);
-  const [unlockedVideoId, setUnlockedVideoId] = useState<string | null>(null);
-  const shouldLoadLesson = unlockedVideoId === videoId;
-  const handleAdFinished = useCallback(() => {
-    if (videoId) setUnlockedVideoId(videoId);
-  }, [videoId]);
+  const shouldLoadLesson = Boolean(videoId);
 
   const clearNativeEmbedTimeout = useCallback(() => {
     if (nativeEmbedTimeoutRef.current !== null) {
@@ -169,7 +165,6 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
   }, [useNativeEmbed, videoId, clearNativeEmbedTimeout]);
 
   useEffect(() => {
-    setUnlockedVideoId(null);
     setPlaybackError(null);
     setLoading(false);
     setUseNativeEmbed(false);
@@ -276,20 +271,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
           <div
             className={`expertsteam-video-player relative aspect-video max-h-[72vh] w-[92%] max-w-[1200px] overflow-hidden rounded-xl bg-secondary ${alignment === "left" ? "mr-auto" : alignment === "right" ? "ml-auto" : "mx-auto"}`}
           >
-            {videoId && !shouldLoadLesson ? (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-4 overflow-y-auto bg-background p-4 text-center sm:p-6">
-                <div>
-                  <p className="font-display text-lg font-semibold">Support ExpertsTeam</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Stay for this short ExpertsTeam message to unlock the lesson.
-                  </p>
-                </div>
-                <BannerUnlockAd onUnlocked={handleAdFinished} compact />
-                <p className="text-xs text-muted-foreground">
-                  Your lesson unlocks automatically after this message.
-                </p>
-              </div>
-            ) : videoId &&
+            {videoId &&
               (useNativeEmbed ? (
                 <iframe
                   key={videoId}
@@ -305,12 +287,12 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
               ) : (
                 <div ref={playerContainerRef} className="h-full w-full" />
               ))}
-            {videoId && shouldLoadLesson && loading && !playbackError && (
+            {videoId && loading && !playbackError && (
               <div className="absolute inset-0 z-20 grid place-items-center bg-background/80 text-sm text-muted-foreground">
                 Loading video…
               </div>
             )}
-            {videoId && shouldLoadLesson && playbackError && (
+            {videoId && playbackError && (
               <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center">
                 <p className="max-w-xl text-sm text-destructive">{playbackError}</p>
                 {videoId && (
@@ -327,6 +309,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
               </div>
             )}
           </div>
+          <BannerUnlockAd compact />
           <p className="text-xs text-muted-foreground">
             A view is counted only after YouTube confirms that playback has started.
           </p>
