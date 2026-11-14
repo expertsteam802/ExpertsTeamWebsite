@@ -109,7 +109,7 @@ export function DeveloperVault() {
       if (!files.length) throw new Error("Choose files before uploading.");
       const sensitiveFiles = files.filter((file) => {
         const relative = ((file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name)
-          .replace(/\\\\/g, "/")
+          .replace(/\\/g, "/")
           .split("/")
           .pop()
           ?.toLowerCase() ?? "";
@@ -118,7 +118,7 @@ export function DeveloperVault() {
           (relative.startsWith(".env.") && relative !== ".env.example" && relative !== ".env.template") ||
           [".npmrc", ".pypirc", ".netrc", ".git-credentials", "id_rsa", "id_ed25519", "credentials.json"].includes(relative) ||
           /\\.(pem|key|p12|pfx|keystore)$/i.test(relative) ||
-          /^service-account.*\\.json$/i.test(relative)
+          /^service-account.*\.json$/i.test(relative)
         );
       });
       if (sensitiveFiles.length) {
