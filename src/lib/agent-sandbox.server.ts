@@ -459,7 +459,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     "});",
     'sockets.on("connection", (client) => {',
     "  if (activeShell) { try { activeShell.kill(); } catch {} activeShell = null; }",
-    '  const shell = spawn("script", ["-q", "-f", "-c", "runuser -u experts-shell -- env HOME=/home/experts-shell USER=experts-shell LOGNAME=experts-shell PATH=/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin /bin/bash --noprofile --rcfile /vercel/sandbox/.experts-terminal-bridge/prompt.rc -i", "/dev/null"], { cwd: process.env.TERMINAL_CWD || "/vercel/sandbox", env: { ...process.env, TERM: "xterm-256color", COLORTERM: "truecolor" }, stdio: ["pipe", "pipe", "pipe"] });',
+    "  const shell = spawn(\"script\", [\"-q\", \"-f\", \"-c\", \"stty rows 40 cols 120 2>/dev/null || true; runuser -u experts-shell -- env HOME=/home/experts-shell USER=experts-shell LOGNAME=experts-shell PATH=/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin /bin/bash --noprofile --rcfile /vercel/sandbox/.experts-terminal-bridge/prompt.rc -i\", \"/dev/null\"], { cwd: process.env.TERMINAL_CWD || \"/vercel/sandbox\", env: { ...process.env, EXPERTS_SKIP_KILO: protocols.includes(\"experts-terminal-probe\") ? \"1\" : \"0\", TERM: \"xterm-256color\", COLORTERM: \"truecolor\" }, stdio: [\"pipe\", \"pipe\", \"pipe\"] });",
     "  activeShell = shell;",
     '  shell.stdout.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
     '  shell.stderr.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
@@ -467,7 +467,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     '  shell.on("close", () => { if (activeShell === shell) activeShell = null; if (client.readyState === 1) client.close(); });',
     '  client.on("message", (buffer) => {',
     "    const value = buffer.toString();",
-    '    if (value.charCodeAt(0) === 0) { try { const control = JSON.parse(value.slice(1)); if (control.type === "resize") { /* Keep the shell input stream reserved for user keystrokes. */ } } catch {} return; }',
+    "    if (value.charCodeAt(0) === 0) { try { const control = JSON.parse(value.slice(1)); if (control.type === \"resize\") { const cols = Math.max(40, Math.min(300, Number(control.cols) || 120)); const rows = Math.max(10, Math.min(100, Number(control.rows) || 40)); const resizeCommand = \"tty=$(ps -o tty= -p \" + shell.pid + \" | xargs); case \\\\\"$tty\\\\\" in pts/*) stty -F \\\\\"/dev/$tty\\\\\" rows \" + rows + \" cols \" + cols + \" 2>/dev/null ;; esac\"; const resize = spawn(\"sh\", [\"-lc\", resizeCommand], { stdio: \"ignore\" }); resize.on(\"close\", () => { try { process.kill(shell.pid, \"SIGWINCH\"); } catch {} }); } } catch {} return; }",
     "    if (shell.stdin.writable) shell.stdin.write(value);",
     "  });",
     '  client.on("close", () => { try { shell.kill("SIGHUP"); } catch {} if (activeShell === shell) activeShell = null; });',
@@ -475,10 +475,11 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     'server.listen(Number(process.env.TERMINAL_PORT || 4175), "0.0.0.0");',
   ].join("\n");
 
+  const promptScript = "PS1=" + shellQuote((username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam") + "@expertsteam:\\w$ ") + "\n" + "export PS1\nPROMPT_COMMAND=\nif [ \"${EXPERTS_SKIP_KILO:-0}\" != \"1\" ]; then\n  if ! command -v kilo >/dev/null 2>&1; then\n    printf \"\\nInstalling Kilo Code for this workspace...\\n\"\n    npm install -g --no-audit --no-fund @kilocode/cli\n  fi\n  if command -v kilo >/dev/null 2>&1; then\n    printf \"\\nStarting Kilo Code...\\n\"\n    exec kilo\n  else\n    printf \"\\nKilo could not be installed. Retry with: npm install -g @kilocode/cli\\n\"\n  fi\nfi\n"; 
   await sandbox.writeFiles([
     { path: bridgeDir + "/package.json", content: Buffer.from(packageJson, "utf8") },
     { path: bridgeDir + "/server.cjs", content: Buffer.from(serverSource, "utf8") },
-    { path: bridgeDir + "/prompt.rc", content: Buffer.from("PS1=" + shellQuote((username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam") + "@expertsteam:\\w$ ") + "\nexport PS1\nPROMPT_COMMAND=\n", "utf8") },
+    { path: bridgeDir + "/prompt.rc", content: Buffer.from(promptScript, "utf8") },
     { path: tokenPath, content: Buffer.from(token, "utf8"), mode: 0o600 },
   ]);
   const syntaxCheck = await sandbox.runCommand({
@@ -605,7 +606,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     'const WebSocket = require("ws");',
     'let output = "";',
     "let passed = false;",
-    'const socket = new WebSocket("ws://127.0.0.1:4175/terminal", ["experts-terminal", process.env.TERMINAL_TOKEN]);',
+    "const socket = new WebSocket(\"ws://127.0.0.1:4175/terminal\", [\"experts-terminal-probe\", process.env.TERMINAL_TOKEN]);",
     "const timeout = setTimeout(() => { socket.terminate(); process.exit(1); }, 12000);",
     'socket.on("open", () => socket.send("echo EXPERTS_TERMINAL_OK\\r"));',
     'socket.on("message", (data) => { output += data.toString(); if (output.includes("EXPERTS_TERMINAL_OK")) { passed = true; clearTimeout(timeout); socket.close(); } });',
