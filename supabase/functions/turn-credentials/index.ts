@@ -40,8 +40,8 @@ Deno.serve(async (request: Request) => {
   if (authError || !authData.user) return json({ error: "Your session could not be verified." }, 401);
 
   const turnKeyId = Deno.env.get("CLOUDFLARE_TURN_KEY_ID");
-  const turnApiToken = Deno.env.get("CLOUDFLARE_TURN_API_TOKEN");
-  if (!turnKeyId || !turnApiToken) {
+  const turnKeySecret = Deno.env.get("CLOUDFLARE_TURN_KEY_SECRET");
+  if (!turnKeyId || !turnKeySecret) {
     return json({
       iceServers: fallbackIceServers,
       turnEnabled: false,
@@ -57,7 +57,7 @@ Deno.serve(async (request: Request) => {
       {
         method: "POST",
         headers: {
-          Authorization: "Bearer " + turnApiToken,
+          Authorization: "Bearer " + turnKeySecret,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ ttl: 86400 }),
@@ -78,7 +78,20 @@ Deno.serve(async (request: Request) => {
         warning: "The TURN service returned no ICE servers. Using direct STUN connectivity.",
       });
     }
-    return json({ iceServers: result.iceServers, turnEnabled: true });
+    // Chrome and Firefox can silently fail on TURN URLs using port 53.
+    const usableIceServers = result.iceServers.flatMap((server: { urls?: string | string[] }) => {
+      const urls = Array.isArray(server.urls) ? server.urls : server.urls ? [server.urls] : [];
+      const filteredUrls = urls.filter((url) => !url.includes(":53"));
+      return filteredUrls.length ? [{ ...server, urls: filteredUrls }] : [];
+    });
+    if (!usableIceServers.length) {
+      return json({
+        iceServers: fallbackIceServers,
+        turnEnabled: false,
+        warning: "The TURN service returned no browser-compatible relay URLs. Using direct STUN connectivity.",
+      });
+    }
+    return json({ iceServers: usableIceServers, turnEnabled: true });
   } catch {
     return json({
       iceServers: fallbackIceServers,
