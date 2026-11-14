@@ -295,7 +295,7 @@ export function DeveloperVault() {
               <div className="flex items-start gap-3">
                 <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">{group.kind === "project" ? <Folder className="h-5 w-5" /> : <FileIcon className="h-5 w-5" />}</div>
                 <div className="min-w-0 flex-1"><p className="truncate font-semibold">{group.name}</p><p className="text-xs text-muted-foreground">{group.items.length} file(s) · {formatBytes(group.items.reduce((n, item) => n + item.size_bytes, 0))} · {new Date(group.createdAt).toLocaleDateString()}</p></div>
-                {group.kind === "project" && <a href="/ai" className="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90">Open ExpertAI</a>}
+                <a href="/ai" className="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90">Open ExpertAI</a>
               </div>
               <div className="max-h-44 space-y-1 overflow-y-auto border-t border-border/60 pt-2">
                 {group.items.map((item) => (
