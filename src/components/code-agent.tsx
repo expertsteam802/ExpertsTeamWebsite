@@ -319,7 +319,6 @@ export function CodeAgent() {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState("Not started");
   const [terminalReady, setTerminalReady] = useState(false);
-  const [terminalAutoSync, setTerminalAutoSync] = useState(true);
   const [terminalConnection, setTerminalConnection] = useState<{
     url: string;
     token: string;
@@ -1095,10 +1094,24 @@ export function CodeAgent() {
     persistRef.current = persist;
   });
 
+  // Editor changes are project data, not terminal-session data. Save them to
+  // Supabase automatically so a disposable Linux VM can never be their only copy.
+  useEffect(() => {
+    if (!dirty || !user) return;
+    const snapshot = files;
+    const timer = window.setTimeout(() => {
+      void persistRef.current({ files: snapshot }).catch((error) => {
+        const message = error instanceof Error ? error.message : "Project auto-save failed.";
+        setLogs((current) => [...current.slice(-199), { type: "warn", message }]);
+      });
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [dirty, files, user?.id]);
+
   // Keep files edited by Kilo/OpenCode in the terminal reflected in the editor
   // and saved project record. Manual editor changes take priority while dirty.
   useEffect(() => {
-    if (!terminalAutoSync || !terminalReady || !projectId || !user || busy || dirty) return;
+    if (!terminalReady || !projectId || !user || busy || dirty) return;
     let cancelled = false;
     let syncing = false;
     const timer = window.setInterval(async () => {
@@ -1146,7 +1159,7 @@ export function CodeAgent() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [terminalAutoSync, terminalReady, terminalConnection?.sandboxName, projectId, user, busy, dirty, files, syncTerminalFiles, queryClient]);
+  }, [terminalReady, terminalConnection?.sandboxName, projectId, user, busy, dirty, files, syncTerminalFiles, queryClient]);
 
   async function saveCheckpoint(label: string) {
     if (!user) throw new Error("Sign in to create a checkpoint.");
@@ -2393,15 +2406,9 @@ export function CodeAgent() {
                     >
                       Clear
                     </button>
-                    <button
-                      type="button"
-                      disabled={!terminalReady}
-                      onClick={() => setTerminalAutoSync((value) => !value)}
-                      className={`rounded border px-2 py-1 text-[10px] disabled:opacity-30 ${terminalAutoSync ? "border-emerald-400/25 text-emerald-200" : "border-white/10 text-slate-400"}`}
-                      title="Automatically save project changes"
-                    >
-                      Auto-save {terminalAutoSync ? "ON" : "OFF"}
-                    </button>
+                    <span className="rounded border border-emerald-400/25 px-2 py-1 text-[10px] text-emerald-200">
+                      Auto-save ON
+                    </span>
                     <button
                       type="button"
                       disabled={!terminalReady}
