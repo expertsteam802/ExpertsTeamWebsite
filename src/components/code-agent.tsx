@@ -690,7 +690,7 @@ export function CodeAgent() {
       }
     };
 
-    const timer = window.setTimeout(recoverSession, 35 * 60 * 1000);
+    const timer = window.setTimeout(recoverSession, 30 * 60 * 1000);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
