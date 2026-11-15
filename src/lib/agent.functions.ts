@@ -291,6 +291,7 @@ const terminalStartRequest = z
   .object({
     projectId: z.string().uuid(),
     username: z.string().trim().min(1).max(39).regex(/^[a-zA-Z0-9_-]+$/).optional(),
+    cli: z.enum(["kilo", "opencode", "aider"]).optional(),
     files: z.record(z.string().max(512), z.string().max(150000)),
   })
   .refine(
@@ -305,8 +306,26 @@ export const startAgentTerminal = createServerFn({ method: "POST" })
   .validator((input: unknown) => terminalStartRequest.parse(input))
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const { data: siteSettings, error: settingsError } = await context.supabase
+      .from("site_settings")
+      .select("site_branding_settings")
+      .eq("id", 1)
+      .single();
+    if (settingsError) throw new Error("Could not load the administrator's terminal CLI policy.");
+    const root = siteSettings.site_branding_settings && typeof siteSettings.site_branding_settings === "object" && !Array.isArray(siteSettings.site_branding_settings)
+      ? siteSettings.site_branding_settings as Record<string, unknown> : {};
+    const terminal = root.terminalSettings && typeof root.terminalSettings === "object" && !Array.isArray(root.terminalSettings)
+      ? root.terminalSettings as Record<string, unknown> : {};
+    const configured = Array.isArray(terminal.enabledClis)
+      ? terminal.enabledClis.filter((value): value is string => typeof value === "string" && ["kilo", "opencode", "aider"].includes(value))
+      : ["kilo"];
+    const enabledClis = configured.length ? configured : ["kilo"];
+    const defaultCli = typeof terminal.defaultCli === "string" && enabledClis.includes(terminal.defaultCli)
+      ? terminal.defaultCli : enabledClis[0];
+    const cli = data.cli ?? defaultCli;
+    if (!enabledClis.includes(cli)) throw new Error("This coding CLI is not enabled by the administrator.");
     const { startCloudProjectTerminal } = await import("./agent-sandbox.server");
-    return startCloudProjectTerminal(context.userId, data.files, data.username ?? "ExpertsTeam");
+    return startCloudProjectTerminal(context.userId, data.files, data.username ?? "ExpertsTeam", cli as "kilo" | "opencode" | "aider");
   });
 
 const publishRequest = z
