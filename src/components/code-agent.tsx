@@ -2215,15 +2215,6 @@ export function CodeAgent() {
                   </button>
                 </>
               )}
-              {panel === "terminal" && (
-                <div className="flex min-h-0 flex-1 flex-col bg-[#050a12]">
-                  <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] px-4">
-                    <span className="flex items-center gap-2 text-xs text-slate-300"><TerminalSquare className="h-3.5 w-3.5 text-emerald-300" /> Original Linux terminal</span>
-                    <span className="text-[10px] text-slate-500">Independent shell · same project workspace</span>
-                  </div>
-                  <div ref={legacyTerminalContainerRef} className="min-h-0 flex-1 overflow-hidden px-3 py-3" />
-                </div>
-              )}
 
               {panel === "console" && (
                 <button
@@ -2441,6 +2432,15 @@ export function CodeAgent() {
                 </>
               )}
 
+              {panel === "terminal" && (
+                <div className="flex min-h-0 flex-1 flex-col bg-[#050a12]">
+                  <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] px-4">
+                    <span className="flex items-center gap-2 text-xs text-slate-300"><TerminalSquare className="h-3.5 w-3.5 text-emerald-300" /> Original Linux terminal</span>
+                    <span className="text-[10px] text-slate-500">Independent shell · same project workspace</span>
+                  </div>
+                  <div ref={legacyTerminalContainerRef} className="min-h-0 flex-1 overflow-hidden px-3 py-3" />
+                </div>
+              )}
               {panel === "console" && (
                 <>
                   <div className="flex h-10 items-center justify-between border-b border-white/[0.07] px-4">
