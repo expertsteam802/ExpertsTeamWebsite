@@ -461,8 +461,8 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     "});",
     'sockets.on("connection", (client) => {',
 
-    "    const ttyFile = (process.env.TERMINAL_TTY_FILE || "/vercel/sandbox/.experts-terminal-tty") + "-" + (++shellCounter);
-const shell = spawn(\"script\", [\"-q\", \"-f\", \"-c\", \"stty rows 40 cols 120 2>/dev/null || true; tty > \" + ttyFile + \"; runuser -u experts-shell -- env HOME=/home/experts-shell USER=experts-shell LOGNAME=experts-shell PATH=/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin /bin/bash --noprofile --rcfile /vercel/sandbox/.experts-terminal-bridge/prompt.rc -i\", \"/dev/null\"], { cwd: process.env.TERMINAL_CWD || \"/vercel/sandbox\", env: { ...process.env, EXPERTS_SKIP_KILO: client.expertsSkipKilo ? \"1\" : \"0\", TERM: \"xterm-256color\", COLORTERM: \"truecolor\" }, stdio: [\"pipe\", \"pipe\", \"pipe\"] });",
+    "  const ttyFile = (process.env.TERMINAL_TTY_FILE || \"/vercel/sandbox/.experts-terminal-tty\") + \"-\" + (++shellCounter);",
+    "const shell = spawn(\"script\", [\"-q\", \"-f\", \"-c\", \"stty rows 40 cols 120 2>/dev/null || true; tty > \" + ttyFile + \"; runuser -u experts-shell -- env HOME=/home/experts-shell USER=experts-shell LOGNAME=experts-shell PATH=/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin /bin/bash --noprofile --rcfile /vercel/sandbox/.experts-terminal-bridge/prompt.rc -i\", \"/dev/null\"], { cwd: process.env.TERMINAL_CWD || \"/vercel/sandbox\", env: { ...process.env, EXPERTS_SKIP_KILO: client.expertsSkipKilo ? \"1\" : \"0\", TERM: \"xterm-256color\", COLORTERM: \"truecolor\" }, stdio: [\"pipe\", \"pipe\", \"pipe\"] });",
     "  activeShells.add(shell);",
     '  shell.stdout.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
     '  shell.stderr.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
