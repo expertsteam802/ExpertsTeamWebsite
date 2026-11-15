@@ -513,7 +513,7 @@ export function CodeAgent() {
     socket.onerror = () => terminal.writeln("\r\n[Linux shell connection error]");
     const input = terminal.onData((value) => { if (socket.readyState === WebSocket.OPEN) socket.send(value); });
     const resize = terminal.onResize(({ cols, rows }) => {
-      if (socket.readyState === WebSocket.OPEN) socket.send("\\u0000" + JSON.stringify({ type: "resize", cols, rows }));
+      if (socket.readyState === WebSocket.OPEN) socket.send("\u0000" + JSON.stringify({ type: "resize", cols, rows }));
     });
     let frame = 0;
     const observer = new ResizeObserver(() => {
