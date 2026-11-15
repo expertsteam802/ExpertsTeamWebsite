@@ -947,11 +947,18 @@ export function CodeAgent() {
     void openTerminalRef.current();
   }, [projectId, terminalConnection?.projectId]);
 
+  // Restore the most recently saved project before auto-starting the coding CLI.
+  // Starting Kilo while the project query is still loading can otherwise create a
+  // fresh starter workspace and make an existing project look as if it disappeared.
   useEffect(() => {
-    if (!user?.id || autoStartedKiloRef.current) return;
+    if (!user?.id || projectsLoading || autoStartedKiloRef.current) return;
+    if (!projectId && projects.length > 0) {
+      openProject(projects[0]);
+      return;
+    }
     autoStartedKiloRef.current = true;
     void openTerminalRef.current();
-  }, [user?.id]);
+  }, [user?.id, projectsLoading, projects, projectId]);
 
 
   async function importLocalProjectFiles(selectedFiles: FileList | File[]) {
@@ -1279,6 +1286,9 @@ export function CodeAgent() {
     if (!user) throw new Error("Please sign in to save your project.");
 
     const filesToSave = next.files ?? files;
+    if (!filesToSave || typeof filesToSave !== "object" || Object.keys(filesToSave).length === 0) {
+      throw new Error("This workspace has no project files. The saved project was left unchanged.");
+    }
     const payload = {
       user_id: user.id,
       name: name.trim() || "Untitled project",
@@ -1697,12 +1707,17 @@ export function CodeAgent() {
   }
 
   function openProject(project: ProjectRow) {
+    const savedFiles = project.files && Object.keys(project.files).length ? project.files : null;
+    if (!savedFiles) {
+      toast.error("This saved project has no recoverable files. It was not replaced with a new starter project.");
+      return;
+    }
     resetRuntimeForProjectChange();
     setProjectId(project.id);
     setPublishedUrl(project.published && project.slug ? publishedProjectUrl(project.slug) : null);
     setThumbnailUrl(project.thumbnail_url);
     setName(project.name);
-    setFiles(project.files && Object.keys(project.files).length ? project.files : STARTER_FILES);
+    setFiles(savedFiles);
     const savedMessages = Array.isArray(project.messages) ? (project.messages as Message[]) : [];
     setMessages(savedMessages);
     setActiveFile(Object.keys(project.files ?? {})[0] ?? "index.html");
