@@ -1099,19 +1099,7 @@ export function CodeAgent() {
     persistRef.current = persist;
   });
 
-  // Editor changes are project data, not terminal-session data. Save them to
-  // Supabase automatically so a disposable Linux VM can never be their only copy.
-  useEffect(() => {
-    if (!dirty || !user) return;
-    const snapshot = files;
-    const timer = window.setTimeout(() => {
-      void persistRef.current({ files: snapshot }).catch((error) => {
-        const message = error instanceof Error ? error.message : "Project auto-save failed.";
-        setLogs((current) => [...current.slice(-199), { type: "warn", message }]);
-      });
-    }, 900);
-    return () => window.clearTimeout(timer);
-  }, [dirty, files, user?.id]);
+
 
   // Keep files edited by Kilo/OpenCode in the terminal reflected in the editor
   // and saved project record. Manual editor changes take priority while dirty.
