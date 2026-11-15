@@ -9,7 +9,6 @@ import {
   LogOut,
   Menu,
   MessageCircle,
-  MoreHorizontal,
   Palette,
   Shield,
   Sparkles,
