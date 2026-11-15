@@ -1950,92 +1950,11 @@ export function CodeAgent() {
             event.target.value = "";
           }}
         />
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => projectFileInputRef.current?.click()}
-            className="h-8 border-cyan-400/20 bg-cyan-400/[0.06] text-cyan-100 hover:bg-cyan-400/10"
-            title="Copy source files from your computer into this project"
-          >
-            <FolderInput className="mr-1.5 h-3.5 w-3.5" />
-            Add files
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={createProject}
-            className="h-8 border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/10"
-          >
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            New project
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => { setThumbnailUrlInput(thumbnailUrl ?? ""); setThumbnailDialogOpen(true); }}
-            className="h-8 border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/10"
-            title="Set project thumbnail or logo"
-          >
-            <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
-            Thumbnail
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => void publishProject()}
-            disabled={publishing}
-            className="h-8 border-emerald-400/25 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/20"
-          >
-            {publishing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />}
-            {publishing ? "Publishing…" : "Publish"}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={downloadProjectBundle}
-            className="h-8 border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/10"
-            title="Download all project files as a portable ExpertsTeam project bundle"
-          >
-            <Download className="mr-1.5 h-3.5 w-3.5" />
-            Download
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending}
-            className="h-8 border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/10"
-          >
-            {saveMutation.isPending ? (
-              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Save className="mr-1.5 h-3.5 w-3.5" />
-            )}
-            Save
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => void restoreLastCheckpoint()}
-            disabled={!checkpoints.length}
-            className="h-8 border-amber-400/20 bg-amber-400/[0.06] text-amber-100 hover:bg-amber-400/10"
-            title={checkpoints[0] ? `Restore: ${checkpoints[0].name}` : "No saved checkpoints"}
-          >
-            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-            Undo AI change
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => {
-              setGithubRepo((value) => value || name.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
-              setGithubOpen(true);
-            }}
-            className="h-8 bg-white text-slate-950 hover:bg-slate-200"
-          >
-            <Github className="mr-1.5 h-3.5 w-3.5" />
-            GitHub
-          </Button>
+        <div className="flex items-center gap-2">
+          <span className="hidden text-xs text-slate-500 sm:inline">Workspace</span>
+          <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] text-slate-400">
+            {dirty ? "Changes not saved" : "All changes saved"}
+          </span>
         </div>
         {publishedUrl && (
           <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-2 text-xs">
@@ -2214,6 +2133,40 @@ export function CodeAgent() {
                       </button>
                     </div>
                   ))}
+              </div>
+            </div>
+
+            <div className="mx-3 my-4 border-t border-white/[0.07]" />
+            <div className="px-3">
+              <div className="mb-2 flex items-center gap-2 px-1 text-xs font-semibold text-slate-300">
+                <SlidersHorizontal className="h-3.5 w-3.5 text-cyan-300" />
+                Project actions
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <Button size="sm" variant="outline" onClick={createProject} className="h-8 justify-start border-white/10 bg-white/[0.03] px-2 text-[11px] text-slate-300 hover:bg-white/10">
+                  <Plus className="mr-1.5 h-3.5 w-3.5" /> New
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => projectFileInputRef.current?.click()} className="h-8 justify-start border-white/10 bg-white/[0.03] px-2 text-[11px] text-slate-300 hover:bg-white/10">
+                  <FolderInput className="mr-1.5 h-3.5 w-3.5" /> Add files
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="h-8 justify-start border-cyan-400/20 bg-cyan-400/[0.06] px-2 text-[11px] text-cyan-100 hover:bg-cyan-400/10">
+                  {saveMutation.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />} Save
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => void publishProject()} disabled={publishing} className="h-8 justify-start border-emerald-400/20 bg-emerald-400/[0.05] px-2 text-[11px] text-emerald-100 hover:bg-emerald-400/10">
+                  {publishing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />} Publish
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => { setThumbnailUrlInput(thumbnailUrl ?? ""); setThumbnailDialogOpen(true); }} className="h-8 justify-start border-white/10 bg-white/[0.03] px-2 text-[11px] text-slate-300 hover:bg-white/10">
+                  <ImagePlus className="mr-1.5 h-3.5 w-3.5" /> Thumbnail
+                </Button>
+                <Button size="sm" variant="outline" onClick={downloadProjectBundle} className="h-8 justify-start border-white/10 bg-white/[0.03] px-2 text-[11px] text-slate-300 hover:bg-white/10">
+                  <Download className="mr-1.5 h-3.5 w-3.5" /> Export
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => void restoreLastCheckpoint()} disabled={!checkpoints.length} className="h-8 justify-start border-amber-400/20 bg-amber-400/[0.05] px-2 text-[11px] text-amber-100 hover:bg-amber-400/10">
+                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Undo AI
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => { setGithubRepo((value) => value || name.toLowerCase().replace(/[^a-z0-9]+/g, "-")); setGithubOpen(true); }} className="h-8 justify-start border-white/10 bg-white/[0.03] px-2 text-[11px] text-slate-300 hover:bg-white/10">
+                  <Github className="mr-1.5 h-3.5 w-3.5" /> GitHub
+                </Button>
               </div>
             </div>
 
