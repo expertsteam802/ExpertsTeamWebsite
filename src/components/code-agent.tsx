@@ -389,7 +389,6 @@ export function CodeAgent() {
       scrollback: 3000,
       fontSize: 14,
       lineHeight: 1.2,
-      letterSpacing: 0.15,
       smoothScrollDuration: 0,
       minimumContrastRatio: 4.5,
       fontFamily: '"Cascadia Code", "Fira Code", Consolas, Menlo, monospace',
@@ -428,10 +427,7 @@ export function CodeAgent() {
       terminalLastActivityRef.current = Date.now();
       setTerminalReady(true);
       terminal.focus();
-      if (terminalRecoveryOutputRef.current) {
-        terminal.write(terminalRecoveryOutputRef.current);
-        terminal.writeln("\r\n[Workspace restored. The previous process was restarted automatically.]");
-      }
+      terminal.writeln("\r\n[Project files restored. Starting a fresh Kilo process.]");
       terminal.write("\r\nConnected to your project workspace.\r\n");
       socket.send(
         "\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }),
@@ -512,7 +508,7 @@ export function CodeAgent() {
     socket.binaryType = "arraybuffer";
     socket.onopen = () => {
       terminal.writeln("\r\nConnected to your original Linux shell.");
-      socket.send("\\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
+      socket.send("\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
       terminal.focus();
     };
     socket.onmessage = (event) => {
@@ -529,7 +525,7 @@ export function CodeAgent() {
       window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(() => {
         fit.fit();
-        if (socket.readyState === WebSocket.OPEN) socket.send("\\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
+        if (socket.readyState === WebSocket.OPEN) socket.send("\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
       });
     });
     observer.observe(container);
@@ -2435,7 +2431,7 @@ export function CodeAgent() {
                   ref={terminalContainerRef}
                   role="region"
                   aria-label="ExpertAI project builder"
-                  className="expert-agent-kilo-surface min-h-0 flex-1 overflow-hidden px-3 py-3"
+                  className="expert-agent-kilo-surface min-h-0 flex-1 overflow-hidden"
                 />
                 <div className="flex shrink-0 items-center justify-between gap-2 border-t border-white/[0.06] px-3 py-2 text-[9px] text-slate-600">
                   <span>Changes are synced into your project automatically</span>
