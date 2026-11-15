@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { SiteHeader } from "@/components/layout/site-header";
+import { SecondarySidebar } from "@/components/layout/secondary-sidebar";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 
@@ -17,6 +18,9 @@ export function PageShell({ children, hideFooter = false }: { children: ReactNod
       />
       <div aria-hidden="true" className="et-grain pointer-events-none absolute inset-0" />
       <SiteHeader />
+      <div className="relative z-10 flex min-h-0 flex-1 overflow-hidden">
+        <SecondarySidebar />
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
       {settings.banner_image_url && (
         <div className="relative z-10 shrink-0 overflow-hidden border-b border-white/10">
           <img
@@ -32,6 +36,8 @@ export function PageShell({ children, hideFooter = false }: { children: ReactNod
           {!hideFooter && <SiteFooter />}
         </div>
       </main>
+        </div>
+      </div>
       <style>{`
         .theme-neon{--primary:oklch(.68 .18 255);--primary-foreground:oklch(.99 .005 250);--accent:oklch(.74 .13 235);--accent-foreground:oklch(.16 .025 255);--ring:oklch(.72 .16 255);--background:oklch(.12 .02 258);--foreground:oklch(.96 .012 250);--card:oklch(.17 .02 258);--card-foreground:oklch(.96 .012 250);--surface:oklch(.18 .02 258);--surface-foreground:oklch(.96 .012 250);--muted:oklch(.23 .02 258);--muted-foreground:oklch(.72 .02 250);--border:oklch(.29 .02 258);--input:oklch(.25 .02 258);--secondary:oklch(.23 .02 258);--secondary-foreground:oklch(.94 .01 250);--sidebar:oklch(.15 .02 258);--sidebar-primary:oklch(.68 .18 255);--sidebar-accent:oklch(.23 .02 258);--sidebar-border:oklch(.29 .02 258)}
         .et-cinema-backdrop{background-size:cover;background-position:center;filter:saturate(.72)}
