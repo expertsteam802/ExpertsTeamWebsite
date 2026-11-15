@@ -652,8 +652,8 @@ select:focus,
 }
 
 
-/* Keep xterm's canvas and viewport sized to the actual panel so Kilo's full-screen
-   TUI is not clipped into narrow or offset fragments during panel resizing. */
+/* Keep the Kilo terminal surface bounded, but let xterm calculate its own
+   screen/viewport geometry from the real PTY column count. */
 .expert-agent-kilo-surface {
   position: relative;
   display: block;
@@ -662,19 +662,18 @@ select:focus,
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  contain: size layout paint;
+  box-sizing: border-box;
 }
-.expert-agent-kilo-surface .xterm {
+.expert-agent-kilo-surface > .xterm {
+  position: relative;
   width: 100%;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
   padding: 0;
-}
-.expert-agent-kilo-surface .xterm-screen,
-.expert-agent-kilo-surface .xterm-viewport,
-.expert-agent-kilo-surface .xterm-scroll-area {
-  width: 100% !important;
+  box-sizing: border-box;
 }
 .expert-agent-kilo-surface .xterm-viewport {
-  overflow-y: auto !important;
+  overflow-y: auto;
   scrollbar-width: thin;
 }
