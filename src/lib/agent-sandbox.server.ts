@@ -358,6 +358,9 @@ function cleanTerminalOutput(value: string) {
 export async function startCloudProjectTerminal(userId: string, sourceFiles: AgentProjectFiles, username = "ExpertsTeam") {
   const files = repairMissingStylesheetImports({ ...sourceFiles });
   validateFiles(files);
+  if (Object.keys(files).length === 0) {
+    throw new Error("Cannot start Kilo with an empty workspace. Reload the saved project files and reconnect.");
+  }
   const name = terminalSandboxName(userId);
   let stage = "creating the disposable Linux sandbox";
   try {
