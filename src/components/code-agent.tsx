@@ -324,6 +324,7 @@ export function CodeAgent() {
     token: string;
     sandboxName: string;
     projectId: string;
+    cli: "kilo" | "opencode" | "aider";
   } | null>(null);
   const [fileLanguage, setFileLanguage] = useState<Extension[]>([]);
   const runtimeFilesRef = useRef<ProjectFiles>({});
@@ -671,6 +672,7 @@ export function CodeAgent() {
             projectId: session.projectId,
             files: recoveryFiles,
             username: terminalUsername,
+            cli: session.cli,
           },
         });
         if (cancelled) {
@@ -858,12 +860,41 @@ export function CodeAgent() {
   // Keep the project sandbox alive for the full lifetime of ExpertAI Studio.
   // It is stopped by the Studio unmount cleanup, not by idle typing time.
 
+  async function chooseTerminalCli(): Promise<"kilo" | "opencode" | "aider"> {
+    let enabledClis: string[] = ["kilo"];
+    let defaultCli = "kilo";
+    try {
+      const { data } = await supabase.from("site_settings").select("site_branding_settings").eq("id", 1).single();
+      const root = data?.site_branding_settings && typeof data.site_branding_settings === "object" && !Array.isArray(data.site_branding_settings)
+        ? data.site_branding_settings as Record<string, unknown> : {};
+      const terminal = root.terminalSettings && typeof root.terminalSettings === "object" && !Array.isArray(root.terminalSettings)
+        ? root.terminalSettings as Record<string, unknown> : {};
+      if (Array.isArray(terminal.enabledClis)) {
+        const valid = terminal.enabledClis.filter((value): value is string =>
+          typeof value === "string" && ["kilo", "opencode", "aider"].includes(value));
+        if (valid.length) enabledClis = valid;
+      }
+      if (typeof terminal.defaultCli === "string" && enabledClis.includes(terminal.defaultCli)) defaultCli = terminal.defaultCli;
+    } catch {
+      // The server validates the final choice and defaults to Kilo if no policy is configured.
+    }
+    if (enabledClis.length <= 1) return enabledClis[0] as "kilo" | "opencode" | "aider";
+    const labels: Record<string, string> = { kilo: "Kilo Code", opencode: "OpenCode", aider: "Aider" };
+    const choices = enabledClis.map((cli, index) => `${index + 1}. ${labels[cli] ?? cli}`).join("\n");
+    const answer = window.prompt(`Choose your coding CLI:\n${choices}\n\nEnter a number or CLI name. Leave blank to use ${labels[defaultCli]}.`, String(enabledClis.indexOf(defaultCli) + 1));
+    if (!answer?.trim()) return defaultCli as "kilo" | "opencode" | "aider";
+    const byNumber = enabledClis[Number(answer.trim()) - 1];
+    const byName = enabledClis.find((cli) => cli === answer.trim().toLowerCase());
+    return (byNumber ?? byName ?? defaultCli) as "kilo" | "opencode" | "aider";
+  }
+
   async function openTerminal() {
     if (terminalReady && terminalConnection?.projectId === projectId) {
       terminalLastActivityRef.current = Date.now();
       return;
     }
     try {
+      const selectedCli = await chooseTerminalCli();
       let nextFiles = files;
       const previousProjectId = terminalConnection?.projectId;
       if (terminalConnection) {
@@ -872,9 +903,9 @@ export function CodeAgent() {
       }
       const activeProjectId = await persist({ files: nextFiles });
       const connection = await connectTerminal({
-        data: { projectId: activeProjectId, files: nextFiles, username: terminalUsername },
+        data: { projectId: activeProjectId, files: nextFiles, username: terminalUsername, cli: selectedCli },
       });
-      setTerminalConnection({ ...connection, projectId: activeProjectId });
+      setTerminalConnection({ ...connection, projectId: activeProjectId, cli: selectedCli });
       if (connection.toolkitStatus === "installing") toast.info("The CTF starter toolkit is installing in the Linux sandbox.");
     } catch (error) {
       const message =
@@ -948,8 +979,9 @@ export function CodeAgent() {
       runtimeFilesRef.current = { ...files };
       if (!terminalConnection) {
         try {
-          const connection = await connectTerminal({ data: { projectId: activeProjectId, files, username: terminalUsername } });
-          setTerminalConnection({ ...connection, projectId: activeProjectId });
+          const selectedCli = await chooseTerminalCli();
+          const connection = await connectTerminal({ data: { projectId: activeProjectId, files, username: terminalUsername, cli: selectedCli } });
+          setTerminalConnection({ ...connection, projectId: activeProjectId, cli: selectedCli });
           if (connection.toolkitStatus === "installing") toast.info("The CTF starter toolkit is installing in the Linux sandbox.");
         } catch (terminalError) {
           setLogs((current) => [...current, { type: "warn", message: terminalError instanceof Error ? terminalError.message : "Project builder could not auto-connect." }]);
