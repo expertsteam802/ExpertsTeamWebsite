@@ -953,7 +953,14 @@ export function CodeAgent() {
   useEffect(() => {
     if (!user?.id || projectsLoading || autoStartedKiloRef.current) return;
     if (!projectId && projects.length > 0) {
-      openProject(projects[0]);
+      const mostRecentSavedProject = projects.find(
+        (project) => project.files && Object.keys(project.files).length > 0,
+      );
+      if (mostRecentSavedProject) {
+        openProject(mostRecentSavedProject);
+        return;
+      }
+      toast.error("Your saved projects were found, but none currently contains recoverable source files. No new project was created.");
       return;
     }
     autoStartedKiloRef.current = true;
