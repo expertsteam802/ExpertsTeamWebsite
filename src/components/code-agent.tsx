@@ -622,7 +622,8 @@ export function CodeAgent() {
   // An active CLI process cannot survive a provider VM replacement.
   useEffect(() => {
     const session = terminalConnection;
-    if (!session || session.projectId !== projectId || !user?.id) return;
+    const userId = user?.id;
+    if (!session || session.projectId !== projectId || !userId) return;
     let cancelled = false;
     let retryTimer: number | undefined;
 
@@ -640,7 +641,7 @@ export function CodeAgent() {
             .from("agent_projects")
             .update({ files: recoveryFiles as unknown as Json, updated_at: new Date().toISOString() })
             .eq("id", session.projectId)
-            .eq("user_id", user.id);
+            .eq("user_id", userId);
           if (error) throw error;
         } catch {
           if (cancelled) return;
@@ -650,7 +651,7 @@ export function CodeAgent() {
             .from("agent_projects")
             .select("files")
             .eq("id", session.projectId)
-            .eq("user_id", user.id)
+            .eq("user_id", userId)
             .maybeSingle();
           if (error) throw error;
           if (!data || !data.files || typeof data.files !== "object" || Array.isArray(data.files)) {
