@@ -714,7 +714,8 @@ export async function readCloudProjectFiles(userId: string, sessionName: string)
       const filename = path.split("/").at(-1) ?? "";
       return (
         path &&
-        /^[a-zA-Z0-9_@./-]+$/.test(path) &&
+        !path.startsWith("/") &&
+        !/[\\u0000-\\u001f\\u007f]/.test(path) &&
         !path.split("/").some((part) => !part || part === "." || part === "..") &&
         !path.split("/").some((part) => part.startsWith(".experts-") || [".kilo", ".kilocode", ".opencode"].includes(part)) &&
         ![".npmrc", ".netrc", ".pypirc"].includes(filename) &&
@@ -736,6 +737,11 @@ export async function readCloudProjectFiles(userId: string, sessionName: string)
     if (buffer.byteLength > 150_000 || totalBytes > 1_000_000)
       throw new Error("The project files exceed the 1 MB import limit.");
     files[path] = buffer.toString("utf8");
+  }
+  // An empty terminal snapshot is never a valid project save. In particular,
+  // do not let a reconnect/recovery write an empty object over the saved project.
+  if (Object.keys(files).length === 0) {
+    throw new Error("The Linux workspace returned no project files. The saved project was not changed.");
   }
   validateFiles(files);
   return { files };
