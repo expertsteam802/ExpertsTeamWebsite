@@ -444,6 +444,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
   const serverSource = [
     'const http = require("node:http");',
     'const { spawn } = require("node:child_process");',
+    'const fs = require("node:fs");',
     'const { WebSocketServer } = require("ws");',
     "const activeShells = new Set();",
     "const server = http.createServer((request, response) => {",
@@ -459,7 +460,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     "});",
     'sockets.on("connection", (client) => {',
 
-    "  const shell = spawn(\"script\", [\"-q\", \"-f\", \"-c\", \"stty rows 40 cols 120 2>/dev/null || true; runuser -u experts-shell -- env HOME=/home/experts-shell USER=experts-shell LOGNAME=experts-shell PATH=/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin /bin/bash --noprofile --rcfile /vercel/sandbox/.experts-terminal-bridge/prompt.rc -i\", \"/dev/null\"], { cwd: process.env.TERMINAL_CWD || \"/vercel/sandbox\", env: { ...process.env, EXPERTS_SKIP_KILO: client.expertsSkipKilo ? \"1\" : \"0\", TERM: \"xterm-256color\", COLORTERM: \"truecolor\" }, stdio: [\"pipe\", \"pipe\", \"pipe\"] });",
+    "  const shell = spawn(\"script\", [\"-q\", \"-f\", \"-c\", \"stty rows 40 cols 120 2>/dev/null || true; tty > /vercel/sandbox/.experts-terminal-tty; runuser -u experts-shell -- env HOME=/home/experts-shell USER=experts-shell LOGNAME=experts-shell PATH=/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin /bin/bash --noprofile --rcfile /vercel/sandbox/.experts-terminal-bridge/prompt.rc -i\", \"/dev/null\"], { cwd: process.env.TERMINAL_CWD || \"/vercel/sandbox\", env: { ...process.env, EXPERTS_SKIP_KILO: client.expertsSkipKilo ? \"1\" : \"0\", TERM: \"xterm-256color\", COLORTERM: \"truecolor\" }, stdio: [\"pipe\", \"pipe\", \"pipe\"] });",
     "  activeShells.add(shell);",
     '  shell.stdout.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
     '  shell.stderr.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
@@ -467,7 +468,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     '  shell.on("close", () => { activeShells.delete(shell); if (client.readyState === 1) client.close(); });',
     '  client.on("message", (buffer) => {',
     "    const value = buffer.toString();",
-    "    if (value.charCodeAt(0) === 0) { try { const control = JSON.parse(value.slice(1)); if (control.type === \"resize\") { const cols = Math.max(40, Math.min(300, Number(control.cols) || 120)); const rows = Math.max(10, Math.min(100, Number(control.rows) || 40)); const resizeCommand = \"tty=$(ps -o tty= -p \" + shell.pid + \" | xargs); case $tty in pts/*) stty -F /dev/$tty rows \" + rows + \" cols \" + cols + \" 2>/dev/null ;; esac\"; const resize = spawn(\"sh\", [\"-lc\", resizeCommand], { stdio: \"ignore\" }); resize.on(\"close\", () => { try { process.kill(shell.pid, \"SIGWINCH\"); } catch {} }); } } catch {} return; }",
+    "    if (value.charCodeAt(0) === 0) { try { const control = JSON.parse(value.slice(1)); if (control.type === \"resize\") { const cols = Math.max(40, Math.min(300, Number(control.cols) || 120)); const rows = Math.max(10, Math.min(100, Number(control.rows) || 40)); const ttyPath = fs.readFileSync(process.env.TERMINAL_TTY_FILE, \"utf8\").trim(); if (ttyPath.startsWith(\"/dev/pts/\") && /^\\d+$/.test(ttyPath.slice(9))) { const resize = spawn(\"stty\", [\"-F\", ttyPath, \"rows\", String(rows), \"cols\", String(cols)], { stdio: \"ignore\" }); resize.on(\"close\", () => { const signal = spawn(\"pkill\", [\"-WINCH\", \"-t\", ttyPath.slice(5)], { stdio: \"ignore\" }); signal.on(\"error\", () => {}); }); } } } catch {} return; }",
     "    if (shell.stdin.writable) shell.stdin.write(value);",
     "  });",
     '  client.on("close", () => { try { shell.kill("SIGHUP"); } catch {} activeShells.delete(shell); });',
@@ -585,7 +586,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
       cmd: "node",
       args: ["server.cjs"],
       cwd: bridgeDir,
-      env: { TERMINAL_TOKEN: token, TERMINAL_CWD: WORKDIR, TERMINAL_PORT: "4175", TERMINAL_USERNAME: username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam" },
+      env: { TERMINAL_TOKEN: token, TERMINAL_CWD: WORKDIR, TERMINAL_PORT: "4175", TERMINAL_TTY_FILE: WORKDIR + "/.experts-terminal-tty", TERMINAL_USERNAME: username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam" },
       detached: true,
       sudo: true,
     });
