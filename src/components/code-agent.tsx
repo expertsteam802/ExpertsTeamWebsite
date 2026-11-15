@@ -100,6 +100,27 @@ type Panel = "preview" | "code" | "console" | "terminal";
 
 const CODING_AGENT_UNDER_DEVELOPMENT = false;
 
+
+async function copyTextToSystemClipboard(value: string) {
+  try {
+    if (navigator.clipboard?.writeText && window.isSecureContext) {
+      await navigator.clipboard.writeText(value);
+      return;
+    }
+  } catch {}
+  const temporary = document.createElement("textarea");
+  temporary.value = value;
+  temporary.setAttribute("readonly", "");
+  temporary.style.position = "fixed";
+  temporary.style.opacity = "0";
+  document.body.appendChild(temporary);
+  temporary.select();
+  const copied = document.execCommand("copy");
+  temporary.remove();
+  if (!copied) throw new Error("Clipboard access was blocked by the browser.");
+}
+
+
 const EDITOR_SNIPPETS = [
   {
     pack: "react",
@@ -281,6 +302,7 @@ export function CodeAgent() {
   const [prompt, setPrompt] = useState("");
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
   const referenceInputRef = useRef<HTMLInputElement>(null);
+  const projectFileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<Panel>("preview");
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
@@ -930,6 +952,53 @@ export function CodeAgent() {
     autoStartedKiloRef.current = true;
     void openTerminalRef.current();
   }, [user?.id]);
+
+
+  async function importLocalProjectFiles(selectedFiles: FileList | File[]) {
+    const incoming = Array.from(selectedFiles);
+    if (!incoming.length) return;
+    const nextFiles: ProjectFiles = { ...files };
+    let totalBytes = Object.values(nextFiles).reduce((sum, value) => sum + new Blob([value]).size, 0);
+    let imported = 0;
+    let skipped = 0;
+    for (const file of incoming) {
+      const relativePath = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
+      if (relativePath.toLowerCase().endsWith(".zip")) {
+        if (file.size > 25 * 1024 * 1024) { skipped += 1; continue; }
+        try {
+          const extracted = await extractZipTextFiles(file);
+          skipped += extracted.skipped;
+          for (const entry of extracted.files) {
+            const path = entry.path.replace(/^\/+/, "");
+            if (!path || path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) || /(^|\/)\.env($|\.)/i.test(path) || entry.sizeBytes > 500 * 1024 || totalBytes + entry.sizeBytes > 3 * 1024 * 1024 || (Object.keys(nextFiles).length >= 400 && nextFiles[path] === undefined)) { skipped += 1; continue; }
+            nextFiles[path] = entry.content;
+            totalBytes += entry.sizeBytes;
+            imported += 1;
+          }
+        } catch { skipped += 1; }
+        continue;
+      }
+      const path = relativePath.replace(/\\/g, "/").replace(/^\/+/, "");
+      if (!path || path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) || /(^|\/)\.env($|\.)/i.test(path) || file.size > 500 * 1024 || totalBytes + file.size > 3 * 1024 * 1024 || (Object.keys(nextFiles).length >= 400 && nextFiles[path] === undefined)) { skipped += 1; continue; }
+      const textLike = file.type.startsWith("text/") || /\.(?:[cm]?[jt]sx?|json|css|scss|html?|md|mdx|xml|ya?ml|toml|ini|py|java|c|h|cpp|cs|go|rs|php|sql|sh|bat|ps1|svg|txt|env\.example)$/i.test(path);
+      if (!textLike) { skipped += 1; continue; }
+      try {
+        nextFiles[path] = await file.text();
+        totalBytes += file.size;
+        imported += 1;
+      } catch { skipped += 1; }
+    }
+    if (!imported) {
+      toast.error("No supported text/source files were imported. Use a ZIP for a project folder; binary files are not stored as source text.");
+      return;
+    }
+    if (!window.confirm("Import " + imported + " file(s) into this project? Existing paths will be replaced.")) return;
+    setFiles(nextFiles);
+    setActiveFile(Object.keys(nextFiles).find((path) => !Object.prototype.hasOwnProperty.call(files, path)) ?? Object.keys(nextFiles)[0] ?? "index.html");
+    setDirty(true);
+    setPreviewKey((value) => value + 1);
+    toast.success("Imported " + imported + " file(s)" + (skipped ? " · " + skipped + " skipped" : "") + ". Save to keep them.");
+  }
 
   function downloadProjectBundle() {
     const payload = {
@@ -1833,7 +1902,28 @@ export function CodeAgent() {
           </div>
         </div>
 
+        <input
+          ref={projectFileInputRef}
+          type="file"
+          multiple
+          accept=".zip,.txt,.md,.mdx,.html,.htm,.css,.scss,.js,.jsx,.ts,.tsx,.json,.xml,.yaml,.yml,.toml,.ini,.py,.java,.c,.h,.cpp,.cs,.go,.rs,.php,.sql,.sh,.bat,.ps1,.svg,.env.example"
+          className="hidden"
+          onChange={(event) => {
+            if (event.target.files?.length) void importLocalProjectFiles(event.target.files);
+            event.target.value = "";
+          }}
+        />
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => projectFileInputRef.current?.click()}
+            className="h-8 border-cyan-400/20 bg-cyan-400/[0.06] text-cyan-100 hover:bg-cyan-400/10"
+            title="Copy source files from your computer into this project"
+          >
+            <FolderInput className="mr-1.5 h-3.5 w-3.5" />
+            Add files
+          </Button>
           <Button
             size="sm"
             variant="outline"
@@ -2229,8 +2319,9 @@ export function CodeAgent() {
               {panel === "code" && (
                 <button
                   onClick={() => {
-                    void navigator.clipboard.writeText(files[activeFile] ?? "");
-                    toast.success("Code copied");
+                    void copyTextToSystemClipboard(files[activeFile] ?? "")
+                      .then(() => toast.success("Active file copied"))
+                      .catch((error) => toast.error(error instanceof Error ? error.message : "Could not copy file."));
                   }}
                   className="rounded-lg p-2 text-slate-500 hover:bg-white/5 hover:text-white"
                   aria-label="Copy code"
@@ -2563,6 +2654,18 @@ export function CodeAgent() {
                   role="region"
                   aria-label="ExpertAI project builder"
                   className="expert-agent-kilo-surface min-h-0 flex-1 overflow-hidden"
+                  onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (event.dataTransfer.files.length) void importLocalProjectFiles(event.dataTransfer.files);
+                  }}
+                  onPaste={(event) => {
+                    const pastedFiles = event.clipboardData?.files;
+                    if (pastedFiles?.length) {
+                      event.preventDefault();
+                      void importLocalProjectFiles(pastedFiles);
+                    }
+                  }}
                 />
                 <div className="flex shrink-0 items-center justify-between gap-2 border-t border-white/[0.06] px-3 py-2 text-[9px] text-slate-600">
                   <span>Changes are synced into your project automatically</span>
@@ -2587,7 +2690,9 @@ export function CodeAgent() {
         </main>
       </div>
 
-      <style>{`\n        @keyframes expertStudioTabA { from { opacity: .35; transform: translate3d(0, 13px, 0) scale(.992); filter: blur(3px); } to { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); } }\n        @keyframes expertStudioTabB { from { opacity: .35; transform: translate3d(0, -10px, 0) scale(.992); filter: blur(3px); } to { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); } }\n        @keyframes expertTerminalRevealA { 0% { opacity: 0; transform: perspective(1200px) translateY(34px) scale(.965); filter: blur(12px) brightness(.45); box-shadow: inset 0 0 0 1px rgba(34,211,238,0); } 38% { opacity: 1; filter: blur(1px) brightness(1.45); box-shadow: inset 0 0 90px rgba(34,211,238,.18); } 100% { opacity: 1; transform: perspective(1200px) translateY(0) scale(1); filter: blur(0) brightness(1); box-shadow: inset 0 0 0 rgba(34,211,238,0); } }\n        @keyframes expertTerminalRevealB { 0% { opacity: 0; transform: perspective(1200px) translateY(-30px) scale(.965); filter: blur(12px) brightness(.45); box-shadow: inset 0 0 0 1px rgba(59,130,246,0); } 38% { opacity: 1; filter: blur(1px) brightness(1.5); box-shadow: inset 0 0 100px rgba(59,130,246,.2); } 100% { opacity: 1; transform: perspective(1200px) translateY(0) scale(1); filter: blur(0) brightness(1); box-shadow: inset 0 0 0 rgba(59,130,246,0); } }\n        @media (prefers-reduced-motion: reduce) { .expert-agent-canvas { animation: none !important; } }\n      `}</style>
+      <style>{`\n        @keyframes expertStudioTabA { from { opacity: .35; transform: translate3d(0, 13px, 0) scale(.992); filter: blur(3px); } to { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); } }\n        @keyframes expertStudioTabB { from { opacity: .35; transform: translate3d(0, -10px, 0) scale(.992); filter: blur(3px); } to { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); } }\n        @keyframes expertTerminalRevealA { 0% { opacity: 0; transform: perspective(1200px) translateY(34px) scale(.965); filter: blur(12px) brightness(.45); box-shadow: inset 0 0 0 1px rgba(34,211,238,0); } 38% { opacity: 1; filter: blur(1px) brightness(1.45); box-shadow: inset 0 0 90px rgba(34,211,238,.18); } 100% { opacity: 1; transform: perspective(1200px) translateY(0) scale(1); filter: blur(0) brightness(1); box-shadow: inset 0 0 0 rgba(34,211,238,0); } }\n        @keyframes expertTerminalRevealB { 0% { opacity: 0; transform: perspective(1200px) translateY(-30px) scale(.965); filter: blur(12px) brightness(.45); box-shadow: inset 0 0 0 1px rgba(59,130,246,0); } 38% { opacity: 1; filter: blur(1px) brightness(1.5); box-shadow: inset 0 0 100px rgba(59,130,246,.2); } 100% { opacity: 1; transform: perspective(1200px) translateY(0) scale(1); filter: blur(0) brightness(1); box-shadow: inset 0 0 0 rgba(59,130,246,0); } }\n        .expert-agent-kilo-surface .xterm { height: 100%; }
+        .expert-agent-kilo-surface .xterm-viewport { overflow-y: scroll !important; overscroll-behavior: contain; scrollbar-width: thin; touch-action: pan-y; }
+        @media (prefers-reduced-motion: reduce) { .expert-agent-canvas { animation: none !important; } }\n      `}</style>
 
       <Dialog open={thumbnailDialogOpen} onOpenChange={setThumbnailDialogOpen}>
         <DialogContent className="border-slate-700 bg-[#101a29] text-white sm:max-w-lg">
