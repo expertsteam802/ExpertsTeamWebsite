@@ -317,6 +317,10 @@ export function CodeAgent() {
   const [previewAddress, setPreviewAddress] = useState("");
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const [thumbnailDialogOpen, setThumbnailDialogOpen] = useState(false);
+  const [thumbnailUrlInput, setThumbnailUrlInput] = useState("");
+  const [savingThumbnailUrl, setSavingThumbnailUrl] = useState(false);
+  const [panelMotionPhase, setPanelMotionPhase] = useState(0);
   const [runtimeStatus, setRuntimeStatus] = useState("Not started");
   const [terminalReady, setTerminalReady] = useState(false);
   const [terminalConnection, setTerminalConnection] = useState<{
@@ -967,7 +971,7 @@ export function CodeAgent() {
     if (runtimeBusy) return;
     setRuntimeBusy(true);
     setRuntimeStatus("Preparing cloud sandbox…");
-    setPanel("preview");
+    switchPanel("preview");
     setLogs([]);
     try {
       const activeProjectId = projectId ?? (await persist());
@@ -1071,6 +1075,31 @@ export function CodeAgent() {
     } finally {
       setPublishing(false);
     }
+  }
+
+  function switchPanel(nextPanel: Panel) {
+    setPanel(nextPanel);
+    setPanelMotionPhase((phase) => phase === 0 ? 1 : 0);
+  }
+
+  async function saveProjectThumbnailUrl() {
+    const value = thumbnailUrlInput.trim();
+    if (!value) { toast.error("Paste an image URL first."); return; }
+    let parsed: URL;
+    try { parsed = new URL(value); } catch { toast.error("Enter a valid image URL."); return; }
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") { toast.error("Image URLs must start with https:// or http://."); return; }
+    if (!user) { toast.error("Sign in to save a project thumbnail."); return; }
+    setSavingThumbnailUrl(true);
+    try {
+      const activeProjectId = projectId ?? (await persist());
+      const { error } = await supabase.from("agent_projects").update({ thumbnail_url: parsed.toString() }).eq("id", activeProjectId).eq("user_id", user.id);
+      if (error) throw error;
+      setThumbnailUrl(parsed.toString());
+      await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
+      setThumbnailDialogOpen(false);
+      toast.success("Project thumbnail URL saved.");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not save the thumbnail URL."); }
+    finally { setSavingThumbnailUrl(false); }
   }
 
   async function setProjectThumbnail() {
@@ -1424,7 +1453,7 @@ export function CodeAgent() {
       setActiveFile(Object.keys(importedFiles).sort()[0] ?? "README.md");
       setGithubRepo("");
       setLogs([]);
-      setPanel("code");
+      switchPanel("code");
       setDirty(false);
       setVaultImportOpen(false);
       await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
@@ -1476,7 +1505,7 @@ export function CodeAgent() {
       setActiveFile(Object.keys(imported.files).sort()[0] ?? "README.md");
       setGithubRepo(imported.name);
       setLogs([]);
-      setPanel("code");
+      switchPanel("code");
       setDirty(false);
       setImportOpen(false);
       setImportRepoUrl("");
@@ -1539,7 +1568,7 @@ export function CodeAgent() {
         const firstExistingFile = changed.find((path) => updatedFiles[path] !== undefined);
         if (firstExistingFile) {
           setActiveFile(firstExistingFile);
-          setPanel("code");
+          switchPanel("code");
         }
         setPreviewKey((value) => value + 1);
       }
@@ -1576,7 +1605,7 @@ export function CodeAgent() {
     setMessages([]);
     setActiveFile("index.html");
     setLogs([]);
-    setPanel("preview");
+    switchPanel("preview");
     setDirty(false);
     toast.success("New workspace created");
   }
@@ -1593,7 +1622,7 @@ export function CodeAgent() {
     setActiveFile(Object.keys(project.files ?? {})[0] ?? "index.html");
     setGithubRepo(project.github_repo?.split("/").pop() ?? "");
     setLogs([]);
-    setPanel("preview");
+    switchPanel("preview");
     setDirty(false);
   }
 
@@ -1693,7 +1722,7 @@ export function CodeAgent() {
     setActiveFile(path);
     setNewFileName("");
     setNewFileOpen(false);
-    setPanel("code");
+    switchPanel("code");
     setDirty(true);
   }
 
@@ -1815,7 +1844,7 @@ export function CodeAgent() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => void setProjectThumbnail()}
+            onClick={() => { setThumbnailUrlInput(thumbnailUrl ?? ""); setThumbnailDialogOpen(true); }}
             className="h-8 border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/10"
             title="Set project thumbnail or logo"
           >
@@ -2025,7 +2054,7 @@ export function CodeAgent() {
                       <button
                         onClick={() => {
                           setActiveFile(path);
-                          setPanel("code");
+                          switchPanel("code");
                         }}
                         className={`flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-xs ${
                           path === activeFile ? "text-white" : "text-slate-400"
@@ -2114,7 +2143,7 @@ export function CodeAgent() {
               ).map(([value, Icon, label]) => (
                 <button
                   key={value}
-                  onClick={() => setPanel(value)}
+                  onClick={() => switchPanel(value)
                   className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                     panel === value
                       ? "bg-cyan-400/10 text-cyan-200"
@@ -2245,6 +2274,7 @@ export function CodeAgent() {
             style={{ "--assistant-width": `${assistantWidth}px` } as CSSProperties}
           >
             <section
+              style={{ animation: panel === "terminal" ? (panelMotionPhase ? "expertTerminalRevealB 1050ms cubic-bezier(.16,1,.3,1) both" : "expertTerminalRevealA 1050ms cubic-bezier(.16,1,.3,1) both") : (panelMotionPhase ? "expertStudioTabB 420ms cubic-bezier(.2,.8,.2,1) both" : "expertStudioTabA 420ms cubic-bezier(.2,.8,.2,1) both") }}
               className={
                 previewExpanded && panel === "preview"
                   ? "expert-agent-canvas fixed inset-x-0 top-0 z-[100] flex h-[100dvh] min-h-0 min-w-0 flex-col overflow-hidden bg-[#080e19] shadow-2xl"
@@ -2554,6 +2584,21 @@ export function CodeAgent() {
           </footer>
         </main>
       </div>
+
+      <style>{`\n        @keyframes expertStudioTabA { from { opacity: .35; transform: translate3d(0, 13px, 0) scale(.992); filter: blur(3px); } to { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); } }\n        @keyframes expertStudioTabB { from { opacity: .35; transform: translate3d(0, -10px, 0) scale(.992); filter: blur(3px); } to { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); } }\n        @keyframes expertTerminalRevealA { 0% { opacity: 0; transform: perspective(1200px) translateY(34px) scale(.965); filter: blur(12px) brightness(.45); box-shadow: inset 0 0 0 1px rgba(34,211,238,0); } 38% { opacity: 1; filter: blur(1px) brightness(1.45); box-shadow: inset 0 0 90px rgba(34,211,238,.18); } 100% { opacity: 1; transform: perspective(1200px) translateY(0) scale(1); filter: blur(0) brightness(1); box-shadow: inset 0 0 0 rgba(34,211,238,0); } }\n        @keyframes expertTerminalRevealB { 0% { opacity: 0; transform: perspective(1200px) translateY(-30px) scale(.965); filter: blur(12px) brightness(.45); box-shadow: inset 0 0 0 1px rgba(59,130,246,0); } 38% { opacity: 1; filter: blur(1px) brightness(1.5); box-shadow: inset 0 0 100px rgba(59,130,246,.2); } 100% { opacity: 1; transform: perspective(1200px) translateY(0) scale(1); filter: blur(0) brightness(1); box-shadow: inset 0 0 0 rgba(59,130,246,0); } }\n        @media (prefers-reduced-motion: reduce) { .expert-agent-canvas { animation: none !important; } }\n      `}</style>
+
+      <Dialog open={thumbnailDialogOpen} onOpenChange={setThumbnailDialogOpen}>
+        <DialogContent className="border-slate-700 bg-[#101a29] text-white sm:max-w-lg">
+          <DialogHeader><DialogTitle>Project thumbnail</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-slate-400">Paste a public image URL or upload an image from your device.</p>
+            <div className="space-y-1.5"><Label htmlFor="project-thumbnail-url">Image URL</Label><Input id="project-thumbnail-url" value={thumbnailUrlInput} onChange={(event) => setThumbnailUrlInput(event.target.value)} placeholder="https://example.com/project-cover.png" className="border-white/10 bg-white/5" /></div>
+            {thumbnailUrlInput.trim() && <img src={thumbnailUrlInput} alt="Thumbnail preview" referrerPolicy="no-referrer" className="h-36 w-full rounded-lg border border-white/10 bg-black/20 object-cover" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} onLoad={(event) => { event.currentTarget.style.visibility = "visible"; }} />}
+            <div className="flex flex-wrap gap-2"><Button onClick={() => void saveProjectThumbnailUrl()} disabled={savingThumbnailUrl} className="flex-1 bg-cyan-400 text-slate-950 hover:bg-cyan-300">{savingThumbnailUrl ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save image URL</Button><Button variant="outline" onClick={() => void setProjectThumbnail()} className="border-white/15 bg-white/5 text-white hover:bg-white/10"><ImagePlus className="mr-2 h-4 w-4" />Upload image</Button></div>
+            {thumbnailUrl && <Button variant="ghost" className="w-full text-slate-400 hover:text-red-300" onClick={async () => { if (!user || !projectId) { setThumbnailUrl(null); setThumbnailUrlInput(""); setThumbnailDialogOpen(false); return; } const { error } = await supabase.from("agent_projects").update({ thumbnail_url: null }).eq("id", projectId).eq("user_id", user.id); if (error) { toast.error(error.message); return; } setThumbnailUrl(null); setThumbnailUrlInput(""); await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] }); setThumbnailDialogOpen(false); toast.success("Project thumbnail removed."); }}>Remove thumbnail</Button>}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* New file dialog */}
       <Dialog open={newFileOpen} onOpenChange={setNewFileOpen}>
