@@ -98,72 +98,10 @@ export function SiteHeader() {
               </Link>
             );
           })}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label="More pages"
-                className={cn(
-                  idleClass,
-                  (SECONDARY_LINKS.some((item) => isActive(item.to)) ||
-                    ((isDeveloper || isAdmin) && pathname === "/projects")) &&
-                    activeClass,
-                )}
-              >
-                <MoreHorizontal className="h-4 w-4" />
-                <span>More</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-60">
-              <DropdownMenuLabel>More from ExpertsTeam</DropdownMenuLabel>
-              {SECONDARY_LINKS.map((item) => (
-                <DropdownMenuItem key={item.to} asChild>
-                  <Link to={item.to}>
-                    <item.icon className="mr-2 h-4 w-4" />
-                    {item.label}
-                  </Link>
-                </DropdownMenuItem>
-              ))}
-              {(isDeveloper || isAdmin) && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <a href="/projects?tab=vault" className="flex items-center">
-                      <Archive className="mr-2 h-4 w-4" />
-                      Developer Vault
-                    </a>
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
-          <Link to="/messages" aria-label="Messages" title="Messages" className="hidden sm:inline-flex">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Messages"
-              className={cn(
-                "text-white/65 hover:bg-white/10 hover:text-white",
-                isActive("/messages") && "bg-primary/15 text-primary",
-              )}
-            >
-              <MessageCircle className="h-4 w-4" />
-            </Button>
-          </Link>
-
-          <Link to="/software" className="hidden sm:inline-flex">
-            <Button
-              size="sm"
-              className="h-9 rounded-xl bg-[#4d8dff] px-3 text-xs font-bold text-white hover:bg-[#6b9fff] sm:px-4"
-            >
-              Request software
-            </Button>
-          </Link>
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
