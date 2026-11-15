@@ -474,7 +474,7 @@ export async function startCloudProjectTerminal(
     "  activeShells.add(shell);",
     '  shell.stdout.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
     '  shell.stderr.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
-    '  shell.on("error", (error) => { if (client.readyState === 1) client.send("\\r\\nTerminal startup error: " + error.message + "\\r\\n"); });',
+    '  shell.on("error", (error) => { if (client.readyState === 1) client.send(String.fromCharCode(13, 10) + "Terminal startup error: " + error.message + String.fromCharCode(13, 10)); });',
     '  shell.on("close", () => { activeShells.delete(shell); try { fs.unlinkSync(ttyFile); } catch {} if (client.readyState === 1) client.close(); });',
     '  client.on("message", (buffer) => {',
     "    const value = buffer.toString();",
@@ -490,7 +490,7 @@ export async function startCloudProjectTerminal(
     ? "if ! command -v kilo >/dev/null 2>&1; then printf \"\nInstalling Kilo Code...\n\"; npm install -g --no-audit --no-fund @kilocode/cli; fi\ncommand -v kilo >/dev/null 2>&1 && exec kilo || printf \"\nKilo installation failed. Try: npm install -g @kilocode/cli\n\""
     : cli === "opencode"
       ? "if ! command -v opencode >/dev/null 2>&1; then printf \"\nInstalling OpenCode...\n\"; npm install -g --no-audit --no-fund opencode-ai; fi\ncommand -v opencode >/dev/null 2>&1 && exec opencode || printf \"\nOpenCode installation failed. Try: npm install -g opencode-ai\n\""
-      : "if ! command -v aider >/dev/null 2>&1; then printf \"\nInstalling Aider...\n\"; python3 -m venv /home/experts-shell/.aider-venv && /home/experts-shell/.aider-venv/bin/pip install --disable-pip-version-check aider-chat && ln -sf /home/experts-shell/.aider-venv/bin/aider /home/experts-shell/.npm-global/bin/aider; fi\ncommand -v aider >/dev/null 2>&1 && exec aider || printf \"\nAider installation failed. Check Python/pip access and retry: python3 -m venv ~/.aider-venv && ~/.aider-venv/bin/pip install aider-chat\n\"";
+      : "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:/home/experts-shell/.npm-global/bin:$PATH\"\nif ! command -v aider >/dev/null 2>&1; then printf \"\\nInstalling Aider with its supported isolated Python 3.12 environment...\\n\"; if ! command -v uv >/dev/null 2>&1; then curl -LsSf https://aider.chat/install.sh | sh; export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$PATH\"; fi; command -v uv >/dev/null 2>&1 && uv tool install --force --python 3.12 aider-chat@latest; fi\nexport PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:/home/experts-shell/.npm-global/bin:$PATH\"\ncommand -v aider >/dev/null 2>&1 && exec aider || printf \"\\nAider installation failed. Retry with: uv tool install --force --python 3.12 aider-chat@latest\\n\"";
   const promptScript = "PS1=" + shellQuote((username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam") + "@expertsteam:\\w$ ") + "\n" + "export PS1\nPROMPT_COMMAND=\nif [ \"${EXPERTS_SKIP_KILO:-0}\" != \"1\" ]; then\n  " + cliLaunch + "\nfi\n"; 
   await sandbox.writeFiles([
     { path: bridgeDir + "/package.json", content: Buffer.from(packageJson, "utf8") },
@@ -540,7 +540,6 @@ export async function startCloudProjectTerminal(
       "printf 'prefix=/home/experts-shell/.npm-global\n' > /home/experts-shell/.npmrc",
       "chown experts-shell:experts-shell /home/experts-shell/.npmrc",
       "command -v runuser >/dev/null",
-      ...(cli === "aider" ? ["apt-get update -qq && apt-get install -y --no-install-recommends python3-venv"] : []),
     ].join(" && ")],
     cwd: WORKDIR,
     timeoutMs: cli === "aider" ? 120_000 : 15_000,
