@@ -340,7 +340,6 @@ export function CodeAgent() {
   const terminalSocketRef = useRef<WebSocket | null>(null);
   const terminalLastActivityRef = useRef(Date.now());
   const terminalRecoveryFilesRef = useRef<ProjectFiles>(files);
-  const terminalRecoveryOutputRef = useRef("");
   const terminalRecoveryInProgressRef = useRef(false);
   const xtermRef = useRef<XTerm | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
@@ -434,14 +433,10 @@ export function CodeAgent() {
       );
     };
     socket.onmessage = (event) => {
-      const chunk = typeof event.data === "string"
-        ? event.data
-        : event.data instanceof ArrayBuffer
-          ? new TextDecoder().decode(new Uint8Array(event.data))
-          : "";
-      if (!chunk) return;
-      terminalRecoveryOutputRef.current = (terminalRecoveryOutputRef.current + chunk).slice(-24000);
-      terminal.write(chunk);
+      // Keep binary PTY frames as bytes. Decoding each WebSocket frame separately
+      // can split UTF-8 box-drawing characters and corrupt Kilo's full-screen UI.
+      if (typeof event.data === "string") terminal.write(event.data);
+      else if (event.data instanceof ArrayBuffer) terminal.write(new Uint8Array(event.data));
     };
     socket.onerror = () => {
       setTerminalReady(false);
