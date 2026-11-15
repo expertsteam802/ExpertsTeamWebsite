@@ -1056,12 +1056,19 @@ function AdminPage() {
                             <input
                               type="checkbox"
                               checked={form.terminal_cli_enabled.includes(id)}
-                              onChange={(event) => setForm({
-                                ...form,
-                                terminal_cli_enabled: event.target.checked
+                              disabled={form.terminal_cli_enabled.length === 1 && form.terminal_cli_enabled.includes(id)}
+                              onChange={(event) => {
+                                const nextEnabled = event.target.checked
                                   ? [...form.terminal_cli_enabled, id]
-                                  : form.terminal_cli_enabled.filter((item) => item !== id),
-                              })}
+                                  : form.terminal_cli_enabled.filter((item) => item !== id);
+                                setForm({
+                                  ...form,
+                                  terminal_cli_enabled: nextEnabled,
+                                  terminal_cli_default: nextEnabled.includes(form.terminal_cli_default)
+                                    ? form.terminal_cli_default
+                                    : nextEnabled[0] ?? "kilo",
+                                });
+                              }}
                               className="mt-1"
                             />
                             <span className="min-w-0">
