@@ -886,7 +886,7 @@ export function CodeAgent() {
   openTerminalRef.current = openTerminal;
 
   useEffect(() => {
-    if (!projectId || !terminalConnection || terminalConnection.projectId === projectId) return;
+    if (!terminalConnection || terminalConnection.projectId === projectId) return;
     void openTerminalRef.current();
   }, [projectId, terminalConnection?.projectId]);
 
