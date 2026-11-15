@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Archive, BriefcaseBusiness, ChevronLeft, ChevronRight, Code2, FileVideo,
-  FolderKanban, Gamepad2, LayoutDashboard, MessageCircle, Shield, X,
+  FolderKanban, Gamepad2, LayoutDashboard, MessageCircle, Shield,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
