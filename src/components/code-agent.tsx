@@ -1056,10 +1056,11 @@ export function CodeAgent() {
   ) {
     if (!user) throw new Error("Please sign in to save your project.");
 
+    const filesToSave = next.files ?? files;
     const payload = {
       user_id: user.id,
       name: name.trim() || "Untitled project",
-      files: (next.files ?? files) as unknown as Json,
+      files: filesToSave as unknown as Json,
       messages: (next.messages ?? messages).slice(-40) as unknown as Json,
       ...next.extra,
     };
@@ -1072,7 +1073,9 @@ export function CodeAgent() {
         .eq("user_id", user.id);
       if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
-      setDirty(false);
+      if (JSON.stringify(terminalRecoveryFilesRef.current) === JSON.stringify(filesToSave)) {
+        setDirty(false);
+      }
       return projectId;
     }
 
@@ -1084,7 +1087,9 @@ export function CodeAgent() {
 
     if (error) throw error;
     setProjectId(data.id);
-    setDirty(false);
+    if (JSON.stringify(terminalRecoveryFilesRef.current) === JSON.stringify(filesToSave)) {
+      setDirty(false);
+    }
     await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
     return data.id;
   }
