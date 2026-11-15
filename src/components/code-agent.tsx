@@ -618,8 +618,8 @@ export function CodeAgent() {
   }, [stopTerminal, syncTerminalFiles, terminalConnection?.sandboxName, terminalConnection?.projectId, user?.id]);
 
   // Rotate the disposable Linux VM before Vercel's 45-minute Hobby limit.
-  // Project files are synced first; visible terminal history is replayed after
-  // reconnect. An active CLI process cannot survive a provider VM replacement.
+  // Project files are synced first; Kilo starts fresh in the replacement VM.
+  // An active CLI process cannot survive a provider VM replacement.
   useEffect(() => {
     const session = terminalConnection;
     if (!session) return;
