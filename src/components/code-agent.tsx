@@ -340,6 +340,7 @@ export function CodeAgent() {
   const terminalLastActivityRef = useRef(Date.now());
   const terminalRecoveryFilesRef = useRef<ProjectFiles>(files);
   const terminalRecoveryInProgressRef = useRef(false);
+  const terminalSessionClosingRef = useRef(new Set<string>());
   const xtermRef = useRef<XTerm | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const editorRef = useRef<EditorView | null>(null);
@@ -589,11 +590,32 @@ export function CodeAgent() {
   });
 
   useEffect(() => {
+    const session = terminalConnection;
+    if (!session) return;
     return () => {
-      const sandboxName = terminalConnection?.sandboxName;
-      if (sandboxName) void stopTerminal({ data: { sandboxName } }).catch(() => undefined);
+      if (terminalSessionClosingRef.current.has(session.sandboxName)) {
+        terminalSessionClosingRef.current.delete(session.sandboxName);
+        return;
+      }
+      // Flush Kilo's workspace into the persistent project record before the
+      // disposable VM is removed (including when Studio itself is closed).
+      void syncTerminalFiles({
+        data: { projectId: session.projectId, sandboxName: session.sandboxName },
+      })
+        .then(async ({ files: savedFiles }) => {
+          const { error } = await supabase
+            .from("agent_projects")
+            .update({ files: savedFiles as unknown as Json, updated_at: new Date().toISOString() })
+            .eq("id", session.projectId)
+            .eq("user_id", user?.id ?? "");
+          if (error) throw error;
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          void stopTerminal({ data: { sandboxName: session.sandboxName } }).catch(() => undefined);
+        });
     };
-  }, [stopTerminal, terminalConnection?.sandboxName]);
+  }, [stopTerminal, syncTerminalFiles, terminalConnection?.sandboxName, terminalConnection?.projectId, user?.id]);
 
   // Rotate the disposable Linux VM before Vercel's 45-minute Hobby limit.
   // Project files are synced first; visible terminal history is replayed after
@@ -634,6 +656,7 @@ export function CodeAgent() {
           return;
         }
 
+        terminalSessionClosingRef.current.add(session.sandboxName);
         setTerminalConnection({ ...replacement, projectId: session.projectId });
         setTerminalReady(false);
         void stopTerminal({ data: { sandboxName: session.sandboxName } }).catch(() => undefined);
@@ -771,8 +794,32 @@ export function CodeAgent() {
     }
   }
 
-  async function closeTerminalSession() {
-    const sessionName = terminalConnection?.sandboxName;
+  async function closeTerminalSession(): Promise<ProjectFiles | null> {
+    const session = terminalConnection;
+    let syncedFiles: ProjectFiles | null = null;
+    if (session && user) {
+      try {
+        const result = await syncTerminalFiles({
+          data: { projectId: session.projectId, sandboxName: session.sandboxName },
+        });
+        const { error } = await supabase
+          .from("agent_projects")
+          .update({ files: result.files as unknown as Json, updated_at: new Date().toISOString() })
+          .eq("id", session.projectId)
+          .eq("user_id", user.id);
+        if (error) throw error;
+        syncedFiles = result.files;
+        if (session.projectId === projectId) {
+          terminalRecoveryFilesRef.current = result.files;
+          setFiles(result.files);
+          setDirty(false);
+        }
+      } catch {
+        // A timed-out sandbox may already be gone; the last successful sync is in Supabase.
+      }
+    }
+    const sessionName = session?.sandboxName;
+    if (sessionName) terminalSessionClosingRef.current.add(sessionName);
     const socket = terminalSocketRef.current;
     if (socket && socket.readyState < WebSocket.CLOSING) socket.close();
     terminalSocketRef.current = null;
@@ -781,8 +828,9 @@ export function CodeAgent() {
     try {
       if (sessionName) await stopTerminal({ data: { sandboxName: sessionName } });
     } catch {
-      // The sandbox also has a finite provider-side lifetime if the browser disconnects.
+      // The provider may already have expired the disposable VM.
     }
+    return syncedFiles;
   }
 
   // Keep the project sandbox alive for the full lifetime of ExpertAI Studio.
@@ -794,10 +842,15 @@ export function CodeAgent() {
       return;
     }
     try {
-      if (terminalConnection) await closeTerminalSession();
-      const activeProjectId = await persist();
+      let nextFiles = files;
+      const previousProjectId = terminalConnection?.projectId;
+      if (terminalConnection) {
+        const syncedFiles = await closeTerminalSession();
+        if (syncedFiles && previousProjectId === projectId) nextFiles = syncedFiles;
+      }
+      const activeProjectId = await persist({ files: nextFiles });
       const connection = await connectTerminal({
-        data: { projectId: activeProjectId, files, username: terminalUsername },
+        data: { projectId: activeProjectId, files: nextFiles, username: terminalUsername },
       });
       setTerminalConnection({ ...connection, projectId: activeProjectId });
       if (connection.toolkitStatus === "installing") toast.info("The CTF starter toolkit is installing in the Linux sandbox.");
