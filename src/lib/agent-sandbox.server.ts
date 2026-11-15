@@ -543,7 +543,7 @@ export async function startCloudProjectTerminal(
       ...(cli === "aider" ? ["apt-get update -qq && apt-get install -y --no-install-recommends python3-venv"] : []),
     ].join(" && ")],
     cwd: WORKDIR,
-    timeoutMs: 15_000,
+    timeoutMs: cli === "aider" ? 120_000 : 15_000,
     sudo: true,
   });
   if (shellSetup.exitCode !== 0) {
@@ -644,7 +644,7 @@ export async function startCloudProjectTerminal(
         (await selfTestResult.stderr()).slice(-2000),
     );
 
-  return { sandboxName: name, url: sandbox.domain(4175).replace(/^https:/, "wss:") + "/terminal", token, toolkitStatus };
+  return { sandboxName: name, url: sandbox.domain(4175).replace(/^https:/, "wss:") + "/terminal", token, toolkitStatus, cli };
   } catch (error) {
     try {
       await deleteDisposableSandbox(name);
