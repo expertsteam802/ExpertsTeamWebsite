@@ -2139,7 +2139,7 @@ export function CodeAgent() {
             <div className="mx-3 my-4 border-t border-white/[0.07]" />
             <div className="px-3">
               <div className="mb-2 flex items-center gap-2 px-1 text-xs font-semibold text-slate-300">
-                <SlidersHorizontal className="h-3.5 w-3.5 text-cyan-300" />
+                <Settings2 className="h-3.5 w-3.5 text-cyan-300" />
                 Project actions
               </div>
               <div className="grid grid-cols-2 gap-1.5">
