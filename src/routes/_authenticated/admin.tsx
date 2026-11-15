@@ -73,6 +73,8 @@ type SettingsForm = {
   ai_free_credits: string;
   payout_account: string;
   terminal_idle_timeout_minutes: string;
+  terminal_cli_enabled: string[];
+  terminal_cli_default: string;
   navigation_labels_json: string;
 };
 
@@ -337,6 +339,23 @@ function AdminPage() {
         ai_subscription_credits: String(settings.ai_subscription_credits ?? 500),
         ai_free_credits: String(settings.ai_free_credits ?? 25),
         payout_account: settings.payout_account ?? "",
+        terminal_cli_enabled: (() => {
+          const root = settings.site_branding_settings && typeof settings.site_branding_settings === "object" && !Array.isArray(settings.site_branding_settings)
+            ? settings.site_branding_settings as Record<string, unknown> : {};
+          const terminal = root.terminalSettings && typeof root.terminalSettings === "object" && !Array.isArray(root.terminalSettings)
+            ? root.terminalSettings as Record<string, unknown> : {};
+          const saved = Array.isArray(terminal.enabledClis) ? terminal.enabledClis.filter((v): v is string => typeof v === "string") : ["kilo"];
+          const allowed = saved.filter((v) => ["kilo", "opencode", "aider"].includes(v));
+          return allowed.length ? allowed : ["kilo"];
+        })(),
+        terminal_cli_default: (() => {
+          const root = settings.site_branding_settings && typeof settings.site_branding_settings === "object" && !Array.isArray(settings.site_branding_settings)
+            ? settings.site_branding_settings as Record<string, unknown> : {};
+          const terminal = root.terminalSettings && typeof root.terminalSettings === "object" && !Array.isArray(root.terminalSettings)
+            ? root.terminalSettings as Record<string, unknown> : {};
+          const preferred = typeof terminal.defaultCli === "string" ? terminal.defaultCli : "kilo";
+          return ["kilo", "opencode", "aider"].includes(preferred) ? preferred : "kilo";
+        })(),
         terminal_idle_timeout_minutes: (() => {
           const root =
             settings.site_branding_settings &&
@@ -434,6 +453,10 @@ function AdminPage() {
           ? (existingBranding.terminalSettings as Record<string, unknown>)
           : {};
       const terminalIdleTimeout = Number(form.terminal_idle_timeout_minutes);
+      const supportedClis = ["kilo", "opencode", "aider"];
+      const enabledClis = form.terminal_cli_enabled.filter((cli) => supportedClis.includes(cli));
+      if (!enabledClis.length) throw new Error("Enable at least one terminal CLI.");
+      if (!enabledClis.includes(form.terminal_cli_default)) throw new Error("The default CLI must be enabled.");
       if (!Number.isInteger(terminalIdleTimeout) || terminalIdleTimeout < 0 || terminalIdleTimeout > 1440)
         throw new Error("Terminal inactivity timeout must be between 0 and 1,440 minutes.");
       if (!Number.isInteger(freeCredits) || freeCredits < 0 || freeCredits > 100000)
@@ -457,6 +480,8 @@ function AdminPage() {
             terminalSettings: {
               ...existingTerminalSettings,
               idleTimeoutMinutes: terminalIdleTimeout,
+              enabledClis,
+              defaultCli: form.terminal_cli_default,
             },
             siteNavigation: navigationLabels,
           } as Json,
@@ -1019,6 +1044,46 @@ function AdminPage() {
                   </div>
                   {form ? (
                     <>
+                      <div className="space-y-3">
+                        <p className="text-sm font-medium">Available coding CLIs</p>
+                        <p className="text-xs text-muted-foreground">Choose which terminal agents members may launch. If several are enabled, members can choose one when opening the workspace terminal.</p>
+                        {([
+                          ["kilo", "Kilo Code", "Existing default agent; Kilo account or provider authentication may be required."],
+                          ["opencode", "OpenCode", "Open-source terminal agent; connect a model provider or use a local model endpoint."],
+                          ["aider", "Aider", "Open-source coding assistant; requires a model provider key or compatible local model."],
+                        ] as const).map(([id, title, detail]) => (
+                          <label key={id} className="flex cursor-pointer items-start gap-3 rounded-lg border border-border/70 p-3">
+                            <input
+                              type="checkbox"
+                              checked={form.terminal_cli_enabled.includes(id)}
+                              onChange={(event) => setForm({
+                                ...form,
+                                terminal_cli_enabled: event.target.checked
+                                  ? [...form.terminal_cli_enabled, id]
+                                  : form.terminal_cli_enabled.filter((item) => item !== id),
+                              })}
+                              className="mt-1"
+                            />
+                            <span className="min-w-0">
+                              <span className="block text-sm font-medium">{title}</span>
+                              <span className="block text-xs text-muted-foreground">{detail}</span>
+                            </span>
+                          </label>
+                        ))}
+                        <div className="max-w-sm space-y-2">
+                          <Label htmlFor="terminal_cli_default">Default CLI</Label>
+                          <select
+                            id="terminal_cli_default"
+                            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                            value={form.terminal_cli_default}
+                            onChange={(event) => setForm({ ...form, terminal_cli_default: event.target.value })}
+                          >
+                            {form.terminal_cli_enabled.map((cli) => (
+                              <option key={cli} value={cli}>{cli === "kilo" ? "Kilo Code" : cli === "opencode" ? "OpenCode" : "Aider"}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                       <div className="max-w-sm space-y-2">
                         <Label htmlFor="terminal_idle_timeout_minutes">Idle timeout (minutes)</Label>
                         <Input
@@ -1042,7 +1107,7 @@ function AdminPage() {
                         onClick={() => saveSettings.mutate()}
                         disabled={saveSettings.isPending}
                       >
-                        {saveSettings.isPending ? "Saving…" : "Save terminal settings"}
+                        {saveSettings.isPending ? "Saving…" : "Save terminal settings and CLI access"}
                       </Button>
                     </>
                   ) : (
