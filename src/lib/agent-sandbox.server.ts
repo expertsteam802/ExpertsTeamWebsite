@@ -355,7 +355,12 @@ function cleanTerminalOutput(value: string) {
   );
 }
 
-export async function startCloudProjectTerminal(userId: string, sourceFiles: AgentProjectFiles, username = "ExpertsTeam") {
+export async function startCloudProjectTerminal(
+  userId: string,
+  sourceFiles: AgentProjectFiles,
+  username = "ExpertsTeam",
+  cli: "kilo" | "opencode" | "aider" = "kilo",
+) {
   const files = repairMissingStylesheetImports({ ...sourceFiles });
   validateFiles(files);
   if (Object.keys(files).length === 0) {
@@ -481,7 +486,12 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
     'server.listen(Number(process.env.TERMINAL_PORT || 4175), "0.0.0.0");',
   ].join("\n");
 
-  const promptScript = "PS1=" + shellQuote((username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam") + "@expertsteam:\\w$ ") + "\n" + "export PS1\nPROMPT_COMMAND=\nif [ \"${EXPERTS_SKIP_KILO:-0}\" != \"1\" ]; then\n  if ! command -v kilo >/dev/null 2>&1; then\n    printf \"\\nInstalling Kilo Code for this workspace...\\n\"\n    npm install -g --no-audit --no-fund @kilocode/cli\n  fi\n  if command -v kilo >/dev/null 2>&1; then\n    printf \"\\nStarting Kilo Code...\\n\"\n    exec kilo\n  else\n    printf \"\\nKilo could not be installed. Retry with: npm install -g @kilocode/cli\\n\"\n  fi\nfi\n"; 
+  const cliLaunch = cli === "kilo"
+    ? "if ! command -v kilo >/dev/null 2>&1; then printf \"\\nInstalling Kilo Code...\\n\"; npm install -g --no-audit --no-fund @kilocode/cli; fi\ncommand -v kilo >/dev/null 2>&1 && exec kilo || printf \"\\nKilo installation failed. Try: npm install -g @kilocode/cli\\n\""
+    : cli === "opencode"
+      ? "if ! command -v opencode >/dev/null 2>&1; then printf \"\\nInstalling OpenCode...\\n\"; npm install -g --no-audit --no-fund opencode-ai; fi\ncommand -v opencode >/dev/null 2>&1 && exec opencode || printf \"\\nOpenCode installation failed. Try: npm install -g opencode-ai\\n\""
+      : "if ! command -v aider >/dev/null 2>&1; then printf \"\\nInstalling Aider...\\n\"; python3 -m venv /home/experts-shell/.aider-venv && /home/experts-shell/.aider-venv/bin/pip install --disable-pip-version-check aider-chat && ln -sf /home/experts-shell/.aider-venv/bin/aider /home/experts-shell/.npm-global/bin/aider; fi\ncommand -v aider >/dev/null 2>&1 && exec aider || printf \"\\nAider installation failed. Check Python/pip access and retry: python3 -m venv ~/.aider-venv && ~/.aider-venv/bin/pip install aider-chat\\n\"";
+  const promptScript = "PS1=" + shellQuote((username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam") + "@expertsteam:\\w$ ") + "\\n" + "export PS1\\nPROMPT_COMMAND=\\nif [ \"${EXPERTS_SKIP_KILO:-0}\" != \"1\" ]; then\\n  " + cliLaunch + "\\nfi\\n"; 
   await sandbox.writeFiles([
     { path: bridgeDir + "/package.json", content: Buffer.from(packageJson, "utf8") },
     { path: bridgeDir + "/server.cjs", content: Buffer.from(serverSource, "utf8") },
@@ -530,6 +540,7 @@ export async function startCloudProjectTerminal(userId: string, sourceFiles: Age
       "printf 'prefix=/home/experts-shell/.npm-global\\n' > /home/experts-shell/.npmrc",
       "chown experts-shell:experts-shell /home/experts-shell/.npmrc",
       "command -v runuser >/dev/null",
+      ...(cli === "aider" ? ["apt-get update -qq && apt-get install -y --no-install-recommends python3-venv"] : []),
     ].join(" && ")],
     cwd: WORKDIR,
     timeoutMs: 15_000,
