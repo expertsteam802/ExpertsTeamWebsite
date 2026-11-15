@@ -2143,7 +2143,7 @@ export function CodeAgent() {
               ).map(([value, Icon, label]) => (
                 <button
                   key={value}
-                  onClick={() => switchPanel(value)
+                  onClick={() => switchPanel(value)}
                   className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                     panel === value
                       ? "bg-cyan-400/10 text-cyan-200"
