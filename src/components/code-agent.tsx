@@ -1000,6 +1000,21 @@ export function CodeAgent() {
     toast.success("Imported " + imported + " file(s)" + (skipped ? " · " + skipped + " skipped" : "") + ". Save to keep them.");
   }
 
+
+  function downloadActiveFile() {
+    const content = files[activeFile];
+    if (content === undefined) return;
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = activeFile.split("/").pop() || "project-file.txt";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   function downloadProjectBundle() {
     const payload = {
       format: "expertsteam-project",
@@ -2317,17 +2332,28 @@ export function CodeAgent() {
                 </button>
               )}
               {panel === "code" && (
-                <button
-                  onClick={() => {
-                    void copyTextToSystemClipboard(files[activeFile] ?? "")
-                      .then(() => toast.success("Active file copied"))
-                      .catch((error) => toast.error(error instanceof Error ? error.message : "Could not copy file."));
-                  }}
-                  className="rounded-lg p-2 text-slate-500 hover:bg-white/5 hover:text-white"
-                  aria-label="Copy code"
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                </button>
+                <>
+                  <button
+                    onClick={() => {
+                      void copyTextToSystemClipboard(files[activeFile] ?? "")
+                        .then(() => toast.success("Active file copied"))
+                        .catch((error) => toast.error(error instanceof Error ? error.message : "Could not copy file."));
+                    }}
+                    className="rounded-lg p-2 text-slate-500 hover:bg-white/5 hover:text-white"
+                    aria-label="Copy active file to computer clipboard"
+                    title="Copy active file"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={downloadActiveFile}
+                    className="rounded-lg p-2 text-slate-500 hover:bg-white/5 hover:text-white"
+                    aria-label="Download active file to computer"
+                    title="Download active file"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </button>
+                </>
               )}
               <button
                 onClick={() => setAssistantOpen((value) => !value)}
