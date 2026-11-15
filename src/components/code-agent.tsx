@@ -1140,6 +1140,8 @@ export function CodeAgent() {
             .eq("user_id", user.id);
           if (saveError) throw saveError;
           setThumbnailUrl(publicUrl);
+          setThumbnailUrlInput(publicUrl);
+          setThumbnailDialogOpen(false);
           await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
           toast.success("Project thumbnail or logo uploaded");
         } catch (error) {
