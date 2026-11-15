@@ -622,7 +622,7 @@ export function CodeAgent() {
   // An active CLI process cannot survive a provider VM replacement.
   useEffect(() => {
     const session = terminalConnection;
-    if (!session) return;
+    if (!session || session.projectId !== projectId || !user?.id) return;
     let cancelled = false;
     let retryTimer: number | undefined;
 
@@ -630,19 +630,40 @@ export function CodeAgent() {
       if (terminalRecoveryInProgressRef.current || cancelled) return;
       terminalRecoveryInProgressRef.current = true;
       try {
-        let recoveryFiles = terminalRecoveryFilesRef.current;
+        let recoveryFiles: ProjectFiles;
         try {
           const synced = await syncTerminalFiles({
             data: { projectId: session.projectId, sandboxName: session.sandboxName },
           });
           recoveryFiles = synced.files;
-          terminalRecoveryFilesRef.current = recoveryFiles;
-          await persistRef.current({ files: recoveryFiles });
-          setFiles(recoveryFiles);
+          const { error } = await supabase
+            .from("agent_projects")
+            .update({ files: recoveryFiles as unknown as Json, updated_at: new Date().toISOString() })
+            .eq("id", session.projectId)
+            .eq("user_id", user.id);
+          if (error) throw error;
         } catch {
-          // If the old VM has already expired, recover from the latest saved editor state.
+          if (cancelled) return;
+          // The VM may already have expired. Restore this exact project from Supabase,
+          // never from whichever project's editor happens to be selected now.
+          const { data, error } = await supabase
+            .from("agent_projects")
+            .select("files")
+            .eq("id", session.projectId)
+            .eq("user_id", user.id)
+            .maybeSingle();
+          if (error) throw error;
+          if (!data || !data.files || typeof data.files !== "object" || Array.isArray(data.files)) {
+            throw new Error("The saved project files could not be recovered.");
+          }
+          recoveryFiles = data.files as unknown as ProjectFiles;
         }
         if (cancelled) return;
+        if (projectId === session.projectId) {
+          terminalRecoveryFilesRef.current = recoveryFiles;
+          setFiles(recoveryFiles);
+          setDirty(false);
+        }
 
         const replacement = await connectTerminal({
           data: {
@@ -661,7 +682,7 @@ export function CodeAgent() {
         setTerminalReady(false);
         void stopTerminal({ data: { sandboxName: session.sandboxName } }).catch(() => undefined);
       } catch {
-        // Retry quietly. If the old VM expired, the next attempt restores from saved files.
+        // Retry quietly. If the old VM expired, restore from the saved project record.
         if (!cancelled) retryTimer = window.setTimeout(recoverSession, 60_000);
       } finally {
         terminalRecoveryInProgressRef.current = false;
@@ -674,7 +695,7 @@ export function CodeAgent() {
       window.clearTimeout(timer);
       if (retryTimer !== undefined) window.clearTimeout(retryTimer);
     };
-  }, [terminalConnection?.sandboxName, connectTerminal, syncTerminalFiles, stopTerminal, terminalUsername]);
+  }, [terminalConnection?.sandboxName, terminalConnection?.projectId, projectId, user?.id, connectTerminal, syncTerminalFiles, stopTerminal, terminalUsername]);
 
   // Keep the preview session warm and recover it after Vercel stops an idle sandbox.
   // The server checks whether the dev server is already healthy, so this does not
@@ -1147,10 +1168,7 @@ export function CodeAgent() {
     return data.id;
   }
 
-  const persistRef = useRef(persist);
-  useEffect(() => {
-    persistRef.current = persist;
-  });
+
 
 
 
