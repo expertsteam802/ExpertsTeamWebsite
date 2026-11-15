@@ -474,7 +474,7 @@ export async function startCloudProjectTerminal(
     "  activeShells.add(shell);",
     '  shell.stdout.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
     '  shell.stderr.on("data", (data) => { if (client.readyState === 1) client.send(data); });',
-    '  shell.on("error", (error) => { if (client.readyState === 1) client.send("\\r\nTerminal startup error: " + error.message + "\\r\n"); });',
+    '  shell.on("error", (error) => { if (client.readyState === 1) client.send("\\r\\nTerminal startup error: " + error.message + "\\r\\n"); });',
     '  shell.on("close", () => { activeShells.delete(shell); try { fs.unlinkSync(ttyFile); } catch {} if (client.readyState === 1) client.close(); });',
     '  client.on("message", (buffer) => {',
     "    const value = buffer.toString();",
