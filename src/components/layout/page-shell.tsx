@@ -48,10 +48,10 @@ export function PageShell({ children, hideFooter = false }: { children: ReactNod
         .et-ambient{position:absolute;inset:0;z-index:2;opacity:.24;background:radial-gradient(ellipse at 50% 0%,color-mix(in oklab,var(--primary) 9%,transparent),transparent 62%);pointer-events:none}
         @keyframes et-aurora-drift{0%{transform:translate3d(-2%,0,0) rotate(-4deg) scale(.98)}50%{transform:translate3d(2%,1%,0) rotate(2deg) scale(1.04)}100%{transform:translate3d(-1%,2%,0) rotate(5deg) scale(1.01)}}
         @keyframes et-grid-drift{from{background-position:0 0}to{background-position:54px 54px}}
-        .et-main .hero-surface{background:linear-gradient(115deg,rgba(10,18,34,.86),rgba(10,15,28,.48) 58%,rgba(8,12,22,.76))!important}
+        .et-main .hero-surface{background:linear-gradient(115deg,color-mix(in oklab,var(--background) 90%,transparent),color-mix(in oklab,var(--surface) 68%,transparent) 58%,color-mix(in oklab,var(--background) 82%,transparent))!important}
         .et-main [class*="rounded-2xl"][class*="border"]{backdrop-filter:blur(12px)}
-        .et-main .bg-card{background:rgba(13,22,39,.86)!important}
-        .et-main .bg-background{background:rgba(8,14,26,.88)!important}
+        .et-main .bg-card{background:color-mix(in oklab,var(--card) 90%,transparent)!important}
+        .et-main .bg-background{background:color-mix(in oklab,var(--background) 92%,transparent)!important}
         .et-main button:focus-visible,.et-main a:focus-visible{outline:2px solid var(--ring);outline-offset:3px}
         .et-main img{max-width:100%}
         .et-grain{opacity:.13;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");mix-blend-mode:soft-light}
