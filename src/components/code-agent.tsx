@@ -27,6 +27,8 @@ import {
   RefreshCw,
   Save,
   Send,
+  Sun,
+  Moon,
   Settings2,
   Smartphone,
   Square,
@@ -305,6 +307,7 @@ export function CodeAgent() {
   const projectFileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<Panel>("preview");
+  const [lightMode, setLightMode] = useState(false);
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [logs, setLogs] = useState<{ type: string; message: string }[]>([]);
   const [previewKey, setPreviewKey] = useState(0);
@@ -887,31 +890,22 @@ export function CodeAgent() {
   // It is stopped by the Studio unmount cleanup, not by idle typing time.
 
   async function chooseTerminalCli(): Promise<"kilo" | "opencode" | "aider"> {
-    let enabledClis: string[] = ["kilo"];
-    let defaultCli = "kilo";
+    // Respect the admin-selected default without interrupting users with a browser prompt.
     try {
       const { data } = await supabase.from("site_settings").select("site_branding_settings").eq("id", 1).single();
       const root = data?.site_branding_settings && typeof data.site_branding_settings === "object" && !Array.isArray(data.site_branding_settings)
         ? data.site_branding_settings as Record<string, unknown> : {};
       const terminal = root.terminalSettings && typeof root.terminalSettings === "object" && !Array.isArray(root.terminalSettings)
         ? root.terminalSettings as Record<string, unknown> : {};
-      if (Array.isArray(terminal.enabledClis)) {
-        const valid = terminal.enabledClis.filter((value): value is string =>
-          typeof value === "string" && ["kilo", "opencode", "aider"].includes(value));
-        if (valid.length) enabledClis = valid;
-      }
-      if (typeof terminal.defaultCli === "string" && enabledClis.includes(terminal.defaultCli)) defaultCli = terminal.defaultCli;
+      const enabled = Array.isArray(terminal.enabledClis)
+        ? terminal.enabledClis.filter((value): value is "kilo" | "opencode" | "aider" => value === "kilo" || value === "opencode" || value === "aider")
+        : ["kilo"];
+      const preferred = terminal.defaultCli;
+      if (typeof preferred === "string" && enabled.includes(preferred as "kilo" | "opencode" | "aider")) return preferred as "kilo" | "opencode" | "aider";
+      return (enabled[0] ?? "kilo") as "kilo" | "opencode" | "aider";
     } catch {
-      // The server validates the final choice and defaults to Kilo if no policy is configured.
+      return "kilo";
     }
-    if (enabledClis.length <= 1) return enabledClis[0] as "kilo" | "opencode" | "aider";
-    const labels: Record<string, string> = { kilo: "Kilo Code", opencode: "OpenCode", aider: "Aider" };
-    const choices = enabledClis.map((cli, index) => `${index + 1}. ${labels[cli] ?? cli}`).join("\n");
-    const answer = window.prompt(`Choose your coding CLI:\n${choices}\n\nEnter a number or CLI name. Leave blank to use ${labels[defaultCli]}.`, String(enabledClis.indexOf(defaultCli) + 1));
-    if (!answer?.trim()) return defaultCli as "kilo" | "opencode" | "aider";
-    const byNumber = enabledClis[Number(answer.trim()) - 1];
-    const byName = enabledClis.find((cli) => cli === answer.trim().toLowerCase());
-    return (byNumber ?? byName ?? defaultCli) as "kilo" | "opencode" | "aider";
   }
 
   async function openTerminal() {
@@ -1889,7 +1883,7 @@ export function CodeAgent() {
   }
 
   return (
-    <div className="expert-agent-shell not-prose flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#080e19] text-slate-100">
+    <div className={`expert-agent-shell not-prose flex h-full min-h-0 w-full flex-col overflow-hidden ${lightMode ? "expert-agent-light" : "bg-[#080e19] text-slate-100"}`}>
       {/* Workspace top bar */}
       <header className="expert-agent-topbar flex min-h-[62px] flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#0d1523] px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -2136,38 +2130,11 @@ export function CodeAgent() {
               </div>
             </div>
 
-            <div className="mx-3 my-4 border-t border-white/[0.07]" />
-            <div className="px-3">
-              <div className="mb-2 flex items-center gap-2 px-1 text-xs font-semibold text-slate-300">
-                <Settings2 className="h-3.5 w-3.5 text-cyan-300" />
-                Project actions
-              </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                <Button size="sm" variant="outline" onClick={createProject} className="h-8 justify-start border-white/10 bg-white/[0.03] px-2 text-[11px] text-slate-300 hover:bg-white/10">
-                  <Plus className="mr-1.5 h-3.5 w-3.5" /> New
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => projectFileInputRef.current?.click()} className="h-8 justify-start border-white/10 bg-white/[0.03] px-2 text-[11px] text-slate-300 hover:bg-white/10">
-                  <FolderInput className="mr-1.5 h-3.5 w-3.5" /> Add files
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="h-8 justify-start border-cyan-400/20 bg-cyan-400/[0.06] px-2 text-[11px] text-cyan-100 hover:bg-cyan-400/10">
-                  {saveMutation.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />} Save
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => void publishProject()} disabled={publishing} className="h-8 justify-start border-emerald-400/20 bg-emerald-400/[0.05] px-2 text-[11px] text-emerald-100 hover:bg-emerald-400/10">
-                  {publishing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />} Publish
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => { setThumbnailUrlInput(thumbnailUrl ?? ""); setThumbnailDialogOpen(true); }} className="h-8 justify-start border-white/10 bg-white/[0.03] px-2 text-[11px] text-slate-300 hover:bg-white/10">
-                  <ImagePlus className="mr-1.5 h-3.5 w-3.5" /> Thumbnail
-                </Button>
-                <Button size="sm" variant="outline" onClick={downloadProjectBundle} className="h-8 justify-start border-white/10 bg-white/[0.03] px-2 text-[11px] text-slate-300 hover:bg-white/10">
-                  <Download className="mr-1.5 h-3.5 w-3.5" /> Export
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => void restoreLastCheckpoint()} disabled={!checkpoints.length} className="h-8 justify-start border-amber-400/20 bg-amber-400/[0.05] px-2 text-[11px] text-amber-100 hover:bg-amber-400/10">
-                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Undo AI
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => { setGithubRepo((value) => value || name.toLowerCase().replace(/[^a-z0-9]+/g, "-")); setGithubOpen(true); }} className="h-8 justify-start border-white/10 bg-white/[0.03] px-2 text-[11px] text-slate-300 hover:bg-white/10">
-                  <Github className="mr-1.5 h-3.5 w-3.5" /> GitHub
-                </Button>
-              </div>
+            <div className="mx-3 my-3 border-t border-white/[0.07]" />
+            <div className="grid grid-cols-3 gap-1 px-3">
+              <Button size="sm" variant="outline" onClick={createProject} className="h-8 border-white/10 bg-white/[0.03] px-2 text-[10px] text-slate-300" title="New project"><Plus className="h-3.5 w-3.5" /></Button>
+              <Button size="sm" variant="outline" onClick={() => projectFileInputRef.current?.click()} className="h-8 border-white/10 bg-white/[0.03] px-2 text-[10px] text-slate-300" title="Add files"><FolderInput className="h-3.5 w-3.5" /></Button>
+              <Button size="sm" variant="outline" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="h-8 border-cyan-400/20 bg-cyan-400/[0.06] px-2 text-[10px] text-cyan-100" title="Save project">{saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}</Button>
             </div>
 
             <div className="mt-auto p-3">
@@ -2218,7 +2185,7 @@ export function CodeAgent() {
               {(
                 [
                   ["preview", Eye, "Preview"],
-                  ["code", Code2, "Code"],
+                  ["code", Code2, "Files"],
                   ["console", Terminal, "Console"],
                   ["terminal", TerminalSquare, "Terminal"],
                 ] as const
@@ -2236,6 +2203,19 @@ export function CodeAgent() {
                   {label}
                 </button>
               ))}
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                onClick={() => void publishProject()}
+                disabled={publishing}
+                className="ml-1 h-8 rounded-lg bg-emerald-500 px-3 text-xs font-semibold text-white hover:bg-emerald-400"
+                title="Publish this project"
+              >
+                {publishing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />}
+                {publishing ? "Publishing…" : "Publish"}
+              </Button>
             </div>
 
             <div className="flex items-center gap-1">
@@ -2330,6 +2310,15 @@ export function CodeAgent() {
                   </button>
                 </>
               )}
+              <button
+                type="button"
+                onClick={() => setLightMode((value) => !value)}
+                className={`ml-1 rounded-lg p-2 transition ${lightMode ? "bg-amber-400/15 text-amber-700" : "text-slate-500 hover:bg-white/5 hover:text-white"}`}
+                aria-label={lightMode ? "Switch to dark theme" : "Switch to light theme"}
+                title={lightMode ? "Dark appearance" : "Light appearance"}
+              >
+                {lightMode ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+              </button>
               <button
                 onClick={() => setAssistantOpen((value) => !value)}
                 className={`ml-1 rounded-lg p-2 ${
@@ -2500,7 +2489,7 @@ export function CodeAgent() {
                       <CodeMirror
                         value={files[activeFile] ?? ""}
                         height="100%"
-                        theme={oneDark}
+                        theme={lightMode ? "light" : oneDark}
                         extensions={editorExtensions}
                         onCreateEditor={(view) => {
                           editorRef.current = view;
@@ -2691,7 +2680,20 @@ export function CodeAgent() {
         </main>
       </div>
 
-      <style>{`\n        @keyframes expertStudioTabA { from { opacity: .35; transform: translate3d(0, 13px, 0) scale(.992); filter: blur(3px); } to { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); } }\n        @keyframes expertStudioTabB { from { opacity: .35; transform: translate3d(0, -10px, 0) scale(.992); filter: blur(3px); } to { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); } }\n        @keyframes expertTerminalRevealA { 0% { opacity: 0; transform: perspective(1200px) translateY(34px) scale(.965); filter: blur(12px) brightness(.45); box-shadow: inset 0 0 0 1px rgba(34,211,238,0); } 38% { opacity: 1; filter: blur(1px) brightness(1.45); box-shadow: inset 0 0 90px rgba(34,211,238,.18); } 100% { opacity: 1; transform: perspective(1200px) translateY(0) scale(1); filter: blur(0) brightness(1); box-shadow: inset 0 0 0 rgba(34,211,238,0); } }\n        @keyframes expertTerminalRevealB { 0% { opacity: 0; transform: perspective(1200px) translateY(-30px) scale(.965); filter: blur(12px) brightness(.45); box-shadow: inset 0 0 0 1px rgba(59,130,246,0); } 38% { opacity: 1; filter: blur(1px) brightness(1.5); box-shadow: inset 0 0 100px rgba(59,130,246,.2); } 100% { opacity: 1; transform: perspective(1200px) translateY(0) scale(1); filter: blur(0) brightness(1); box-shadow: inset 0 0 0 rgba(59,130,246,0); } }\n        .expert-agent-kilo-surface .xterm { height: 100%; }
+      <style>{`\n        @keyframes expertStudioTabA { from { opacity: .35; transform: translate3d(0, 13px, 0) scale(.992); filter: blur(3px); } to { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); } }\n        @keyframes expertStudioTabB { from { opacity: .35; transform: translate3d(0, -10px, 0) scale(.992); filter: blur(3px); } to { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); } }\n        @keyframes expertTerminalRevealA { 0% { opacity: 0; transform: perspective(1200px) translateY(34px) scale(.965); filter: blur(12px) brightness(.45); box-shadow: inset 0 0 0 1px rgba(34,211,238,0); } 38% { opacity: 1; filter: blur(1px) brightness(1.45); box-shadow: inset 0 0 90px rgba(34,211,238,.18); } 100% { opacity: 1; transform: perspective(1200px) translateY(0) scale(1); filter: blur(0) brightness(1); box-shadow: inset 0 0 0 rgba(34,211,238,0); } }\n        @keyframes expertTerminalRevealB { 0% { opacity: 0; transform: perspective(1200px) translateY(-30px) scale(.965); filter: blur(12px) brightness(.45); box-shadow: inset 0 0 0 1px rgba(59,130,246,0); } 38% { opacity: 1; filter: blur(1px) brightness(1.5); box-shadow: inset 0 0 100px rgba(59,130,246,.2); } 100% { opacity: 1; transform: perspective(1200px) translateY(0) scale(1); filter: blur(0) brightness(1); box-shadow: inset 0 0 0 rgba(59,130,246,0); } }\n        .expert-agent-light { background:#f5f7fb!important; color:#172033!important; color-scheme:light; }
+        .expert-agent-light .expert-agent-topbar { background:#ffffff!important; border-color:#dce3ed!important; color:#172033!important; }
+        .expert-agent-light .expert-agent-sidebar { background:#f0f3f8!important; border-color:#dce3ed!important; }
+        .expert-agent-light .expert-agent-toolbar { background:#ffffff!important; border-color:#dce3ed!important; }
+        .expert-agent-light .expert-agent-canvas { background:#f8fafc!important; color:#172033!important; }
+        .expert-agent-light .expert-agent-assistant { background:#f2f5fa!important; border-color:#dce3ed!important; color:#172033!important; }
+        .expert-agent-light [class*="border-white/"] { border-color:#dce3ed!important; }
+        .expert-agent-light [class*="text-white"], .expert-agent-light [class*="text-slate-100"], .expert-agent-light [class*="text-slate-200"], .expert-agent-light [class*="text-slate-300"] { color:#263449!important; }
+        .expert-agent-light [class*="text-slate-400"], .expert-agent-light [class*="text-slate-500"], .expert-agent-light [class*="text-slate-600"] { color:#66758a!important; }
+        .expert-agent-light [class*="bg-[#0"], .expert-agent-light [class*="bg-[#1"], .expert-agent-light [class*="bg-black/"] { background-color:#edf1f7!important; }
+        .expert-agent-light .expert-agent-canvas iframe { background:#fff!important; border-color:#d6deea!important; }
+        .expert-agent-light .expert-agent-assistant textarea, .expert-agent-light .expert-agent-assistant input { background:#fff!important; color:#172033!important; border-color:#d6deea!important; }
+        .expert-agent-light .expert-agent-assistant button:hover, .expert-agent-light .expert-agent-sidebar button:hover { background-color:#e5ebf4!important; }
+        .expert-agent-kilo-surface .xterm { height: 100%; }
         .expert-agent-kilo-surface .xterm-viewport { overflow-y: scroll !important; overscroll-behavior: contain; scrollbar-width: thin; touch-action: pan-y; }
         @media (prefers-reduced-motion: reduce) { .expert-agent-canvas { animation: none !important; } }\n      `}</style>
 
