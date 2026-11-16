@@ -4,6 +4,11 @@ export const THEMES = [
   { id: "neon", label: "Neon Circuit" },
   { id: "crimson", label: "Creator Crimson" },
   { id: "daylight", label: "Daylight Studio" },
+  { id: "aurora", label: "Aurora Flow" },
+  { id: "ocean", label: "Deep Ocean" },
+  { id: "sunset", label: "Solar Ember" },
+  { id: "forest", label: "Emerald Forest" },
+  { id: "rose", label: "Rose Quartz" },
 ] as const;
 
 export type ThemeId = (typeof THEMES)[number]["id"];
