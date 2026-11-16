@@ -33,7 +33,7 @@ export function SecondarySidebar() {
   );
   return (
     <>
-      <aside className={cn("relative z-20 hidden shrink-0 border-r border-white/[.08] bg-[#090d15]/75 transition-[width] duration-200 lg:flex lg:flex-col", width)}>
+      <aside className={cn("et-secondary-sidebar relative z-20 hidden shrink-0 border-r border-white/[.08] bg-[#090d15]/75 transition-[width] duration-200 lg:flex lg:flex-col", width)}>
         <div className={cn("flex h-12 items-center border-b border-white/[.07]", collapsed ? "justify-center px-2" : "justify-between px-4")}>
           {!collapsed && <span className="text-[10px] font-bold uppercase tracking-[.18em] text-white/35">Your space</span>}
           <button type="button" onClick={() => setCollapsed((v) => !v)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} className="rounded-lg p-1.5 text-white/45 transition hover:bg-white/10 hover:text-white">
