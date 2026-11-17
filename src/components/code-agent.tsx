@@ -351,11 +351,7 @@ export function CodeAgent() {
   const [showConnectionCinematic, setShowConnectionCinematic] = useState(false);
   const [connectionProgress, setConnectionProgress] = useState(0);
   useEffect(() => {
-    if (!showConnectionCinematic) {
-      setConnectionProgress(0);
-      return;
-    }
-    setConnectionProgress(3);
+    if (!showConnectionCinematic) return;
     const progressTimer = window.setInterval(() => {
       setConnectionProgress((current) => Math.min(94, current + Math.max(0.7, (94 - current) * 0.075)));
     }, 320);
@@ -924,6 +920,7 @@ export function CodeAgent() {
   }
 
   async function openTerminal() {
+    setConnectionProgress(0);
     setShowConnectionCinematic(true);
     if (terminalReady && terminalConnection?.projectId === projectId) {
       setShowConnectionCinematic(false);
