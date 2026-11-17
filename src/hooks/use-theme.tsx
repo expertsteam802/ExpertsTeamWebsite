@@ -1,14 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 export const THEMES = [
-  { id: "neon", label: "Neon Circuit" },
-  { id: "crimson", label: "Creator Crimson" },
-  { id: "daylight", label: "Daylight Studio" },
-  { id: "aurora", label: "Aurora Flow" },
-  { id: "ocean", label: "Deep Ocean" },
-  { id: "sunset", label: "Solar Ember" },
-  { id: "forest", label: "Emerald Forest" },
-  { id: "rose", label: "Rose Quartz" },
+  { id: "light", label: "Light" },
+  { id: "dark", label: "Dark" },
 ] as const;
 
 export type ThemeId = (typeof THEMES)[number]["id"];
@@ -27,11 +21,11 @@ function applyTheme(theme: ThemeId) {
   const root = document.documentElement;
   root.classList.remove(...THEMES.map((t) => `theme-${t.id}`));
   root.classList.add(`theme-${theme}`);
-  root.classList.toggle("dark", theme !== "daylight");
+  root.classList.toggle("dark", theme === "dark");
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeId>("neon");
+  const [theme, setThemeState] = useState<ThemeId>("dark");
   const [navAlign, setNavAlignState] = useState<NavAlign>("left");
 
   useEffect(() => {
@@ -39,7 +33,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedAlign = localStorage.getItem("cp-nav-align") as NavAlign | null;
     if (storedTheme && THEMES.some((t) => t.id === storedTheme)) setThemeState(storedTheme);
     if (storedAlign) setNavAlignState(storedAlign);
-    applyTheme(storedTheme && THEMES.some((t) => t.id === storedTheme) ? storedTheme : "neon");
+    applyTheme(storedTheme && THEMES.some((t) => t.id === storedTheme) ? storedTheme : "dark");
   }, []);
 
   const setTheme = useCallback((next: ThemeId) => {
