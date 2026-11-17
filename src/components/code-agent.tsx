@@ -27,8 +27,6 @@ import {
   RefreshCw,
   Save,
   Send,
-  Sun,
-  Moon,
   Settings2,
   Smartphone,
   Square,
@@ -60,6 +58,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
+import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import { extractZipTextFiles } from "@/lib/zip-text-import";
 import type { Json } from "@/integrations/supabase/types";
@@ -307,7 +306,8 @@ export function CodeAgent() {
   const projectFileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<Panel>("preview");
-  const [lightMode, setLightMode] = useState(false);
+  const { theme: siteTheme } = useTheme();
+  const lightMode = siteTheme === "light";
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [logs, setLogs] = useState<{ type: string; message: string }[]>([]);
   const [previewKey, setPreviewKey] = useState(0);
@@ -2310,15 +2310,7 @@ export function CodeAgent() {
                   </button>
                 </>
               )}
-              <button
-                type="button"
-                onClick={() => setLightMode((value) => !value)}
-                className={`ml-1 rounded-lg p-2 transition ${lightMode ? "bg-amber-400/15 text-amber-700" : "text-slate-500 hover:bg-white/5 hover:text-white"}`}
-                aria-label={lightMode ? "Switch to dark theme" : "Switch to light theme"}
-                title={lightMode ? "Dark appearance" : "Light appearance"}
-              >
-                {lightMode ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-              </button>
+
               <button
                 onClick={() => setAssistantOpen((value) => !value)}
                 className={`ml-1 rounded-lg p-2 ${
