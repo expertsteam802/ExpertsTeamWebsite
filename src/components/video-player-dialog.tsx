@@ -260,6 +260,8 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
     };
   }, [videoId, shouldLoadLesson, title]);
 
+  if (!videoId) return null;
+
   return (
     <>
       <section id="video-watch-panel" className="mb-8 w-full scroll-mt-24 rounded-2xl border border-border/70 bg-card p-3 shadow-xl sm:p-5">
