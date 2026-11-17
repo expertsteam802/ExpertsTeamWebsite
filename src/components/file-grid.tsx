@@ -4,7 +4,6 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
-import { BannerUnlockAd } from "@/components/ads/banner-unlock-ad";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -49,8 +48,6 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
   const [price, setPrice] = useState("0");
   const [editSourceUrl, setEditSourceUrl] = useState("");
   const [editThumbnailUrl, setEditThumbnailUrl] = useState("");
-  const [pendingDownload, setPendingDownload] = useState<CommunityFile | null>(null);
-  const [downloadUnlocked, setDownloadUnlocked] = useState(false);
 
   const saveEdit = useMutation({
     mutationFn: async () => {
@@ -185,14 +182,7 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
               </p>
 
               <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    setPendingDownload(file);
-                    setDownloadUnlocked(false);
-                  }}
-                >
+                <Button size="sm" variant="secondary" onClick={() => void requestDownload(file)}>
                   <Download className="mr-2 h-4 w-4" />{" "}
                   {file.source_url ? "Open source" : "Download"}
                 </Button>
@@ -222,34 +212,6 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
           );
         })}
       </div>
-
-      <Dialog
-        open={!!pendingDownload}
-        onOpenChange={(open) => {
-          if (!open) {
-            setPendingDownload(null);
-            setDownloadUnlocked(false);
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Advertisement before download</DialogTitle>
-          </DialogHeader>
-          <BannerUnlockAd onUnlock={() => setDownloadUnlocked(true)} />
-          {downloadUnlocked && pendingDownload && (
-            <Button
-              onClick={() => {
-                void requestDownload(pendingDownload);
-                setPendingDownload(null);
-                setDownloadUnlocked(false);
-              }}
-            >
-              Continue to {pendingDownload.source_url ? "source" : "download"}
-            </Button>
-          )}
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent>

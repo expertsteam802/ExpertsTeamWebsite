@@ -142,9 +142,8 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [useNativeEmbed, setUseNativeEmbed] = useState(false);
-  const [adUnlocked, setAdUnlocked] = useState(false);
   const nativeEmbedTimeoutRef = useRef<number | null>(null);
-  const shouldLoadLesson = Boolean(videoId && adUnlocked);
+  const shouldLoadLesson = Boolean(videoId);
 
   const clearNativeEmbedTimeout = useCallback(() => {
     if (nativeEmbedTimeoutRef.current !== null) {
@@ -168,7 +167,6 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
     setPlaybackError(null);
     setLoading(false);
     setUseNativeEmbed(false);
-    setAdUnlocked(false);
   }, [videoId]);
 
   useEffect(() => {
@@ -194,7 +192,6 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
             rel: 0,
             enablejsapi: 1,
             origin: window.location.origin,
-            widget_referrer: window.location.href,
           },
           events: {
             onReady: (event) => {
@@ -203,7 +200,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
               setLoading(false);
               const iframe = event.target.getIframe();
               iframe.title = title;
-              iframe.referrerPolicy = "origin";
+              iframe.referrerPolicy = "strict-origin-when-cross-origin";
               iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
               iframe.allowFullscreen = true;
               iframe.className = "h-full w-full";
@@ -268,11 +265,6 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
   return (
     <>
       <section id="video-watch-panel" className="mb-8 w-full scroll-mt-24 rounded-2xl border border-border/70 bg-card p-3 shadow-xl sm:p-5">
-        {!adUnlocked && (
-          <div className="mb-4">
-            <BannerUnlockAd compact onUnlock={() => setAdUnlocked(true)} />
-          </div>
-        )}
         <div className="mb-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wider text-primary">Now watching</p>
@@ -280,20 +272,19 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
           </div>
           <Button variant="outline" size="sm" onClick={onClose} className="shrink-0">Close player</Button>
         </div>
-          {adUnlocked && (
-            <div
-              className={`expertsteam-video-player relative aspect-video max-h-[75vh] w-full max-w-[1200px] overflow-hidden rounded-xl bg-black ${alignment === "left" ? "mr-auto" : alignment === "right" ? "ml-auto" : "mx-auto"}`}
-            >
+          <div
+            className={`expertsteam-video-player relative aspect-video max-h-[75vh] w-full max-w-[1200px] overflow-hidden rounded-xl bg-black ${alignment === "left" ? "mr-auto" : alignment === "right" ? "ml-auto" : "mx-auto"}`}
+          >
             {videoId &&
               (useNativeEmbed ? (
                 <iframe
                   key={videoId}
                   title={title}
-                  src={`https://www.youtube.com/embed/${encodeURIComponent(videoId)}?playsinline=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}&widget_referrer=${encodeURIComponent(window.location.href)}`}
+                  src={`https://www.youtube.com/embed/${encodeURIComponent(videoId)}?playsinline=1&rel=0`}
                   className="h-full w-full border-0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
-                  referrerPolicy="origin"
+                  referrerPolicy="strict-origin-when-cross-origin"
                   onLoad={() => { clearNativeEmbedTimeout(); setLoading(false); }}
                   onError={() => { clearNativeEmbedTimeout(); setLoading(false); setPlaybackError("The video could not be loaded. Check the video link or open it on YouTube."); }}
                 />
@@ -321,13 +312,11 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
                 )}
               </div>
             )}
-            </div>
-          )}
-          {adUnlocked && (
-            <p className="text-xs text-muted-foreground">
-              A view is counted only after YouTube confirms that playback has started.
-            </p>
-          )}
+          </div>
+          <BannerUnlockAd compact />
+          <p className="text-xs text-muted-foreground">
+            A view is counted only after YouTube confirms that playback has started.
+          </p>
       </section>
     </>
   );

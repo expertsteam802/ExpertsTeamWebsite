@@ -32,7 +32,7 @@ Deno.serve(async (request: Request) => {
     return json({
       iceServers: fallbackIceServers,
       turnEnabled: false,
-      warning: "TURN credentials are not configured; using STUN only.",
+      warning: "TURN relay credentials have not been configured yet. Using direct STUN connectivity.",
     });
   }
 
@@ -75,7 +75,7 @@ Deno.serve(async (request: Request) => {
       return json({
         iceServers: fallbackIceServers,
         turnEnabled: false,
-        warning: "No compatible TURN relay URLs; using STUN only.",
+        warning: "The TURN service returned no browser-compatible relay URLs. Using direct STUN connectivity.",
       });
     }
     return json({ iceServers: usableIceServers, turnEnabled: true });
