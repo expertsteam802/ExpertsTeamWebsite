@@ -9,7 +9,6 @@ import {
   LogOut,
   Menu,
   MessageCircle,
-  Palette,
   Shield,
   Sparkles,
   Users,
@@ -24,13 +23,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
 import { useSiteSettings } from "@/hooks/use-site-settings";
-import { THEMES, useTheme, type NavAlign } from "@/hooks/use-theme";
 import { cn } from "@/lib/utils";
 
 const PRIMARY_LINKS = [
@@ -53,7 +50,6 @@ const SECONDARY_LINKS = [
 export function SiteHeader() {
   const settings = useSiteSettings();
   const { user, profile, isAdmin, isDeveloper, signOut } = useAuth();
-  const { theme, setTheme, navAlign, setNavAlign } = useTheme();
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const activeClass = "et-nav-tab et-nav-active";
@@ -101,42 +97,6 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Appearance settings"
-                className="text-foreground hover:bg-muted hover:text-foreground"
-              >
-                <Palette className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuLabel>Theme</DropdownMenuLabel>
-              {THEMES.map((option) => (
-                <DropdownMenuItem
-                  key={option.id}
-                  onClick={() => setTheme(option.id)}
-                  className={cn(theme === option.id && "text-primary")}
-                >
-                  {option.label}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel>Tab alignment</DropdownMenuLabel>
-              {(["left", "center", "right"] as NavAlign[]).map((align) => (
-                <DropdownMenuItem
-                  key={align}
-                  onClick={() => setNavAlign(align)}
-                  className={cn("capitalize", navAlign === align && "text-primary")}
-                >
-                  {align}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

@@ -1,9 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-export const THEMES = [
-  { id: "light", label: "Light" },
-  { id: "dark", label: "Dark" },
-] as const;
+export const THEMES = [{ id: "blue", label: "Blue" }] as const;
 
 export type ThemeId = (typeof THEMES)[number]["id"];
 export type NavAlign = "left" | "center" | "right";
@@ -25,20 +22,19 @@ function applyTheme(theme: ThemeId) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeId>("dark");
+  const [theme, setThemeState] = useState<ThemeId>("blue");
   const [navAlign, setNavAlignState] = useState<NavAlign>("left");
 
   useEffect(() => {
-    const storedTheme = localStorage.getItem("cp-theme") as ThemeId | null;
     const storedAlign = localStorage.getItem("cp-nav-align") as NavAlign | null;
-    if (storedTheme && THEMES.some((t) => t.id === storedTheme)) setThemeState(storedTheme);
     if (storedAlign) setNavAlignState(storedAlign);
-    applyTheme(storedTheme && THEMES.some((t) => t.id === storedTheme) ? storedTheme : "dark");
+    setThemeState("blue");
+    applyTheme("blue");
   }, []);
 
   const setTheme = useCallback((next: ThemeId) => {
     setThemeState(next);
-    localStorage.setItem("cp-theme", next);
+    if (next !== "blue") return;
     applyTheme(next);
   }, []);
 
