@@ -23,7 +23,7 @@ export function PageShell({ children, hideFooter = false }: { children: ReactNod
         <SecondarySidebar />
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
       {settings.banner_image_url && (
-        <div className="relative z-10 shrink-0 overflow-hidden border-b border-white/10">
+        <div className="relative z-10 shrink-0 overflow-hidden border-b border-border">
           <img
             src={settings.banner_image_url}
             alt={`${settings.site_name} banner`}
