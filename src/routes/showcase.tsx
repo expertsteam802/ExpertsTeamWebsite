@@ -6,6 +6,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { formatDateOnly } from "@/lib/format";
 
 type PublishedProject = {
   id: string;
@@ -104,7 +105,7 @@ function ShowcasePage() {
                   )}
                   <h2 className="mt-5 font-display text-xl font-semibold">{project.name}</h2>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Updated {new Date(project.updated_at).toLocaleDateString()}
+                    Updated {formatDateOnly(project.updated_at)}
                   </p>
                 </div>
                 <Link
