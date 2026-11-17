@@ -173,7 +173,10 @@ function AuthPage() {
   return (
     <PageShell>
       <div className="hero-surface min-h-[80vh] px-4 py-16">
-        <Card className="animate-rise mx-auto w-full max-w-[320px] p-5 glow-panel">
+        <Card
+          className="animate-rise mx-auto w-full max-w-[320px] p-5 glow-panel"
+          style={{ width: "100%", maxWidth: "320px" }}
+        >
           <h1 className="font-display text-2xl font-semibold">Welcome to ExpertsTeam</h1>
           <p className="text-sm text-muted-foreground">
             The very first account created becomes the creator/admin of this site.
