@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { generateExpertImage } from "@/lib/ai.functions";
+import { formatDateOnly } from "@/lib/format";
 
 type ChatRow = {
   id: string;
@@ -615,7 +616,7 @@ export function ChrisAiChat({
                     {thread.title || "New conversation"}
                   </span>
                   <span className="mt-1 block text-[10px] text-muted-foreground">
-                    {new Date(thread.updatedAt).toLocaleDateString()}
+                    {formatDateOnly(thread.updatedAt)}
                   </span>
                 </button>
                 <button
