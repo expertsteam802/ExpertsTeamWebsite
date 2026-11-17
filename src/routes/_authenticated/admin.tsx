@@ -41,6 +41,7 @@ import type { Json } from "@/integrations/supabase/types";
 import { deleteUserAccount } from "@/lib/accounts.functions";
 import { formatBytes, formatDate } from "@/lib/format";
 import { paymentMethodLabel, type UpgradeRequest } from "@/lib/subscription";
+import { THEMES, type ThemeId } from "@/hooks/use-theme";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -60,6 +61,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 type SettingsForm = {
   site_name: string;
+  site_theme: ThemeId;
   logo_url: string;
   background_image_url: string;
   banner_image_url: string;
@@ -307,6 +309,20 @@ function AdminPage() {
     if (settings && !form) {
       setForm({
         site_name: settings.site_name,
+        site_theme: (() => {
+          const root =
+            settings.site_branding_settings &&
+            typeof settings.site_branding_settings === "object" &&
+            !Array.isArray(settings.site_branding_settings)
+              ? (settings.site_branding_settings as Record<string, unknown>)
+              : {};
+          const branding =
+            root.siteBranding && typeof root.siteBranding === "object" && !Array.isArray(root.siteBranding)
+              ? (root.siteBranding as Record<string, unknown>)
+              : {};
+          const saved = branding.theme;
+          return THEMES.some((option) => option.id === saved) ? (saved as ThemeId) : "neon";
+        })(),
         logo_url: settings.logo_url ?? "",
         background_image_url: (() => {
           const branding =
@@ -474,6 +490,7 @@ function AdminPage() {
             ...existingBranding,
             siteBranding: {
               ...existingSiteBranding,
+              theme: form.site_theme,
               background_image_url: form.background_image_url.trim(),
               banner_image_url: form.banner_image_url.trim(),
             },
@@ -1137,6 +1154,24 @@ function AdminPage() {
                   </div>
                   {form ? (
                     <>
+                      <div className="space-y-2 rounded-xl border border-border/70 p-4">
+                        <Label htmlFor="site_theme">Website colour theme</Label>
+                        <select
+                          id="site_theme"
+                          className="h-10 w-full max-w-sm rounded-md border border-input bg-background px-3 text-sm"
+                          value={form.site_theme}
+                          onChange={(event) =>
+                            setForm({ ...form, site_theme: event.target.value as ThemeId })
+                          }
+                        >
+                          {THEMES.map((option) => (
+                            <option key={option.id} value={option.id}>{option.label}</option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-muted-foreground">
+                          The selected colour theme is applied to every visitor. Only an administrator can change it.
+                        </p>
+                      </div>
                       <div className="space-y-3 rounded-xl border border-border/70 p-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>

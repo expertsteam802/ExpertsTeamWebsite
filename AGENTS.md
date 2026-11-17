@@ -1,2 +1,3 @@
-- AI credentials are read only inside authenticated server-function handlers and passed explicitly to Gemini helpers; never use VITE-prefixed private keys or browser storage.
-- The managed Lovable Cloud connection and generated integration files remain platform-owned; do not overwrite them to redirect the project to another database.
+- AI credentials are read only inside authenticated server-function handlers; never expose private keys through VITE-prefixed variables or browser storage.
+- The project uses its own first-party Vite/TanStack Start configuration and connects directly to the existing Supabase project through environment variables.
+- Keep service-role credentials server-only and preserve row-level security for user-scoped data.

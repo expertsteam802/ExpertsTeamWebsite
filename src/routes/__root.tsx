@@ -26,7 +26,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
+import { reportRuntimeError } from "../lib/runtime-error-reporting";
 
 function NotFoundComponent() {
   return (
@@ -55,7 +55,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   const router = useRouter();
 
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    reportRuntimeError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
   const dialogEnabled =
@@ -118,7 +118,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       // YouTube requires a Referer header for embedded playback (error 153).
-      { name: "referrer", content: "strict-origin-when-cross-origin" },
+      { name: "referrer", content: "origin" },
       { title: "ExpertsTeam | Code, Create & Connect in One Digital Hub" },
       {
         name: "description",
@@ -192,7 +192,7 @@ function RootShell({ children }: { children: ReactNode }) {
   }, [shouldLoadAdsense]);
 
   return (
-    <html lang="en" className="theme-dark dark">
+    <html lang="en" className="theme-neon dark">
       <head>
         <HeadContent />
         {shouldLoadAdsense && (
@@ -272,22 +272,22 @@ function RootContent() {
   }, [settings.error_dialog_enabled]);
 
   useEffect(() => {
-    const reportRuntimeError = (error: Error, boundary: string) => {
-      reportLovableError(error, { boundary });
+    const handleRuntimeError = (error: Error, boundary: string) => {
+      reportRuntimeError(error, { boundary });
       if (settings.error_dialog_enabled !== false) {
         setRuntimeError(
-          "Something unexpected happened. The error has been recorded; you can safely retry.",
+          "Something unexpected happened. The error details have been logged; you can safely retry.",
         );
       }
     };
     const onError = (event: ErrorEvent) => {
-      reportRuntimeError(
+      handleRuntimeError(
         event.error instanceof Error ? event.error : new Error(event.message),
         "window_error",
       );
     };
     const onRejection = (event: PromiseRejectionEvent) => {
-      reportRuntimeError(
+      handleRuntimeError(
         event.reason instanceof Error ? event.reason : new Error(String(event.reason)),
         "unhandled_rejection",
       );

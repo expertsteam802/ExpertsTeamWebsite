@@ -54,7 +54,7 @@ Rules:
 - Always reply with JSON only. Do not wrap it in markdown fences.
 - Do not return placeholder comments like TODO.
 - Do not use fake imports or unsupported libraries.
-- Keep the app realistic and serious, like Bolt, Lovable, or a proper Vite app, not a toy demo.`;
+- Keep the app realistic and serious, like a professional production-grade app builder, not a toy demo.`;
 
 /**
  * Repairs missing local CSS imports before a generated project reaches the preview.
