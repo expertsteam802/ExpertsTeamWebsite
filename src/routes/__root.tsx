@@ -119,11 +119,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       // YouTube requires a Referer header for embedded playback (error 153).
       { name: "referrer", content: "strict-origin-when-cross-origin" },
-      { title: "ExpertsTeam | Code, Create & Connect in One Digital Hub" },
+      { title: "ExpertsTeam — Learn, Build, Create & Connect" },
       {
         name: "description",
         content:
-          "Learn to code, build software with ExpertAI, connect with creators and request custom applications from ExpertsTeam.",
+          "ExpertsTeam is a digital learning and creator platform to learn coding, build real software with ExpertAI, share projects, connect with developers and discover useful tools.",
       },
 
       {
@@ -134,7 +134,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:site_name", content: "ExpertsTeam" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:title", content: "ExpertsTeam | Code, Create & Connect in One Digital Hub" },
+      { property: "og:title", content: "ExpertsTeam — Learn, Build, Create & Connect" },
       { name: "twitter:title", content: "ExpertsTeam | Code, Create & Connect in One Digital Hub" },
       {
         property: "og:description",
@@ -144,7 +144,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "twitter:description",
         content:
-          "Learn coding, build software, connect with creators and request custom apps with ExpertsTeam.",
+          "Learn coding, build software with ExpertAI, share projects and connect with the ExpertsTeam developer community.",
       },
       { property: "og:image", content: "https://expertsteam.giize.com/experts-team-brand.svg" },
       { property: "og:image:width", content: "1200" },
@@ -154,8 +154,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon.png" },
       { rel: "icon", type: "image/svg+xml", href: "/experts-team-mark.svg" },
-      { rel: "apple-touch-icon", type: "image/svg+xml", href: "/experts-team-mark.svg" },
+      { rel: "apple-touch-icon", href: "/favicon.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -215,7 +216,7 @@ function RootShell({ children }: { children: ReactNode }) {
               contactPoint: [{ "@type": "ContactPoint", contactType: "customer support", email: "mucyochristhecla@gmail.com" }],
               url: "https://expertsteam.giize.com/",
               description:
-                "ExpertsTeam is a digital hub to learn coding, build apps with ExpertAI, connect with creators, and discover useful downloads.",
+                "ExpertsTeam is a digital learning and creator platform to learn coding, build real software with ExpertAI, share projects, connect with developers and discover useful tools.",
             }),
           }}
         />
@@ -229,7 +230,7 @@ function RootShell({ children }: { children: ReactNode }) {
               alternateName: ["Experts Team", "expertsteam.giize.com"],
               url: "https://expertsteam.giize.com/",
               description:
-                "ExpertsTeam is a digital hub to learn coding, build apps with ExpertAI, connect with creators, and discover useful downloads.",
+                "ExpertsTeam is a digital learning and creator platform to learn coding, build real software with ExpertAI, share projects, connect with developers and discover useful tools.",
             }),
           }}
         />
