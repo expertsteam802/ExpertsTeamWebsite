@@ -16,9 +16,11 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function applyTheme(theme: ThemeId) {
   const root = document.documentElement;
-  root.classList.remove(...THEMES.map((t) => `theme-${t.id}`));
+  // Clear legacy monochrome theme classes left by older builds before applying
+  // the fixed ExpertsTeam blue-cyan design system.
+  root.classList.remove("theme-light", "theme-dark", ...THEMES.map((t) => `theme-${t.id}`));
   root.classList.add(`theme-${theme}`);
-  root.classList.toggle("dark", theme === "dark");
+  root.classList.add("dark");
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
