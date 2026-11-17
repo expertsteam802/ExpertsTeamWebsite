@@ -192,7 +192,7 @@ function RootShell({ children }: { children: ReactNode }) {
   }, [shouldLoadAdsense]);
 
   return (
-    <html lang="en" className="theme-neon dark">
+    <html lang="en" className="theme-dark dark">
       <head>
         <HeadContent />
         {shouldLoadAdsense && (
