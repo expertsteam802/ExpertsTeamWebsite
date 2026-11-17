@@ -349,6 +349,18 @@ export function CodeAgent() {
   const [runtimeStatus, setRuntimeStatus] = useState("Not started");
   const [terminalReady, setTerminalReady] = useState(false);
   const [showConnectionCinematic, setShowConnectionCinematic] = useState(false);
+  const [connectionProgress, setConnectionProgress] = useState(0);
+  useEffect(() => {
+    if (!showConnectionCinematic) {
+      setConnectionProgress(0);
+      return;
+    }
+    setConnectionProgress(3);
+    const progressTimer = window.setInterval(() => {
+      setConnectionProgress((current) => Math.min(94, current + Math.max(0.7, (94 - current) * 0.075)));
+    }, 320);
+    return () => window.clearInterval(progressTimer);
+  }, [showConnectionCinematic]);
   const [terminalConnection, setTerminalConnection] = useState<{
     url: string;
     token: string;
@@ -1895,11 +1907,12 @@ export function CodeAgent() {
           <div className="et-ai-link-backdrop absolute inset-0" />
           <div className="et-ai-link-vortex absolute inset-0" />
           <div className="relative z-10 mx-5 flex max-w-lg flex-col items-center text-center">
-            <img src="/expertai-mark.svg" alt="" className="et-ai-link-mark mb-7 h-20 w-20" />
+            <div aria-hidden="true" className="et-ai-egg mb-7"><span /></div>
             <div className="et-ai-link-kicker mb-3 text-[10px] font-bold uppercase tracking-[.42em]">ExpertsTeam Intelligence</div>
             <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-5xl">Establishing connection</h2>
             <p className="mt-3 text-sm text-white/70">Preparing your workspace and bringing the builder online</p>
-            <div className="et-ai-link-progress mt-8 h-[2px] w-64 overflow-hidden rounded-full bg-white/15"><span /></div>
+            <div className="mt-7 flex w-64 items-center justify-between text-[11px] font-medium tracking-[.16em] text-cyan-100/80"><span>CONNECTING</span><span>{Math.round(connectionProgress)}%</span></div>
+            <div className="et-ai-link-progress mt-2 h-1 w-64 overflow-hidden rounded-full bg-white/15" role="progressbar" aria-label="Workspace connection progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(connectionProgress)}><span style={{ width: `${connectionProgress}%` }} /></div>
           </div>
         </div>
       )}
