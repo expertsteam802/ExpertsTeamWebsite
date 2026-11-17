@@ -8,6 +8,7 @@ import {
   GraduationCap,
   LogOut,
   Menu,
+  Palette,
   MessageCircle,
   Shield,
   Sparkles,
@@ -28,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
+import { useTheme, type NavAlign } from "@/hooks/use-theme";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +53,7 @@ const SECONDARY_LINKS = [
 export function SiteHeader() {
   const settings = useSiteSettings();
   const { user, profile, isAdmin, isDeveloper, signOut } = useAuth();
+  const { navAlign, setNavAlign } = useTheme();
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const activeClass = "et-nav-tab et-nav-active";
@@ -98,6 +101,30 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Navigation layout settings"
+                className="text-foreground hover:bg-muted hover:text-foreground"
+              >
+                <Palette className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuLabel>Navigation alignment</DropdownMenuLabel>
+              {(["left", "center", "right"] as NavAlign[]).map((align) => (
+                <DropdownMenuItem
+                  key={align}
+                  onClick={() => setNavAlign(align)}
+                  className={cn("capitalize", navAlign === align && "text-primary")}
+                >
+                  {align}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
