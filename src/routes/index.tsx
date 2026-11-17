@@ -27,10 +27,10 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ExpertsTeam — Learn, Build & Connect" },
+      { title: "ExpertsTeam — Learn Coding, Build Apps & Connect" },
       {
         name: "description",
-        content: "Learn to code, build software with ExpertAI, connect with developers and request custom business applications.",
+        content: "Learn coding, build apps with ExpertAI, share projects, connect with developers and discover useful tools on ExpertsTeam.",
       },
       { property: "og:title", content: "ExpertsTeam — Learn, Build & Connect" },
       {
