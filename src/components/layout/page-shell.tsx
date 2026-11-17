@@ -6,17 +6,18 @@ import { useSiteSettings } from "@/hooks/use-site-settings";
 
 export function PageShell({ children, hideFooter = false }: { children: ReactNode; hideFooter?: boolean }) {
   const settings = useSiteSettings();
-  const background = settings.background_image_url || "/experts-team-background.svg";
+  const background = settings.background_image_url || "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=2400&q=88";
   return (
     <div className="et-shell relative flex h-[100dvh] min-h-[100dvh] w-full flex-col overflow-hidden bg-background text-foreground">
       <div
         aria-hidden="true"
         className="et-cinema-backdrop absolute inset-0"
         style={{
-          backgroundImage: `url("${background}")`,
+          backgroundImage: `linear-gradient(180deg, rgba(0,0,0,.34), rgba(0,0,0,.18) 42%, rgba(0,0,0,.48)), url("${background}")`,
         }}
       />
       <div aria-hidden="true" className="et-ambient pointer-events-none absolute inset-0" />
+      <div aria-hidden="true" className="et-cinema-atmosphere pointer-events-none absolute inset-0" />
       <div aria-hidden="true" className="et-grain pointer-events-none absolute inset-0" />
       <SiteHeader />
       <div className="relative z-10 flex min-h-0 flex-1 overflow-hidden">
@@ -41,11 +42,19 @@ export function PageShell({ children, hideFooter = false }: { children: ReactNod
       </div>
       <style>{`
         .theme-neon{--primary:oklch(.68 .18 255);--primary-foreground:oklch(.99 .005 250);--accent:oklch(.74 .13 235);--accent-foreground:oklch(.16 .025 255);--ring:oklch(.72 .16 255);--background:oklch(.12 .02 258);--foreground:oklch(.96 .012 250);--card:oklch(.17 .02 258);--card-foreground:oklch(.96 .012 250);--surface:oklch(.18 .02 258);--surface-foreground:oklch(.96 .012 250);--muted:oklch(.23 .02 258);--muted-foreground:oklch(.72 .02 250);--border:oklch(.29 .02 258);--input:oklch(.25 .02 258);--secondary:oklch(.23 .02 258);--secondary-foreground:oklch(.94 .01 250);--sidebar:oklch(.15 .02 258);--sidebar-primary:oklch(.68 .18 255);--sidebar-accent:oklch(.23 .02 258);--sidebar-border:oklch(.29 .02 258)}
-        .et-cinema-backdrop{background-size:cover;background-position:center;filter:saturate(.72);opacity:.12;transition:opacity .5s ease}
+        .et-cinema-backdrop{background-size:cover;background-position:50% 52%;filter:saturate(.9) contrast(1.08);opacity:.78;transform:scale(1.04);animation:et-cinema-pan 52s ease-in-out infinite alternate;will-change:transform,background-position}
+        .et-cinema-atmosphere{position:absolute;inset:-8%;z-index:2;pointer-events:none;overflow:hidden;background:radial-gradient(ellipse at 50% 72%,rgba(255,190,120,.12),transparent 38%),linear-gradient(180deg,rgba(0,0,0,.18),transparent 24%,rgba(0,0,0,.25));animation:et-atmosphere-breathe 18s ease-in-out infinite alternate}
+        .et-cinema-atmosphere::before,.et-cinema-atmosphere::after{content:"";position:absolute;inset:-20%;pointer-events:none;filter:blur(34px);opacity:.34}
+        .et-cinema-atmosphere::before{background:radial-gradient(ellipse at 18% 72%,rgba(205,218,255,.26),transparent 36%),radial-gradient(ellipse at 82% 62%,rgba(255,190,130,.22),transparent 34%);animation:et-fog-drift 34s ease-in-out infinite alternate}
+        .et-cinema-atmosphere::after{background:linear-gradient(112deg,transparent 28%,rgba(255,255,255,.10) 48%,transparent 66%);transform:translateX(-35%);animation:et-light-sweep 24s ease-in-out infinite}
+        @keyframes et-cinema-pan{0%{transform:scale(1.04) translate3d(-.5%,0,0);background-position:48% 50%}100%{transform:scale(1.13) translate3d(.6%,-.5%,0);background-position:54% 56%}}
+        @keyframes et-fog-drift{0%{transform:translate3d(-3%,1%,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.08)}}
+        @keyframes et-atmosphere-breathe{0%{opacity:.68}100%{opacity:1}}
+        @keyframes et-light-sweep{0%,20%{transform:translateX(-45%);opacity:0}45%{opacity:.65}80%,100%{transform:translateX(45%);opacity:0}}
         .et-shell{isolation:isolate;background:var(--background)}
-        .et-shell::before{content:"";position:absolute;inset:-22%;z-index:1;pointer-events:none;background:radial-gradient(42rem 32rem at 12% 18%,color-mix(in oklab,var(--primary) 18%,transparent),transparent 72%),radial-gradient(38rem 30rem at 86% 24%,color-mix(in oklab,var(--accent) 13%,transparent),transparent 72%),radial-gradient(34rem 26rem at 54% 92%,color-mix(in oklab,var(--primary) 10%,transparent),transparent 72%);filter:blur(12px);animation:et-aurora-drift 28s ease-in-out infinite alternate}
-        .et-shell::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.17;background-image:linear-gradient(color-mix(in oklab,var(--foreground) 12%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in oklab,var(--foreground) 12%,transparent) 1px,transparent 1px);background-size:54px 54px;mask-image:radial-gradient(ellipse at 50% 35%,#000 0%,transparent 76%);animation:et-grid-drift 42s linear infinite}
-        .et-ambient{position:absolute;inset:0;z-index:2;opacity:.24;background:radial-gradient(ellipse at 50% 0%,color-mix(in oklab,var(--primary) 9%,transparent),transparent 62%);pointer-events:none}
+        .et-shell::before{display:none}
+        .et-shell::after{display:none}
+        .et-ambient{position:absolute;inset:0;z-index:2;opacity:.18;background:radial-gradient(ellipse at 50% 0%,rgba(255,255,255,.18),transparent 58%);pointer-events:none}
         @keyframes et-aurora-drift{0%{transform:translate3d(-2%,0,0) rotate(-4deg) scale(.98)}50%{transform:translate3d(2%,1%,0) rotate(2deg) scale(1.04)}100%{transform:translate3d(-1%,2%,0) rotate(5deg) scale(1.01)}}
         @keyframes et-grid-drift{from{background-position:0 0}to{background-position:54px 54px}}
         .et-main .hero-surface{background:linear-gradient(115deg,color-mix(in oklab,var(--background) 90%,transparent),color-mix(in oklab,var(--surface) 68%,transparent) 58%,color-mix(in oklab,var(--background) 82%,transparent))!important}
@@ -61,13 +70,13 @@ export function PageShell({ children, hideFooter = false }: { children: ReactNod
         .et-main>.et-page-content{width:100%;max-width:100%}
         .et-main .mx-auto[class*="max-w-"]{max-width:min(100% - 2rem, 1840px)}
         .et-main .container{width:100%;max-width:1840px}
-        .et-main{background:color-mix(in oklab,var(--background) 74%,transparent)}
+        .et-main{background:color-mix(in oklab,var(--background) 58%,transparent);backdrop-filter:blur(1px)}
         .et-topbar{background:color-mix(in oklab,var(--background) 84%,transparent)!important;color:var(--foreground)}
         .et-main .bg-card{background:color-mix(in oklab,var(--card) 90%,transparent)!important}
         .et-main .bg-background{background:color-mix(in oklab,var(--background) 92%,transparent)!important}
         .et-main [class*="rounded-2xl"][class*="border"]{backdrop-filter:blur(10px)}
         @keyframes et-enter{from{opacity:.55;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-        @media(prefers-reduced-motion:reduce){.et-page-content{animation:none}}
+        @media(prefers-reduced-motion:reduce){.et-page-content,.et-cinema-backdrop,.et-cinema-atmosphere,.et-cinema-atmosphere::before,.et-cinema-atmosphere::after{animation:none!important;transform:none!important}}
       `}</style>
     </div>
   );
