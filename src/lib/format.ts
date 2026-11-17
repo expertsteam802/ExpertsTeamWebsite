@@ -7,8 +7,12 @@ export function formatBytes(bytes: number): string {
 }
 
 export function formatDate(value: string): string {
-  return new Date(value).toLocaleString(undefined, {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "Date unavailable";
+  return new Intl.DateTimeFormat("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
-  });
+    timeZone: "Africa/Kigali",
+    hourCycle: "h23",
+  }).format(date);
 }
