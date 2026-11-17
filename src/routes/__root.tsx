@@ -154,8 +154,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon.png" },
-      { rel: "icon", type: "image/svg+xml", href: "/experts-team-mark.svg" },
+      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon.png?v=20261117" },
+      { rel: "icon", type: "image/svg+xml", href: "/experts-team-mark.svg?v=20261117" },
       { rel: "apple-touch-icon", href: "/favicon.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
