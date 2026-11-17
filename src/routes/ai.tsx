@@ -24,7 +24,7 @@ function AiPage() {
 
   return (
     <main className="fixed inset-0 z-40 flex h-[100dvh] w-full flex-col overflow-hidden bg-background text-foreground">
-      <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-3 sm:px-4">
+      <header className="relative z-20 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-background/90 px-3 backdrop-blur-xl sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
           <Link
             to="/"
@@ -54,7 +54,7 @@ function AiPage() {
             type="button"
             onClick={() => setActiveView("builder")}
             aria-pressed={activeView === "builder"}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition ${activeView === "builder" ? "bg-cyan-400/15 text-cyan-200" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all duration-300 ${activeView === "builder" ? "bg-muted text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
           >
             <Code2 className="h-4 w-4" />
             <span>Agent</span>
@@ -63,7 +63,7 @@ function AiPage() {
             type="button"
             onClick={() => setActiveView("chat")}
             aria-pressed={activeView === "chat"}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition ${activeView === "chat" ? "bg-cyan-400/15 text-cyan-200" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all duration-300 ${activeView === "chat" ? "bg-muted text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
           >
             <MessageSquare className="h-4 w-4" />
             <span>AI Chat</span>
@@ -72,7 +72,7 @@ function AiPage() {
 
         <Link
           to="/community"
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-300/15"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition-all duration-300 hover:-translate-y-0.5 hover:bg-muted"
         >
           <Users className="h-4 w-4" />
           <span className="hidden sm:inline">Community</span>
@@ -80,6 +80,8 @@ function AiPage() {
       </header>
 
       <section className="relative min-h-0 flex-1 overflow-hidden">
+        <div aria-hidden="true" className="et-ai-cinematic-backdrop pointer-events-none absolute inset-0" />
+        <div aria-hidden="true" className="et-ai-cinematic-atmosphere pointer-events-none absolute inset-0" />
         <div
           className={`h-full min-h-0 overflow-hidden ${activeView === "builder" ? "block" : "hidden"}`}
         >
