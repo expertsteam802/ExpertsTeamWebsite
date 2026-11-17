@@ -16,12 +16,12 @@ export const Route = createFileRoute("/videos")({
       {
         name: "description",
         content:
-          "Watch every Chris Expert video without leaving the site. The full @expertchris and @chrisexpert archive in one player.",
+          "Watch videos from the ExpertsTeam creator community without leaving the site. Explore tutorials, demonstrations and project walkthroughs in one player.",
       },
       { property: "og:title", content: "Video archive — ExpertsTeam" },
       {
         property: "og:description",
-        content: "The full Chris Expert YouTube archive, playable inside ExpertsTeam.",
+        content: "ExpertsTeam video tutorials, demonstrations and creator stories, playable directly inside the platform.",
       },
     ],
     links: [{ rel: "canonical", href: "https://expertsteam.giize.com/videos" }],
@@ -52,7 +52,7 @@ function VideosPage() {
             The <span className="brand-text">archive</span>
           </h1>
           <p className="mt-3 max-w-2xl text-muted-foreground">
-            Every video from @expertchris and @chrisexpert, playable right here. Add one by pasting
+            Explore ExpertsTeam tutorials and creator videos, playable right here. Add one by pasting
             its YouTube share link — we read the id for you so links never break.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
