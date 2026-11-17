@@ -794,20 +794,22 @@ html, body, .et-shell, .et-topbar, .et-secondary-sidebar, .et-main,
 @media(prefers-reduced-motion:reduce){.et-page-content,.et-cinema-backdrop,.et-cinema-atmosphere,.et-cinema-atmosphere::before,.et-cinema-atmosphere::after{animation:none!important;transform:none!important}}
 
 /* Cinematic AI builder connection sequence and shared interaction motion. */
-.et-ai-cinematic-backdrop{z-index:0;background-image:linear-gradient(180deg,rgba(0,0,0,.28),rgba(0,0,0,.48)),url("/experts-team-background.svg");background-size:cover;background-position:center;opacity:.28;animation:et-ai-landscape-drift 42s ease-in-out infinite alternate;transform:scale(1.04)}
-.et-ai-cinematic-atmosphere{z-index:1;background:radial-gradient(ellipse at 50% 100%,rgba(0,185,225,.13),transparent 50%),radial-gradient(ellipse at 80% 15%,rgba(255,174,62,.12),transparent 38%);animation:et-ai-atmosphere 16s ease-in-out infinite alternate}
-@keyframes et-ai-landscape-drift{0%{transform:scale(1.04) translate3d(-.3%,0,0);background-position:47% 50%}100%{transform:scale(1.12) translate3d(.4%,-.6%,0);background-position:53% 55%}}
-@keyframes et-ai-atmosphere{0%{opacity:.48}100%{opacity:1}}
+.et-ai-cinematic-backdrop{z-index:0;background-image:linear-gradient(180deg,rgba(0,0,0,.34),rgba(0,0,0,.56)),url("/experts-team-background.svg");background-size:cover;background-position:center;opacity:.24;transform:translateZ(0);will-change:auto}
+.et-ai-cinematic-atmosphere{z-index:1;background:radial-gradient(ellipse at 50% 100%,rgba(0,185,225,.14),transparent 48%),radial-gradient(ellipse at 80% 15%,rgba(255,174,62,.10),transparent 36%);animation:et-ai-atmosphere 18s ease-in-out infinite alternate}
+@keyframes et-ai-atmosphere{0%{opacity:.52}100%{opacity:.9}}
 .et-ai-link-cinematic{background:#030711;isolation:isolate}
-.et-ai-link-backdrop{background-image:linear-gradient(180deg,rgba(1,5,14,.52),rgba(1,5,14,.9)),url("/experts-team-background.svg");background-size:cover;background-position:center;filter:saturate(1.18);animation:et-ai-link-zoom 18s ease-in-out infinite alternate}
-.et-ai-link-vortex{background:radial-gradient(ellipse at 50% 48%,rgba(0,195,255,.20),transparent 22%),radial-gradient(ellipse at 50% 48%,transparent 24%,rgba(255,166,50,.16) 25%,transparent 38%);animation:et-ai-vortex 9s linear infinite}
-.et-ai-link-mark{filter:drop-shadow(0 0 18px rgba(0,190,255,.55));animation:et-ai-mark-pulse 2.4s ease-in-out infinite}
-.et-ai-link-kicker{color:#75e5ff;text-shadow:0 0 20px rgba(0,190,255,.6)}
-.et-ai-link-progress span{display:block;width:38%;height:100%;background:linear-gradient(90deg,transparent,#73e7ff,#fff,transparent);box-shadow:0 0 16px #35cfff;animation:et-ai-progress 1.8s ease-in-out infinite}
-@keyframes et-ai-link-zoom{from{transform:scale(1)}to{transform:scale(1.12)}}
-@keyframes et-ai-vortex{from{transform:rotate(0deg) scale(.85)}to{transform:rotate(360deg) scale(1.15)}}
-@keyframes et-ai-mark-pulse{0%,100%{transform:scale(.94);opacity:.78}50%{transform:scale(1.06);opacity:1}}
-@keyframes et-ai-progress{0%{transform:translateX(-110%)}100%{transform:translateX(290%)}}
+.et-ai-link-backdrop{background-image:linear-gradient(180deg,rgba(1,5,14,.48),rgba(1,5,14,.88)),url("/experts-team-background.svg");background-size:cover;background-position:center;filter:none;transform:translateZ(0)}
+.et-ai-link-vortex{background:radial-gradient(ellipse at 50% 48%,rgba(0,195,255,.18),transparent 24%),radial-gradient(ellipse at 50% 48%,transparent 26%,rgba(255,166,50,.12) 27%,transparent 40%);animation:et-ai-vortex-breathe 8s ease-in-out infinite alternate}
+.et-ai-link-kicker{color:#75e5ff;text-shadow:0 0 18px rgba(0,190,255,.5)}
+.et-ai-link-progress span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#168fc2,#73e7ff,#fff);box-shadow:0 0 18px rgba(53,207,255,.75);transition:width .28s ease-out}
+.et-ai-egg{position:relative;width:112px;height:142px;perspective:900px;filter:drop-shadow(0 0 24px rgba(0,190,255,.32))}
+.et-ai-egg::before{content:"";position:absolute;inset:5px 13px 7px;border-radius:48% 52% 44% 56% / 62% 64% 36% 38%;background:radial-gradient(ellipse at 32% 22%,rgba(255,255,255,.95),rgba(126,235,255,.8) 8%,rgba(30,139,190,.92) 24%,rgba(8,28,61,.98) 56%,#020712 78%);border:1px solid rgba(171,244,255,.72);box-shadow:inset 12px 0 22px rgba(255,255,255,.18),inset -18px -8px 30px rgba(0,0,0,.85),0 0 28px rgba(0,195,255,.3);transform-style:preserve-3d;animation:et-egg-rotation 7s ease-in-out infinite}
+.et-ai-egg::after{content:"";position:absolute;inset:20px 0 18px;border:1px solid rgba(114,231,255,.42);border-radius:50%;transform:rotateX(72deg) rotateZ(-18deg);box-shadow:0 0 18px rgba(0,195,255,.18);animation:et-egg-orbit 11s linear infinite}
+.et-ai-egg span{position:absolute;z-index:1;inset:35% 35%;border-radius:50%;background:#c9faff;box-shadow:0 0 12px 5px rgba(115,231,255,.75),0 0 42px 18px rgba(0,195,255,.45);animation:et-egg-core 3.2s ease-in-out infinite alternate}
+@keyframes et-egg-rotation{0%,100%{transform:rotateY(-24deg) rotateZ(-8deg) scale(.98)}50%{transform:rotateY(24deg) rotateZ(8deg) scale(1.02)}}
+@keyframes et-egg-orbit{from{transform:rotateX(72deg) rotateZ(0deg)}to{transform:rotateX(72deg) rotateZ(360deg)}}
+@keyframes et-egg-core{from{opacity:.68;transform:scale(.78)}to{opacity:1;transform:scale(1.15)}}
+@keyframes et-ai-vortex-breathe{from{opacity:.48}to{opacity:.92}}
 :where(button,a,[role="button"],input,textarea,select){transition-property:color,background-color,border-color,box-shadow,transform,opacity;transition-duration:180ms;transition-timing-function:cubic-bezier(.2,.8,.2,1)}
 :where(button,a,[role="button"]):not(:disabled):active{transform:scale(.975)}
 :where(button,a,[role="button"]):not(:disabled):hover{filter:brightness(1.045)}
@@ -816,4 +818,4 @@ html, body, .et-shell, .et-topbar, .et-secondary-sidebar, .et-main,
 .et-main :is(.rounded-xl,.rounded-2xl,.rounded-3xl)[class*="border"]:hover{box-shadow:0 12px 34px rgba(0,0,0,.10);border-color:color-mix(in srgb,var(--foreground) 22%,var(--border))}
 .theme-light .et-ai-cinematic-backdrop{opacity:.12}
 .theme-dark .et-ai-cinematic-backdrop{opacity:.42}
-@media(prefers-reduced-motion:reduce){.et-ai-cinematic-backdrop,.et-ai-cinematic-atmosphere,.et-ai-link-backdrop,.et-ai-link-vortex,.et-ai-link-mark,.et-ai-link-progress span{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.et-ai-cinematic-backdrop,.et-ai-cinematic-atmosphere,.et-ai-link-backdrop,.et-ai-link-vortex,.et-ai-egg::before,.et-ai-egg::after,.et-ai-egg span{animation:none!important}}
