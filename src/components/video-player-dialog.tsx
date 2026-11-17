@@ -192,6 +192,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
             rel: 0,
             enablejsapi: 1,
             origin: window.location.origin,
+            widget_referrer: window.location.origin,
           },
           events: {
             onReady: (event) => {
@@ -200,7 +201,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
               setLoading(false);
               const iframe = event.target.getIframe();
               iframe.title = title;
-              iframe.referrerPolicy = "strict-origin-when-cross-origin";
+              iframe.referrerPolicy = "origin";
               iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
               iframe.allowFullscreen = true;
               iframe.className = "h-full w-full";
@@ -280,11 +281,11 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
                 <iframe
                   key={videoId}
                   title={title}
-                  src={`https://www.youtube.com/embed/${encodeURIComponent(videoId)}?playsinline=1&rel=0`}
+                  src={`https://www.youtube.com/embed/${encodeURIComponent(videoId)}?playsinline=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}&widget_referrer=${encodeURIComponent(window.location.origin)}`}
                   className="h-full w-full border-0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
-                  referrerPolicy="strict-origin-when-cross-origin"
+                  referrerPolicy="origin"
                   onLoad={() => { clearNativeEmbedTimeout(); setLoading(false); }}
                   onError={() => { clearNativeEmbedTimeout(); setLoading(false); setPlaybackError("The video could not be loaded. Check the video link or open it on YouTube."); }}
                 />
