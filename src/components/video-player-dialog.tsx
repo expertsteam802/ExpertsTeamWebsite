@@ -280,9 +280,10 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
           </div>
           <Button variant="outline" size="sm" onClick={onClose} className="shrink-0">Close player</Button>
         </div>
-          <div
-            className={`expertsteam-video-player relative aspect-video max-h-[75vh] w-full max-w-[1200px] overflow-hidden rounded-xl bg-black ${alignment === "left" ? "mr-auto" : alignment === "right" ? "ml-auto" : "mx-auto"}`}
-          >
+          {adUnlocked && (
+            <div
+              className={`expertsteam-video-player relative aspect-video max-h-[75vh] w-full max-w-[1200px] overflow-hidden rounded-xl bg-black ${alignment === "left" ? "mr-auto" : alignment === "right" ? "ml-auto" : "mx-auto"}`}
+            >
             {videoId &&
               (useNativeEmbed ? (
                 <iframe
@@ -320,7 +321,8 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
                 )}
               </div>
             )}
-          </div>
+            </div>
+          )}
           {adUnlocked && (
             <p className="text-xs text-muted-foreground">
               A view is counted only after YouTube confirms that playback has started.
