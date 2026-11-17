@@ -22,6 +22,7 @@ export type SiteSettings = {
   error_dialog_enabled: boolean;
   navigation_labels: Record<string, string>;
   site_copy: Record<string, string>;
+  site_theme: "neon" | "crimson" | "daylight";
 };
 
 export const siteSettingsQuery = {
@@ -52,6 +53,20 @@ export function useSiteSettings() {
     branding && typeof branding === "object" && !Array.isArray(branding)
       ? (branding as Record<string, Json>)
       : {};
+  const savedThemeValue =
+    data?.site_branding_settings &&
+    typeof data.site_branding_settings === "object" &&
+    !Array.isArray(data.site_branding_settings)
+      ? (data.site_branding_settings as Record<string, Json>).siteBranding
+      : null;
+  const savedTheme =
+    savedThemeValue && typeof savedThemeValue === "object" && !Array.isArray(savedThemeValue)
+      ? (savedThemeValue as Record<string, Json>).theme
+      : null;
+  const siteTheme =
+    savedTheme === "crimson" || savedTheme === "daylight" || savedTheme === "neon"
+      ? savedTheme
+      : "neon";
   const navigationValue =
     data?.site_branding_settings &&
     typeof data.site_branding_settings === "object" &&
@@ -93,6 +108,7 @@ export function useSiteSettings() {
             : null,
         navigation_labels: navigationLabels,
         site_copy: siteCopy,
+        site_theme: siteTheme,
       }
     : {
         id: 1,
@@ -113,5 +129,6 @@ export function useSiteSettings() {
         error_dialog_enabled: true,
         navigation_labels: {},
         site_copy: {},
+        site_theme: "neon" as const,
       };
 }
