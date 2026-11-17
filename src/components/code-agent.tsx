@@ -108,7 +108,11 @@ async function copyTextToSystemClipboard(value: string) {
       await navigator.clipboard.writeText(value);
       return;
     }
-  } catch {}
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.debug("[Clipboard] Using the compatibility copy fallback:", error);
+    }
+  }
   const temporary = document.createElement("textarea");
   temporary.value = value;
   temporary.setAttribute("readonly", "");
