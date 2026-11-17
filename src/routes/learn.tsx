@@ -238,7 +238,7 @@ function LearnPage() {
               then follow where that value is used. In this example, the computer stores two numbers,
               multiplies them, saves the answer and prints it.
             </p>
-            <pre className="mt-3 overflow-x-auto rounded-xl bg-[#07111f] p-4 text-xs leading-6 text-sky-100"><code>{'const price = 250;\nconst quantity = 4;\nconst total = price * quantity;\nconsole.log(total);'}</code></pre>
+            <pre className="mt-3 overflow-x-auto rounded-xl bg-card p-4 text-xs leading-6 text-sky-100"><code>{'const price = 250;\nconst quantity = 4;\nconst total = price * quantity;\nconsole.log(total);'}</code></pre>
             <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-muted-foreground">
               <li><code>const price = 250</code> creates a named value called <code>price</code>.</li>
               <li><code>const quantity = 4</code> stores how many items we have.</li>
@@ -260,7 +260,7 @@ function LearnPage() {
               you can experiment without installing a compiler. Save a file as <code>index.html</code>,
               open it in a browser and use the developer console to inspect errors.
             </p>
-            <pre className="mt-3 overflow-x-auto rounded-xl bg-[#07111f] p-4 text-xs leading-6 text-sky-100"><code>{'console.log("Hello, ExpertsTeam!");\nconsole.log("This is my first program.");'}</code></pre>
+            <pre className="mt-3 overflow-x-auto rounded-xl bg-card p-4 text-xs leading-6 text-sky-100"><code>{'console.log("Hello, ExpertsTeam!");\nconsole.log("This is my first program.");'}</code></pre>
             <p className="mt-3 text-sm leading-7 text-muted-foreground">
               The first line prints a message; the second runs after it. If a program stops, read
               the first error carefully: the line number and message often point to the cause.
@@ -275,7 +275,7 @@ function LearnPage() {
               works with strings, numbers, booleans, arrays and objects. Choose names that describe
               what the value means.
             </p>
-            <pre className="mt-3 overflow-x-auto rounded-xl bg-[#07111f] p-4 text-xs leading-6 text-sky-100"><code>{'const learner = "Chris";\nlet completedLessons = 1;\nconst isEnrolled = true;\ncompletedLessons += 1;\nconsole.log(learner, completedLessons, isEnrolled);'}</code></pre>
+            <pre className="mt-3 overflow-x-auto rounded-xl bg-card p-4 text-xs leading-6 text-sky-100"><code>{'const learner = "Chris";\nlet completedLessons = 1;\nconst isEnrolled = true;\ncompletedLessons += 1;\nconsole.log(learner, completedLessons, isEnrolled);'}</code></pre>
             <p className="mt-3 text-sm leading-7 text-muted-foreground">
               An array stores an ordered list; an object groups related properties. Keep data in
               the type that matches how you will use it, and validate values received from forms.
@@ -289,7 +289,7 @@ function LearnPage() {
               remains true or for each item in a collection. Use clear conditions and make sure a
               <code> while</code> loop eventually stops; otherwise it can freeze the page.
             </p>
-            <pre className="mt-3 overflow-x-auto rounded-xl bg-[#07111f] p-4 text-xs leading-6 text-sky-100"><code>{'const scores = [62, 85, 47, 91];\nfor (const score of scores) {\n  if (score >= 50) {\n    console.log(score, "passed");\n  } else {\n    console.log(score, "try again");\n  }\n}'}</code></pre>
+            <pre className="mt-3 overflow-x-auto rounded-xl bg-card p-4 text-xs leading-6 text-sky-100"><code>{'const scores = [62, 85, 47, 91];\nfor (const score of scores) {\n  if (score >= 50) {\n    console.log(score, "passed");\n  } else {\n    console.log(score, "try again");\n  }\n}'}</code></pre>
             <p className="mt-3 text-sm leading-7 text-muted-foreground">
               Test boundary values as well as normal ones. If the pass mark is 50, check what
               happens at 49, 50 and 51 so the rule behaves exactly as intended.
@@ -303,7 +303,7 @@ function LearnPage() {
               work and return a result. Small functions are easier to test and reuse than one large
               block of code. Prefer returning a value when another part of the program needs it.
             </p>
-            <pre className="mt-3 overflow-x-auto rounded-xl bg-[#07111f] p-4 text-xs leading-6 text-sky-100"><code>{'function calculateTotal(price, quantity) {\n  if (price < 0 || quantity < 0) {\n    throw new Error("Values cannot be negative");\n  }\n  return price * quantity;\n}\nconsole.log(calculateTotal(250, 4)); // 1000'}</code></pre>
+            <pre className="mt-3 overflow-x-auto rounded-xl bg-card p-4 text-xs leading-6 text-sky-100"><code>{'function calculateTotal(price, quantity) {\n  if (price < 0 || quantity < 0) {\n    throw new Error("Values cannot be negative");\n  }\n  return price * quantity;\n}\nconsole.log(calculateTotal(250, 4)); // 1000'}</code></pre>
             <p className="mt-3 text-sm leading-7 text-muted-foreground">
               Validate inputs at the boundary of your application. A function should have one
               clear responsibility and a name that explains its result.
@@ -318,7 +318,7 @@ function LearnPage() {
               <code> main</code> and <code>button</code>. Use labels for form controls and provide
               text alternatives for meaningful images.
             </p>
-            <pre className="mt-3 overflow-x-auto rounded-xl bg-[#07111f] p-4 text-xs leading-6 text-sky-100"><code>{'<button id="greet">Say hello</button>\n<p id="message" aria-live="polite"></p>\n<script>\n  document.querySelector("#greet").addEventListener("click", () => {\n    document.querySelector("#message").textContent = "Welcome!";\n  });\n</script>'}</code></pre>
+            <pre className="mt-3 overflow-x-auto rounded-xl bg-card p-4 text-xs leading-6 text-sky-100"><code>{'<button id="greet">Say hello</button>\n<p id="message" aria-live="polite"></p>\n<script>\n  document.querySelector("#greet").addEventListener("click", () => {\n    document.querySelector("#message").textContent = "Welcome!";\n  });\n</script>'}</code></pre>
             <p className="mt-3 text-sm leading-7 text-muted-foreground">
               Build for small screens first, keep text readable and test the page using only a
               keyboard. Do not use a clickable-looking element unless it performs the action it
@@ -334,7 +334,7 @@ function LearnPage() {
               records, validate input on the server and enforce access rules in the database—not
               only in the interface.
             </p>
-            <pre className="mt-3 overflow-x-auto rounded-xl bg-[#07111f] p-4 text-xs leading-6 text-sky-100"><code>{'// Example request to a public API\nconst response = await fetch("/api/products");\nif (!response.ok) {\n  throw new Error("Could not load products");\n}\nconst products = await response.json();\nconsole.log(products);'}</code></pre>
+            <pre className="mt-3 overflow-x-auto rounded-xl bg-card p-4 text-xs leading-6 text-sky-100"><code>{'// Example request to a public API\nconst response = await fetch("/api/products");\nif (!response.ok) {\n  throw new Error("Could not load products");\n}\nconst products = await response.json();\nconsole.log(products);'}</code></pre>
             <p className="mt-3 text-sm leading-7 text-muted-foreground">
               Never put service-role keys, passwords or private API secrets in browser code.
               Authentication identifies a user; database row-level security decides which records
