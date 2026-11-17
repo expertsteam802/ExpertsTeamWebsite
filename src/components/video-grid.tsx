@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Play, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { VideoPlayerDialog } from "@/components/video-player-dialog";
@@ -43,6 +43,14 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
   const [link, setLink] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [alignment, setAlignment] = useState<"left" | "center" | "right">("center");
+
+  useEffect(() => {
+    if (!playing) return;
+    document.getElementById("video-watch-panel")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [playing]);
 
   const saveEdit = useMutation({
     mutationFn: async () => {
@@ -101,6 +109,13 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
 
   return (
     <>
+      <VideoPlayerDialog
+        videoId={playing?.youtube_id ?? null}
+        title={playing?.title ?? ""}
+        alignment={playing?.player_alignment ?? "center"}
+        onClose={() => setPlaying(null)}
+      />
+
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {videos.map((video) => {
           const canManage = user?.id === video.user_id || isAdmin;
@@ -137,7 +152,7 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
                 </p>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={() => setPlaying(video)}>
-                    Watch here
+                    Watch
                   </Button>
                   {canManage && (
                     <>
@@ -165,13 +180,6 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
           );
         })}
       </div>
-
-      <VideoPlayerDialog
-        videoId={playing?.youtube_id ?? null}
-        title={playing?.title ?? ""}
-        alignment={playing?.player_alignment ?? "center"}
-        onClose={() => setPlaying(null)}
-      />
 
       <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent>
