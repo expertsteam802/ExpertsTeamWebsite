@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Archive, BriefcaseBusiness, ChevronLeft, ChevronRight, Code2, FileVideo,
@@ -23,9 +23,30 @@ const MORE_LINKS = [
 
 export function SecondarySidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const sidebarRef = useRef<HTMLElement | null>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, isAdmin, isDeveloper } = useAuth();
   const active = (to: string) => pathname === to || pathname.startsWith(to + "/");
+
+  useEffect(() => {
+    if (collapsed) return;
+    const closeOnOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !sidebarRef.current?.contains(event.target)) {
+        setCollapsed(true);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setCollapsed(true);
+    };
+    document.addEventListener("pointerdown", closeOnOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [collapsed]);
+
+  useEffect(() => setCollapsed(true), [pathname]);
   const width = collapsed ? "w-[68px]" : "w-[224px]";
   const linkClass = (to: string) => cn(
     "group flex min-h-10 items-center gap-3 rounded-xl px-3 text-[12px] font-semibold transition-colors",
@@ -33,7 +54,7 @@ export function SecondarySidebar() {
   );
   return (
     <>
-      <aside className={cn("et-secondary-sidebar relative z-20 hidden shrink-0 border-r border-border bg-background/75 transition-[width] duration-200 lg:flex lg:flex-col", width)}>
+      <aside ref={sidebarRef} className={cn("et-secondary-sidebar relative z-20 hidden shrink-0 border-r border-border bg-background/75 transition-[width] duration-200 lg:flex lg:flex-col", width)}>
         <div className={cn("flex h-12 items-center border-b border-border", collapsed ? "justify-center px-2" : "justify-between px-4")}>
           {!collapsed && <span className="text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">Your space</span>}
           <button type="button" onClick={() => setCollapsed((v) => !v)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground">
