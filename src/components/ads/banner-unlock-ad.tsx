@@ -25,9 +25,14 @@ export function BannerUnlockAd({
   onUnlock: () => void;
 }) {
   const slotRef = useRef<HTMLDivElement>(null);
+  const onUnlockRef = useRef(onUnlock);
   const [status, setStatus] = useState<"loading" | "countdown" | "failed" | "complete">("loading");
   const [secondsLeft, setSecondsLeft] = useState(UNLOCK_SECONDS);
   const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    onUnlockRef.current = onUnlock;
+  }, [onUnlock]);
 
   useEffect(() => {
     const slot = slotRef.current;
@@ -53,7 +58,7 @@ export function BannerUnlockAd({
         if (remaining <= 0) {
           if (countdownTimer !== undefined) window.clearInterval(countdownTimer);
           setStatus("complete");
-          onUnlock();
+          onUnlockRef.current();
         }
       }, 1000);
     };
@@ -89,7 +94,7 @@ export function BannerUnlockAd({
       slot.replaceChildren();
       if (window.atOptions?.key === AD_KEY) delete window.atOptions;
     };
-  }, [attempt, onUnlock]);
+  }, [attempt]);
 
   return (
     <section
