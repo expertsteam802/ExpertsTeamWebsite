@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { formatDate, formatDateOnly } from "@/lib/format";
 
 export const Route = createFileRoute("/community")({
   head: () => ({
@@ -638,7 +639,7 @@ function CommunityPage() {
                       "Community member"}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
-                    {new Date(activeStory.created_at).toLocaleString()}
+                    {formatDate(activeStory.created_at)}
                   </p>
                 </div>
                 <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">
@@ -943,7 +944,7 @@ function PostCard({
               {author}
             </button>
             <p className="text-xs text-muted-foreground">
-              {new Date(post.created_at).toLocaleString()} ·{" "}
+              {formatDate(post.created_at)} ·{" "}
               <span className="capitalize">{post.kind}</span>
             </p>
           </div>
@@ -1093,7 +1094,7 @@ function PostCard({
                     </p>
                   )}
                   <p className="mt-2 text-[10px] text-muted-foreground">
-                    {new Date(item.created_at).toLocaleDateString()}
+                    {formatDateOnly(item.created_at)}
                   </p>
                 </div>
               ))
