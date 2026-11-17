@@ -151,9 +151,15 @@ function AuthPage() {
     setBusy(true);
 
     try {
+      // Supabase sends Google OAuth through the project's configured provider
+      // callback: https://btphazswhmkkuuyulqpt.supabase.co/auth/v1/callback.
+      // After Supabase validates the Google response, return to our own branded
+      // /auth route and let getPostAuthPath safely route the signed-in user.
+      const returnTo = new URL("/auth", window.location.origin);
+      returnTo.searchParams.set("next", getPostAuthPath());
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: window.location.origin + getPostAuthPath() },
+        options: { redirectTo: returnTo.toString() },
       });
       if (error) throw error;
     } catch (error) {
