@@ -44,7 +44,7 @@ CREATE POLICY "Roles are readable by authenticated" ON public.user_roles FOR SEL
 
 CREATE TABLE public.site_settings (
   id INTEGER PRIMARY KEY DEFAULT 1,
-  site_name TEXT NOT NULL DEFAULT 'Chris Programs',
+  site_name TEXT NOT NULL DEFAULT 'ExpertsTeam',
   tagline TEXT NOT NULL DEFAULT 'Code. Create. Community.',
   logo_url TEXT,
   owner_email TEXT NOT NULL DEFAULT 'mucyochristhecla@gmail.com',
