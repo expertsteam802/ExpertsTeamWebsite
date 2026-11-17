@@ -24,6 +24,7 @@ const MORE_LINKS = [
 export function SecondarySidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const sidebarRef = useRef<HTMLElement | null>(null);
+  const previousPathRef = useRef(pathname);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, isAdmin, isDeveloper } = useAuth();
   const active = (to: string) => pathname === to || pathname.startsWith(to + "/");
@@ -46,7 +47,12 @@ export function SecondarySidebar() {
     };
   }, [collapsed]);
 
-  useEffect(() => setCollapsed(true), [pathname]);
+  useEffect(() => {
+    if (previousPathRef.current !== pathname) {
+      previousPathRef.current = pathname;
+      setCollapsed(true);
+    }
+  }, [pathname]);
   const width = collapsed ? "w-[68px]" : "w-[224px]";
   const linkClass = (to: string) => cn(
     "group flex min-h-10 items-center gap-3 rounded-xl px-3 text-[12px] font-semibold transition-colors",
