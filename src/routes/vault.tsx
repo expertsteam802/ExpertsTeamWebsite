@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadStorageFileWithProgress } from "@/lib/storage-upload";
+import { formatDateOnly } from "@/lib/format";
 
 export const Route = createFileRoute("/vault")({
   head: () => ({
@@ -423,7 +424,7 @@ function PersonalVaultPage() {
                       {file.file_name}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {formatBytes(file.size_bytes)} · {new Date(file.created_at).toLocaleDateString()}
+                      {formatBytes(file.size_bytes)} · {formatDateOnly(file.created_at)}
                     </p>
                     {file.entry_type === "file" && !file.storage_available && (
                       <p className="mt-1 text-xs font-medium text-destructive">Storage object missing — not downloadable</p>
