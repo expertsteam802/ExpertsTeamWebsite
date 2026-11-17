@@ -155,7 +155,7 @@ function AuthPage() {
       // callback: https://btphazswhmkkuuyulqpt.supabase.co/auth/v1/callback.
       // After Supabase validates the Google response, return to our own branded
       // /auth route and let getPostAuthPath safely route the signed-in user.
-      const returnTo = new URL("/auth", window.location.origin);
+      const returnTo = new URL("/auth", "https://expertsteam.giize.com");
       returnTo.searchParams.set("next", getPostAuthPath());
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -173,7 +173,7 @@ function AuthPage() {
   return (
     <PageShell>
       <div className="hero-surface min-h-[80vh] px-4 py-16">
-        <Card className="animate-rise mx-auto w-full max-w-md p-8 glow-panel">
+        <Card className="animate-rise mx-auto w-full max-w-sm p-6 glow-panel">
           <h1 className="font-display text-2xl font-semibold">Welcome to ExpertsTeam</h1>
           <p className="text-sm text-muted-foreground">
             The very first account created becomes the creator/admin of this site.
