@@ -85,10 +85,13 @@ function initials(value: string) {
 function shortTime(value?: string) {
   if (!value) return "";
   const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
   const now = new Date();
-  return date.toDateString() === now.toDateString()
-    ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    : date.toLocaleDateString([], { month: "short", day: "numeric" });
+  const dateKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Kigali", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+  const todayKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Kigali", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+  return dateKey === todayKey
+    ? new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Kigali", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date)
+    : new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Kigali", month: "short", day: "numeric" }).format(date);
 }
 
 function MessagesPage() {
