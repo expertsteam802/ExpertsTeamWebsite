@@ -142,8 +142,9 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [useNativeEmbed, setUseNativeEmbed] = useState(false);
+  const [adUnlocked, setAdUnlocked] = useState(false);
   const nativeEmbedTimeoutRef = useRef<number | null>(null);
-  const shouldLoadLesson = Boolean(videoId);
+  const shouldLoadLesson = Boolean(videoId && adUnlocked);
 
   const clearNativeEmbedTimeout = useCallback(() => {
     if (nativeEmbedTimeoutRef.current !== null) {
@@ -167,6 +168,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
     setPlaybackError(null);
     setLoading(false);
     setUseNativeEmbed(false);
+    setAdUnlocked(false);
   }, [videoId]);
 
   useEffect(() => {
@@ -266,6 +268,11 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
   return (
     <>
       <section id="video-watch-panel" className="mb-8 w-full scroll-mt-24 rounded-2xl border border-border/70 bg-card p-3 shadow-xl sm:p-5">
+        {!adUnlocked && (
+          <div className="mb-4">
+            <BannerUnlockAd compact onUnlock={() => setAdUnlocked(true)} />
+          </div>
+        )}
         <div className="mb-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wider text-primary">Now watching</p>
@@ -314,10 +321,11 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
               </div>
             )}
           </div>
-          <BannerUnlockAd compact />
-          <p className="text-xs text-muted-foreground">
-            A view is counted only after YouTube confirms that playback has started.
-          </p>
+          {adUnlocked && (
+            <p className="text-xs text-muted-foreground">
+              A view is counted only after YouTube confirms that playback has started.
+            </p>
+          )}
       </section>
     </>
   );
