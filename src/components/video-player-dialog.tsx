@@ -194,7 +194,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
             rel: 0,
             enablejsapi: 1,
             origin: window.location.origin,
-            widget_referrer: window.location.origin,
+            widget_referrer: window.location.href,
           },
           events: {
             onReady: (event) => {
@@ -289,7 +289,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
                 <iframe
                   key={videoId}
                   title={title}
-                  src={`https://www.youtube.com/embed/${encodeURIComponent(videoId)}?playsinline=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}&widget_referrer=${encodeURIComponent(window.location.origin)}`}
+                  src={`https://www.youtube.com/embed/${encodeURIComponent(videoId)}?playsinline=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}&widget_referrer=${encodeURIComponent(window.location.href)}`}
                   className="h-full w-full border-0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
