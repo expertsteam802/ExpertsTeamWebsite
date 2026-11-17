@@ -23,9 +23,9 @@ const MORE_LINKS = [
 
 export function SecondarySidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const sidebarRef = useRef<HTMLElement | null>(null);
   const previousPathRef = useRef(pathname);
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, isAdmin, isDeveloper } = useAuth();
   const active = (to: string) => pathname === to || pathname.startsWith(to + "/");
 
