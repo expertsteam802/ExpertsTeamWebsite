@@ -23,14 +23,14 @@ function AiPage() {
   const [activeView, setActiveView] = useState<"builder" | "chat">("builder");
 
   return (
-    <main className="fixed inset-0 z-40 flex h-[100dvh] w-full flex-col overflow-hidden bg-[#070b13] text-white">
-      <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-[#0b111d] px-3 sm:px-4">
+    <main className="fixed inset-0 z-40 flex h-[100dvh] w-full flex-col overflow-hidden bg-background text-foreground">
+      <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-3 sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
           <Link
             to="/"
             aria-label="Back to ExpertsTeam website"
             title="Back to website"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-white/10 text-slate-300 transition hover:border-cyan-300/40 hover:bg-white/5 hover:text-white"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition hover:border-cyan-300/40 hover:bg-muted hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -42,19 +42,19 @@ function AiPage() {
                 WORKSPACE
               </span>
             </div>
-            <p className="hidden text-[10px] text-slate-400 sm:block">Build. Test. Ship.</p>
+            <p className="hidden text-[10px] text-muted-foreground sm:block">Build. Test. Ship.</p>
           </div>
         </div>
 
         <nav
           aria-label="ExpertAI workspace"
-          className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1"
+          className="flex items-center gap-1 rounded-xl border border-border bg-muted p-1"
         >
           <button
             type="button"
             onClick={() => setActiveView("builder")}
             aria-pressed={activeView === "builder"}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition ${activeView === "builder" ? "bg-cyan-400/15 text-cyan-200" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}
+            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition ${activeView === "builder" ? "bg-cyan-400/15 text-cyan-200" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
           >
             <Code2 className="h-4 w-4" />
             <span>Agent</span>
@@ -63,7 +63,7 @@ function AiPage() {
             type="button"
             onClick={() => setActiveView("chat")}
             aria-pressed={activeView === "chat"}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition ${activeView === "chat" ? "bg-cyan-400/15 text-cyan-200" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}
+            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition ${activeView === "chat" ? "bg-cyan-400/15 text-cyan-200" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
           >
             <MessageSquare className="h-4 w-4" />
             <span>AI Chat</span>
