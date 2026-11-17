@@ -18,8 +18,17 @@ function applyTheme(theme: ThemeId) {
   const root = document.documentElement;
   // Clear legacy monochrome theme classes left by older builds before applying
   // the fixed ExpertsTeam blue-cyan design system.
-  root.classList.remove("theme-light", "theme-dark", ...THEMES.map((t) => `theme-${t.id}`));
-  root.classList.add(`theme-${theme}`);
+  // The fixed Blue option uses the original .theme-neon design tokens.
+  // Clear classes left by earlier light/dark and experimental theme builds.
+  root.classList.remove(
+    "theme-light",
+    "theme-dark",
+    "theme-blue",
+    "theme-neon",
+    "theme-crimson",
+    "theme-daylight",
+  );
+  root.classList.add("theme-neon");
   root.classList.add("dark");
 }
 
