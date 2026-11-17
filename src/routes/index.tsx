@@ -180,7 +180,7 @@ function Index() {
 
           <div className="animate-float relative mx-auto w-full max-w-2xl">
             <div className="absolute -inset-5 rounded-[2rem] bg-gradient-to-br from-primary/20 via-transparent to-amber-400/10 blur-2xl" />
-            <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#081426] shadow-2xl shadow-black/40 ring-1 ring-white/10">
+            <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card shadow-2xl shadow-black/40 ring-1 ring-white/10">
               <img
                 src="/experts-team-platform-visual.svg"
                 alt="ExpertsTeam platform overview showing developer projects, learning, community and personal files"
