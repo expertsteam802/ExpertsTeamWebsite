@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { BannerUnlockAd } from "@/components/ads/banner-unlock-ad";
 
@@ -201,7 +200,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
               setLoading(false);
               const iframe = event.target.getIframe();
               iframe.title = title;
-              iframe.referrerPolicy = "origin";
+              iframe.referrerPolicy = "strict-origin-when-cross-origin";
               iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
               iframe.allowFullscreen = true;
               iframe.className = "h-full w-full";
@@ -263,13 +262,16 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
 
   return (
     <>
-      <Dialog open={!!videoId} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-h-[94vh] w-[min(96vw,1280px)] max-w-[1280px] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="pr-8 text-left">{title}</DialogTitle>
-          </DialogHeader>
+      <section id="video-watch-panel" className="mb-8 w-full scroll-mt-24 rounded-2xl border border-border/70 bg-card p-3 shadow-xl sm:p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">Now watching</p>
+            <h2 className="mt-1 line-clamp-2 text-lg font-semibold sm:text-xl">{title}</h2>
+          </div>
+          <Button variant="outline" size="sm" onClick={onClose} className="shrink-0">Close player</Button>
+        </div>
           <div
-            className={`expertsteam-video-player relative aspect-video max-h-[72vh] w-[92%] max-w-[1200px] overflow-hidden rounded-xl bg-secondary ${alignment === "left" ? "mr-auto" : alignment === "right" ? "ml-auto" : "mx-auto"}`}
+            className={`expertsteam-video-player relative aspect-video max-h-[75vh] w-full max-w-[1200px] overflow-hidden rounded-xl bg-black ${alignment === "left" ? "mr-auto" : alignment === "right" ? "ml-auto" : "mx-auto"}`}
           >
             {videoId &&
               (useNativeEmbed ? (
@@ -280,7 +282,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
                   className="h-full w-full border-0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
-                  referrerPolicy="origin"
+                  referrerPolicy="strict-origin-when-cross-origin"
                   onLoad={() => { clearNativeEmbedTimeout(); setLoading(false); }}
                   onError={() => { clearNativeEmbedTimeout(); setLoading(false); setPlaybackError("The video could not be loaded. Check the video link or open it on YouTube."); }}
                 />
@@ -313,8 +315,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
           <p className="text-xs text-muted-foreground">
             A view is counted only after YouTube confirms that playback has started.
           </p>
-        </DialogContent>
-      </Dialog>
+      </section>
     </>
   );
 }
