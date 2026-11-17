@@ -272,22 +272,22 @@ function RootContent() {
   }, [settings.error_dialog_enabled]);
 
   useEffect(() => {
-    const reportRuntimeError = (error: Error, boundary: string) => {
-      reportLovableError(error, { boundary });
+    const handleRuntimeError = (error: Error, boundary: string) => {
+      reportRuntimeError(error, { boundary });
       if (settings.error_dialog_enabled !== false) {
         setRuntimeError(
-          "Something unexpected happened. The error has been recorded; you can safely retry.",
+          "Something unexpected happened. The error details have been logged; you can safely retry.",
         );
       }
     };
     const onError = (event: ErrorEvent) => {
-      reportRuntimeError(
+      handleRuntimeError(
         event.error instanceof Error ? event.error : new Error(event.message),
         "window_error",
       );
     };
     const onRejection = (event: PromiseRejectionEvent) => {
-      reportRuntimeError(
+      handleRuntimeError(
         event.reason instanceof Error ? event.reason : new Error(String(event.reason)),
         "unhandled_rejection",
       );
