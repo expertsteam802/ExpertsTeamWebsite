@@ -118,7 +118,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       // YouTube requires a Referer header for embedded playback (error 153).
-      { name: "referrer", content: "strict-origin-when-cross-origin" },
+      { name: "referrer", content: "origin" },
       { title: "ExpertsTeam | Code, Create & Connect in One Digital Hub" },
       {
         name: "description",
