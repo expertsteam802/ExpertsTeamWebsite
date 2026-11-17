@@ -29,20 +29,20 @@ export function SecondarySidebar() {
   const width = collapsed ? "w-[68px]" : "w-[224px]";
   const linkClass = (to: string) => cn(
     "group flex min-h-10 items-center gap-3 rounded-xl px-3 text-[12px] font-semibold transition-colors",
-    active(to) ? "bg-[#4d8dff]/15 text-[#a8c9ff] ring-1 ring-inset ring-[#4d8dff]/25" : "text-white/60 hover:bg-white/[.06] hover:text-white",
+    active(to) ? "bg-muted text-foreground ring-1 ring-inset ring-border" : "text-muted-foreground hover:bg-muted hover:text-foreground",
   );
   return (
     <>
-      <aside className={cn("et-secondary-sidebar relative z-20 hidden shrink-0 border-r border-white/[.08] bg-[#090d15]/75 transition-[width] duration-200 lg:flex lg:flex-col", width)}>
-        <div className={cn("flex h-12 items-center border-b border-white/[.07]", collapsed ? "justify-center px-2" : "justify-between px-4")}>
-          {!collapsed && <span className="text-[10px] font-bold uppercase tracking-[.18em] text-white/35">Your space</span>}
-          <button type="button" onClick={() => setCollapsed((v) => !v)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} className="rounded-lg p-1.5 text-white/45 transition hover:bg-white/10 hover:text-white">
+      <aside className={cn("et-secondary-sidebar relative z-20 hidden shrink-0 border-r border-border bg-background/75 transition-[width] duration-200 lg:flex lg:flex-col", width)}>
+        <div className={cn("flex h-12 items-center border-b border-border", collapsed ? "justify-center px-2" : "justify-between px-4")}>
+          {!collapsed && <span className="text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">Your space</span>}
+          <button type="button" onClick={() => setCollapsed((v) => !v)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground">
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </button>
         </div>
         <div className={cn("flex-1 space-y-5 overflow-y-auto py-4", collapsed ? "px-2" : "px-3")}>
           {user && <section className="space-y-1">
-            {!collapsed && <p className="mb-2 px-2 text-[9px] font-bold uppercase tracking-[.16em] text-white/30">Personal</p>}
+            {!collapsed && <p className="mb-2 px-2 text-[9px] font-bold uppercase tracking-[.16em] text-muted-foreground">Personal</p>}
             {PERSONAL_LINKS.map((item) => <Link key={item.to} to={item.to} title={collapsed ? item.label : undefined} aria-current={active(item.to) ? "page" : undefined} className={linkClass(item.to)}>
               <item.icon className="h-4 w-4 shrink-0" />{!collapsed && <span>{item.label}</span>}
             </Link>)}
@@ -66,7 +66,7 @@ export function SecondarySidebar() {
             </Link>
           </section>}
         </div>
-        {!collapsed && <div className="border-t border-white/[.07] px-4 py-3 text-[9px] text-white/25">ExpertsTeam workspace</div>}
+        {!collapsed && <div className="border-t border-white/[.07] px-4 py-3 text-[9px] text-muted-foreground">ExpertsTeam workspace</div>}
       </aside>
     </>
   );
