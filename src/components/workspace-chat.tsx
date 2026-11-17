@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { formatTime } from "@/lib/format";
 
 export type WorkspaceGroup = {
   id: string;
@@ -520,10 +521,7 @@ export function WorkspaceChat() {
                       )}
                       <div className="mt-1 flex items-center justify-end gap-2 text-[10px] opacity-65">
                         <span>
-                          {new Date(message.created_at).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                          {formatTime(message.created_at)}
                         </span>
                         {(mine || isAdmin) && (
                           <button
