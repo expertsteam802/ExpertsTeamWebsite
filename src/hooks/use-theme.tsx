@@ -14,12 +14,10 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function applyTheme(theme: ThemeId) {
+function applyTheme() {
   const root = document.documentElement;
-  // Clear legacy monochrome theme classes left by older builds before applying
-  // the fixed ExpertsTeam blue-cyan design system.
   // The fixed Blue option uses the original .theme-neon design tokens.
-  // Clear classes left by earlier light/dark and experimental theme builds.
+  // Clear classes left by earlier monochrome and experimental theme builds.
   root.classList.remove(
     "theme-light",
     "theme-dark",
@@ -40,13 +38,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedAlign = localStorage.getItem("cp-nav-align") as NavAlign | null;
     if (storedAlign) setNavAlignState(storedAlign);
     setThemeState("blue");
-    applyTheme("blue");
+    applyTheme();
   }, []);
 
   const setTheme = useCallback((next: ThemeId) => {
     setThemeState(next);
     if (next !== "blue") return;
-    applyTheme(next);
+    applyTheme();
   }, []);
 
   const setNavAlign = useCallback((next: NavAlign) => {
