@@ -787,3 +787,141 @@ html, body, .et-shell, .et-topbar, .et-secondary-sidebar, .et-main,
 @media (prefers-reduced-motion: reduce) {
   .et-shell::before, .et-shell::after { animation: none !important; }
 }
+
+
+/* Strict two-mode monochrome system: white/black only. */
+:root, .theme-light {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #111111;
+  --surface: #ffffff;
+  --surface-foreground: #111111;
+  --card: #ffffff;
+  --card-foreground: #111111;
+  --popover: #ffffff;
+  --popover-foreground: #111111;
+  --primary: #111111;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f4;
+  --secondary-foreground: #111111;
+  --muted: #f4f4f4;
+  --muted-foreground: #555555;
+  --accent: #eeeeee;
+  --accent-foreground: #111111;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #111111;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #111111;
+  --sidebar-primary: #111111;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f4f4f4;
+  --sidebar-accent-foreground: #111111;
+  --sidebar-border: #e5e5e5;
+  --sidebar-ring: #111111;
+  --gradient-hero: none;
+  --gradient-brand: none;
+  --shadow-glow: none;
+  --shadow-panel: 0 1px 3px rgb(0 0 0 / 0.08);
+}
+.theme-dark {
+  color-scheme: dark;
+  --background: #000000;
+  --foreground: #ffffff;
+  --surface: #080808;
+  --surface-foreground: #ffffff;
+  --card: #080808;
+  --card-foreground: #ffffff;
+  --popover: #080808;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #000000;
+  --secondary: #171717;
+  --secondary-foreground: #ffffff;
+  --muted: #171717;
+  --muted-foreground: #b3b3b3;
+  --accent: #222222;
+  --accent-foreground: #ffffff;
+  --border: #292929;
+  --input: #292929;
+  --ring: #ffffff;
+  --sidebar: #050505;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #171717;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #292929;
+  --sidebar-ring: #ffffff;
+  --gradient-hero: none;
+  --gradient-brand: none;
+  --shadow-glow: none;
+  --shadow-panel: 0 1px 3px rgb(0 0 0 / 0.45);
+}
+html.theme-light body, html.theme-light #root {
+  background: #ffffff !important;
+  color: #111111 !important;
+}
+html.theme-dark body, html.theme-dark #root {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+html.theme-light body { background-image: none !important; }
+html.theme-dark body { background-image: none !important; }
+.theme-light .brand-text, .theme-dark .brand-text {
+  background-image: none !important;
+  color: var(--foreground) !important;
+}
+.theme-light .et-cinema-backdrop, .theme-light .et-grain,
+.theme-dark .et-cinema-backdrop, .theme-dark .et-grain,
+.theme-light .et-shell::before, .theme-light .et-shell::after,
+.theme-dark .et-shell::before, .theme-dark .et-shell::after {
+  display: none !important;
+  animation: none !important;
+}
+.theme-light .expert-agent-shell {
+  --agent-bg: #ffffff; --agent-panel: #ffffff; --agent-panel-raised: #f4f4f4;
+  --agent-line: #e5e5e5; --agent-muted: #555555;
+  --agent-accent: #111111; --agent-accent-bright: #111111;
+  background: #ffffff !important; color: #111111 !important;
+}
+.theme-dark .expert-agent-shell {
+  --agent-bg: #000000; --agent-panel: #080808; --agent-panel-raised: #171717;
+  --agent-line: #292929; --agent-muted: #b3b3b3;
+  --agent-accent: #ffffff; --agent-accent-bright: #ffffff;
+  background: #000000 !important; color: #ffffff !important;
+}
+.theme-light .expert-agent-shell :is(.expert-agent-topbar,.expert-agent-sidebar,.expert-agent-toolbar,.expert-agent-canvas,.expert-agent-stage,.expert-agent-assistant,.expert-agent-statusbar) {
+  background: #ffffff !important; color: #111111 !important; border-color: #e5e5e5 !important;
+}
+.theme-dark .expert-agent-shell :is(.expert-agent-topbar,.expert-agent-sidebar,.expert-agent-toolbar,.expert-agent-canvas,.expert-agent-stage,.expert-agent-assistant,.expert-agent-statusbar) {
+  background: #000000 !important; color: #ffffff !important; border-color: #292929 !important;
+}
+.theme-light .expert-agent-shell :is(button,input,textarea,select) {
+  color: #111111 !important; border-color: #e5e5e5 !important;
+}
+.theme-dark .expert-agent-shell :is(button,input,textarea,select) {
+  color: #ffffff !important; border-color: #292929 !important;
+}
+.theme-light .expert-agent-shell .cm-editor,
+.theme-light .expert-agent-shell .cm-editor .cm-gutters {
+  background: #ffffff !important; color: #111111 !important;
+}
+.theme-dark .expert-agent-shell .cm-editor,
+.theme-dark .expert-agent-shell .cm-editor .cm-gutters {
+  background: #000000 !important; color: #ffffff !important;
+}
+.theme-light .expert-agent-shell button[class*="bg-cyan"],
+.theme-light .expert-agent-shell button[class*="bg-violet"],
+.theme-light .expert-agent-shell button[class*="bg-indigo"],
+.theme-light .expert-agent-shell button[class*="bg-purple"] {
+  background: #111111 !important; color: #ffffff !important;
+}
+.theme-dark .expert-agent-shell button[class*="bg-cyan"],
+.theme-dark .expert-agent-shell button[class*="bg-violet"],
+.theme-dark .expert-agent-shell button[class*="bg-indigo"],
+.theme-dark .expert-agent-shell button[class*="bg-purple"] {
+  background: #ffffff !important; color: #000000 !important;
+}
+.theme-light :is(.et-topbar,.et-secondary-sidebar) { background: #ffffff !important; color: #111111 !important; }
+.theme-dark :is(.et-topbar,.et-secondary-sidebar) { background: #000000 !important; color: #ffffff !important; }
