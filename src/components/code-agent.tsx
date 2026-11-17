@@ -311,7 +311,7 @@ export function CodeAgent() {
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<Panel>("preview");
   const { theme: siteTheme } = useTheme();
-  const lightMode = siteTheme === "light";
+  const lightMode = siteTheme === "daylight";
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [logs, setLogs] = useState<{ type: string; message: string }[]>([]);
   const [previewKey, setPreviewKey] = useState(0);
