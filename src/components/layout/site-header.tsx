@@ -16,7 +16,7 @@ import {
   Code2,
   FolderKanban,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,14 +51,31 @@ export function SiteHeader() {
   const settings = useSiteSettings();
   const { user, profile, isAdmin, isDeveloper, signOut } = useAuth();
   const [open, setOpen] = useState(false);
+  const headerRef = useRef<HTMLElement | null>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const activeClass = "et-nav-tab et-nav-active";
   const idleClass = "et-nav-tab";
   const isActive = (to: string, exact = false) =>
     exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
 
+  useEffect(() => {
+    if (!open) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !headerRef.current?.contains(event.target)) setOpen(false);
+    };
+    const closeEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeEscape);
+    };
+  }, [open]);
+
   return (
-    <header className="et-topbar relative z-50 shrink-0 border-b border-border bg-background backdrop-blur-2xl">
+    <header ref={headerRef} className="et-topbar relative z-50 shrink-0 border-b border-border bg-background backdrop-blur-2xl">
       <div className="mx-auto flex min-h-[68px] max-w-[1680px] items-center gap-3 px-3 sm:px-5 lg:px-7">
         <Link to="/" aria-label="ExpertsTeam home" className="group flex shrink-0 items-center">
           <img
