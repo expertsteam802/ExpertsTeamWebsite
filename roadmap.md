@@ -1,6 +1,7 @@
-# Website fixes
+# ExpertsTeam engineering status
 
-- [x] Remove browser-exposed Gemini key fallback and test secret handling.
-- [x] Verify signed-in file deletion and new-project preview; fix stale file selection and GitHub link state.
-- [ ] Live Gemini generation: requires a valid, unexposed provider key; no claim of verified generation.
-- [ ] External database replacement: blocked by this project's permanent Lovable Cloud connection; leave managed settings unchanged.
+- [x] Keep provider credentials server-side and remove browser-exposed secret fallbacks.
+- [x] Preserve the existing Supabase project and user-scoped row-level security.
+- [ ] Verify live AI provider credentials in the deployment environment before claiming production generation is healthy.
+- [ ] Verify video playback against public, embeddable lesson URLs in the deployed preview.
+- [ ] Verify advertising creatives load successfully from the configured banner network.
