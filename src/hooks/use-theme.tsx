@@ -1,8 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 
 export const THEMES = [
-  { id: "light", label: "Light" },
-  { id: "dark", label: "Dark" },
+  { id: "neon", label: "Blue & mixed" },
+  { id: "crimson", label: "Crimson" },
+  { id: "daylight", label: "Daylight" },
 ] as const;
 
 export type ThemeId = (typeof THEMES)[number]["id"];
@@ -10,9 +12,7 @@ export type NavAlign = "left" | "center" | "right";
 
 type ThemeContextValue = {
   theme: ThemeId;
-  setTheme: (theme: ThemeId) => void;
   navAlign: NavAlign;
-  setNavAlign: (align: NavAlign) => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -21,36 +21,19 @@ function applyTheme(theme: ThemeId) {
   const root = document.documentElement;
   root.classList.remove(...THEMES.map((t) => `theme-${t.id}`));
   root.classList.add(`theme-${theme}`);
-  root.classList.toggle("dark", theme === "dark");
+  root.classList.toggle("dark", theme !== "daylight");
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeId>("dark");
-  const [navAlign, setNavAlignState] = useState<NavAlign>("left");
+  const settings = useSiteSettings();
+  const [navAlign] = useState<NavAlign>("left");
+  const theme = settings.site_theme;
 
   useEffect(() => {
-    const storedTheme = localStorage.getItem("cp-theme") as ThemeId | null;
-    const storedAlign = localStorage.getItem("cp-nav-align") as NavAlign | null;
-    if (storedTheme && THEMES.some((t) => t.id === storedTheme)) setThemeState(storedTheme);
-    if (storedAlign) setNavAlignState(storedAlign);
-    applyTheme(storedTheme && THEMES.some((t) => t.id === storedTheme) ? storedTheme : "dark");
-  }, []);
+    applyTheme(theme);
+  }, [theme]);
 
-  const setTheme = useCallback((next: ThemeId) => {
-    setThemeState(next);
-    localStorage.setItem("cp-theme", next);
-    applyTheme(next);
-  }, []);
-
-  const setNavAlign = useCallback((next: NavAlign) => {
-    setNavAlignState(next);
-    localStorage.setItem("cp-nav-align", next);
-  }, []);
-
-  const value = useMemo(
-    () => ({ theme, setTheme, navAlign, setNavAlign }),
-    [theme, setTheme, navAlign, setNavAlign],
-  );
+  const value = useMemo(() => ({ theme, navAlign }), [theme, navAlign]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
