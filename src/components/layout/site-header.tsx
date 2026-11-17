@@ -62,13 +62,13 @@ export function SiteHeader() {
     exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
 
   return (
-    <header className="et-topbar relative z-50 shrink-0 border-b border-white/10 bg-[#090b10]/90 backdrop-blur-2xl">
+    <header className="et-topbar relative z-50 shrink-0 border-b border-border bg-background backdrop-blur-2xl">
       <div className="mx-auto flex min-h-[68px] max-w-[1680px] items-center gap-3 px-3 sm:px-5 lg:px-7">
         <Link to="/" aria-label="ExpertsTeam home" className="group flex shrink-0 items-center">
           <img
             src={settings.logo_url || "/experts-team-mark.svg"}
             alt="ExpertsTeam logo"
-            className="h-10 w-10 rounded-full border border-blue-400/35 bg-white/5 object-cover shadow-lg transition group-hover:scale-[1.04] sm:h-11 sm:w-11"
+            className="h-10 w-10 rounded-full border border-border bg-card object-cover shadow-lg transition group-hover:scale-[1.04] sm:h-11 sm:w-11"
           />
         </Link>
 
@@ -107,7 +107,7 @@ export function SiteHeader() {
                 variant="ghost"
                 size="icon"
                 aria-label="Appearance settings"
-                className="text-white/55 hover:bg-white/10 hover:text-white"
+                className="text-foreground hover:bg-muted hover:text-foreground"
               >
                 <Palette className="h-4 w-4" />
               </Button>
@@ -142,7 +142,7 @@ export function SiteHeader() {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="max-w-40 gap-2 rounded-xl border border-white/10 bg-white/[.045] px-2 text-white hover:bg-white/10 sm:px-3"
+                  className="max-w-40 gap-2 rounded-xl border border-border bg-card px-2 text-foreground hover:bg-muted sm:px-3"
                 >
                   <Avatar className="h-7 w-7">
                     <AvatarImage src={profile?.avatar_url ?? undefined} />
@@ -201,7 +201,7 @@ export function SiteHeader() {
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden text-white"
+            className="lg:hidden text-foreground"
             aria-label="Menu"
             aria-expanded={open}
             onClick={() => setOpen((value) => !value)}
@@ -214,7 +214,7 @@ export function SiteHeader() {
       {open && (
         <nav
           aria-label="Mobile navigation"
-          className="grid grid-cols-2 gap-2 border-t border-white/10 bg-[#090b10] p-3 sm:grid-cols-3 lg:hidden"
+          className="grid grid-cols-2 gap-2 border-t border-border bg-background p-3 sm:grid-cols-3 lg:hidden"
         >
           {PRIMARY_LINKS.map((item) => {
             const active = isActive(item.to, "exact" in item && item.exact);
@@ -227,8 +227,8 @@ export function SiteHeader() {
                 className={cn(
                   "flex items-center gap-2 rounded-xl border px-3 py-3 text-xs font-semibold",
                   active
-                    ? "border-[#4d8dff]/35 bg-[#4d8dff]/10 text-[#a8c9ff]"
-                    : "border-white/10 text-white/65",
+                    ? "border-border bg-muted text-foreground"
+                    : "border-border text-muted-foreground",
                 )}
               >
                 <item.icon className="h-4 w-4" />
@@ -255,7 +255,7 @@ export function SiteHeader() {
               key={item.to}
               to={item.to}
               onClick={() => setOpen(false)}
-              className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-3 text-xs font-semibold text-white/65"
+              className="flex items-center gap-2 rounded-xl border border-border px-3 py-3 text-xs font-semibold text-muted-foreground"
             >
               <item.icon className="h-4 w-4" /> {item.label}
             </Link>
@@ -274,7 +274,7 @@ export function SiteHeader() {
               <Link
                 to="/dashboard"
                 onClick={() => setOpen(false)}
-                className="rounded-xl border border-white/10 px-3 py-3 text-xs font-semibold text-white/65"
+                className="rounded-xl border border-border px-3 py-3 text-xs font-semibold text-muted-foreground"
               >
                 My dashboard
               </Link>
@@ -300,10 +300,10 @@ export function SiteHeader() {
       )}
 
       <style>{`
-        .et-nav-tab{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;border:1px solid transparent;border-radius:11px;padding:9px 11px;color:rgba(244,242,233,.58);font-size:12px;font-weight:650;letter-spacing:.01em;transition:all .18s ease}
-        .et-nav-tab:hover{color:#f5f2e9;background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.07)}
-        .et-nav-active{color:#a8c9ff;background:rgba(77,141,255,.12);border-color:rgba(77,141,255,.28);box-shadow:inset 0 0 18px rgba(77,141,255,.05)}
-        .et-topbar{box-shadow:0 12px 40px rgba(0,0,0,.24)}
+        .et-nav-tab{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;border:1px solid transparent;border-radius:11px;padding:9px 11px;color:var(--muted-foreground);font-size:12px;font-weight:650;letter-spacing:.01em;transition:all .18s ease}
+        .et-nav-tab:hover{color:var(--foreground);background:var(--muted);border-color:var(--border)}
+        .et-nav-active{color:var(--foreground);background:var(--muted);border-color:var(--border);box-shadow:none}
+        .et-topbar{box-shadow:0 2px 12px rgba(0,0,0,.08)}
       `}</style>
     </header>
   );
