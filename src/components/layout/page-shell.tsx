@@ -18,7 +18,6 @@ export function PageShell({ children, hideFooter = false }: { children: ReactNod
       />
       <div aria-hidden="true" className="et-ambient pointer-events-none absolute inset-0" />
       <div aria-hidden="true" className="et-cinema-atmosphere pointer-events-none absolute inset-0" />
-      <div aria-hidden="true" className="et-grain pointer-events-none absolute inset-0" />
       <SiteHeader />
       <div className="relative z-10 flex min-h-0 flex-1 overflow-hidden">
         <SecondarySidebar />
@@ -47,10 +46,7 @@ export function PageShell({ children, hideFooter = false }: { children: ReactNod
         .et-cinema-atmosphere::before,.et-cinema-atmosphere::after{content:"";position:absolute;inset:-10%;pointer-events:none;filter:blur(22px);opacity:.2}
         .et-cinema-atmosphere::before{background:radial-gradient(ellipse at 18% 72%,rgba(205,218,255,.2),transparent 36%),radial-gradient(ellipse at 82% 62%,rgba(255,190,130,.16),transparent 34%);animation:et-atmosphere-breathe 28s ease-in-out infinite alternate}
         .et-cinema-atmosphere::after{background:linear-gradient(112deg,transparent 28%,rgba(255,255,255,.06) 48%,transparent 66%);opacity:.12}
-        @keyframes et-cinema-pan{0%{transform:scale(1.04) translate3d(-.5%,0,0);background-position:48% 50%}100%{transform:scale(1.13) translate3d(.6%,-.5%,0);background-position:54% 56%}}
-        @keyframes et-fog-drift{0%{transform:translate3d(-3%,1%,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.08)}}
         @keyframes et-atmosphere-breathe{0%{opacity:.68}100%{opacity:1}}
-        @keyframes et-light-sweep{0%,20%{transform:translateX(-45%);opacity:0}45%{opacity:.65}80%,100%{transform:translateX(45%);opacity:0}}
         .et-shell{isolation:isolate;background:var(--background)}
         .et-shell::before{display:none}
         .et-shell::after{display:none}
