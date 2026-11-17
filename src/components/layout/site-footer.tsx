@@ -20,74 +20,74 @@ export function SiteFooter() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-blue-400/20 bg-[#080d18]/95 text-[#f2f0e9]">
+    <footer className="border-t border-border bg-background text-foreground">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-9 sm:grid-cols-2 lg:grid-cols-5 lg:px-8">
         <section className="space-y-3">
           <div className="flex items-center gap-3">
             <img
               src={settings.logo_url || "/experts-team-mark.svg"}
               alt="ExpertsTeam logo"
-              className="h-11 w-11 rounded-full border border-blue-400/30 bg-white/5 object-cover"
+              className="h-11 w-11 rounded-full border border-border bg-card object-cover"
             />
             <div>
               <h2 className="font-display text-lg font-bold">{settings.site_name}</h2>
-              <p className="text-xs text-white/50">{settings.tagline}</p>
+              <p className="text-xs text-muted-foreground">{settings.tagline}</p>
             </div>
           </div>
-          <p className="max-w-xs text-sm leading-6 text-white/55">
+          <p className="max-w-xs text-sm leading-6 text-muted-foreground">
             A place to learn coding, share projects, connect with developers and build with ExpertAI.
           </p>
         </section>
 
         <nav aria-label="Platform pages" className="space-y-3 text-sm">
-          <h3 className="font-semibold text-white">Platform</h3>
-          <Link to="/" className="block text-white/55 transition hover:text-blue-200">Home</Link>
-          <Link to="/explore" className="block text-white/55 transition hover:text-blue-200">Explore</Link>
-          <Link to="/community" className="block text-white/55 transition hover:text-blue-200">Community</Link>
-          <Link to="/messages" className="block text-white/55 transition hover:text-blue-200">Messages</Link>
-          <Link to="/ai" className="block text-white/55 transition hover:text-blue-200">ExpertAI Studio</Link>
-          <Link to="/projects" className="block text-white/55 transition hover:text-blue-200">Workspace & projects</Link>
-          <Link to="/software" className="block text-white/55 transition hover:text-blue-200">Request custom software</Link>
-          {user && <Link to="/dashboard" className="block text-white/55 transition hover:text-blue-200">My dashboard</Link>}
-          {user && <Link to="/vault" className="block text-white/55 transition hover:text-blue-200">Personal Vault</Link>}
-          {isAdmin && <Link to="/admin" className="block text-white/55 transition hover:text-blue-200">Admin panel</Link>}
-          <Link to="/entertainment" className="block text-white/55 transition hover:text-blue-200">Discover</Link>
+          <h3 className="font-semibold text-foreground">Platform</h3>
+          <Link to="/" className="block text-muted-foreground transition hover:text-foreground">Home</Link>
+          <Link to="/explore" className="block text-muted-foreground transition hover:text-blue-200">Explore</Link>
+          <Link to="/community" className="block text-muted-foreground transition hover:text-blue-200">Community</Link>
+          <Link to="/messages" className="block text-muted-foreground transition hover:text-blue-200">Messages</Link>
+          <Link to="/ai" className="block text-muted-foreground transition hover:text-blue-200">ExpertAI Studio</Link>
+          <Link to="/projects" className="block text-muted-foreground transition hover:text-blue-200">Workspace & projects</Link>
+          <Link to="/software" className="block text-muted-foreground transition hover:text-blue-200">Request custom software</Link>
+          {user && <Link to="/dashboard" className="block text-muted-foreground transition hover:text-blue-200">My dashboard</Link>}
+          {user && <Link to="/vault" className="block text-muted-foreground transition hover:text-blue-200">Personal Vault</Link>}
+          {isAdmin && <Link to="/admin" className="block text-muted-foreground transition hover:text-blue-200">Admin panel</Link>}
+          <Link to="/entertainment" className="block text-muted-foreground transition hover:text-blue-200">Discover</Link>
         </nav>
 
         <nav aria-label="Learning and resources" className="space-y-3 text-sm">
-          <h3 className="font-semibold text-white">Learn & resources</h3>
-          <Link to="/learn" className="block text-white/55 transition hover:text-blue-200">Learn to code</Link>
-          <Link to="/videos" className="block text-white/55 transition hover:text-blue-200">Video library</Link>
-          <Link to="/showcase" className="block text-white/55 transition hover:text-blue-200">Project showcase</Link>
-          <Link to="/auth" className="block text-white/55 transition hover:text-blue-200">Join ExpertsTeam</Link>
+          <h3 className="font-semibold text-foreground">Learn & resources</h3>
+          <Link to="/learn" className="block text-muted-foreground transition hover:text-blue-200">Learn to code</Link>
+          <Link to="/videos" className="block text-muted-foreground transition hover:text-blue-200">Video library</Link>
+          <Link to="/showcase" className="block text-muted-foreground transition hover:text-blue-200">Project showcase</Link>
+          <Link to="/auth" className="block text-muted-foreground transition hover:text-blue-200">Join ExpertsTeam</Link>
         </nav>
 
         <nav aria-label="About and policies" className="space-y-3 text-sm">
-          <h3 className="font-semibold text-white">About & policies</h3>
-          <Link to="/about" className="block text-white/55 transition hover:text-blue-200">About ExpertsTeam</Link>
-          <Link to="/contact" className="block text-white/55 transition hover:text-blue-200">Contact</Link>
-          <Link to="/privacy" className="block text-white/55 transition hover:text-blue-200">Privacy policy</Link>
-          <Link to="/terms" className="block text-white/55 transition hover:text-blue-200">Terms of use</Link>
-          <Link to="/cookies" className="block text-white/55 transition hover:text-blue-200">Cookie notice</Link>
-          <Link to="/pricing" className="block text-white/55 transition hover:text-blue-200">Plans & limits</Link>
+          <h3 className="font-semibold text-foreground">About & policies</h3>
+          <Link to="/about" className="block text-muted-foreground transition hover:text-blue-200">About ExpertsTeam</Link>
+          <Link to="/contact" className="block text-muted-foreground transition hover:text-blue-200">Contact</Link>
+          <Link to="/privacy" className="block text-muted-foreground transition hover:text-blue-200">Privacy policy</Link>
+          <Link to="/terms" className="block text-muted-foreground transition hover:text-blue-200">Terms of use</Link>
+          <Link to="/cookies" className="block text-muted-foreground transition hover:text-blue-200">Cookie notice</Link>
+          <Link to="/pricing" className="block text-muted-foreground transition hover:text-blue-200">Plans & limits</Link>
         </nav>
 
         <section className="space-y-3 text-sm">
-          <h3 className="font-semibold text-white">Connect</h3>
-          <a href={settings.youtube_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-white/55 transition hover:text-blue-200">
+          <h3 className="font-semibold text-foreground">Connect</h3>
+          <a href={settings.youtube_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-muted-foreground transition hover:text-blue-200">
             <Youtube className="h-4 w-4" /> {socialLabel(settings.youtube_url, "YouTube")}
           </a>
-          <a href={settings.instagram_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-white/55 transition hover:text-blue-200">
+          <a href={settings.instagram_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-muted-foreground transition hover:text-blue-200">
             <Instagram className="h-4 w-4" /> {socialLabel(settings.instagram_url, "Instagram")}
           </a>
-          <a href={`mailto:${settings.owner_email}`} className="flex items-center gap-2 break-all text-white/55 transition hover:text-blue-200">
+          <a href={`mailto:${settings.owner_email}`} className="flex items-center gap-2 break-all text-muted-foreground transition hover:text-blue-200">
             <Mail className="h-4 w-4" /> {settings.owner_email}
           </a>
         </section>
       </div>
 
-      <div className="border-t border-white/10 px-4 py-4 text-center text-xs text-white/40">
-        <p>© {year} {settings.site_name}. All rights reserved. Built by <span className="font-semibold text-white/75">Chris Expert</span> · Co-founders: <span className="font-semibold text-white/75">Dismas</span> &amp; <span className="font-semibold text-white/75">Angelo Codes</span>.</p>
+      <div className="border-t border-border px-4 py-4 text-center text-xs text-muted-foreground">
+        <p>© {year} {settings.site_name}. All rights reserved. Built by <span className="font-semibold text-foreground">Chris Expert</span> · Co-founders: <span className="font-semibold text-foreground">Dismas</span> &amp; <span className="font-semibold text-foreground">Angelo Codes</span>.</p>
       </div>
     </footer>
   );
