@@ -10,9 +10,22 @@ export function formatDate(value: string): string {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return "Date unavailable";
   return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Africa/Kigali",
-    hourCycle: "h23",
+    dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Kigali", hourCycle: "h23",
+  }).format(date);
+}
+
+export function formatDateOnly(value: string): string {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "Date unavailable";
+  return new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium", timeZone: "Africa/Kigali",
+  }).format(date);
+}
+
+export function formatTime(value: string): string {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit", minute: "2-digit", timeZone: "Africa/Kigali", hourCycle: "h23",
   }).format(date);
 }
