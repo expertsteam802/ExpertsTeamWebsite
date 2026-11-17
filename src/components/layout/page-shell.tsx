@@ -42,11 +42,11 @@ export function PageShell({ children, hideFooter = false }: { children: ReactNod
       </div>
       <style>{`
         .theme-neon{--primary:oklch(.68 .18 255);--primary-foreground:oklch(.99 .005 250);--accent:oklch(.74 .13 235);--accent-foreground:oklch(.16 .025 255);--ring:oklch(.72 .16 255);--background:oklch(.12 .02 258);--foreground:oklch(.96 .012 250);--card:oklch(.17 .02 258);--card-foreground:oklch(.96 .012 250);--surface:oklch(.18 .02 258);--surface-foreground:oklch(.96 .012 250);--muted:oklch(.23 .02 258);--muted-foreground:oklch(.72 .02 250);--border:oklch(.29 .02 258);--input:oklch(.25 .02 258);--secondary:oklch(.23 .02 258);--secondary-foreground:oklch(.94 .01 250);--sidebar:oklch(.15 .02 258);--sidebar-primary:oklch(.68 .18 255);--sidebar-accent:oklch(.23 .02 258);--sidebar-border:oklch(.29 .02 258)}
-        .et-cinema-backdrop{background-size:cover;background-position:50% 52%;filter:saturate(.9) contrast(1.08);opacity:.78;transform:scale(1.04);animation:et-cinema-pan 52s ease-in-out infinite alternate;will-change:transform,background-position}
-        .et-cinema-atmosphere{position:absolute;inset:-8%;z-index:2;pointer-events:none;overflow:hidden;background:radial-gradient(ellipse at 50% 72%,rgba(255,190,120,.12),transparent 38%),linear-gradient(180deg,rgba(0,0,0,.18),transparent 24%,rgba(0,0,0,.25));animation:et-atmosphere-breathe 18s ease-in-out infinite alternate}
-        .et-cinema-atmosphere::before,.et-cinema-atmosphere::after{content:"";position:absolute;inset:-20%;pointer-events:none;filter:blur(34px);opacity:.34}
-        .et-cinema-atmosphere::before{background:radial-gradient(ellipse at 18% 72%,rgba(205,218,255,.26),transparent 36%),radial-gradient(ellipse at 82% 62%,rgba(255,190,130,.22),transparent 34%);animation:et-fog-drift 34s ease-in-out infinite alternate}
-        .et-cinema-atmosphere::after{background:linear-gradient(112deg,transparent 28%,rgba(255,255,255,.10) 48%,transparent 66%);transform:translateX(-35%);animation:et-light-sweep 24s ease-in-out infinite}
+        .et-cinema-backdrop{background-size:cover;background-position:50% 52%;filter:saturate(1.02) contrast(1.02);opacity:.72;transform:translateZ(0);will-change:auto}
+        .et-cinema-atmosphere{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden;background:radial-gradient(ellipse at 50% 72%,rgba(255,190,120,.08),transparent 38%),linear-gradient(180deg,rgba(0,0,0,.12),transparent 24%,rgba(0,0,0,.2));animation:et-atmosphere-breathe 24s ease-in-out infinite alternate}
+        .et-cinema-atmosphere::before,.et-cinema-atmosphere::after{content:"";position:absolute;inset:-10%;pointer-events:none;filter:blur(22px);opacity:.2}
+        .et-cinema-atmosphere::before{background:radial-gradient(ellipse at 18% 72%,rgba(205,218,255,.2),transparent 36%),radial-gradient(ellipse at 82% 62%,rgba(255,190,130,.16),transparent 34%);animation:et-atmosphere-breathe 28s ease-in-out infinite alternate}
+        .et-cinema-atmosphere::after{background:linear-gradient(112deg,transparent 28%,rgba(255,255,255,.06) 48%,transparent 66%);opacity:.12}
         @keyframes et-cinema-pan{0%{transform:scale(1.04) translate3d(-.5%,0,0);background-position:48% 50%}100%{transform:scale(1.13) translate3d(.6%,-.5%,0);background-position:54% 56%}}
         @keyframes et-fog-drift{0%{transform:translate3d(-3%,1%,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.08)}}
         @keyframes et-atmosphere-breathe{0%{opacity:.68}100%{opacity:1}}
@@ -63,7 +63,7 @@ export function PageShell({ children, hideFooter = false }: { children: ReactNod
         .et-main .bg-background{background:color-mix(in oklab,var(--background) 92%,transparent)!important}
         .et-main button:focus-visible,.et-main a:focus-visible{outline:2px solid var(--ring);outline-offset:3px}
         .et-main img{max-width:100%}
-        .et-grain{opacity:.13;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");mix-blend-mode:soft-light}
+        .et-grain{display:none}
         .et-main{scrollbar-width:thin;scrollbar-color:rgba(77,141,255,.25) transparent}
         .et-main::-webkit-scrollbar{width:7px}.et-main::-webkit-scrollbar-thumb{background:rgba(77,141,255,.22);border-radius:20px}
         .et-page-content{animation:et-enter .42s cubic-bezier(.2,.75,.2,1) both;width:100%;max-width:100%}
