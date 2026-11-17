@@ -348,6 +348,7 @@ export function CodeAgent() {
   const [panelMotionPhase, setPanelMotionPhase] = useState(0);
   const [runtimeStatus, setRuntimeStatus] = useState("Not started");
   const [terminalReady, setTerminalReady] = useState(false);
+  const [showConnectionCinematic, setShowConnectionCinematic] = useState(false);
   const [terminalConnection, setTerminalConnection] = useState<{
     url: string;
     token: string;
@@ -455,6 +456,7 @@ export function CodeAgent() {
     socket.onopen = () => {
       terminalLastActivityRef.current = Date.now();
       setTerminalReady(true);
+      setShowConnectionCinematic(false);
       terminal.focus();
       terminal.writeln("\r\n[Project files restored. Starting a fresh Kilo process.]");
       terminal.write("\r\nConnected to your project workspace.\r\n");
@@ -470,9 +472,10 @@ export function CodeAgent() {
     };
     socket.onerror = () => {
       setTerminalReady(false);
+      setShowConnectionCinematic(false);
       terminal.writeln("\r\n[connection error]");
     };
-    socket.onclose = () => setTerminalReady(false);
+    socket.onclose = () => { setTerminalReady(false); setShowConnectionCinematic(false); };
 
     const markTerminalActivity = () => {
       terminalLastActivityRef.current = Date.now();
@@ -909,7 +912,9 @@ export function CodeAgent() {
   }
 
   async function openTerminal() {
+    setShowConnectionCinematic(true);
     if (terminalReady && terminalConnection?.projectId === projectId) {
+      setShowConnectionCinematic(false);
       terminalLastActivityRef.current = Date.now();
       return;
     }
@@ -928,6 +933,7 @@ export function CodeAgent() {
       setTerminalConnection({ ...connection, projectId: activeProjectId, cli: selectedCli });
       if (connection.toolkitStatus === "installing") toast.info("The CTF starter toolkit is installing in the Linux sandbox.");
     } catch (error) {
+      setShowConnectionCinematic(false);
       const message =
         error instanceof Error ? error.message : "Could not start the project builder.";
       toast.error(message);
@@ -1884,7 +1890,7 @@ export function CodeAgent() {
 
   return (
     <div className={`expert-agent-shell not-prose relative flex h-full min-h-0 w-full flex-col overflow-hidden ${lightMode ? "expert-agent-light" : "bg-[#080e19] text-slate-100"}`}>
-      {terminalConnection && !terminalReady && (
+      {showConnectionCinematic && (
         <div className="et-ai-link-cinematic absolute inset-0 z-[100] flex items-center justify-center overflow-hidden" role="status" aria-live="polite">
           <div className="et-ai-link-backdrop absolute inset-0" />
           <div className="et-ai-link-vortex absolute inset-0" />
