@@ -1883,7 +1883,20 @@ export function CodeAgent() {
   }
 
   return (
-    <div className={`expert-agent-shell not-prose flex h-full min-h-0 w-full flex-col overflow-hidden ${lightMode ? "expert-agent-light" : "bg-[#080e19] text-slate-100"}`}>
+    <div className={`expert-agent-shell not-prose relative flex h-full min-h-0 w-full flex-col overflow-hidden ${lightMode ? "expert-agent-light" : "bg-[#080e19] text-slate-100"}`}>
+      {terminalConnection && !terminalReady && (
+        <div className="et-ai-link-cinematic absolute inset-0 z-[100] flex items-center justify-center overflow-hidden" role="status" aria-live="polite">
+          <div className="et-ai-link-backdrop absolute inset-0" />
+          <div className="et-ai-link-vortex absolute inset-0" />
+          <div className="relative z-10 mx-5 flex max-w-lg flex-col items-center text-center">
+            <img src="/expertai-mark.svg" alt="" className="et-ai-link-mark mb-7 h-20 w-20" />
+            <div className="et-ai-link-kicker mb-3 text-[10px] font-bold uppercase tracking-[.42em]">ExpertsTeam Intelligence</div>
+            <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-5xl">Establishing connection</h2>
+            <p className="mt-3 text-sm text-white/70">Preparing your workspace and bringing the builder online</p>
+            <div className="et-ai-link-progress mt-8 h-[2px] w-64 overflow-hidden rounded-full bg-white/15"><span /></div>
+          </div>
+        </div>
+      )}
       {/* Workspace top bar */}
       <header className="expert-agent-topbar flex min-h-[62px] flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#0d1523] px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
