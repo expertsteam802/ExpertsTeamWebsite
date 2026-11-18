@@ -26,7 +26,7 @@ export function SecondarySidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const sidebarRef = useRef<HTMLElement | null>(null);
   const previousPathRef = useRef(pathname);
-  const { user, isAdmin, isDeveloper } = useAuth();
+  const { user, isAdmin, isCreator, isDeveloper } = useAuth();
   const active = (to: string) => pathname === to || pathname.startsWith(to + "/");
 
   useEffect(() => {
@@ -85,6 +85,12 @@ export function SecondarySidebar() {
             <a href="/projects?tab=vault" title={collapsed ? "Developer Vault" : undefined} className={linkClass("/projects?tab=vault")}>
               <Archive className="h-4 w-4 shrink-0" />{!collapsed && <span>Developer Vault</span>}
             </a>
+          </section>}
+          {isCreator && <section className="space-y-1">
+            {!collapsed && <p className="mb-2 px-2 text-[9px] font-bold uppercase tracking-[.16em] text-amber-300/70">Owner</p>}
+            <Link to="/creator" title={collapsed ? "Creator dashboard" : undefined} className={linkClass("/creator")}>
+              <Shield className="h-4 w-4 shrink-0 text-amber-300" />{!collapsed && <span>Creator dashboard</span>}
+            </Link>
           </section>}
           {isAdmin && <section className="space-y-1">
             {!collapsed && <p className="mb-2 px-2 text-[9px] font-bold uppercase tracking-[.16em] text-white/30">Management</p>}
