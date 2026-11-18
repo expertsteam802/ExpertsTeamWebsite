@@ -1175,7 +1175,7 @@ export function CodeAgent() {
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-|-$/g, "")
           .slice(0, 48) || "my-app";
-      const requestedSlug = existingSlug || window.prompt("Choose your public project URL. Use lowercase letters, numbers and hyphens.", baseSlug);
+      const requestedSlug = window.prompt("Choose your public project URL. Use lowercase letters, numbers and hyphens.", existingSlug || baseSlug);
       if (requestedSlug === null) return;
       const slug = requestedSlug.toLowerCase().trim().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").replace(/-{2,}/g, "-");
       if (!/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(slug)) {
