@@ -49,7 +49,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
       { title: "Admin panel — ExpertsTeam" },
       {
         name: "description",
-        content: "Creator controls for ExpertsTeam: site branding, members, sessions and pricing.",
+        content: "ExpertsTeam administration: community moderation, members, content, payments and platform settings.",
       },
       { property: "og:title", content: "Admin panel — ExpertsTeam" },
       { property: "og:description", content: "Creator controls for ExpertsTeam." },
@@ -79,7 +79,7 @@ type SettingsForm = {
 };
 
 function AdminPage() {
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, isCreator, user } = useAuth();
   const queryClient = useQueryClient();
   const removeAccount = useServerFn(deleteUserAccount);
   const [form, setForm] = useState<SettingsForm | null>(null);
@@ -1248,6 +1248,7 @@ function AdminPage() {
                           <Input
                             id={key}
                             value={form[key]}
+                            disabled={key === "owner_email" && !isCreator}
                             placeholder={
                               key === "owner_email"
                                 ? "hello@yourwebsite.com"
