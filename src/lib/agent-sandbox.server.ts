@@ -1008,6 +1008,24 @@ export async function publishCloudProject(
   if (!outputFiles.some((file) => file.path === "index.html"))
     throw new Error("The production build does not contain index.html.");
 
+  // Keep an app's own favicon when supplied; otherwise use the ExpertsTeam
+  // brand mark so newly published previews never open with a blank browser icon.
+  const publishedEntry = outputFiles.find((file) => file.path === "index.html");
+  if (publishedEntry) {
+    let html = publishedEntry.content.toString("utf8");
+    const hasProjectIcon = /<link\\b[^>]*rel=["'][^"']*icon/i.test(html);
+    if (!hasProjectIcon) {
+      const brandIcon = '<link rel="icon" type="image/svg+xml" href="https://expertsteam.giize.com/experts-team-mark.svg">';
+      html = /<\\/head>/i.test(html)
+        ? html.replace(/<\\/head>/i, brandIcon + "</head>")
+        : html.replace(/<html\\b[^>]*>/i, (tag) => tag + "<head>" + brandIcon + "</head>");
+    }
+    if (!/<meta\\b[^>]*name=["']application-name["']/i.test(html)) {
+      html = html.replace(/<\\/head>/i, '<meta name="application-name" content="ExpertsTeam"></head>');
+    }
+    publishedEntry.content = Buffer.from(html, "utf8");
+  }
+
   const releaseId = randomUUID();
   const prefix = `${userId}/${slug}/${releaseId}`;
   for (let offset = 0; offset < outputFiles.length; offset += 8) {
