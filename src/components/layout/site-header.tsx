@@ -49,7 +49,7 @@ const SECONDARY_LINKS = [
 
 export function SiteHeader() {
   const settings = useSiteSettings();
-  const { user, profile, isAdmin, isDeveloper, signOut } = useAuth();
+  const { user, profile, isAdmin, isCreator, isDeveloper, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -147,6 +147,11 @@ export function SiteHeader() {
                       <Archive className="mr-2 h-4 w-4" />
                       Developer Vault
                     </a>
+                  </DropdownMenuItem>
+                )}
+                {isCreator && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/creator"><Shield className="mr-2 h-4 w-4 text-amber-300" />Creator dashboard</Link>
                   </DropdownMenuItem>
                 )}
                 {isAdmin && (
@@ -263,6 +268,9 @@ export function SiteHeader() {
                 Personal Vault
               </Link>
             </>
+          )}
+          {isCreator && (
+            <Link to="/creator" onClick={() => setOpen(false)} className="rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 py-3 text-xs font-semibold text-amber-100">Creator dashboard</Link>
           )}
           {isAdmin && (
             <Link
