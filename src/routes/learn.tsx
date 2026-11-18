@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { BookOpen, FileText, GraduationCap, Video } from "lucide-react";
+import { BookOpen, FileText, GraduationCap, Search, Video } from "lucide-react";
 
 import { AddVideoDialog } from "@/components/add-video-dialog";
 import { FileGrid, type CommunityFile } from "@/components/file-grid";
@@ -9,6 +9,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { UploadDialog } from "@/components/upload-dialog";
 import { VideoGrid, type VideoItem } from "@/components/video-grid";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/learn")({
@@ -71,6 +72,7 @@ const SECTIONS = [
 
 function LearnPage() {
   const [section, setSection] = useState<(typeof SECTIONS)[number]["id"]>("library");
+  const [resourceSearch, setResourceSearch] = useState("");
   const { data: files = [], isLoading: filesLoading } = useQuery({
     queryKey: ["files", "learn-library"],
     queryFn: async () => {
@@ -95,6 +97,10 @@ function LearnPage() {
       return data as unknown as VideoItem[];
     },
   });
+
+  const normalizedSearch = resourceSearch.trim().toLowerCase();
+  const filteredFiles = files.filter((file) => [file.title, file.file_name, file.description, file.category].some((value) => String(value ?? "").toLowerCase().includes(normalizedSearch)));
+  const filteredVideos = videos.filter((video) => [video.title, video.description, video.profiles?.display_name, video.profiles?.username].some((value) => String(value ?? "").toLowerCase().includes(normalizedSearch)));
 
   return (
     <PageShell>
@@ -149,13 +155,14 @@ function LearnPage() {
                   </p>
                 </div>
                 <span className="rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
-                  {files.length} resources
+                  {filteredFiles.length} resources
                 </span>
               </div>
+              <div className="mb-4 flex items-center gap-2 rounded-xl border border-border bg-card/70 px-3"><Search className="h-4 w-4 shrink-0 text-muted-foreground" /><Input value={resourceSearch} onChange={(event) => setResourceSearch(event.target.value)} placeholder="Search books, files and learning resources…" className="border-0 bg-transparent shadow-none focus-visible:ring-0" /></div>
               {filesLoading ? (
                 <Card className="p-8 text-sm text-muted-foreground">Loading books and files…</Card>
               ) : (
-                <FileGrid files={files} />
+                <FileGrid files={filteredFiles} />
               )}
               <div className="mt-8 rounded-2xl border border-dashed border-border bg-card/60 p-5">
                 <div className="mb-3 flex items-center gap-2">
@@ -183,10 +190,11 @@ function LearnPage() {
                 </div>
                 <AddVideoDialog category="lesson" triggerLabel="Add learning video" />
               </div>
+              <div className="mb-4 flex items-center gap-2 rounded-xl border border-border bg-card/70 px-3"><Search className="h-4 w-4 shrink-0 text-muted-foreground" /><Input value={resourceSearch} onChange={(event) => setResourceSearch(event.target.value)} placeholder="Search learning videos by title or creator…" className="border-0 bg-transparent shadow-none focus-visible:ring-0" /></div>
               {videosLoading ? (
                 <Card className="p-8 text-sm text-muted-foreground">Loading videos…</Card>
               ) : (
-                <VideoGrid videos={videos} />
+                <VideoGrid videos={filteredVideos} />
               )}
             </div>
           )}
