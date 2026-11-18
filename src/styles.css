@@ -825,3 +825,126 @@ html, body, .et-shell, .et-topbar, .et-secondary-sidebar, .et-main,
 .expert-agent-brand-mark{transform-origin:50% 50%;animation:expert-agent-mark-glow 5s ease-in-out infinite;will-change:filter,transform}
 @keyframes expert-agent-mark-glow{0%,100%{filter:drop-shadow(0 0 2px rgba(40,190,255,.18));transform:translateZ(0) scale(1)}50%{filter:drop-shadow(0 0 10px rgba(40,190,255,.48));transform:translateZ(0) scale(1.045)}}
 @media(prefers-reduced-motion:reduce){.expert-agent-brand-mark{animation:none}}
+
+
+/* Mobile-first ExpertAI workspace layout */
+@media (max-width: 767px) {
+  .expert-agent-shell {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    overscroll-behavior: contain;
+  }
+  .expert-agent-workspace-grid {
+    display: block !important;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden !important;
+  }
+  .expert-agent-stage {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+  }
+  .expert-agent-toolbar {
+    display: flex;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 7px 8px !important;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .expert-agent-toolbar::-webkit-scrollbar { display: none; }
+  .expert-agent-toolbar > div { flex: 0 0 auto; }
+  .expert-agent-toolbar > div:nth-child(2) {
+    order: 3;
+    flex: 1 0 100%;
+    justify-content: space-between;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .expert-agent-toolbar > div:nth-child(2) button {
+    min-height: 38px;
+    flex: 1 0 auto;
+    justify-content: center;
+    padding-inline: 10px;
+  }
+  .expert-agent-toolbar button { min-height: 36px; }
+  .expert-agent-sidebar-drawer {
+    position: fixed !important;
+    z-index: 120 !important;
+    inset: 0 auto 0 0;
+    width: min(86vw, 340px) !important;
+    height: 100dvh !important;
+    max-height: 100dvh;
+    border-right: 1px solid rgba(148,163,184,.2);
+    border-bottom: 0 !important;
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: 24px 0 70px rgba(0,0,0,.48);
+  }
+  .expert-agent-assistant-drawer {
+    position: fixed !important;
+    z-index: 125 !important;
+    inset: auto 0 0 0;
+    width: 100vw !important;
+    height: min(78dvh, 720px) !important;
+    max-height: calc(100dvh - env(safe-area-inset-top));
+    border: 1px solid rgba(148,163,184,.2);
+    border-bottom: 0;
+    border-radius: 18px 18px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: 0 -24px 70px rgba(0,0,0,.5);
+  }
+  .expert-agent-canvas { min-height: 0; min-width: 0; }
+  .expert-agent-canvas iframe {
+    max-width: 100% !important;
+    border-radius: 8px;
+  }
+  .expert-agent-canvas .cm-editor,
+  .expert-agent-canvas .cm-scroller {
+    max-width: 100%;
+    touch-action: pan-x pan-y;
+  }
+  .expert-agent-toolbar + * { min-width: 0; }
+}
+@media (max-width: 480px) {
+  .expert-agent-toolbar > div:last-child {
+    gap: 3px;
+  }
+  .expert-agent-toolbar > div:last-child .text-xs {
+    font-size: 11px;
+  }
+  .expert-agent-canvas > div:first-child {
+    padding-inline: 8px;
+  }
+  .expert-agent-canvas input {
+    font-size: 16px;
+  }
+  .expert-ai-page > header {
+    height: 54px;
+    gap: 6px;
+    padding-inline: 8px;
+  }
+  .expert-ai-page .expert-ai-brand-copy {
+    display: none;
+  }
+  .expert-ai-page nav[aria-label="ExpertAI workspace"] {
+    gap: 2px;
+    padding: 3px;
+  }
+  .expert-ai-page nav[aria-label="ExpertAI workspace"] button {
+    padding: 7px 9px;
+    font-size: 11px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .expert-agent-sidebar-drawer,
+  .expert-agent-assistant-drawer {
+    scroll-behavior: auto;
+  }
+}
