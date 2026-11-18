@@ -19,6 +19,7 @@ import {
   ImagePlus,
   Loader2,
   Maximize2,
+  Minimize2,
   Monitor,
   MoreHorizontal,
   Play,
@@ -337,6 +338,14 @@ export function CodeAgent() {
   const [runtimeBusy, setRuntimeBusy] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [previewExpanded, setPreviewExpanded] = useState(false);
+  useEffect(() => {
+    if (!previewExpanded) return;
+    const restorePreview = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPreviewExpanded(false);
+    };
+    document.addEventListener("keydown", restorePreview);
+    return () => document.removeEventListener("keydown", restorePreview);
+  }, [previewExpanded]);
   const [panelExpanded, setPanelExpanded] = useState(false);
   const [runtimeUrl, setRuntimeUrl] = useState<string | null>(null);
   const [previewAddress, setPreviewAddress] = useState("");
@@ -1166,7 +1175,13 @@ export function CodeAgent() {
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-|-$/g, "")
           .slice(0, 48) || "my-app";
-      const slug = existingSlug || `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
+      const requestedSlug = existingSlug || window.prompt("Choose your public project URL. Use lowercase letters, numbers and hyphens.", baseSlug);
+      if (requestedSlug === null) return;
+      const slug = requestedSlug.toLowerCase().trim().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").replace(/-{2,}/g, "-");
+      if (!/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(slug)) {
+        toast.error("Choose a URL slug with 3–60 characters, using letters, numbers and hyphens.");
+        return;
+      }
       const result = await publish({ data: { projectId: activeProjectId, files, slug } });
       await queryClient.invalidateQueries({ queryKey: ["agent-projects", user?.id] });
       const url = result.publicUrl;
@@ -1919,7 +1934,7 @@ export function CodeAgent() {
           <img
             src="/agent-mark.svg"
             alt="ExpertAI coding agent"
-            className="h-9 w-9 shrink-0 rounded-xl shadow-lg shadow-cyan-500/10"
+            className="expert-agent-brand-mark h-9 w-9 shrink-0 rounded-xl shadow-lg shadow-cyan-500/10"
           />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
