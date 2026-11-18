@@ -1420,7 +1420,7 @@ function AdminPage() {
                               memberRoles.find((item) => item.user_id === member.id)?.role ??
                               "member"
                             }
-                            disabled={member.id === user?.id || changeMemberRole.isPending}
+                            disabled={member.id === user?.id || memberRoles.some((item) => item.user_id === member.id && item.role === "creator") || changeMemberRole.isPending}
                             onChange={(event) =>
                               changeMemberRole.mutate({
                                 userId: member.id,
@@ -1433,7 +1433,7 @@ function AdminPage() {
                             <option value="developer">Developer</option>
                             <option value="admin">Admin</option>
                           </select>
-                          {member.id !== user?.id && (
+                          {member.id !== user?.id && !memberRoles.some((item) => item.user_id === member.id && item.role === "creator") && (
                             <Button
                               variant="destructive"
                               size="sm"
