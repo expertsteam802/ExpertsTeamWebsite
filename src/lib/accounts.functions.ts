@@ -17,6 +17,20 @@ export const deleteUserAccount = createServerFn({ method: "POST" })
       });
       if (error) throw error;
       if (!isAdmin) throw new Error("Forbidden");
+
+      const { data: targetRoles, error: targetRoleError } = await context.supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.userId);
+      if (targetRoleError) throw targetRoleError;
+      if ((targetRoles ?? []).some((item) => item.role === "creator")) {
+        const { data: isCreator, error: creatorError } = await context.supabase.rpc("has_role", {
+          _user_id: context.userId,
+          _role: "creator",
+        });
+        if (creatorError) throw creatorError;
+        if (!isCreator) throw new Error("Only the ExpertsTeam creator can delete the creator account.");
+      }
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
