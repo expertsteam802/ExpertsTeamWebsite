@@ -23,7 +23,7 @@ function AiPage() {
   const [activeView, setActiveView] = useState<"builder" | "chat">("builder");
 
   return (
-    <main className="fixed inset-0 z-40 flex h-[100dvh] w-full flex-col overflow-hidden bg-background text-foreground">
+    <main className="expert-ai-page fixed inset-0 z-40 flex h-[100dvh] w-full flex-col overflow-hidden bg-background text-foreground">
       <header className="relative z-20 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-background/90 px-3 backdrop-blur-xl sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
           <Link
@@ -37,7 +37,7 @@ function AiPage() {
           <img src="/expertai-mark.svg" alt="ExpertAI" className="h-9 w-9 shrink-0" />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold tracking-wide">EXPERTAI STUDIO</span>
+              <span className="expert-ai-brand-copy text-sm font-semibold tracking-wide">EXPERTAI STUDIO</span>
               <span className="hidden rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[9px] font-semibold text-cyan-300 sm:inline">
                 WORKSPACE
               </span>
