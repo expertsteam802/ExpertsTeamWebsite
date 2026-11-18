@@ -819,3 +819,9 @@ html, body, .et-shell, .et-topbar, .et-secondary-sidebar, .et-main,
 .theme-light .et-ai-cinematic-backdrop{opacity:.12}
 .theme-dark .et-ai-cinematic-backdrop{opacity:.42}
 @media(prefers-reduced-motion:reduce){.et-ai-cinematic-backdrop,.et-ai-cinematic-atmosphere,.et-ai-link-backdrop,.et-ai-link-vortex,.et-ai-egg::before,.et-ai-egg::after,.et-ai-egg span{animation:none!important}}
+
+
+/* Smooth, restrained motion for the ExpertAI Studio identity mark. */
+.expert-agent-brand-mark{transform-origin:50% 50%;animation:expert-agent-mark-glow 5s ease-in-out infinite;will-change:filter,transform}
+@keyframes expert-agent-mark-glow{0%,100%{filter:drop-shadow(0 0 2px rgba(40,190,255,.18));transform:translateZ(0) scale(1)}50%{filter:drop-shadow(0 0 10px rgba(40,190,255,.48));transform:translateZ(0) scale(1.045)}}
+@media(prefers-reduced-motion:reduce){.expert-agent-brand-mark{animation:none}}
