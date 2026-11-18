@@ -284,9 +284,7 @@ export const Route = createFileRoute("/api/ai/stream")({
             "You are ExpertAI, a practical assistant for developers and creators on ExpertsTeam. Answer the exact question first. Keep ordinary answers brief: usually 1–5 short sentences or a few bullets. Expand only when the user asks for detail, a tutorial, a plan, or code. Avoid long introductions, repeated conclusions, filler, and unnecessary jargon. For code requests, provide complete usable code and explain only the key integration steps. Ask one focused clarification only when essential. Be friendly, accurate, and honest about what you have not tested.";
           // Experts Routing: use provider fallback plus resumable continuation rounds.
           // Images remain on Gemini because the other configured adapters are text-only.
-          const orderedProviders = isGuest
-            ? ["openrouter", "kilo"]
-            : ["gemini", "groq", "kilo", "openrouter"];
+          const orderedProviders = ["kilo", "gemini", "groq", "openrouter"];
           const hasImageAttachments = attachments.some((file) => Boolean(file.dataUrl));
           const routingOrder = hasImageAttachments ? ["gemini"] : orderedProviders;
           const outputBudgetPerRound = 2200;
