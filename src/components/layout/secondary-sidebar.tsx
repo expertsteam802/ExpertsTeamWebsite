@@ -55,14 +55,14 @@ export function SecondarySidebar() {
   }, [pathname]);
   const width = collapsed ? "w-[68px]" : "w-[224px]";
   const linkClass = (to: string) => cn(
-    "group flex min-h-10 items-center gap-3 rounded-xl px-3 text-[12px] font-semibold transition-colors",
+    "group flex min-h-10 items-center gap-3 rounded-xl px-3 text-[12px] font-semibold transition-[background-color,color,transform] duration-200 ease-out hover:translate-x-0.5",
     active(to) ? "bg-muted text-foreground ring-1 ring-inset ring-border" : "text-muted-foreground hover:bg-muted hover:text-foreground",
   );
   return (
     <>
-      <aside ref={sidebarRef} className={cn("et-secondary-sidebar relative z-20 hidden shrink-0 border-r border-border bg-background/75 transition-[width] duration-200 lg:flex lg:flex-col", width)}>
+      <aside ref={sidebarRef} className={cn("et-secondary-sidebar relative z-20 hidden shrink-0 border-r border-border bg-background/75 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[width] lg:flex lg:flex-col", width)}>
         <div className={cn("flex h-12 items-center border-b border-border", collapsed ? "justify-center px-2" : "justify-between px-4")}>
-          {!collapsed && <span className="text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">Your space</span>}
+          {!collapsed && <span className="text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground transition-opacity duration-200">Your space</span>}
           <button type="button" onClick={() => setCollapsed((v) => !v)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground">
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </button>
