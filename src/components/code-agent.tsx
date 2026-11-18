@@ -325,6 +325,12 @@ export function CodeAgent() {
   const [assistantOpen, setAssistantOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(248);
   const [assistantWidth, setAssistantWidth] = useState(520);
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      setSidebarOpen(false);
+      setAssistantOpen(false);
+    }
+  }, []);
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [newFileName, setNewFileName] = useState("");
   const [renameFileOpen, setRenameFileOpen] = useState(false);
@@ -2007,12 +2013,12 @@ export function CodeAgent() {
 
       {/* Main workspace */}
       <div
-        className={`grid min-h-0 flex-1 grid-cols-1 overflow-hidden ${sidebarOpen ? "lg:grid-cols-[var(--sidebar-width)_5px_minmax(0,1fr)]" : "lg:grid-cols-1"}`}
+        className={`expert-agent-workspace-grid grid min-h-0 flex-1 grid-cols-1 overflow-hidden ${sidebarOpen ? "lg:grid-cols-[var(--sidebar-width)_5px_minmax(0,1fr)]" : "lg:grid-cols-1"}`}
         style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
       >
         {/* Left sidebar */}
         {sidebarOpen && (
-          <aside className="expert-agent-sidebar flex min-h-0 flex-col overflow-y-auto border-b border-white/[0.08] bg-[#0b1320] lg:border-b-0 lg:border-r">
+          <aside className="expert-agent-sidebar expert-agent-sidebar-drawer flex min-h-0 flex-col overflow-y-auto border-b border-white/[0.08] bg-[#0b1320] lg:border-b-0 lg:border-r">
             <div className="flex items-center justify-between px-4 pb-3 pt-4">
               <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
                 Workspace
@@ -2610,7 +2616,7 @@ export function CodeAgent() {
             )}
 
             {/* AI panel */}
-            <aside className={`${assistantOpen ? "flex" : "hidden"} expert-agent-assistant min-h-0 min-w-0 flex-col overflow-hidden border-t border-white/[0.08] bg-[#080f1b] xl:border-l xl:border-t-0`}>
+            <aside className={`${assistantOpen ? "flex" : "hidden"} expert-agent-assistant expert-agent-assistant-drawer min-h-0 min-w-0 flex-col overflow-hidden border-t border-white/[0.08] bg-[#080f1b] xl:border-l xl:border-t-0`}>
                 <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/[0.08] px-4">
                   <div className="flex min-w-0 items-center gap-2">
                     <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400/20 to-blue-500/20 text-cyan-200">
