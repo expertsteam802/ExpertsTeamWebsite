@@ -321,7 +321,7 @@ function CommunityPage() {
 
   return (
     <PageShell>
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-7 lg:grid-cols-[220px_minmax(0,1fr)_260px] lg:py-10">
+      <section className="mx-auto grid w-full max-w-[1600px] gap-6 px-4 py-7 lg:grid-cols-[220px_minmax(0,1fr)_280px] xl:grid-cols-[240px_minmax(0,1fr)_300px] lg:py-10">
         <aside className="hidden lg:block">
           <div className="sticky top-24 space-y-5">
             <div>
@@ -532,10 +532,16 @@ function CommunityPage() {
                 </div>
               </div>
               {user ? (
-                <Button className="w-full rounded-xl" onClick={() => setComposerOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create a post
-                </Button>
+                <div className="grid gap-2">
+                  <Button className="w-full rounded-xl" onClick={() => { setKind("post"); setComposerOpen(true); }}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create a post
+                  </Button>
+                  <Button variant="outline" className="w-full rounded-xl" onClick={() => { setKind("quest"); setComposerOpen(true); }}>
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    Ask a question
+                  </Button>
+                </div>
               ) : (
                 <Link to="/auth">
                   <Button className="w-full">Sign in to post</Button>
