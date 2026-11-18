@@ -152,6 +152,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:image:alt", content: "ExpertsTeam logo" },
       { name: "twitter:image", content: "https://expertsteam.giize.com/experts-team-brand.svg" },
     ],
+    scripts: [
+      {
+        children: `(function(s){s.dataset.zone='12296060',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`,
+      },
+      {
+        children: `(function(s){s.dataset.zone='12296064',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`,
+      },
+    ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon.png?v=20261117" },
@@ -177,63 +185,9 @@ const ADSENSE_PUBLIC_CONTENT_PATHS = new Set([
   "/learn",
 ]);
 
-const MONETAG_PUBLIC_CONTENT_PATHS = new Set([
-  "/",
-  "/about",
-  "/contact",
-  "/cookies",
-  "/entertainment",
-  "/explore",
-  "/learn",
-  "/privacy",
-  "/showcase",
-  "/software",
-  "/terms",
-  "/videos",
-  "/community",
-]);
-
 function RootShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const shouldLoadAdsense = ADSENSE_PUBLIC_CONTENT_PATHS.has(pathname);
-  const shouldLoadMonetag = MONETAG_PUBLIC_CONTENT_PATHS.has(pathname);
-
-  useEffect(() => {
-    if (!shouldLoadMonetag) {
-      document
-        .querySelectorAll(
-          'script[data-expertsteam-monetag-zone], iframe[src*="n6wxm.com"], iframe[src*="nap5k.com"]',
-        )
-        .forEach((element) => element.remove());
-      return;
-    }
-
-    // Monetag requires each zone tag once in the document head. Keep one
-    // instance of each zone while the visitor moves between eligible pages.
-    const zones = [
-      { id: "12296060", src: "https://n6wxm.com/vignette.min.js" },
-      { id: "12296064", src: "https://nap5k.com/tag.min.js" },
-    ];
-    const installed: HTMLScriptElement[] = [];
-
-    for (const zone of zones) {
-      const selector = `script[data-expertsteam-monetag-zone="${zone.id}"]`;
-      if (document.head.querySelector(selector)) continue;
-
-      const script = document.createElement("script");
-      script.dataset.zone = zone.id;
-      script.dataset.expertsteamMonetagZone = zone.id;
-      script.src = zone.src;
-      script.async = true;
-      document.head.appendChild(script);
-      installed.push(script);
-    }
-
-    return () => {
-      // Do not tear down scripts on eligible-to-eligible SPA navigation.
-      // They are removed only when the next route is not monetized.
-    };
-  }, [shouldLoadMonetag]);
 
   useEffect(() => {
     if (shouldLoadAdsense) return;
