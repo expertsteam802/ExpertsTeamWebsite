@@ -398,11 +398,8 @@ export function ChrisAiChat({
             .map((part) => part.text ?? "")
             .join("") ?? "";
         if (text) {
-          for (const character of text) {
-            streamedText += character;
-            setStreamingReply(streamedText);
-            await new Promise((resolve) => setTimeout(resolve, 6));
-          }
+          streamedText += text;
+          setStreamingReply(streamedText);
         }
       };
       while (true) {
