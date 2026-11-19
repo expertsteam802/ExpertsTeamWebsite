@@ -25,7 +25,7 @@ function openAiMessages(request: GeminiRequest, maxInputCharacters: number): Gat
   const system = request.systemInstruction.parts.map((part) => part.text).join("\n")
     .slice(0, Math.min(6000, Math.floor(maxInputCharacters * 0.15)));
   const messages: GatewayMessage[] = [{ role: "system", content: system }];
-  for (const item of request.contents.slice(-21)) {
+  for (const item of request.contents.slice(-101)) {
     const parts: ContentPart[] = [];
     for (const part of item.parts) {
       if (part.text) parts.push({ type: "text", text: part.text });
@@ -95,8 +95,11 @@ export async function generateGeminiContent(
 
   const requestedOutput = Math.min(request.generationConfig?.maxOutputTokens ?? 4096, 8192);
   const attempts = [
-    { context: 48000, output: requestedOutput },
-    { context: 24000, output: Math.min(requestedOutput, 4096) },
+    // Start with a generous context for long chats, then adapt down for smaller free models.
+    { context: 80000, output: requestedOutput },
+    { context: 64000, output: Math.min(requestedOutput, 6144) },
+    { context: 48000, output: Math.min(requestedOutput, 4096) },
+    { context: 24000, output: Math.min(requestedOutput, 3072) },
     { context: 12000, output: Math.min(requestedOutput, 2048) },
   ];
   let lastCapacityError = "";
