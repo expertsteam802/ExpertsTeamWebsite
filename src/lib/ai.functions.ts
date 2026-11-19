@@ -57,7 +57,6 @@ export const askChrisAi = createServerFn({ method: "POST" })
           history: data.history ?? [],
           attachments: data.attachments ?? [],
         },
-        process.env["GEMINI_API_KEY"],
       );
     } catch (error) {
       console.error("[ExpertAI] Request failed:", error);
@@ -71,7 +70,7 @@ export const generateExpertImage = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { generateExpertImage: generate } = await import("./ai.server");
     try {
-      return await generate({ prompt: data.prompt }, process.env["GEMINI_API_KEY"]);
+      return await generate({ prompt: data.prompt });
     } catch (error) {
       console.error("[ExpertAI image] Generation failed:", error);
       throw new Error(
