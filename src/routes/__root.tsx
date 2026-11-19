@@ -119,11 +119,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       // YouTube requires a Referer header for embedded playback (error 153).
       { name: "referrer", content: "strict-origin-when-cross-origin" },
-      { title: "ExpertsTeam — Learn, Build, Create & Connect" },
+      { title: "ExpertsTeam - Learn, Code, Games & Apps for Free" },
       {
         name: "description",
         content:
-          "ExpertsTeam is a digital learning and creator platform to learn coding, build real software with ExpertAI, share projects, connect with developers and discover useful tools.",
+          "Learn to code, explore games and apps, download useful resources, build software with ExpertAI and connect with the ExpertsTeam community.",
       },
 
       {
@@ -135,27 +135,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:title", content: "ExpertsTeam — Learn, Build, Create & Connect" },
-      { name: "twitter:title", content: "ExpertsTeam | Code, Create & Connect in One Digital Hub" },
+      { name: "twitter:title", content: "ExpertsTeam - Learn, Code, Games & Apps for Free" },
       {
         property: "og:description",
         content:
-          "Learn to code, build software with ExpertAI, connect with creators and request custom applications from ExpertsTeam.",
+          "ExpertsTeam helps you learn coding, discover games and apps, download resources and build software with ExpertAI.",
       },
       {
         name: "twitter:description",
         content:
-          "Learn coding, build software with ExpertAI, share projects and connect with the ExpertsTeam developer community.",
+          "Learn, code, explore games and apps for free with ExpertsTeam. Build projects with ExpertAI and connect with developers.",
       },
-      { property: "og:image", content: "https://btphazswhmkkuuyulqpt.supabase.co/storage/v1/object/public/site-assets/site-branding/logo-1795102812239.png" },
-      { property: "og:image:width", content: "192" },
-      { property: "og:image:height", content: "192" },
+      { property: "og:image", content: "https://btphazswhmkkuuyulqpt.supabase.co/storage/v1/object/public/site-assets/site-branding/logo-1795102812239.jpg" },
+      { property: "og:image:width", content: "1248" },
+      { property: "og:image:height", content: "1248" },
       { property: "og:image:alt", content: "ExpertsTeam logo" },
-      { name: "twitter:image", content: "https://btphazswhmkkuuyulqpt.supabase.co/storage/v1/object/public/site-assets/site-branding/logo-1795102812239.png" },
+      { name: "twitter:image", content: "https://btphazswhmkkuuyulqpt.supabase.co/storage/v1/object/public/site-assets/site-branding/logo-1795102812239.jpg" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg?v=20261119" },
-      { rel: "apple-touch-icon", href: "https://btphazswhmkkuuyulqpt.supabase.co/storage/v1/object/public/site-assets/site-branding/logo-1795102812239.png" },
+      { rel: "icon", type: "image/jpeg", sizes: "any", href: "https://btphazswhmkkuuyulqpt.supabase.co/storage/v1/object/public/site-assets/site-branding/logo-1795102812239.jpg?v=20261119" },
+      { rel: "apple-touch-icon", href: "https://btphazswhmkkuuyulqpt.supabase.co/storage/v1/object/public/site-assets/site-branding/logo-1795102812239.jpg?v=20261119" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -259,7 +259,7 @@ function RootShell({ children }: { children: ReactNode }) {
               "@type": "Organization",
               name: "ExpertsTeam",
               alternateName: ["Experts Team", "expertsteam.giize.com"],
-              logo: "https://btphazswhmkkuuyulqpt.supabase.co/storage/v1/object/public/site-assets/site-branding/logo-1795102812239.png",
+              logo: "https://btphazswhmkkuuyulqpt.supabase.co/storage/v1/object/public/site-assets/site-branding/logo-1795102812239.jpg",
               sameAs: ["https://www.youtube.com/@expertchris", "https://instagram.com/m_chris_t"],
               contactPoint: [{ "@type": "ContactPoint", contactType: "customer support", email: "mucyochristhecla@gmail.com" }],
               url: "https://expertsteam.giize.com/",
