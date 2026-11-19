@@ -88,6 +88,8 @@ function CommunityPage() {
   const [storyImage, setStoryImage] = useState<File | null>(null);
   const [storyPreview, setStoryPreview] = useState("");
   const [storyCaption, setStoryCaption] = useState("");
+  const [storyRightsConfirmed, setStoryRightsConfirmed] = useState(false);
+  const [postRightsConfirmed, setPostRightsConfirmed] = useState(false);
   const [storyComposerOpen, setStoryComposerOpen] = useState(false);
   const [storyViewer, setStoryViewer] = useState<{ userId: string; index: number } | null>(null);
   const storyInputRef = useRef<HTMLInputElement>(null);
@@ -235,6 +237,8 @@ function CommunityPage() {
   const createStory = useMutation({
     mutationFn: async () => {
       if (!user || !storyImage) throw new Error("Choose a photo for your story.");
+      if (!storyRightsConfirmed)
+        throw new Error("Confirm that you own or have permission to share this story image.");
       const safeName = storyImage.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-80);
       const path = `${user.id}/stories/${crypto.randomUUID()}-${safeName}`;
       const { error: uploadError } = await supabase.storage
@@ -257,6 +261,7 @@ function CommunityPage() {
       setStoryImage(null);
       setStoryPreview("");
       setStoryCaption("");
+      setStoryRightsConfirmed(false);
       setStoryComposerOpen(false);
       toast.success("Your story is live for 24 hours");
       void queryClient.invalidateQueries({ queryKey: ["community-stories"] });
@@ -267,6 +272,16 @@ function CommunityPage() {
   const createPost = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Sign in to share with the community.");
+      if (!postRightsConfirmed)
+        throw new Error("Confirm that you own or have permission to share this post and its media.");
+      if (linkUrl.trim()) {
+        let parsedLink: URL;
+        try { parsedLink = new URL(linkUrl.trim()); } catch {
+          throw new Error("Enter a valid link URL.");
+        }
+        if (parsedLink.protocol !== "https:")
+          throw new Error("Community links must use HTTPS.");
+      }
       if (!body.trim() && !linkUrl.trim() && !image)
         throw new Error("Add a caption, link or photo.");
       let media_url: string | null = null;
@@ -303,6 +318,7 @@ function CommunityPage() {
       setLinkUrl("");
       setImage(null);
       setImagePreview("");
+      setPostRightsConfirmed(false);
       setComposerOpen(false);
       toast.success("Your post is live");
       void queryClient.invalidateQueries({ queryKey: ["community-posts"] });
@@ -593,11 +609,15 @@ function CommunityPage() {
             maxLength={500}
             placeholder="Add a short caption (optional)…"
           />
+          <label className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-3 text-sm leading-6">
+            <input type="checkbox" className="mt-1 h-4 w-4 shrink-0 accent-primary" checked={storyRightsConfirmed} onChange={(event) => setStoryRightsConfirmed(event.target.checked)} disabled={createStory.isPending} />
+            <span>I own this image or have permission to share it, and it does not infringe another person’s rights or contain unlawful material.</span>
+          </label>
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-muted-foreground">Visible to the community for 24 hours.</p>
             <Button
               onClick={() => createStory.mutate()}
-              disabled={!storyImage || createStory.isPending}
+              disabled={!storyImage || !storyRightsConfirmed || createStory.isPending}
             >
               {createStory.isPending ? "Publishing…" : "Share story"}
             </Button>
@@ -713,8 +733,12 @@ function CommunityPage() {
               <Input
                 value={linkUrl}
                 onChange={(event) => setLinkUrl(event.target.value)}
-                placeholder="Add a link (optional)"
+                placeholder="Add an HTTPS link (optional)"
               />
+              <label className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-3 text-sm leading-6">
+                <input type="checkbox" className="mt-1 h-4 w-4 shrink-0 accent-primary" checked={postRightsConfirmed} onChange={(event) => setPostRightsConfirmed(event.target.checked)} disabled={createPost.isPending} />
+                <span>I own this post and its media or have permission to share them. I will credit creators and will not post pirated, unlawful, hateful or harmful material.</span>
+              </label>
               {imagePreview && (
                 <div className="relative overflow-hidden rounded-xl border">
                   <img
@@ -748,7 +772,7 @@ function CommunityPage() {
                 </label>
                 <Button
                   onClick={() => createPost.mutate()}
-                  disabled={createPost.isPending || (!body.trim() && !linkUrl.trim() && !image)}
+                  disabled={createPost.isPending || !postRightsConfirmed || (!body.trim() && !linkUrl.trim() && !image)}
                 >
                   {createPost.isPending ? "Publishing…" : "Share post"}
                   <Send className="ml-2 h-4 w-4" />
