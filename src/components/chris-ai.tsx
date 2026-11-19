@@ -40,26 +40,102 @@ type UploadedFile = {
   size?: number;
 };
 
+function renderInline(text: string, streaming = false) {
+  const tokenPattern = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g;
+  const nodes: React.ReactNode[] = [];
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+
+  while ((match = tokenPattern.exec(text)) !== null) {
+    if (match.index > cursor) {
+      const plain = text.slice(cursor, match.index);
+      nodes.push(streaming
+        ? plain.split("").map((character, index) => <span key={`s-${key}-${index}`} className="expertai-stream-char">{character}</span>)
+        : plain);
+    }
+    const token = match[0];
+    if (token.startsWith("**")) nodes.push(<strong key={key++} className="font-semibold">{token.slice(2, -2)}</strong>);
+    else if (token.startsWith("`")) nodes.push(<code key={key++} className="rounded bg-background/70 px-1 py-0.5 text-[0.9em]">{token.slice(1, -1)}</code>);
+    else if (token.startsWith("*")) nodes.push(<em key={key++}>{token.slice(1, -1)}</em>);
+    else {
+      const link = token.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
+      nodes.push(link
+        ? <a key={key++} href={link[2]} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">{link[1]}</a>
+        : token);
+    }
+    cursor = match.index + token.length;
+  }
+  if (cursor < text.length) {
+    const plain = text.slice(cursor);
+    nodes.push(streaming
+      ? plain.split("").map((character, index) => <span key={`tail-${index}`} className="expertai-stream-char">{character}</span>)
+      : plain);
+  }
+  return nodes;
+}
+
 function MessageBody({ content, streaming = false }: { content: string; streaming?: boolean }) {
   const parts = content.split(/```/);
   return (
     <div className="space-y-2 text-sm leading-relaxed">
-      {parts.map((part, index) =>
-        index % 2 === 1 ? (
-          <pre
-            key={index}
-            className="overflow-x-auto rounded-lg border border-border bg-background/80 p-3 text-xs"
-          >
-            <code>{part.replace(/^[a-zA-Z0-9+#-]*\n/, "")}</code>
-          </pre>
-        ) : (
-          part.trim() && (
-            <p key={index} className="whitespace-pre-wrap">
-              {streaming ? part.trim().split("").map((character, characterIndex) => <span key={characterIndex} className="expertai-stream-char">{character}</span>) : part.trim()}
-            </p>
-          )
-        ),
-      )}
+      {parts.map((part, index) => {
+        if (index % 2 === 1) {
+          return (
+            <pre key={index} className="overflow-x-auto rounded-lg border border-border bg-background/80 p-3 text-xs">
+              <code>{part.replace(/^[a-zA-Z0-9+#-]*\n/, "")}</code>
+            </pre>
+          );
+        }
+
+        const lines = part.trim().split("\n");
+        const blocks: React.ReactNode[] = [];
+        let paragraph: string[] = [];
+        let listItems: string[] = [];
+        let listType: "ul" | "ol" | null = null;
+        const flushParagraph = () => {
+          if (paragraph.length) {
+            blocks.push(<p key={`p-${blocks.length}`} className="whitespace-pre-wrap">{renderInline(paragraph.join("\n"), streaming)}</p>);
+            paragraph = [];
+          }
+        };
+        const flushList = () => {
+          if (!listItems.length || !listType) return;
+          const List = listType;
+          blocks.push(<List key={`l-${blocks.length}`} className={listType === "ul" ? "list-disc" : "list-decimal"} style={{ paddingLeft: "1.35rem" }}>
+            {listItems.map((item, itemIndex) => <li key={itemIndex} className="pl-1">{renderInline(item, streaming)}</li>)}
+          </List>);
+          listItems = [];
+          listType = null;
+        };
+
+        lines.forEach((rawLine) => {
+          const line = rawLine.trim();
+          if (!line) { flushParagraph(); flushList(); return; }
+          const heading = line.match(/^(#{1,4})\s+(.+)$/);
+          if (heading) {
+            flushParagraph(); flushList();
+            blocks.push(<h3 key={`h-${blocks.length}`} className="font-semibold leading-snug">{renderInline(heading[2], streaming)}</h3>);
+            return;
+          }
+          if (/^[-*_]{3,}$/.test(line)) { flushParagraph(); flushList(); blocks.push(<hr key={`hr-${blocks.length}`} className="border-border" />); return; }
+          const bullet = line.match(/^(?:[-*+]\s+)(.+)$/);
+          const numbered = line.match(/^\d+[.)]\s+(.+)$/);
+          if (bullet || numbered) {
+            flushParagraph();
+            const nextType = bullet ? "ul" : "ol";
+            if (listType && listType !== nextType) flushList();
+            listType = nextType;
+            listItems.push((bullet ?? numbered)![1]);
+            return;
+          }
+          flushList();
+          paragraph.push(line);
+        });
+        flushParagraph();
+        flushList();
+        return <div key={index} className="space-y-2">{blocks}</div>;
+      })}
     </div>
   );
 }
@@ -216,6 +292,7 @@ export function ChrisAiChat({
     }
   });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -320,6 +397,12 @@ export function ChrisAiChat({
   });
   const visibleThreads = useMemo(() => chatThreads, [chatThreads]);
   const messages = user ? [...savedMessages, ...optimisticMessages] : guestMessages;
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+  }, [messages.length, messages[messages.length - 1]?.content, streamingReply]);
 
   const send = useMutation({
     mutationFn: async (prompt: string) => {
@@ -596,7 +679,7 @@ export function ChrisAiChat({
 
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden bg-background">
-      <style>{`@keyframes expertai-character-in { from { opacity: 0; filter: blur(1.5px); transform: translateY(2px); } to { opacity: 1; filter: blur(0); transform: translateY(0); } } .expertai-stream-char { animation: expertai-character-in 180ms ease-out both; } @media (prefers-reduced-motion: reduce) { .expertai-stream-char { animation: none; } }`}</style>
+      <style>{`@keyframes expertai-character-in { from { opacity: 0.18; } to { opacity: 1; } } .expertai-stream-char { animation: expertai-character-in 420ms ease-out both; } .expertai-message-in { animation: expertai-character-in 650ms ease-out both; } @media (prefers-reduced-motion: reduce) { .expertai-stream-char, .expertai-message-in { animation: none; } }`}</style>
       {user && !compact && (
         <aside className="hidden w-60 shrink-0 flex-col border-r border-border/70 bg-card/70 md:flex">
           <div className="flex items-center justify-between border-b border-border/70 p-3">
@@ -710,7 +793,7 @@ export function ChrisAiChat({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+        <div ref={messagesContainerRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 scroll-smooth">
           {messagesError && (
             <div
               role="alert"
@@ -753,7 +836,7 @@ export function ChrisAiChat({
                 </span>
               )}
               <div
-                className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                className={`expertai-message-in max-w-[80%] rounded-2xl px-4 py-2 ${
                   message.role === "user"
                     ? "bg-primary text-primary-foreground"
                     : "border border-border bg-secondary"
