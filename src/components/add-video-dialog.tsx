@@ -33,10 +33,13 @@ export function AddVideoDialog({ category, triggerLabel = "Add a YouTube video" 
   const [description, setDescription] = useState("");
   const [link, setLink] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [rightsConfirmed, setRightsConfirmed] = useState(false);
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Sign in to add a video.");
+      if (!rightsConfirmed)
+        throw new Error("Confirm that you own or have permission to share this video.");
       if (title.trim().length < 2) throw new Error("Give the video a title.");
       const youtubeId = parseYouTubeId(link);
       if (!youtubeId) throw new Error("Paste the full YouTube share link (not just an id).");
@@ -68,6 +71,7 @@ export function AddVideoDialog({ category, triggerLabel = "Add a YouTube video" 
       setDescription("");
       setLink("");
       setThumbnailUrl("");
+      setRightsConfirmed(false);
       setOpen(false);
       void queryClient.invalidateQueries({ queryKey: ["videos"] });
     },
@@ -128,9 +132,22 @@ export function AddVideoDialog({ category, triggerLabel = "Add a YouTube video" 
               onChange={(event) => setDescription(event.target.value)}
             />
           </div>
+          <label className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-3 text-sm leading-6">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 shrink-0 accent-primary"
+              checked={rightsConfirmed}
+              onChange={(event) => setRightsConfirmed(event.target.checked)}
+              disabled={mutation.isPending}
+            />
+            <span>
+              I own this video or have permission to share it. It does not infringe copyright,
+              contain unlawful material or promote harmful activity.
+            </span>
+          </label>
         </div>
         <DialogFooter>
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !rightsConfirmed}>
             {mutation.isPending ? "Saving…" : "Publish video"}
           </Button>
         </DialogFooter>
