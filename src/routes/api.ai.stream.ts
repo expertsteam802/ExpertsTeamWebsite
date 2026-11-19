@@ -278,7 +278,7 @@ export const Route = createFileRoute("/api/ai/stream")({
             return parts;
           });
           const contents: SmartContent[] = [
-            ...history.slice(-8).map((message) => ({
+            ...history.slice(-20).map((message) => ({
               role:
                 message.role === "ai" || message.role === "assistant"
                   ? ("model" as const)
