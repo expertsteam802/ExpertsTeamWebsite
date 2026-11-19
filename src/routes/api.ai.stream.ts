@@ -358,12 +358,19 @@ export const Route = createFileRoute("/api/ai/stream")({
             },
           });
         } catch (error) {
-          console.error("[ExpertAI stream]", error);
+          const message = error instanceof Error ? error.message : String(error);
+          console.error("[ExpertAI stream]", message);
+          if (/Kilo.*rate limit|free-model rate limit/i.test(message)) {
+            return Response.json(
+              { error: "Kilo's free-model limit has been reached for this network IP. Please wait and try again." },
+              { status: 429 },
+            );
+          }
+          if (/Kilo free access is unavailable/i.test(message)) {
+            return Response.json({ error: message }, { status: 503 });
+          }
           return Response.json(
-            {
-              error:
-                "ExpertAI is temporarily unavailable. Your request is safe to retry in a moment.",
-            },
+            { error: "ExpertAI is temporarily unavailable through Kilo. Please try again shortly." },
             { status: 503 },
           );
         }
