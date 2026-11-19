@@ -199,3 +199,23 @@ test("Smart Processing preserves image payloads in the latest user request", () 
 test("Smart token estimate is conservative", () => {
   assert.equal(estimateSmartTokens("a".repeat(1000)), 500);
 });
+
+test("Kilo adapter drops unsupported JSON response mode and retries", async () => {
+  let calls = 0;
+  const sawFormats: boolean[] = [];
+  globalThis.fetch = (async (_url, init) => {
+    calls++;
+    const body = JSON.parse(String(init?.body ?? "{}")) as { response_format?: unknown };
+    sawFormats.push(Boolean(body.response_format));
+    if (calls === 1) return new Response("unsupported parameter response_format", { status: 400 });
+    return Response.json({ choices: [{ finish_reason: "stop", message: { content: "{\\"ok\\":true}" } }] });
+  }) as typeof fetch;
+  const response = await generateGeminiContent({
+    systemInstruction: { parts: [{ text: "Return JSON." }] },
+    contents: [{ role: "user", parts: [{ text: "Return ok true." }] }],
+    generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1024 },
+  });
+  assert.equal(calls, 2);
+  assert.deepEqual(sawFormats, [true, false]);
+  assert.equal(response.candidates?.[0]?.content?.parts?.[0]?.text, "{\\"ok\\":true}");
+});
