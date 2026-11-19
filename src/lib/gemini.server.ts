@@ -53,7 +53,7 @@ function openAiMessages(request: GeminiRequest, maxInputCharacters: number): Gat
       const text = message.content.filter((part) => part.type === "text")
         .map((part) => part.type === "text" ? part.text : "").join("\n");
       const images = message.content.filter((part) => part.type === "image_url");
-      const kept = text.slice(-remaining);
+      const kept = remaining > 0 ? text.slice(-remaining) : "";
       remaining = Math.max(0, remaining - kept.length);
       message.content = [...(kept ? [{ type: "text" as const, text: kept }] : []), ...images];
     } else if (remaining <= 0) {
@@ -77,7 +77,7 @@ function asGeminiResponse(text: string, finishReason = "STOP"): GeminiResponse {
 function isRetryableCapacityError(status: number, detail: string): boolean {
   if (status === 413) return true;
   if (status !== 400) return false;
-  return /context length|context window|maximum context|max[_ -]?tokens|token limit|request too large|too many tokens|unsupported.*image|image.*not supported/i.test(detail);
+  return /context length|context window|maximum context|max[_ -]?tokens|token limit|request too large|too many tokens|unsupported.*image|image.*not supported|response_format|json_object|unsupported parameter/i.test(detail);
 }
 
 /** Kilo free models vary in context, output and vision support. */
@@ -107,7 +107,7 @@ export async function generateGeminiContent(
       messages: openAiMessages(activeRequest, budget.context),
       max_tokens: budget.output,
     };
-    if (request.generationConfig?.responseMimeType === "application/json") {
+    if (request.generationConfig?.responseMimeType === "application/json" && index === 0) {
       body.response_format = { type: "json_object" };
     }
     const response = await fetch(endpoint, {
