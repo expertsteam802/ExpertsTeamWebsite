@@ -266,6 +266,7 @@ export async function runAgent(
   const handoffNotes: string[] = [];
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
+  let agentOutputBudget = 8192;
   const maxRounds = 16;
 
   for (let round = 0; round < maxRounds; round++) {
@@ -317,7 +318,7 @@ export async function runAgent(
       const response = await generateGeminiContent(
         {
           systemInstruction: { parts: [{ text: systemPrompt }] },
-          generationConfig: { responseMimeType: "application/json", maxOutputTokens: 8192 },
+          generationConfig: { responseMimeType: "application/json", maxOutputTokens: agentOutputBudget },
           contents: [
             ...history.slice(-8).map((message) => ({
               role: message.role === "assistant" ? ("model" as const) : ("user" as const),
@@ -369,8 +370,9 @@ export async function runAgent(
         return { message: latestMessage, files: repairMissingStylesheetImports(completedFiles) };
       }
       if (candidate?.finishReason === "MAX_TOKENS") {
+        agentOutputBudget = Math.max(2048, Math.floor(agentOutputBudget / 2));
         lastFailure =
-          "A model reached its output limit; continuing with smaller batches and another provider.";
+          "A model reached its output limit; continuing with a smaller output budget and resumable file batches.";
       } else if (!Object.keys(parsed.files).length) {
         lastFailure = "A model returned incomplete file data; switching providers and retrying.";
       }
