@@ -8,8 +8,6 @@ import {
 } from "@/lib/smart-processing.server";
 import {
   generateGeminiContent,
-  isProviderCoolingDown,
-  markProviderCoolingDown,
 } from "@/lib/gemini.server";
 
 const requestSchema = z
@@ -282,11 +280,8 @@ export const Route = createFileRoute("/api/ai/stream")({
           const compactedContents = compactSmartContents(contents);
           const systemText =
             "You are ExpertAI, a practical assistant for developers and creators on ExpertsTeam. Answer the exact question first. Keep ordinary answers brief: usually 1–5 short sentences or a few bullets. Expand only when the user asks for detail, a tutorial, a plan, or code. Avoid long introductions, repeated conclusions, filler, and unnecessary jargon. For code requests, provide complete usable code and explain only the key integration steps. Ask one focused clarification only when essential. Be friendly, accurate, and honest about what you have not tested.";
-          // Experts Routing: use provider fallback plus resumable continuation rounds.
-          // Images remain on Gemini because the other configured adapters are text-only.
-          const orderedProviders = ["kilo", "gemini", "groq", "openrouter"];
-          const hasImageAttachments = attachments.some((file) => Boolean(file.dataUrl));
-          const routingOrder = hasImageAttachments ? ["gemini"] : orderedProviders;
+          // ExpertAI is Kilo-only. No Gemini/Groq/OpenRouter fallback is permitted.
+          const routingOrder = ["kilo"];
           const outputBudgetPerRound = 2200;
           let result = await generateGeminiContent(
             {
@@ -322,9 +317,7 @@ export const Route = createFileRoute("/api/ai/stream")({
                 generationConfig: { maxOutputTokens: outputBudgetPerRound },
               },
               undefined,
-              routingOrder.length > 1
-                ? [...routingOrder.slice((round + 1) % routingOrder.length), ...routingOrder.slice(0, (round + 1) % routingOrder.length)]
-                : routingOrder,
+              routingOrder,
             );
             const nextText =
               result.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
