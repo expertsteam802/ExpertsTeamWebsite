@@ -51,10 +51,12 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
   const [sourceUrl, setSourceUrl] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [percent, setPercent] = useState(0);
+  const [rightsConfirmed, setRightsConfirmed] = useState(false);
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Sign in to upload.");
+      if (!rightsConfirmed) throw new Error("Confirm that you have the rights to share this material.");
       const cleanSourceUrl = sourceUrl.trim();
       if (!file && !cleanSourceUrl)
         throw new Error("Choose a file or paste a download/source link.");
@@ -116,6 +118,7 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
       setPayoutAccount("");
       setSourceUrl("");
       setThumbnailUrl("");
+      setRightsConfirmed(false);
       setPercent(0);
       setOpen(false);
       void queryClient.invalidateQueries({ queryKey: ["files"] });
@@ -247,6 +250,21 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
             />
           </div>
 
+          <label className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-3 text-sm leading-6">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 shrink-0 accent-primary"
+              checked={rightsConfirmed}
+              onChange={(event) => setRightsConfirmed(event.target.checked)}
+              disabled={mutation.isPending}
+            />
+            <span>
+              I own this material or have permission to share and distribute it. It does not contain
+              pirated software, unauthorised copyrighted content, malware, stolen data or material
+              intended for unlawful access or harm.
+            </span>
+          </label>
+
           {(mutation.isPending || percent > 0) && (
             <div className="space-y-2">
               <Progress value={percent} />
@@ -258,7 +276,7 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
         <DialogFooter>
           <Button
             onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || (!file && !sourceUrl.trim())}
+            disabled={mutation.isPending || (!file && !sourceUrl.trim()) || !rightsConfirmed}
           >
             {mutation.isPending
               ? file
