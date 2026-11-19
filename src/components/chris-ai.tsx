@@ -289,7 +289,7 @@ export function ChrisAiChat({
   });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
-  const streamFrameRef = useRef<number | null>(null);
+  const streamUpdateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -511,11 +511,12 @@ export function ChrisAiChat({
             .join("") ?? "";
         if (text) {
           streamedText += text;
-          if (streamFrameRef.current === null) {
-            streamFrameRef.current = window.requestAnimationFrame(() => {
-              streamFrameRef.current = null;
+          // Batch incoming tokens so long replies are not re-rendered for every SSE chunk.
+          if (streamUpdateTimerRef.current === null) {
+            streamUpdateTimerRef.current = setTimeout(() => {
+              streamUpdateTimerRef.current = null;
               setStreamingReply(streamedText);
-            });
+            }, 50);
           }
         }
       };
@@ -529,9 +530,9 @@ export function ChrisAiChat({
       }
       buffer += decoder.decode();
       if (buffer.trim()) await consumeEvent(buffer);
-      if (streamFrameRef.current !== null) {
-        window.cancelAnimationFrame(streamFrameRef.current);
-        streamFrameRef.current = null;
+      if (streamUpdateTimerRef.current !== null) {
+        clearTimeout(streamUpdateTimerRef.current);
+        streamUpdateTimerRef.current = null;
       }
       setStreamingReply(streamedText);
       const reply = streamedText.trim();
@@ -580,9 +581,9 @@ export function ChrisAiChat({
       void queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
     onError: (error: Error) => {
-      if (streamFrameRef.current !== null) {
-        window.cancelAnimationFrame(streamFrameRef.current);
-        streamFrameRef.current = null;
+      if (streamUpdateTimerRef.current !== null) {
+        clearTimeout(streamUpdateTimerRef.current);
+        streamUpdateTimerRef.current = null;
       }
       setStreamingReply("");
       toast.error(error.message);
