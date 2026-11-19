@@ -89,7 +89,7 @@ function TermsPage() {
           </Card>
           <Card className="p-5 sm:p-6">
             <h2 className="font-display text-lg font-semibold">
-              3. Check AI output before using it
+              7. Check AI output before using it
             </h2>
             <p className="mt-2 text-sm leading-7 text-muted-foreground">
               AI-generated code and answers may be incomplete or incorrect. Review and test them
