@@ -19,60 +19,73 @@ export type SmartRequest = {
 
 const DEFAULT_TEXT_BUDGET = 48_000;
 const SYSTEM_TEXT_BUDGET = 5_000;
-const HISTORY_TEXT_BUDGET = 6_000;
 const LATEST_MESSAGE_BUDGET = 40_000;
+const MAX_HISTORY_MESSAGES = 20;
 
-function trimText(value: string, limit: number): string {
+function compactText(value: string, limit: number): string {
   if (value.length <= limit) return value;
-  if (limit < 100) return value.slice(-limit);
-  const head = Math.floor(limit * 0.35);
-  const tail = limit - head;
-  return value.slice(0, head) + "\n[Earlier content compacted]\n" + value.slice(-tail);
+  const marker = "\n[...middle of this message compacted; beginning and ending preserved...]\n";
+  const available = Math.max(0, limit - marker.length);
+  const head = Math.ceil(available * 0.55);
+  const tail = available - head;
+  return value.slice(0, head) + marker + (tail ? value.slice(-tail) : "");
 }
 
 /**
- * Conservative, provider-neutral request compaction. It keeps the newest user
- * request intact as the first priority, then recent context, and preserves
- * image payloads for Gemini. This is a safety budget, not an exact tokenizer.
+ * Provider-neutral context compaction. The newest user request gets priority;
+ * older turns are retained in chronological order and compacted according to
+ * recency. Full source messages remain untouched in chat storage.
  */
 export function compactSmartContents(
   contents: SmartContent[],
   maxTextCharacters = DEFAULT_TEXT_BUDGET,
 ): SmartContent[] {
-  if (!contents.length) return [];
+  if (!contents.length || maxTextCharacters <= 0) return [];
   const latestUserIndex = contents.findLastIndex((item) => item.role === "user");
   const latestIndex = latestUserIndex >= 0 ? latestUserIndex : contents.length - 1;
   const latest = contents[latestIndex];
   if (!latest) return [];
-  const older = contents.slice(0, latestIndex).slice(-4);
 
-  const latestTextParts = latest.parts.filter((part) => typeof part.text === "string");
+  const older = contents.slice(0, latestIndex).slice(-MAX_HISTORY_MESSAGES);
+  const latestText = latest.parts
+    .filter((part) => typeof part.text === "string")
+    .map((part) => part.text ?? "")
+    .join("\n");
   const latestImages = latest.parts.filter((part) => part.inlineData?.data);
-  const latestText = latestTextParts.map((part) => part.text ?? "");
-  const latestTextJoined = latestText.join("\n");
-  const latestBudget = Math.min(LATEST_MESSAGE_BUDGET, maxTextCharacters - HISTORY_TEXT_BUDGET);
-  const compactedLatestText = trimText(latestTextJoined, Math.max(500, latestBudget));
-  const historyBudget = Math.max(0, maxTextCharacters - compactedLatestText.length);
-
-  let historyRemaining = Math.min(HISTORY_TEXT_BUDGET, historyBudget);
+  const latestLimit = Math.min(
+    LATEST_MESSAGE_BUDGET,
+    Math.max(1_000, Math.floor(maxTextCharacters * 0.7)),
+  );
+  const compactedLatestText = compactText(latestText, Math.min(latestLimit, maxTextCharacters));
+  let remaining = Math.max(0, maxTextCharacters - compactedLatestText.length);
   const compactedHistory: SmartContent[] = [];
-  for (let index = older.length - 1; index >= 0; index--) {
-    const item = older[index];
-    if (!item) continue;
+  const pending: { role: SmartContent["role"]; text: string }[] = [];
+
+  for (const item of older) {
     const text = item.parts
       .filter((part) => typeof part.text === "string")
       .map((part) => part.text ?? "")
       .join("\n");
-    if (!text || historyRemaining <= 0) continue;
-    const kept = trimText(text, Math.min(text.length, Math.min(900, historyRemaining)));
-    historyRemaining -= kept.length;
-    compactedHistory.unshift({ role: item.role, parts: [{ text: kept }] });
+    if (text) pending.push({ role: item.role, text });
+  }
+
+  // Allocate the remaining budget from newest to oldest, then restore chronology.
+  const kept: SmartContent[] = [];
+  for (let index = pending.length - 1; index >= 0 && remaining > 0; index--) {
+    const item = pending[index];
+    if (!item) continue;
+    const slotsLeft = index + 1;
+    const fairShare = Math.max(300, Math.floor(remaining / slotsLeft));
+    const allowance = Math.min(item.text.length, fairShare, remaining);
+    if (allowance <= 0) continue;
+    const text = compactText(item.text, allowance);
+    kept.unshift({ role: item.role, parts: [{ text }] });
+    remaining -= text.length;
   }
 
   const latestParts: SmartPart[] = [{ text: compactedLatestText }];
-  // Images are intentionally retained for Gemini's multimodal endpoint.
   latestParts.push(...latestImages.slice(0, 2));
-  return [...compactedHistory, { role: latest.role, parts: latestParts }];
+  return [...kept, { role: latest.role, parts: latestParts }];
 }
 
 export function compactSmartRequest(
@@ -83,7 +96,7 @@ export function compactSmartRequest(
   return {
     ...request,
     systemInstruction: {
-      parts: [{ text: trimText(systemText, SYSTEM_TEXT_BUDGET) }],
+      parts: [{ text: compactText(systemText, SYSTEM_TEXT_BUDGET) }],
     },
     contents: compactSmartContents(request.contents, maxTextCharacters),
   };
