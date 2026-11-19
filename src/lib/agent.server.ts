@@ -345,7 +345,7 @@ export async function runAgent(
           ],
         },
         apiKey,
-        visualReferences.length ? ["gemini"] : rotatedProviders,
+        rotatedProviders,
       );
 
       const candidate = response.candidates?.[0];
