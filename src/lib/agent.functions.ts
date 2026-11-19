@@ -57,7 +57,7 @@ export const runCodingAgent = createServerFn({ method: "POST" })
         "You have no AI credits remaining on this account. Ask an administrator about your usage allowance.",
       );
     const { runAgent } = await import("./agent.server");
-    const result = await runAgent(data, process.env["GEMINI_API_KEY"]);
+    const result = await runAgent(data);
     if (!isAdmin) {
       const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
       if (creditError) throw new Error(creditError.message);
