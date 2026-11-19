@@ -1005,13 +1005,13 @@ export function CodeAgent() {
     for (const file of incoming) {
       const relativePath = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
       if (relativePath.toLowerCase().endsWith(".zip")) {
-        if (file.size > 25 * 1024 * 1024) { skipped += 1; continue; }
+        if (file.size > 100 * 1024 * 1024) { skipped += 1; continue; }
         try {
           const extracted = await extractZipTextFiles(file);
           skipped += extracted.skipped;
           for (const entry of extracted.files) {
             const path = entry.path.replace(/^\/+/, "");
-            if (!path || path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) || /(^|\/)\.env($|\.)/i.test(path) || entry.sizeBytes > 500 * 1024 || totalBytes + entry.sizeBytes > 3 * 1024 * 1024 || (Object.keys(nextFiles).length >= 400 && nextFiles[path] === undefined)) { skipped += 1; continue; }
+            if (!path || path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) || /(^|\/)\.env($|\.)/i.test(path) || entry.sizeBytes > 10 * 1024 * 1024 || totalBytes + entry.sizeBytes > 25 * 1024 * 1024 || (Object.keys(nextFiles).length >= 2_000 && nextFiles[path] === undefined)) { skipped += 1; continue; }
             nextFiles[path] = entry.content;
             totalBytes += entry.sizeBytes;
             imported += 1;
@@ -1020,7 +1020,7 @@ export function CodeAgent() {
         continue;
       }
       const path = relativePath.replace(/\\/g, "/").replace(/^\/+/, "");
-      if (!path || path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) || /(^|\/)\.env($|\.)/i.test(path) || file.size > 500 * 1024 || totalBytes + file.size > 3 * 1024 * 1024 || (Object.keys(nextFiles).length >= 400 && nextFiles[path] === undefined)) { skipped += 1; continue; }
+      if (!path || path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) || /(^|\/)\.env($|\.)/i.test(path) || file.size > 10 * 1024 * 1024 || totalBytes + file.size > 25 * 1024 * 1024 || (Object.keys(nextFiles).length >= 400 && nextFiles[path] === undefined)) { skipped += 1; continue; }
       const textLike = file.type.startsWith("text/") || /\.(?:[cm]?[jt]sx?|json|css|scss|html?|md|mdx|xml|ya?ml|toml|ini|py|java|c|h|cpp|cs|go|rs|php|sql|sh|bat|ps1|svg|txt|env\.example)$/i.test(path);
       if (!textLike) { skipped += 1; continue; }
       try {
