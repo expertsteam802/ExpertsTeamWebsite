@@ -530,7 +530,7 @@ export async function startCloudProjectTerminal(
     cmd: "sh",
     args: ["-lc", [
       "id -u experts-shell >/dev/null 2>&1 || useradd --create-home --shell /bin/bash experts-shell",
-      "mkdir -p /home/experts-shell/.npm-global",
+      "mkdir -p /home/experts-shell/.npm-global /home/experts-shell/.config/kilo",
       "chown -R experts-shell:experts-shell /home/experts-shell",
       "chown experts-shell:experts-shell " + WORKDIR + " && chmod 1755 " + WORKDIR,
       "find " + WORKDIR + " -mindepth 1 -maxdepth 1 ! -name .experts-terminal-bridge ! -name .experts-terminal-token -exec chown -R experts-shell:experts-shell {} +",
@@ -548,6 +548,19 @@ export async function startCloudProjectTerminal(
   if (shellSetup.exitCode !== 0) {
     throw new Error("Could not prepare the unprivileged Linux shell: " + (await shellSetup.stderr()).slice(-1500));
   }
+
+  // Kilo may inspect and edit project files in this isolated workspace without repetitive prompts.
+  // Shell execution and access outside the workspace remain gated.
+  const kiloPermissions = { permission: {
+    read: { "*": "allow", "*.env": "deny", "*.env.*": "deny", "**/.env": "deny", "**/.env.*": "deny" },
+    edit: { "*": "allow", "*.env": "deny", "*.env.*": "deny", "**/.env": "deny", "**/.env.*": "deny" },
+    glob: "allow", grep: "allow", list: "allow", task: "allow", skill: "allow", lsp: "allow",
+    todoread: "allow", todowrite: "allow", external_directory: "deny", bash: "ask", doom_loop: "ask"
+  } };
+  const kiloConfigPath = "/home/experts-shell/.config/kilo/kilo.jsonc";
+  await sandbox.writeFiles([{ path: kiloConfigPath, content: Buffer.from(JSON.stringify(kiloPermissions, null, 2) + String.fromCharCode(10), "utf8") }]);
+  const configOwnership = await sandbox.runCommand({ cmd: "chown", args: ["experts-shell:experts-shell", kiloConfigPath], cwd: WORKDIR, sudo: true, timeoutMs: 10000 });
+  if (configOwnership.exitCode !== 0) throw new Error("Could not apply the Kilo workspace permission profile: " + (await configOwnership.stderr()).slice(-1000));
 
   stage = "installing the terminal WebSocket runtime";
   const installed = await sandbox.runCommand({
