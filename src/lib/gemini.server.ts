@@ -77,7 +77,7 @@ function asGeminiResponse(text: string, finishReason = "STOP"): GeminiResponse {
 function isRetryableCapacityError(status: number, detail: string): boolean {
   if (status === 413) return true;
   if (status !== 400) return false;
-  return /context length|context window|maximum context|max[_ -]?tokens|token limit|request too large|too many tokens|unsupported.*image|image.*not supported|response_format|json_object|unsupported parameter/i.test(detail);
+  return /context length|context window|maximum context|max[_ -]?tokens|token limit|request too large|too many tokens|response_format|json_object|unsupported parameter/i.test(detail);
 }
 
 /** Kilo free models vary in context, output and vision support. */
@@ -123,6 +123,9 @@ export async function generateGeminiContent(
       }
       if (response.status === 402 || response.status === 403) {
         throw new Error("Kilo free access is unavailable for this request (HTTP " + response.status + "). Please try again later.");
+      }
+      if (response.status === 400 && /unsupported.*image|image.*not supported|vision.*not supported/i.test(detail)) {
+        throw new Error("The selected Kilo free model does not support image input. Try a text description or retry when a vision-capable free model is available.");
       }
       if (isRetryableCapacityError(response.status, detail) && index < attempts.length - 1) {
         lastCapacityError = detail;
