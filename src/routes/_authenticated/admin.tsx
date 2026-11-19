@@ -21,6 +21,7 @@ import {
   Video,
   Eye,
   FileDown,
+  Flag,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -279,6 +280,40 @@ function AdminPage() {
     onSuccess: () => {
       toast.success("All contact messages marked as read");
       void queryClient.invalidateQueries({ queryKey: ["admin", "contact-messages"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const { data: contentReports = [], isLoading: reportsLoading } = useQuery({
+    queryKey: ["admin", "content-reports"],
+    enabled: isAdmin,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("content_reports")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const reviewContentReport = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: "reviewing" | "resolved" | "dismissed" }) => {
+      const { error } = await supabase
+        .from("content_reports")
+        .update({
+          status,
+          reviewed_by: user?.id ?? null,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Content report updated");
+      void queryClient.invalidateQueries({ queryKey: ["admin", "content-reports"] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -698,6 +733,17 @@ function AdminPage() {
                   <LayoutDashboard className="h-4 w-4" /> Overview
                 </TabsTrigger>
                 <TabsTrigger
+                  value="moderation"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
+                  <Flag className="h-4 w-4" /> Content reports
+                  {contentReports.filter((item) => item.status === "open").length > 0 && (
+                    <span className="ml-auto rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-destructive-foreground">
+                      {contentReports.filter((item) => item.status === "open").length}
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger
                   value="uploads"
                   className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
                 >
@@ -946,6 +992,48 @@ function AdminPage() {
                   </Card>
                 ) : (
                   <FileGrid files={adminFiles} />
+                )}
+              </TabsContent>
+
+              <TabsContent value="moderation" className="mt-0 space-y-4">
+                <div>
+                  <h2 className="font-display text-xl font-semibold">Content moderation</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Review member reports about copyright, pirated material, adult content, harassment,
+                    illegal activity, malware and misleading links. Open the reported item by its ID
+                    in the matching content area before deciding.
+                  </p>
+                </div>
+                {reportsLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading reports…</p>
+                ) : contentReports.length === 0 ? (
+                  <Card className="p-8 text-center">
+                    <Flag className="mx-auto h-7 w-7 text-muted-foreground" />
+                    <p className="mt-2 font-medium">No content reports</p>
+                    <p className="mt-1 text-sm text-muted-foreground">New member reports will appear here.</p>
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {contentReports.map((report) => (
+                      <Card key={report.id} className="gap-3 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold uppercase">{report.content_type}</span>
+                            <span className="text-sm font-semibold">{report.reason.replaceAll("_", " ")}</span>
+                            <span className="text-xs text-muted-foreground">{new Date(report.created_at).toLocaleString()}</span>
+                          </div>
+                          <span className="rounded-full border px-2.5 py-1 text-xs capitalize">{report.status}</span>
+                        </div>
+                        <p className="break-all text-xs text-muted-foreground">Content ID: {report.content_id}</p>
+                        {report.details && <p className="whitespace-pre-wrap text-sm">{report.details}</p>}
+                        <div className="flex flex-wrap gap-2">
+                          <Button size="sm" variant="outline" disabled={reviewContentReport.isPending || report.status === "reviewing"} onClick={() => reviewContentReport.mutate({ id: report.id, status: "reviewing" })}>Mark reviewing</Button>
+                          <Button size="sm" disabled={reviewContentReport.isPending || report.status === "resolved"} onClick={() => reviewContentReport.mutate({ id: report.id, status: "resolved" })}>Resolve</Button>
+                          <Button size="sm" variant="ghost" disabled={reviewContentReport.isPending || report.status === "dismissed"} onClick={() => reviewContentReport.mutate({ id: report.id, status: "dismissed" })}>Dismiss</Button>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
                 )}
               </TabsContent>
 
