@@ -25,7 +25,8 @@ const MAX_HISTORY_MESSAGES = 20;
 function compactText(value: string, limit: number): string {
   if (value.length <= limit) return value;
   const marker = "\n[...middle of this message compacted; beginning and ending preserved...]\n";
-  const available = Math.max(0, limit - marker.length);
+  if (limit <= marker.length) return value.slice(-Math.max(0, limit));
+  const available = limit - marker.length;
   const head = Math.ceil(available * 0.55);
   const tail = available - head;
   return value.slice(0, head) + marker + (tail ? value.slice(-tail) : "");
