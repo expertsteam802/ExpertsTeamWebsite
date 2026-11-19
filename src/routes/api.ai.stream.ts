@@ -17,10 +17,10 @@ const requestSchema = z
       .array(
         z.object({
           role: z.string().max(20),
-          content: z.string().max(100000),
+          content: z.string().max(200000),
         }),
       )
-      .max(20)
+      .max(100)
       .optional(),
     attachments: z
       .array(
@@ -50,7 +50,7 @@ const requestSchema = z
       (total, message) => total + message.content.length,
       0,
     );
-    if (totalHistoryCharacters > 240000) {
+    if (totalHistoryCharacters > 600000) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Conversation context is too large to process in one request.",
@@ -278,7 +278,7 @@ export const Route = createFileRoute("/api/ai/stream")({
             return parts;
           });
           const contents: SmartContent[] = [
-            ...history.slice(-20).map((message) => ({
+            ...history.slice(-100).map((message) => ({
               role:
                 message.role === "ai" || message.role === "assistant"
                   ? ("model" as const)
