@@ -26,7 +26,7 @@ function PrivacyPage() {
           Your information
         </p>
         <h1 className="mt-3 font-display text-4xl font-bold">Privacy Policy</h1>
-        <p className="mt-3 text-sm text-muted-foreground">Last updated: November 10, 2026</p>
+        <p className="mt-3 text-sm text-muted-foreground">Last updated: November 19, 2026</p>
         <p className="mt-5 text-sm leading-7 text-muted-foreground">
           This policy explains how ExpertsTeam handles information when you visit or use
           expertsteam.giize.com. It should be read together with our{" "}
