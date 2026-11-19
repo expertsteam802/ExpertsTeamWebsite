@@ -183,6 +183,35 @@ function RootShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const shouldLoadMonetag = MONETAG_PUBLIC_CONTENT_PATHS.has(pathname);
 
+  // Monetag is intentionally limited to public content pages. If a visitor
+  // navigates from a public page into ExpertAI, Community or Messages, remove
+  // any Monetag loader/creative that may have been added before the route change.
+  useEffect(() => {
+    if (shouldLoadMonetag) return;
+
+    const removeMonetagElements = () => {
+      document
+        .querySelectorAll(
+          [
+            'script[src*="n6wxm.com"]',
+            'script[src*="nap5k.com"]',
+            'script[data-zone="12296060"]',
+            'script[data-zone="12296064"]',
+            'iframe[src*="n6wxm.com"]',
+            'iframe[src*="nap5k.com"]',
+            'iframe[src*="5gvci.com"]',
+            'iframe[src*="monetag"]',
+          ].join(", "),
+        )
+        .forEach((element) => element.remove());
+    };
+
+    removeMonetagElements();
+    const observer = new MutationObserver(removeMonetagElements);
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [pathname, shouldLoadMonetag]);
+
   const shouldLoadAdsense = ADSENSE_PUBLIC_CONTENT_PATHS.has(pathname);
 
   useEffect(() => {
