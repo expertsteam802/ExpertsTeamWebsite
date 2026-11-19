@@ -437,7 +437,7 @@ export function CodeAgent() {
 
   useEffect(() => {
     const container = terminalContainerRef.current;
-    if (!terminalConnection || !container) return;
+    if (agentPanelMode !== "terminal" || !terminalConnection || !container) return;
 
     const terminal = new XTerm({
       cursorBlink: true,
@@ -546,7 +546,7 @@ export function CodeAgent() {
       if (xtermRef.current === terminal) xtermRef.current = null;
       setTerminalReady(false);
     };
-  }, [terminalConnection]);
+  }, [terminalConnection, agentPanelMode]);
 
   useEffect(() => {
     const container = legacyTerminalContainerRef.current;
