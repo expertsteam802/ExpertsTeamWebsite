@@ -87,6 +87,7 @@ function AdminPage() {
   const [memberSearch, setMemberSearch] = useState("");
   const [contactSearch, setContactSearch] = useState("");
   const [backgroundUploadPending, setBackgroundUploadPending] = useState(false);
+  const [logoUploadPending, setLogoUploadPending] = useState(false);
 
   const { data: settings } = useQuery({
     queryKey: ["site-settings"],
@@ -1225,6 +1226,51 @@ function AdminPage() {
                   </div>
                   {form ? (
                     <>
+                      <div className="space-y-3 rounded-xl border border-border/70 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <Label htmlFor="site-logo-upload">Website logo</Label>
+                            <p className="mt-1 text-xs text-muted-foreground">PNG, JPG, WebP or GIF · maximum 5 MB. Transparent PNG recommended.</p>
+                          </div>
+                          <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                            <ImagePlus className="mr-2 h-4 w-4" />
+                            {logoUploadPending ? "Uploading…" : "Upload logo"}
+                            <input id="site-logo-upload" type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" disabled={logoUploadPending}
+                              onChange={async (event) => {
+                                const file = event.target.files?.[0];
+                                if (!file) return;
+                                try {
+                                  if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) throw new Error("Choose a PNG, JPG, WebP or GIF image.");
+                                  if (file.size > 5 * 1024 * 1024) throw new Error("Logo must be 5 MB or smaller.");
+                                  setLogoUploadPending(true);
+                                  const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
+                                  const filePath = "site-branding/logo-" + Date.now() + "." + extension;
+                                  const { error: uploadError } = await supabase.storage.from("site-assets").upload(filePath, file, { cacheControl: "31536000", contentType: file.type, upsert: true });
+                                  if (uploadError) throw uploadError;
+                                  const { data } = supabase.storage.from("site-assets").getPublicUrl(filePath);
+                                  setForm((current) => current ? { ...current, logo_url: data.publicUrl } : current);
+                                  toast.success("Logo uploaded. Click Save settings to apply it across the website.");
+                                } catch (error) {
+                                  toast.error(error instanceof Error ? error.message : "Logo upload failed.");
+                                } finally {
+                                  setLogoUploadPending(false);
+                                  event.target.value = "";
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                        {form.logo_url ? (
+                          <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border/70 bg-muted/20 p-4">
+                            <div className="flex h-24 w-40 items-center justify-center rounded-lg bg-background p-3">
+                              <img src={form.logo_url} alt="Website logo preview" className="max-h-full max-w-full object-contain" />
+                            </div>
+                            <Button type="button" variant="outline" size="sm" onClick={() => setForm({ ...form, logo_url: "" })}>Remove logo</Button>
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No custom logo selected. Upload an image to preview it here.</div>
+                        )}
+                      </div>
                       <div className="space-y-3 rounded-xl border border-border/70 p-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
