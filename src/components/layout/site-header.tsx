@@ -81,7 +81,7 @@ export function SiteHeader() {
           <img
             src={settings.logo_url || "/experts-team-mark.svg"}
             alt="ExpertsTeam logo"
-            className="h-12 w-12 rounded-none border-0 bg-transparent object-contain p-0 shadow-[0_0_22px_rgba(30,110,255,0.38)] transition duration-200 group-hover:scale-[1.04] sm:h-14 sm:w-14"
+            className="h-12 w-12 rounded-full border-0 bg-transparent object-cover p-0 shadow-[0_0_22px_rgba(30,110,255,0.38)] transition duration-200 group-hover:scale-[1.04] sm:h-14 sm:w-14"
           />
           <span className="ml-2 hidden font-display text-base font-extrabold tracking-tight text-foreground sm:inline">Experts<span className="text-primary">Team</span></span>
         </Link>
