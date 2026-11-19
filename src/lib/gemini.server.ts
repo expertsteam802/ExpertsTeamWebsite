@@ -22,25 +22,29 @@ export type GeminiResponse = {
   promptFeedback?: { blockReason?: string };
 };
 
-function openAiMessages(request: GeminiRequest, maxInputCharacters = 16000) {
+function openAiMessages(request: GeminiRequest, maxInputCharacters = 48000) {
   const system = request.systemInstruction.parts.map((part) => part.text).join("\n")
-    .slice(0, Math.min(3000, Math.floor(maxInputCharacters * 0.25)));
-  const recent = request.contents.slice(-6).map((item, index, items) => ({
+    .slice(0, Math.min(6000, Math.floor(maxInputCharacters * 0.15)));
+  const recent = request.contents.slice(-10).map((item) => ({
     role: item.role === "model" ? "assistant" : "user",
-    content: item.parts.flatMap((part) => {
-      if (part.inlineData?.data) return [{ type: "image_url", image_url: { url: `data:${part.inlineData.mimeType || "image/jpeg"};base64,${part.inlineData.data}` } }];
-      return part.text ? [{ type: "text", text: part.text }] : [];
-    }),
+    content: item.parts
+      .filter((part) => typeof part.text === "string")
+      .map((part) => part.text ?? "")
+      .join("\n"),
   }));
   const messages = [{ role: "system", content: system }, ...recent];
-  let remaining = maxInputCharacters - system.length;
+  let remaining = Math.max(0, maxInputCharacters - system.length);
   for (let index = messages.length - 1; index >= 1; index--) {
     const message = messages[index];
-    if (message.content.length > remaining) message.content = message.content.slice(-Math.max(0, remaining));
-    remaining -= message.content.length;
     if (remaining <= 0) {
-      messages.splice(1, index - 1);
+      messages.splice(1, index);
       break;
+    }
+    if (message.content.length > remaining) {
+      message.content = message.content.slice(-remaining);
+      remaining = 0;
+    } else {
+      remaining -= message.content.length;
     }
   }
   return messages.filter((message) => message.content.length > 0);
@@ -77,7 +81,7 @@ export async function generateGeminiContent(
     body: JSON.stringify({
       model: process.env["KILO_MODEL"] || "kilo-auto/free",
       messages: openAiMessages(activeRequest),
-      max_tokens: Math.min(request.generationConfig?.maxOutputTokens ?? 2200, 3600),
+      max_tokens: Math.min(request.generationConfig?.maxOutputTokens ?? 8192, 8192),
       ...(request.generationConfig?.responseMimeType === "application/json"
         ? { response_format: { type: "json_object" } }
         : {}),
