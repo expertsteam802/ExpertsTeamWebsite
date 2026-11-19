@@ -341,14 +341,30 @@ export function ChrisAiChat({
       };
       if (user) {
         setOptimisticMessages((current) => [...current, userMessage]);
-        const { error: userMessageError } = await supabase.from("ai_chats").insert({
-          user_id: user.id,
-          thread_id: activeThreadId,
-          role: "user",
-          content: prompt,
-        });
+        const { data: savedUserMessage, error: userMessageError } = await supabase
+          .from("ai_chats")
+          .insert({
+            user_id: user.id,
+            thread_id: activeThreadId,
+            role: "user",
+            content: prompt,
+          })
+          .select("id, role, content, created_at, thread_id")
+          .single();
         if (userMessageError) throw userMessageError;
-        await queryClient.invalidateQueries({ queryKey: ["ai-chats", user.id, activeThreadId] });
+
+        // Move the optimistic bubble into the query cache immediately. Do not
+        // wait for the AI response or a background refetch to display it.
+        queryClient.setQueryData<ChatRow[]>(
+          ["ai-chats", user.id, activeThreadId],
+          (current) => {
+            const existing = current ?? savedMessages;
+            if (existing.some((message) => message.id === savedUserMessage.id)) return existing;
+            return [...existing, savedUserMessage as ChatRow].sort(
+              (a, b) => a.created_at.localeCompare(b.created_at),
+            );
+          },
+        );
         setOptimisticMessages((current) => current.filter((message) => message.id !== userMessage.id));
       } else {
         setGuestMessages((current) => [...current, userMessage]);
