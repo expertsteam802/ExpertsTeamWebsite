@@ -17,10 +17,10 @@ export type SmartRequest = {
   };
 };
 
-const DEFAULT_TEXT_BUDGET = 20_000;
-const SYSTEM_TEXT_BUDGET = 2_500;
-const HISTORY_TEXT_BUDGET = 2_400;
-const LATEST_MESSAGE_BUDGET = 16_000;
+const DEFAULT_TEXT_BUDGET = 48_000;
+const SYSTEM_TEXT_BUDGET = 5_000;
+const HISTORY_TEXT_BUDGET = 6_000;
+const LATEST_MESSAGE_BUDGET = 40_000;
 
 function trimText(value: string, limit: number): string {
   if (value.length <= limit) return value;
