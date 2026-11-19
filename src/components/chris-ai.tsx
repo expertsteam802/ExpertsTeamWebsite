@@ -328,7 +328,7 @@ export function ChrisAiChat({
 
       // Send full recent turns; the server performs budget-aware compaction for Kilo.
       // Saved chat rows are never modified or truncated.
-      const history = messages.slice(-20).map((message) => ({
+      const history = messages.slice(-100).map((message) => ({
         role: message.role,
         content: message.content,
       }));
