@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { VideoPlayerDialog } from "@/components/video-player-dialog";
+import { ReportContentButton } from "@/components/report-content-button";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -150,7 +151,8 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
                   {video.profiles?.display_name || video.profiles?.username || "member"} ·{" "}
                   {formatDate(video.created_at)}
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <ReportContentButton contentType="video" contentId={video.id} />
                   <Button size="sm" onClick={() => setPlaying(video)}>
                     Watch
                   </Button>
