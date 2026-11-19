@@ -28,7 +28,7 @@ const requestSchema = z
           name: z.string().max(255),
           mimeType: z.string().max(150).optional(),
           text: z.string().max(200000).optional(),
-          dataUrl: z.string().max(1800000).optional(),
+          dataUrl: z.string().max(1400000).optional(),
         }),
       )
       .max(5)
@@ -39,7 +39,7 @@ const requestSchema = z
       (total, file) => total + (file.dataUrl?.length ?? 0) + (file.text?.length ?? 0),
       0,
     );
-    if (totalAttachmentBytes > 2200000) {
+    if (totalAttachmentBytes > 3200000) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Attachments are too large. Please upload smaller files.",
