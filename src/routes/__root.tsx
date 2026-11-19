@@ -208,10 +208,10 @@ function RootShell({ children }: { children: ReactNode }) {
               }}
             />
             <script
-              async
-              data-cfasync="false"
-              data-zone="12296064"
-              src="https://nap5k.com/tag.min.js"
+              dangerouslySetInnerHTML={{
+                __html:
+                  "(function(s){s.dataset.zone='12296064',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))",
+              }}
             />
           </>
         )}
