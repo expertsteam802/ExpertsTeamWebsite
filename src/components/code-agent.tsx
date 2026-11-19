@@ -301,6 +301,8 @@ export function CodeAgent() {
   const [activeFile, setActiveFile] = useState("index.html");
   const [messages, setMessages] = useState<Message[]>([]);
   const [typingMessageIndex, setTypingMessageIndex] = useState<number | null>(null);
+  const agentChatEndRef = useRef<HTMLDivElement>(null);
+  const [agentPanelMode, setAgentPanelMode] = useState<"chat" | "terminal">("chat");
   const [prompt, setPrompt] = useState("");
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
   const referenceInputRef = useRef<HTMLInputElement>(null);
@@ -399,6 +401,9 @@ export function CodeAgent() {
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const editorRef = useRef<EditorView | null>(null);
   const srcDoc = useMemo(() => buildSrcDocWithConsole(files), [files]);
+  useEffect(() => {
+    agentChatEndRef.current?.scrollIntoView({ behavior: busy ? "auto" : "smooth", block: "end" });
+  }, [messages, busy]);
   useEffect(() => {
     terminalRecoveryFilesRef.current = files;
   }, [files]);
@@ -2617,93 +2622,87 @@ export function CodeAgent() {
 
             {/* AI panel */}
             <aside className={`${assistantOpen ? "flex" : "hidden"} expert-agent-assistant expert-agent-assistant-drawer min-h-0 min-w-0 flex-col overflow-hidden border-t border-white/[0.08] bg-[#080f1b] xl:border-l xl:border-t-0`}>
-                <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/[0.08] px-4">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400/20 to-blue-500/20 text-cyan-200">
-                      <Sparkles className="h-4 w-4" />
+              <div className="flex h-14 shrink-0 items-center justify-between border-b border-white/[0.08] px-4">
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400/20 to-blue-500/20 text-cyan-200">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-white">ExpertsAI Agent</p>
+                    <p className="text-[10px] text-slate-500">Expert 1.0 · Coding workspace</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-semibold text-cyan-200">Expert 1.0</span>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/[0.07] bg-[#0a1422] px-3 py-2">
+                <div className="flex min-w-0 items-center gap-2 text-[10px] text-slate-400">
+                  <span className="max-w-[150px] truncate">{name}</span>
+                  <span className="text-slate-600">·</span>
+                  <span className="text-cyan-200">{profile?.ai_credits ?? 0} credits remaining</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button type="button" onClick={() => setMessages([])} disabled={!messages.length || busy} className="rounded-md px-2 py-1.5 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white disabled:opacity-40">New chat</button>
+                  <button type="button" onClick={() => setAgentPanelMode((mode) => mode === "chat" ? "terminal" : "chat")} className="inline-flex items-center gap-1 rounded-md border border-white/10 px-2 py-1.5 text-[10px] text-slate-300 hover:bg-white/5">
+                    {agentPanelMode === "chat" ? <><TerminalSquare className="h-3 w-3" /> Terminal</> : <><Bot className="h-3 w-3" /> Agent chat</>}
+                  </button>
+                </div>
+              </div>
+              {agentPanelMode === "chat" ? (
+                <>
+                  <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-live="polite">
+                    {messages.length === 0 ? (
+                      <div className="flex h-full min-h-[220px] flex-col items-center justify-center px-5 text-center">
+                        <div className="mb-4 grid h-12 w-12 place-items-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10 text-cyan-200"><Sparkles className="h-6 w-6" /></div>
+                        <p className="text-sm font-semibold text-white">What should we build?</p>
+                        <p className="mt-2 max-w-xs text-xs leading-5 text-slate-500">Describe a feature, fix, or complete app. ExpertsAI Agent will work directly with your project files.</p>
+                        <div className="mt-4 flex flex-wrap justify-center gap-2">
+                          {suggestions.map((item) => <button key={item} type="button" onClick={() => setPrompt(item)} className="rounded-full border border-white/10 px-3 py-2 text-[10px] text-slate-300 transition hover:border-cyan-300/30 hover:bg-cyan-300/10">{item}</button>)}
+                        </div>
+                      </div>
+                    ) : messages.map((message, index) => (
+                      <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                        <div className={`max-w-[94%] rounded-2xl px-3.5 py-3 text-xs leading-6 ${message.role === "user" ? "rounded-br-md bg-cyan-400/15 text-cyan-50" : "rounded-bl-md border border-white/[0.07] bg-white/[0.035] text-slate-200"}`}>
+                          <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-slate-500">{message.role === "user" ? "You" : "ExpertsAI Agent"}</div>
+                          <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {busy && <div className="flex items-center gap-2 px-2 py-2 text-xs text-cyan-200"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Working on your project…</div>}
+                    <div ref={agentChatEndRef} />
+                  </div>
+                  {referenceImages.length > 0 && <div className="flex shrink-0 flex-wrap gap-2 border-t border-white/[0.06] px-3 pt-2">{referenceImages.map((image) => <span key={image.name} className="rounded-md bg-white/5 px-2 py-1 text-[10px] text-slate-300">{image.name}</span>)}</div>}
+                  <div className="shrink-0 border-t border-white/[0.08] bg-[#0a1422] p-3">
+                    <div className="rounded-2xl border border-white/10 bg-[#0c1727] p-2 focus-within:border-cyan-400/40">
+                      <Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendPrompt(); } }} placeholder="Ask ExpertsAI Agent to build or change something…" className="min-h-[76px] resize-none border-0 bg-transparent text-xs text-white shadow-none focus-visible:ring-0" disabled={busy} />
+                      <div className="flex items-center justify-between gap-2 px-1 pt-2">
+                        <div className="flex items-center gap-1">
+                          <input ref={referenceInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={(event) => { void handleReferenceImages(event.target.files); event.currentTarget.value = ""; }} />
+                          <button type="button" onClick={() => referenceInputRef.current?.click()} disabled={busy} className="rounded-lg p-2 text-slate-400 hover:bg-white/5 hover:text-cyan-200 disabled:opacity-40" title="Attach visual references"><ImagePlus className="h-4 w-4" /></button>
+                          <span className="text-[9px] text-slate-600">Enter to send · Shift+Enter for new line</span>
+                        </div>
+                        <button type="button" onClick={() => void sendPrompt()} disabled={!prompt.trim() || busy} className="inline-flex items-center gap-2 rounded-xl bg-cyan-400 px-3 py-2 text-[10px] font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-3.5 w-3.5" /> {busy ? "Working" : "Send"}</button>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-white">ExpertAI</p>
-                      <p className="text-[9px] text-slate-500">Project builder</p>
+                    <p className="mt-2 text-center text-[9px] text-slate-600">Usage display shows your remaining ExpertsTeam AI credits.</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/[0.07] px-3 py-2">
+                    <span className="text-[10px] text-slate-500">Advanced CLI session · {terminalConnection?.cli ?? "not connected"}</span>
+                    <div className="flex items-center gap-1.5">
+                      <button type="button" disabled={!terminalReady} onClick={() => xtermRef.current?.clear()} className="rounded px-2 py-1 text-[10px] text-slate-500 hover:bg-white/5 hover:text-white disabled:opacity-30">Clear</button>
+                      <button type="button" disabled={!terminalReady} onClick={() => void importTerminalChanges()} className="rounded border border-cyan-400/20 px-2 py-1 text-[10px] text-cyan-200 hover:bg-cyan-400/10 disabled:opacity-30">Save files</button>
+                      {!terminalReady && <button type="button" onClick={() => void openTerminal()} className="rounded-md bg-cyan-400/15 px-2.5 py-1 text-[10px] font-semibold text-cyan-100 hover:bg-cyan-400/25">Connect CLI</button>}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={terminalReady ? "h-2 w-2 rounded-full bg-emerald-400" : "h-2 w-2 rounded-full bg-amber-400"} />
-                    <span className="text-[9px] font-semibold tracking-wide text-slate-400">
-                      {terminalReady ? "READY" : terminalConnection ? "CONNECTING" : "STARTING"}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] bg-[#0a1422] px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-slate-500">{name}</span>
-                    {terminalConnection && terminalConnection.projectId !== projectId && (
-                      <button
-                        type="button"
-                        onClick={() => void openTerminal()}
-                        className="rounded border border-amber-400/30 bg-amber-400/10 px-2 py-1 text-[10px] font-semibold text-amber-200"
-                        title="Connect this workspace to the selected project"
-                      >
-                        Switch project
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      disabled={!terminalReady}
-                      onClick={() => xtermRef.current?.clear()}
-                      className="rounded px-2 py-1 text-[10px] text-slate-500 hover:bg-white/5 hover:text-white disabled:opacity-30"
-                      title="Clear output"
-                    >
-                      Clear
-                    </button>
-                    <span className="rounded border border-emerald-400/25 px-2 py-1 text-[10px] text-emerald-200">
-                      Auto-save ON
-                    </span>
-                    <button
-                      type="button"
-                      disabled={!terminalReady}
-                      onClick={() => void importTerminalChanges()}
-                      className="rounded border border-cyan-400/20 px-2 py-1 text-[10px] text-cyan-200 hover:bg-cyan-400/10 disabled:opacity-30"
-                      title="Save changes from the build session now"
-                    >
-                      Save files
-                    </button>
-                    {!terminalReady && (
-                      <button
-                        type="button"
-                        onClick={() => void openTerminal()}
-                        className="rounded-md bg-cyan-400/15 px-2.5 py-1 text-[10px] font-semibold text-cyan-100 hover:bg-cyan-400/25"
-                      >
-                        Reconnect
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div
-                  ref={terminalContainerRef}
-                  role="region"
-                  aria-label="ExpertAI project builder"
-                  className="expert-agent-kilo-surface min-h-0 flex-1 overflow-hidden"
-                  onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; }}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    if (event.dataTransfer.files.length) void importLocalProjectFiles(event.dataTransfer.files);
-                  }}
-                  onPaste={(event) => {
-                    const pastedFiles = event.clipboardData?.files;
-                    if (pastedFiles?.length) {
-                      event.preventDefault();
-                      void importLocalProjectFiles(pastedFiles);
-                    }
-                  }}
-                />
-                <div className="flex shrink-0 items-center justify-between gap-2 border-t border-white/[0.06] px-3 py-2 text-[9px] text-slate-600">
-                  <span>Changes are synced into your project automatically</span>
-                  <span>{Object.keys(files).length} files</span>
-                </div>
-              </aside>
+                  <div ref={terminalContainerRef} role="region" aria-label="Advanced coding CLI terminal" className="expert-agent-kilo-surface min-h-0 flex-1 overflow-hidden" onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; }} onDrop={(event) => { event.preventDefault(); if (event.dataTransfer.files.length) void importLocalProjectFiles(event.dataTransfer.files); }} onPaste={(event) => { const pastedFiles = event.clipboardData?.files; if (pastedFiles?.length) { event.preventDefault(); void importLocalProjectFiles(pastedFiles); } }} />
+                  <div className="flex shrink-0 items-center justify-between gap-2 border-t border-white/[0.06] px-3 py-2 text-[9px] text-slate-600"><span>CLI output · project files sync automatically</span><span>{Object.keys(files).length} files</span></div>
+                </>
+              )}
+            </aside>
           </div>
 
           {/* Bottom status bar */}
