@@ -40,7 +40,7 @@ type UploadedFile = {
   size?: number;
 };
 
-function renderInline(text: string, streaming = false) {
+function renderInline(text: string) {
   const tokenPattern = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g;
   const nodes: React.ReactNode[] = [];
   let cursor = 0;
@@ -50,9 +50,7 @@ function renderInline(text: string, streaming = false) {
   while ((match = tokenPattern.exec(text)) !== null) {
     if (match.index > cursor) {
       const plain = text.slice(cursor, match.index);
-      nodes.push(streaming
-        ? plain.split("").map((character, index) => <span key={`s-${key}-${index}`} className="expertai-stream-char">{character}</span>)
-        : plain);
+      nodes.push(plain);
     }
     const token = match[0];
     if (token.startsWith("**")) nodes.push(<strong key={key++} className="font-semibold">{token.slice(2, -2)}</strong>);
@@ -68,14 +66,12 @@ function renderInline(text: string, streaming = false) {
   }
   if (cursor < text.length) {
     const plain = text.slice(cursor);
-    nodes.push(streaming
-      ? plain.split("").map((character, index) => <span key={`tail-${index}`} className="expertai-stream-char">{character}</span>)
-      : plain);
+    nodes.push(plain);
   }
   return nodes;
 }
 
-function MessageBody({ content, streaming = false }: { content: string; streaming?: boolean }) {
+function MessageBody({ content }: { content: string }) {
   const parts = content.split(/```/);
   return (
     <div className="space-y-2 text-sm leading-relaxed">
@@ -95,7 +91,7 @@ function MessageBody({ content, streaming = false }: { content: string; streamin
         let listType: "ul" | "ol" | null = null;
         const flushParagraph = () => {
           if (paragraph.length) {
-            blocks.push(<p key={`p-${blocks.length}`} className="whitespace-pre-wrap">{renderInline(paragraph.join("\n"), streaming)}</p>);
+            blocks.push(<p key={`p-${blocks.length}`} className="whitespace-pre-wrap">{renderInline(paragraph.join("\n"))}</p>);
             paragraph = [];
           }
         };
@@ -103,7 +99,7 @@ function MessageBody({ content, streaming = false }: { content: string; streamin
           if (!listItems.length || !listType) return;
           const List = listType;
           blocks.push(<List key={`l-${blocks.length}`} className={listType === "ul" ? "list-disc" : "list-decimal"} style={{ paddingLeft: "1.35rem" }}>
-            {listItems.map((item, itemIndex) => <li key={itemIndex} className="pl-1">{renderInline(item, streaming)}</li>)}
+            {listItems.map((item, itemIndex) => <li key={itemIndex} className="pl-1">{renderInline(item)}</li>)}
           </List>);
           listItems = [];
           listType = null;
@@ -115,7 +111,7 @@ function MessageBody({ content, streaming = false }: { content: string; streamin
           const heading = line.match(/^(#{1,4})\s+(.+)$/);
           if (heading) {
             flushParagraph(); flushList();
-            blocks.push(<h3 key={`h-${blocks.length}`} className="font-semibold leading-snug">{renderInline(heading[2], streaming)}</h3>);
+            blocks.push(<h3 key={`h-${blocks.length}`} className="font-semibold leading-snug">{renderInline(heading[2])}</h3>);
             return;
           }
           if (/^[-*_]{3,}$/.test(line)) { flushParagraph(); flushList(); blocks.push(<hr key={`hr-${blocks.length}`} className="border-border" />); return; }
@@ -293,6 +289,7 @@ export function ChrisAiChat({
   });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const streamFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -402,7 +399,15 @@ export function ChrisAiChat({
     const container = messagesContainerRef.current;
     if (!container) return;
     container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
-  }, [messages.length, messages[messages.length - 1]?.content, streamingReply]);
+  }, [messages.length, messages[messages.length - 1]?.content]);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container || !streamingReply) return;
+    // Streaming can update many times per second; jump to the newest line
+    // instead of repeatedly starting a smooth-scroll animation.
+    container.scrollTop = container.scrollHeight;
+  }, [streamingReply]);
 
   const send = useMutation({
     mutationFn: async (prompt: string) => {
@@ -506,7 +511,12 @@ export function ChrisAiChat({
             .join("") ?? "";
         if (text) {
           streamedText += text;
-          setStreamingReply(streamedText);
+          if (streamFrameRef.current === null) {
+            streamFrameRef.current = window.requestAnimationFrame(() => {
+              streamFrameRef.current = null;
+              setStreamingReply(streamedText);
+            });
+          }
         }
       };
       while (true) {
@@ -519,6 +529,11 @@ export function ChrisAiChat({
       }
       buffer += decoder.decode();
       if (buffer.trim()) await consumeEvent(buffer);
+      if (streamFrameRef.current !== null) {
+        window.cancelAnimationFrame(streamFrameRef.current);
+        streamFrameRef.current = null;
+      }
+      setStreamingReply(streamedText);
       const reply = streamedText.trim();
       if (!reply) {
         throw new Error("ExpertAI returned an empty answer. Please try again.");
@@ -565,6 +580,10 @@ export function ChrisAiChat({
       void queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
     onError: (error: Error) => {
+      if (streamFrameRef.current !== null) {
+        window.cancelAnimationFrame(streamFrameRef.current);
+        streamFrameRef.current = null;
+      }
       setStreamingReply("");
       toast.error(error.message);
       void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
@@ -679,7 +698,7 @@ export function ChrisAiChat({
 
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden bg-background">
-      <style>{`@keyframes expertai-character-in { from { opacity: 0.18; } to { opacity: 1; } } .expertai-stream-char { animation: expertai-character-in 420ms ease-out both; } .expertai-message-in { animation: expertai-character-in 650ms ease-out both; } @media (prefers-reduced-motion: reduce) { .expertai-stream-char, .expertai-message-in { animation: none; } }`}</style>
+      <style>{`@keyframes expertai-response-fade { from { opacity: 0.38; } to { opacity: 1; } } .expertai-response-fade { animation: expertai-response-fade 1400ms ease-in-out both; } @media (prefers-reduced-motion: reduce) { .expertai-response-fade { animation: none; } }`}</style>
       {user && !compact && (
         <aside className="hidden w-60 shrink-0 flex-col border-r border-border/70 bg-card/70 md:flex">
           <div className="flex items-center justify-between border-b border-border/70 p-3">
@@ -793,7 +812,7 @@ export function ChrisAiChat({
           </div>
         </div>
 
-        <div ref={messagesContainerRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 scroll-smooth">
+        <div ref={messagesContainerRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
           {messagesError && (
             <div
               role="alert"
@@ -836,7 +855,7 @@ export function ChrisAiChat({
                 </span>
               )}
               <div
-                className={`expertai-message-in max-w-[80%] rounded-2xl px-4 py-2 ${
+                className={`max-w-[80%] rounded-2xl px-4 py-2 ${
                   message.role === "user"
                     ? "bg-primary text-primary-foreground"
                     : "border border-border bg-secondary"
@@ -856,9 +875,9 @@ export function ChrisAiChat({
               <span className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/15">
                 <Bot className="h-3.5 w-3.5 text-primary" />
               </span>
-              <div className="max-w-[80%] rounded-2xl border border-border bg-secondary px-4 py-2">
+              <div className="expertai-response-fade max-w-[80%] rounded-2xl border border-border bg-secondary px-4 py-2">
                 {streamingReply ? (
-                  <MessageBody content={streamingReply} streaming />
+                  <MessageBody content={streamingReply} />
                 ) : (
                   <p className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Loader2 className="h-3 w-3 animate-spin" /> ExpertAI is thinking…
