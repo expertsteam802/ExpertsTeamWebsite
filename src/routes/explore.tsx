@@ -29,7 +29,7 @@ export const Route = createFileRoute("/explore")({
         content: "Choose a space to learn, connect, discover projects or build with ExpertAI.",
       },
       { property: "og:url", content: "https://expertsteam.giize.com/explore" },
-      { property: "og:image", content: "https://btphazswhmkkuuyulqpt.supabase.co/storage/v1/object/public/site-assets/site-branding/logo-1795102812239.png" },
+      { property: "og:image", content: "https://btphazswhmkkuuyulqpt.supabase.co/storage/v1/object/public/site-assets/site-branding/logo-1795102812239.jpg" },
     ],
     links: [{ rel: "canonical", href: "https://expertsteam.giize.com/explore" }],
   }),
