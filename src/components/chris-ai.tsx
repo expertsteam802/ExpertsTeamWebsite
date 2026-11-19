@@ -119,8 +119,8 @@ async function compressImageForAi(file: File): Promise<UploadedFile> {
         quality,
       ),
     );
-    while (blob.size > 420_000 && quality > 0.48) {
-      quality -= 0.08;
+    while (blob.size > 850_000 && quality > 0.42) {
+      quality -= 0.06;
       blob = await new Promise<Blob>((resolve, reject) =>
         canvas.toBlob(
           (value) => (value ? resolve(value) : reject(new Error("Could not compress image."))),
@@ -129,7 +129,9 @@ async function compressImageForAi(file: File): Promise<UploadedFile> {
         ),
       );
     }
-    if (blob.size > 520_000) throw new Error(`${file.name} is too large after compression.`);
+    if (blob.size > 1_000_000) {
+      throw new Error(`${file.name} is still too large after compression. Try a smaller image.`);
+    }
     const dataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result ?? ""));
