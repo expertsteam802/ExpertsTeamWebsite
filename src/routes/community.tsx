@@ -696,6 +696,9 @@ function CommunityPage() {
                 </button>
               </div>
               {activeStory.caption && <p className="px-4 py-3 text-sm">{activeStory.caption}</p>}
+              <div className="flex justify-end border-t border-border/60 px-4 py-2">
+                <ReportContentButton contentType="story" contentId={activeStory.id} />
+              </div>
               <div className="flex items-center justify-center gap-2 border-t border-border/70 p-3 text-[11px] text-muted-foreground">
                 Story {storyViewer ? storyViewer.index + 1 : 1} of {activeStoryGroup.items.length}
               </div>
@@ -1055,6 +1058,7 @@ function PostCard({
                     {item.profiles?.display_name || item.profiles?.username || "Member"}
                   </p>
                   <p className="whitespace-pre-wrap break-words">{item.body}</p>
+                  <div className="mt-1 flex justify-end"><ReportContentButton contentType="comment" contentId={item.id} /></div>
                 </div>
               </div>
             ))}
