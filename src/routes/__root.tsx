@@ -183,30 +183,6 @@ function RootShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const shouldLoadMonetag = MONETAG_PUBLIC_CONTENT_PATHS.has(pathname);
 
-  useEffect(() => {
-    if (!shouldLoadMonetag) return;
-    const placements = [
-      { zone: "12296060", src: "https://n6wxm.com/vignette.min.js" },
-      { zone: "12296064", src: "https://nap5k.com/tag.min.js" },
-    ];
-    const added: HTMLScriptElement[] = [];
-    for (const placement of placements) {
-      const existing = document.querySelector(
-        `script[data-expertsteam-monetag="${placement.zone}"]`,
-      );
-      if (existing) continue;
-      const script = document.createElement("script");
-      script.dataset.zone = placement.zone;
-      script.dataset.expertsteamMonetag = placement.zone;
-      script.src = placement.src;
-      script.async = true;
-      document.body.appendChild(script);
-      added.push(script);
-    }
-    return () => {
-      added.forEach((script) => script.remove());
-    };
-  }, [shouldLoadMonetag]);
   const shouldLoadAdsense = ADSENSE_PUBLIC_CONTENT_PATHS.has(pathname);
 
   useEffect(() => {
@@ -223,6 +199,22 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="theme-dark dark">
       <head>
+        {shouldLoadMonetag && (
+          <>
+            <script
+              async
+              data-cfasync="false"
+              data-zone="12296060"
+              src="https://n6wxm.com/vignette.min.js"
+            />
+            <script
+              async
+              data-cfasync="false"
+              data-zone="12296064"
+              src="https://nap5k.com/tag.min.js"
+            />
+          </>
+        )}
         <HeadContent />
         {shouldLoadAdsense && (
           <script
