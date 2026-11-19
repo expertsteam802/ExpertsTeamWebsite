@@ -22,46 +22,19 @@ export type GeminiResponse = {
   promptFeedback?: { blockReason?: string };
 };
 
-const GEMINI_MODEL =
-  process.env["GEMINI_CODE_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-3.8-flash";
-const providerCooldowns = new Map<string, number>();
-
-export function markProviderCoolingDown(provider: string, seconds = 60) {
-  providerCooldowns.set(provider, Date.now() + Math.max(5, Math.min(seconds, 300)) * 1000);
-}
-
-export function isProviderCoolingDown(provider: string) {
-  return (providerCooldowns.get(provider) ?? 0) > Date.now();
-}
-
-export function resetProviderCooldowns() {
-  providerCooldowns.clear();
-}
-
-export function resolveGeminiApiKey(apiKey?: string): string | undefined {
-  return apiKey?.trim() || process.env["GEMINI_API_KEY"]?.trim() || undefined;
-}
-
-function openAiMessages(request: GeminiRequest, maxInputCharacters = 18000) {
-  // Smart Processing compacts the request first; this is the final adapter guard.
-  const system = request.systemInstruction.parts
-    .map((part) => part.text)
-    .join("\n")
-    .slice(0, Math.min(2400, Math.floor(maxInputCharacters * 0.3)));
-  const recent = request.contents.slice(-4).map((item, index, items) => ({
+function openAiMessages(request: GeminiRequest, maxInputCharacters = 16000) {
+  const system = request.systemInstruction.parts.map((part) => part.text).join("\n")
+    .slice(0, Math.min(3000, Math.floor(maxInputCharacters * 0.25)));
+  const recent = request.contents.slice(-6).map((item, index, items) => ({
     role: item.role === "model" ? "assistant" : "user",
-    content: item.parts
-      .map((part) => part.text ?? "")
-      .join("\n")
-      .slice(-(index === items.length - 1 ? 14000 : 1000)),
+    content: item.parts.map((part) => part.text ?? "").join("\n")
+      .slice(-(index === items.length - 1 ? 12000 : 1600)),
   }));
   const messages = [{ role: "system", content: system }, ...recent];
   let remaining = maxInputCharacters - system.length;
   for (let index = messages.length - 1; index >= 1; index--) {
     const message = messages[index];
-    if (message.content.length > remaining) {
-      message.content = message.content.slice(-Math.max(0, remaining));
-    }
+    if (message.content.length > remaining) message.content = message.content.slice(-Math.max(0, remaining));
     remaining -= message.content.length;
     if (remaining <= 0) {
       messages.splice(1, index - 1);
@@ -75,221 +48,57 @@ function asGeminiResponse(text: string, finishReason = "STOP"): GeminiResponse {
   return { candidates: [{ finishReason, content: { parts: [{ text }] } }] };
 }
 
-async function callOpenAiCompatible(
-  provider: "groq" | "openrouter" | "kilo",
+/**
+ * ExpertAI uses Kilo Gateway only. No server API key is required for
+ * Kilo's anonymous free-model tier. Requests made here originate from
+ * the hosting server, so Kilo's IP-based quota may be shared by visitors.
+ */
+export async function generateGeminiContent(
   request: GeminiRequest,
+  _apiKey?: string,
+  _providerOrder?: string[],
 ): Promise<GeminiResponse> {
-  const isGroq = provider === "groq";
-  const isKilo = provider === "kilo";
-  const apiKey = process.env[isGroq ? "GROQ_API_KEY" : isKilo ? "KILO_API_KEY" : "OPENROUTER_API_KEY"]?.trim();
-  if (!apiKey && !isKilo) throw new Error("not_configured");
-  const model = isGroq
-    ? process.env["GROQ_MODEL"] || "openai/gpt-oss-120b"
-    : isKilo
-      ? process.env["KILO_MODEL"] || "kilo-auto/free"
-      : process.env["OPENROUTER_MODEL"] || "openrouter/free";
-  const endpoint = isGroq
-    ? "https://api.groq.com/openai/v1/chat/completions"
-    : isKilo
-      ? (process.env["KILO_API_BASE_URL"] || "https://ai-gateway.kilo.ai/api/v1").replace(/\/$/, "") + "/chat/completions"
-      : "https://openrouter.ai/api/v1/chat/completions";
+  const activeRequest = compactSmartRequest(request);
+  if (activeRequest.contents.some((item) => item.parts.some((part) => Boolean(part.inlineData?.data)))) {
+    throw new Error("Kilo text chat cannot process image attachments through this text-only adapter yet. Please attach a text-based document instead.");
+  }
+
+  const endpoint = (process.env["KILO_API_BASE_URL"] || "https://ai-gateway.kilo.ai/api/v1")
+    .replace(/\/$/, "") + "/chat/completions";
+  const apiKey = process.env["KILO_API_KEY"]?.trim();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
-  if (!isGroq && !isKilo) {
-    headers["HTTP-Referer"] = process.env["APP_URL"] || "https://expertsteam.giize.com";
-    headers["X-Title"] = "ExpertsTeam";
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: process.env["KILO_MODEL"] || "kilo-auto/free",
+      messages: openAiMessages(activeRequest),
+      max_tokens: Math.min(request.generationConfig?.maxOutputTokens ?? 2200, 3600),
+      ...(request.generationConfig?.responseMimeType === "application/json"
+        ? { response_format: { type: "json_object" } }
+        : {}),
+    }),
+    signal: AbortSignal.timeout(60000),
+  });
+
+  if (!response.ok) {
+    const detail = (await response.text()).slice(0, 500);
+    if (response.status === 429) {
+      throw new Error("Kilo's free-model rate limit has been reached for the current network IP. Please wait and try again later.");
+    }
+    if (response.status === 402 || response.status === 403) {
+      throw new Error(`Kilo free access is unavailable for this request (HTTP ${response.status}). Please try again later.`);
+    }
+    throw new Error(`Kilo Gateway HTTP ${response.status}: ${detail}`);
   }
-  const send = (inputBudget: number, outputBudget: number) =>
-    fetch(endpoint, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model,
-        messages: openAiMessages(request, inputBudget),
-        max_tokens: outputBudget,
-        ...(request.generationConfig?.responseMimeType === "application/json"
-          ? { response_format: { type: "json_object" } }
-          : {}),
-      }),
-      signal: AbortSignal.timeout(45000),
-    });
-  const requestedOutput = request.generationConfig?.maxOutputTokens ?? 2200;
-  const inputBudget = isGroq ? 3800 : isKilo ? 16000 : 12000;
-  const outputLimit = isGroq ? 1100 : isKilo ? 3600 : 2600;
-  let response = await send(inputBudget, Math.min(requestedOutput, outputLimit));
-  if (isGroq && response.status === 413) {
-    await response.text();
-    response = await send(2400, Math.min(requestedOutput, 600));
-  }
-  if (!response.ok)
-    throw new Error(
-      `${provider} HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`,
-    );
+
   const data = (await response.json()) as {
     choices?: { finish_reason?: string; message?: { content?: string | null } }[];
   };
   const choice = data.choices?.[0];
   const output = choice?.message?.content;
-  if (!output) throw new Error(`${provider} returned an empty response.`);
+  if (!output) throw new Error("Kilo returned an empty response.");
   return asGeminiResponse(output, choice?.finish_reason === "length" ? "MAX_TOKENS" : "STOP");
-}
-async function callMistral(request: GeminiRequest): Promise<GeminiResponse> {
-  const apiKey = process.env["MISTRAL_API_KEY"]?.trim();
-  if (!apiKey) throw new Error("not_configured");
-  const model = process.env["MISTRAL_MODEL"] || "mistral-small-latest";
-  const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      messages: openAiMessages(request),
-      max_tokens: request.generationConfig?.maxOutputTokens ?? 8192,
-      ...(request.generationConfig?.responseMimeType === "application/json"
-        ? { response_format: { type: "json_object" } }
-        : {}),
-    }),
-    signal: AbortSignal.timeout(25000),
-  });
-  if (!response.ok)
-    throw new Error(`Mistral HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`);
-  const data = (await response.json()) as { choices?: { message?: { content?: string | null } }[] };
-  const output = data.choices?.[0]?.message?.content;
-  if (!output) throw new Error("Mistral returned an empty response.");
-  return asGeminiResponse(output);
-}
-
-async function callCloudflare(request: GeminiRequest): Promise<GeminiResponse> {
-  const accountId = process.env["CLOUDFLARE_ACCOUNT_ID"]?.trim();
-  const apiToken = process.env["CLOUDFLARE_API_TOKEN"]?.trim();
-  if (!accountId || !apiToken) throw new Error("not_configured");
-  const model = process.env["CLOUDFLARE_AI_MODEL"] || "@cf/zai-org/glm-4.7-flash";
-  const response = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
-    {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: openAiMessages(request),
-        max_tokens: request.generationConfig?.maxOutputTokens ?? 8192,
-      }),
-      signal: AbortSignal.timeout(25000),
-    },
-  );
-  if (!response.ok)
-    throw new Error(
-      `Cloudflare Workers AI HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`,
-    );
-  const data = (await response.json()) as { result?: { response?: string } };
-  if (!data.result?.response) throw new Error("Cloudflare Workers AI returned an empty response.");
-  return asGeminiResponse(data.result.response);
-}
-
-export async function generateGeminiContent(
-  request: GeminiRequest,
-  apiKey?: string,
-  providerOrder?: string[],
-): Promise<GeminiResponse> {
-  let activeRequest = compactSmartRequest(request);
-  const hasImageReference = activeRequest.contents.some((item) =>
-    item.parts.some((part) => Boolean(part.inlineData?.data)),
-  );
-  if (hasImageReference && !resolveGeminiApiKey(apiKey)) {
-    throw new Error(
-      "Screenshot-to-app generation needs the Gemini vision connection. Add GEMINI_API_KEY in the deployment environment.",
-    );
-  }
-  const requestedOrder =
-    providerOrder ??
-    (process.env["AI_PROVIDER_ORDER"] || "groq,gemini,openrouter")
-      .split(",")
-      .map((item) => item.trim().toLowerCase())
-      .filter(Boolean);
-  const availableProviders = ["kilo", "gemini", "groq", "openrouter", "mistral", "cloudflare"];
-  // Use every configured adapter as a fallback; credentials stay server-side.
-  // An explicit order is a strict provider allowlist. This lets guest
-  // chat use OpenRouter only and signed-in chat use Gemini then Groq.
-  const configuredOrder = providerOrder
-    ? [...new Set(requestedOrder.filter((item) => availableProviders.includes(item)))]
-    : hasImageReference
-      ? ["gemini"]
-      : [
-          ...new Set([
-            ...requestedOrder.filter((item) => availableProviders.includes(item)),
-            ...availableProviders,
-          ]),
-        ];
-  const failures: string[] = [];
-  const coolingDown: string[] = [];
-
-  for (const provider of configuredOrder) {
-    if (isProviderCoolingDown(provider)) {
-      coolingDown.push(provider);
-      continue;
-    }
-    try {
-      if (provider === "gemini") {
-        const resolvedApiKey = resolveGeminiApiKey(apiKey);
-        if (!resolvedApiKey) continue;
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
-          {
-            method: "POST",
-            headers: { "x-goog-api-key": resolvedApiKey, "Content-Type": "application/json" },
-            body: JSON.stringify(activeRequest),
-            signal: AbortSignal.timeout(25000),
-          },
-        );
-        if (!response.ok)
-          throw new Error(
-            `Gemini HTTP ${response.status}: ${(await response.text()).slice(0, 500)}`,
-          );
-        return (await response.json()) as GeminiResponse;
-      }
-      if (provider === "groq" || provider === "openrouter" || provider === "kilo") {
-        return await callOpenAiCompatible(provider, activeRequest);
-      }
-      if (provider === "mistral") return await callMistral(activeRequest);
-      if (provider === "cloudflare") return await callCloudflare(activeRequest);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (message === "not_configured") continue;
-      if (
-        /HTTP 413|HTTP 429|rate.?limit|quota|RESOURCE_EXHAUSTED|tokens per minute/i.test(message)
-      ) {
-        markProviderCoolingDown(provider, 60);
-        // Give the next provider a smaller prompt and output reserve automatically.
-        activeRequest = compactSmartRequest(
-          {
-            ...activeRequest,
-            generationConfig: {
-              ...activeRequest.generationConfig,
-              maxOutputTokens: Math.min(
-                activeRequest.generationConfig?.maxOutputTokens ?? 1400,
-                700,
-              ),
-            },
-          },
-          4500,
-        );
-      } else if (/HTTP 401|HTTP 403|HTTP 404/i.test(message))
-        markProviderCoolingDown(provider, 300);
-      else if (/HTTP 5\d\d|timed out|timeout/i.test(message)) markProviderCoolingDown(provider, 20);
-      failures.push(`${provider}: ${message}`);
-    }
-  }
-
-  if (failures.length || coolingDown.length) {
-    const details = [
-      ...failures,
-      ...coolingDown.map(
-        (provider) => `${provider}: temporarily cooling down after a provider limit or outage`,
-      ),
-    ];
-    throw new Error(
-      `All configured ExpertAI services are temporarily unavailable. ${details.join(" | ")}`,
-    );
-  }
-  throw new Error(
-    "ExpertAI is not connected yet. Add at least one server-side service key in the hosting environment.",
-  );
 }
