@@ -57,7 +57,7 @@ function AiPage() {
             className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all duration-300 ${activeView === "builder" ? "bg-muted text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
           >
             <Code2 className="h-4 w-4" />
-            <span>Agent</span>
+            <span>ExpertsAI Agent</span>
           </button>
           <button
             type="button"
