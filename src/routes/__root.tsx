@@ -202,10 +202,10 @@ function RootShell({ children }: { children: ReactNode }) {
         {shouldLoadMonetag && (
           <>
             <script
-              async
-              data-cfasync="false"
-              data-zone="12296060"
-              src="https://n6wxm.com/vignette.min.js"
+              dangerouslySetInnerHTML={{
+                __html:
+                  "(function(s){s.dataset.zone='12296060',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))",
+              }}
             />
             <script
               async
