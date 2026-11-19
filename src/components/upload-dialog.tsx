@@ -132,7 +132,11 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
   if (!user) return null;
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !mutation.isPending && setOpen(next)}>
+    <Dialog open={open} onOpenChange={(next) => {
+      if (mutation.isPending) return;
+      setOpen(next);
+      if (!next) setRightsConfirmed(false);
+    }}>
       <DialogTrigger asChild>
         <Button>
           <UploadCloud className="mr-2 h-4 w-4" /> Upload a file
