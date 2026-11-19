@@ -27,8 +27,10 @@ function openAiMessages(request: GeminiRequest, maxInputCharacters = 16000) {
     .slice(0, Math.min(3000, Math.floor(maxInputCharacters * 0.25)));
   const recent = request.contents.slice(-6).map((item, index, items) => ({
     role: item.role === "model" ? "assistant" : "user",
-    content: item.parts.map((part) => part.text ?? "").join("\n")
-      .slice(-(index === items.length - 1 ? 12000 : 1600)),
+    content: item.parts.flatMap((part) => {
+      if (part.inlineData?.data) return [{ type: "image_url", image_url: { url: `data:${part.inlineData.mimeType || "image/jpeg"};base64,${part.inlineData.data}` } }];
+      return part.text ? [{ type: "text", text: part.text }] : [];
+    }),
   }));
   const messages = [{ role: "system", content: system }, ...recent];
   let remaining = maxInputCharacters - system.length;
@@ -95,10 +97,11 @@ export async function generateGeminiContent(
   }
 
   const data = (await response.json()) as {
-    choices?: { finish_reason?: string; message?: { content?: string | null } }[];
+    choices?: { finish_reason?: string; message?: { content?: string | { type?: string; text?: string }[] | null } }[];
   };
   const choice = data.choices?.[0];
-  const output = choice?.message?.content;
+  const rawOutput = choice?.message?.content;
+  const output = typeof rawOutput === "string" ? rawOutput : rawOutput?.map((part) => part.text ?? "").join("");
   if (!output) throw new Error("Kilo returned an empty response.");
   return asGeminiResponse(output, choice?.finish_reason === "length" ? "MAX_TOKENS" : "STOP");
 }
