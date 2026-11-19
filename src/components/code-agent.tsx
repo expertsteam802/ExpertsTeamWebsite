@@ -1020,7 +1020,7 @@ export function CodeAgent() {
         continue;
       }
       const path = relativePath.replace(/\\/g, "/").replace(/^\/+/, "");
-      if (!path || path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) || /(^|\/)\.env($|\.)/i.test(path) || file.size > 10 * 1024 * 1024 || totalBytes + file.size > 25 * 1024 * 1024 || (Object.keys(nextFiles).length >= 400 && nextFiles[path] === undefined)) { skipped += 1; continue; }
+      if (!path || path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) || /(^|\/)\.env($|\.)/i.test(path) || file.size > 10 * 1024 * 1024 || totalBytes + file.size > 25 * 1024 * 1024 || (Object.keys(nextFiles).length >= 2_000 && nextFiles[path] === undefined)) { skipped += 1; continue; }
       const textLike = file.type.startsWith("text/") || /\.(?:[cm]?[jt]sx?|json|css|scss|html?|md|mdx|xml|ya?ml|toml|ini|py|java|c|h|cpp|cs|go|rs|php|sql|sh|bat|ps1|svg|txt|env\.example)$/i.test(path);
       if (!textLike) { skipped += 1; continue; }
       try {
@@ -1520,7 +1520,7 @@ export function CodeAgent() {
       for (const row of rows ?? []) {
         const path = row.relative_path || row.file_name;
         if (path.toLowerCase().endsWith(".zip")) {
-          if (row.size_bytes > 25 * 1024 * 1024) {
+          if (row.size_bytes > 100 * 1024 * 1024) {
             skipped += 1;
             continue;
           }
@@ -1532,8 +1532,8 @@ export function CodeAgent() {
           skipped += extracted.skipped;
           for (const entry of extracted.files) {
             if (
-              Object.keys(importedFiles).length >= 400 ||
-              totalBytes + entry.sizeBytes > 3 * 1024 * 1024 ||
+              Object.keys(importedFiles).length >= 2_000 ||
+              totalBytes + entry.sizeBytes > 25 * 1024 * 1024 ||
               Object.prototype.hasOwnProperty.call(importedFiles, entry.path)
             ) {
               skipped += 1;
@@ -1544,11 +1544,11 @@ export function CodeAgent() {
           }
           continue;
         }
-        if (!textFile.test(path) || /(^|\/)\.env($|\.)/i.test(path) || path.split("/").some((part) => part === "..") || row.size_bytes > 500 * 1024 || totalBytes + row.size_bytes > 3 * 1024 * 1024) {
+        if (!textFile.test(path) || /(^|\/)\.env($|\.)/i.test(path) || path.split("/").some((part) => part === "..") || row.size_bytes > 10 * 1024 * 1024 || totalBytes + row.size_bytes > 25 * 1024 * 1024) {
           skipped += 1;
           continue;
         }
-        if (Object.keys(importedFiles).length >= 400) {
+        if (Object.keys(importedFiles).length >= 2_000) {
           skipped += 1;
           continue;
         }
@@ -2928,8 +2928,8 @@ export function CodeAgent() {
               )}
             </div>
             <p className="text-[11px] leading-5 text-slate-500">
-              Import limit: 400 text files, 500 KB per file and 3 MB total source text. Files are
-              copied into your own ExpertAI project; the shared vault copy is unchanged.
+              Imports up to 2,000 text files, 10 MB per file and 25 MB total source text. ZIP archives can be up to 100 MB. Files are
+              copied into your own ExpertsAI Agent project; the shared vault copy is unchanged.
             </p>
           </div>
         </DialogContent>
