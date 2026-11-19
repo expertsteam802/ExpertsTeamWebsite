@@ -17,10 +17,10 @@ const requestSchema = z
       .array(
         z.object({
           role: z.string().max(20),
-          content: z.string().max(1800),
+          content: z.string().max(100000),
         }),
       )
-      .max(10)
+      .max(20)
       .optional(),
     attachments: z
       .array(
@@ -44,6 +44,17 @@ const requestSchema = z
         code: z.ZodIssueCode.custom,
         message: "Attachments are too large. Please upload smaller files.",
         path: ["attachments"],
+      });
+    }
+    const totalHistoryCharacters = (data.history ?? []).reduce(
+      (total, message) => total + message.content.length,
+      0,
+    );
+    if (totalHistoryCharacters > 240000) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Conversation context is too large to process in one request.",
+        path: ["history"],
       });
     }
   });
@@ -272,7 +283,7 @@ export const Route = createFileRoute("/api/ai/stream")({
                 message.role === "ai" || message.role === "assistant"
                   ? ("model" as const)
                   : ("user" as const),
-              parts: [{ text: message.content.slice(-1800) }],
+              parts: [{ text: message.content }],
             })),
             { role: "user", parts: [{ text: prompt }, ...attachmentParts] },
           ];
