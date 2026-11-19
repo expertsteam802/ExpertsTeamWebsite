@@ -1,6 +1,6 @@
 # ExpertAI — Kilo Gateway only
 
-ExpertAI chat and the coding agent use the Kilo AI Gateway as their sole model provider. Gemini, Groq, and OpenRouter are not configured as fallback providers.
+ExpertAI chat and the coding agent use the Kilo AI Gateway as their sole model provider. Gemini, Groq, and OpenRouter are not configured as fallback providers. The application is designed to keep working within the changing limits of anonymous free models; it cannot make upstream model limits disappear.
 
 ## Default free configuration
 
@@ -25,6 +25,9 @@ We must not spoof forwarded-IP headers to bypass Kilo's rate limits. A future di
 ## Model and attachment behavior
 
 - `kilo-auto/free` dynamically selects from currently available free models.
+- ExpertAI requests up to 8,192 output tokens where the selected model supports it. If a model rejects the request because of context/output capacity, the adapter retries with smaller context and output budgets; unsupported JSON response mode is retried without that optional API parameter.
+- The coding agent uses resumable file batches and stops immediately on a quota/authentication error instead of repeatedly hitting the same exhausted quota.
+- Image attachments are forwarded in the OpenAI-compatible image format. Actual vision support still depends on the free model selected for that request.
 - Not every free model supports images or every file modality. Image requests are sent using OpenAI-compatible image content; a selected model without vision support may reject them.
 - Text attachments are extracted/compacted by ExpertsTeam before being sent to Kilo.
 - Kilo Auto Free may route prompts and outputs to upstream providers that log or use data to improve their services. Users should not submit confidential or sensitive information through the free tier.
@@ -42,6 +45,7 @@ The application no longer routes to Gemini, Groq, or OpenRouter. Old environment
 5. Verify rate-limit errors are presented clearly.
 6. Test image attachments with the live free model; image capability depends on the model selected by Kilo.
 7. Check Vercel logs for Kilo Gateway errors without logging prompts, files, or credentials.
+8. Test a short chat, a long answer, a multi-file coding task, and an image attachment. Confirm that a capacity error retries once with smaller limits and that a 429 stops without repeated requests.
 
 Official documentation:
 - https://kilo.ai/docs/gateway/authentication
