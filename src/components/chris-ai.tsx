@@ -40,21 +40,6 @@ type UploadedFile = {
   size?: number;
 };
 
-/**
- * Keep saved long-form answers in the chat UI/database, but send a bounded
- * excerpt to the model on the next turn so a book-length reply cannot make
- * the following request fail schema validation or overflow a free model.
- */
-function compactHistoryForRequest(value: string, limit = 1600): string {
-  const text = value.trim();
-  if (text.length <= limit) return text;
-  const marker = "\\n\\n[Middle of the previous answer omitted to fit conversation context]\\n\\n";
-  const available = Math.max(0, limit - marker.length);
-  const head = Math.floor(available * 0.45);
-  const tail = available - head;
-  return text.slice(0, head) + marker + text.slice(-tail);
-}
-
 function MessageBody({ content, streaming = false }: { content: string; streaming?: boolean }) {
   const parts = content.split(/```/);
   return (
@@ -341,9 +326,11 @@ export function ChrisAiChat({
       const activeThreadId = threadId ?? crypto.randomUUID();
       if (user && !threadId) setThreadId(activeThreadId);
 
-      const history = messages.slice(-6).map((message) => ({
+      // Send full recent turns; the server performs budget-aware compaction for Kilo.
+      // Saved chat rows are never modified or truncated.
+      const history = messages.slice(-20).map((message) => ({
         role: message.role,
-        content: compactHistoryForRequest(message.content),
+        content: message.content,
       }));
       const userMessage: ChatRow = {
         id: crypto.randomUUID(),
