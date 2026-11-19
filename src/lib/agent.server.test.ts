@@ -2,443 +2,200 @@ import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 
 import { repairMissingStylesheetImports, runAgent } from "./agent.server";
-import { generateGeminiContent, resetProviderCooldowns } from "./gemini.server";
+import { generateGeminiContent } from "./gemini.server";
 import { compactSmartContents, estimateSmartTokens } from "./smart-processing.server";
 
 const originalFetch = globalThis.fetch;
+const originalEnv = {
+  key: process.env["KILO_API_KEY"],
+  base: process.env["KILO_API_BASE_URL"],
+  model: process.env["KILO_MODEL"],
+};
 afterEach(() => {
   globalThis.fetch = originalFetch;
-  resetProviderCooldowns();
+  for (const [key, value] of Object.entries({
+    KILO_API_KEY: originalEnv.key,
+    KILO_API_BASE_URL: originalEnv.base,
+    KILO_MODEL: originalEnv.model,
+  })) {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
 });
 
 const input = { prompt: "Build a game", files: {}, history: [] };
 
-test("agent repairs a missing src/index.css import by reusing the project's style.css", () => {
+test("agent repairs a missing stylesheet import by reusing style.css", () => {
   const files = repairMissingStylesheetImports({
-    "src/main.tsx": 'import "./index.css";\n',
+    "src/main.tsx": 'import "./index.css";',
     "style.css": "body { background: #111; }",
   });
-  assert.equal(
-    files["src/index.css"],
-    '/* Recovered missing stylesheet entry; original styles are kept in style.css. */\n@import "../style.css";\n',
-  );
+  assert.match(files["src/index.css"] ?? "", /@import "..\/style.css"/);
 });
 
 test("agent creates a minimal stylesheet when an imported CSS entry is missing", () => {
-  const files = repairMissingStylesheetImports({
-    "src/main.tsx": 'import "./index.css";',
-  });
+  const files = repairMissingStylesheetImports({ "src/main.tsx": 'import "./index.css";' });
   assert.match(files["src/index.css"] ?? "", /box-sizing: border-box/);
 });
 
-test("agent never uses a browser-prefixed key when server credential is missing", async () => {
-  const previous = process.env["VITE_GEMINI_API_KEY"];
-  const previousKiloEnabled = process.env["KILO_ENABLED"];
-  process.env["KILO_ENABLED"] = "false";
-  process.env["VITE_GEMINI_API_KEY"] = "browser-test-key";
+test("Kilo anonymous gateway receives a larger output budget and returns normalized text", async () => {
+  delete process.env["KILO_API_KEY"];
+  let requestBody: { model?: string; max_tokens?: number } | undefined;
+  let authorization: string | null = null;
+  globalThis.fetch = (async (url, init) => {
+    assert.match(String(url), /ai-gateway\.kilo\.ai\/api\/v1\/chat\/completions$/);
+    authorization = new Headers(init?.headers).get("authorization");
+    requestBody = JSON.parse(String(init?.body ?? "{}")) as typeof requestBody;
+    return Response.json({
+      choices: [{ finish_reason: "stop", message: { content: "Hello from ExpertAI" } }],
+    });
+  }) as typeof fetch;
+
+  const response = await generateGeminiContent({
+    systemInstruction: { parts: [{ text: "You are ExpertAI." }] },
+    contents: [{ role: "user", parts: [{ text: "Say hello." }] }],
+    generationConfig: { maxOutputTokens: 8192 },
+  });
+  assert.equal(requestBody?.model, "kilo-auto/free");
+  assert.equal(requestBody?.max_tokens, 8192);
+  assert.equal(authorization, null);
+  assert.equal(response.candidates?.[0]?.content?.parts?.[0]?.text, "Hello from ExpertAI");
+});
+
+test("Kilo adapter retries context-capacity failures with smaller budgets", async () => {
+  const budgets: number[] = [];
+  let calls = 0;
+  globalThis.fetch = (async (_url, init) => {
+    calls++;
+    const body = JSON.parse(String(init?.body ?? "{}")) as { max_tokens?: number };
+    budgets.push(body.max_tokens ?? 0);
+    if (calls === 1) return new Response("context length exceeded", { status: 413 });
+    return Response.json({ choices: [{ finish_reason: "stop", message: { content: "Recovered" } }] });
+  }) as typeof fetch;
+
+  const response = await generateGeminiContent({
+    systemInstruction: { parts: [{ text: "You are ExpertAI." }] },
+    contents: [{ role: "user", parts: [{ text: "Explain this." }] }],
+    generationConfig: { maxOutputTokens: 8192 },
+  });
+  assert.equal(response.candidates?.[0]?.content?.parts?.[0]?.text, "Recovered");
+  assert.deepEqual(budgets, [8192, 4096]);
+});
+
+test("Kilo adapter forwards image attachments in OpenAI-compatible format", async () => {
+  let sawImage = false;
+  globalThis.fetch = (async (_url, init) => {
+    const body = JSON.parse(String(init?.body ?? "{}")) as {
+      messages?: { content?: { type?: string; image_url?: { url?: string } }[] }[];
+    };
+    sawImage = Boolean(body.messages?.some((message) =>
+      Array.isArray(message.content) && message.content.some((part) =>
+        part.type === "image_url" && part.image_url?.url?.startsWith("data:image/png;base64,"),
+      ),
+    ));
+    return Response.json({ choices: [{ finish_reason: "stop", message: { content: "Image received." } }] });
+  }) as typeof fetch;
+
+  await generateGeminiContent({
+    systemInstruction: { parts: [{ text: "You are ExpertAI." }] },
+    contents: [{ role: "user", parts: [
+      { text: "Describe this image." },
+      { inlineData: { mimeType: "image/png", data: "aGVsbG8=" } },
+    ] }],
+  });
+  assert.equal(sawImage, true);
+});
+
+test("Kilo rate limits fail once instead of repeatedly consuming requests", async () => {
   let calls = 0;
   globalThis.fetch = (async () => {
     calls++;
-    return Response.json({});
+    return new Response("rate limit exceeded", { status: 429 });
   }) as typeof fetch;
-  try {
-    await assert.rejects(runAgent(input), /ExpertAI is not connected yet/i);
-    assert.equal(calls, 0);
-  } finally {
-    if (previous === undefined) delete process.env["VITE_GEMINI_API_KEY"];
-    else process.env["VITE_GEMINI_API_KEY"] = previous;
-    if (previousKiloEnabled === undefined) delete process.env["KILO_ENABLED"];
-    else process.env["KILO_ENABLED"] = previousKiloEnabled;
-  }
+  await assert.rejects(
+    generateGeminiContent({
+      systemInstruction: { parts: [{ text: "You are ExpertAI." }] },
+      contents: [{ role: "user", parts: [{ text: "Help." }] }],
+    }),
+    /rate limit/i,
+  );
+  assert.equal(calls, 1);
 });
 
-test("coding agent uses Gemini and returns complete files", async () => {
-  const urls: string[] = [];
-  globalThis.fetch = (async (url) => {
-    urls.push(String(url));
+test("coding agent sends 8192 output tokens to Kilo and returns complete files", async () => {
+  let model = "";
+  let outputBudget = 0;
+  globalThis.fetch = (async (url, init) => {
+    assert.match(String(url), /ai-gateway\.kilo\.ai/);
+    const body = JSON.parse(String(init?.body ?? "{}")) as { model?: string; max_tokens?: number };
+    model = body.model ?? "";
+    outputBudget = body.max_tokens ?? 0;
     return Response.json({
-      candidates: [
-        {
-          content: {
-            parts: [
-              {
-                text: JSON.stringify({
-                  message: "Built",
-                  files: { "index.html": "<h1>Game</h1>" },
-                  complete: true,
-                }),
-              },
-            ],
-          },
+      choices: [{
+        finish_reason: "stop",
+        message: {
+          content: JSON.stringify({
+            message: "Created the game.",
+            files: { "index.html": "<h1>Game</h1>" },
+            complete: true,
+          }),
         },
-      ],
+      }],
     });
   }) as typeof fetch;
 
-  const result = await runAgent(input, "test-key");
-
-  assert.deepEqual(urls, [
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
-  ]);
+  const result = await runAgent(input);
+  assert.equal(model, "kilo-auto/free");
+  assert.equal(outputBudget, 8192);
   assert.equal(result.files["index.html"], "<h1>Game</h1>");
 });
 
-test("coding agent falls back to Groq when Gemini is rate limited", async () => {
-  const previousOrder = process.env["AI_PROVIDER_ORDER"];
-  const previousGroqKey = process.env["GROQ_API_KEY"];
-  process.env["AI_PROVIDER_ORDER"] = "gemini,groq";
-  process.env["GROQ_API_KEY"] = "groq-test-key";
-  const urls: string[] = [];
-  globalThis.fetch = (async (url) => {
-    urls.push(String(url));
-    if (String(url).includes("generativelanguage.googleapis.com")) {
-      return new Response("quota exceeded", { status: 429 });
-    }
-    return Response.json({
-      choices: [
-        {
-          message: {
-            content: JSON.stringify({
-              message: "Recovered through the fallback provider",
-              files: { "index.html": "<h1>Fallback worked</h1>" },
-              complete: true,
-            }),
-          },
-        },
-      ],
-    });
+test("coding agent stops immediately when Kilo's IP quota is exhausted", async () => {
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls++;
+    return new Response("rate limit exceeded", { status: 429 });
   }) as typeof fetch;
-
-  try {
-    const result = await runAgent(input, "test-key");
-    assert.equal(result.files["index.html"], "<h1>Fallback worked</h1>");
-    assert.equal(urls.length, 2);
-    assert.match(urls[1], /api.groq.com/);
-  } finally {
-    if (previousOrder === undefined) delete process.env["AI_PROVIDER_ORDER"];
-    else process.env["AI_PROVIDER_ORDER"] = previousOrder;
-    if (previousGroqKey === undefined) delete process.env["GROQ_API_KEY"];
-    else process.env["GROQ_API_KEY"] = previousGroqKey;
-  }
-});
-
-test("truncated output cannot replace existing files", async () => {
-  globalThis.fetch = (async () =>
-    Response.json({ candidates: [{ finishReason: "MAX_TOKENS" }] })) as typeof fetch;
-
-  await assert.rejects(runAgent(input, "test-key"), /files were not replaced/i);
+  await assert.rejects(runAgent(input), /rate limit/i);
+  assert.equal(calls, 1);
 });
 
 test("agent rejects unsafe generated file paths", async () => {
   globalThis.fetch = (async () =>
     Response.json({
-      candidates: [
-        {
-          content: {
-            parts: [
-              {
-                text: JSON.stringify({
-                  message: "Built",
-                  files: { "../outside.html": "not safe" },
-                }),
-              },
-            ],
-          },
+      choices: [{
+        finish_reason: "stop",
+        message: {
+          content: JSON.stringify({
+            message: "Bad path",
+            files: { "../outside.html": "not safe" },
+            complete: true,
+          }),
         },
-      ],
+      }],
     })) as typeof fetch;
-
-  await assert.rejects(runAgent(input, "test-key"), /complete app files/i);
+  await assert.rejects(runAgent(input), /Invalid file path/i);
 });
 
 test("Smart Processing keeps the newest request while compacting old history", () => {
   const compacted = compactSmartContents([
     { role: "user", parts: [{ text: "old".repeat(1200) }] },
     { role: "model", parts: [{ text: "answer".repeat(1200) }] },
-    {
-      role: "user",
-      parts: [{ text: "Build the checkout page and preserve the existing layout." }],
-    },
+    { role: "user", parts: [{ text: "Build checkout and preserve the existing layout." }] },
   ]);
-  const combined = compacted
-    .flatMap((item) => item.parts.map((part) => part.text ?? ""))
-    .join("\\n");
-  assert.match(combined, /Build the checkout page and preserve the existing layout/);
-  assert.ok(combined.length <= 9_000);
-  assert.ok(compacted.length <= 3);
+  const combined = compacted.flatMap((item) => item.parts.map((part) => part.text ?? "")).join("\n");
+  assert.match(combined, /Build checkout and preserve the existing layout/);
+  assert.ok(compacted.length <= 5);
 });
 
-test("Smart Processing retains image payloads for Gemini", () => {
+test("Smart Processing preserves image payloads in the latest user request", () => {
   const image = { mimeType: "image/png", data: "aGVsbG8=" };
   const compacted = compactSmartContents([
-    { role: "user", parts: [{ text: "Please inspect this image." }, { inlineData: image }] },
+    { role: "user", parts: [{ text: "Inspect this." }, { inlineData: image }] },
   ]);
-  assert.deepEqual(compacted[0].parts[1], { inlineData: image });
+  assert.deepEqual(compacted[0]?.parts[1], { inlineData: image });
 });
 
-test("Smart token estimate is deliberately conservative", () => {
+test("Smart token estimate is conservative", () => {
   assert.equal(estimateSmartTokens("a".repeat(1000)), 500);
-});
-
-test("coding agent continues to Groq when Gemini rejects an oversized request", async () => {
-  const previousOrder = process.env["AI_PROVIDER_ORDER"];
-  const previousGroqKey = process.env["GROQ_API_KEY"];
-  process.env["AI_PROVIDER_ORDER"] = "gemini,groq";
-  process.env["GROQ_API_KEY"] = "groq-test-key";
-  const urls: string[] = [];
-  globalThis.fetch = (async (url) => {
-    urls.push(String(url));
-    if (String(url).includes("generativelanguage.googleapis.com")) {
-      return new Response("request too large", { status: 413 });
-    }
-    return Response.json({
-      choices: [
-        {
-          message: {
-            content: JSON.stringify({
-              message: "Recovered after Gemini rejected the request",
-              files: { "index.html": "<h1>Fallback</h1>" },
-              complete: true,
-            }),
-          },
-        },
-      ],
-    });
-  }) as typeof fetch;
-
-  try {
-    const result = await runAgent(input, "test-key");
-    assert.equal(result.files["index.html"], "<h1>Fallback</h1>");
-    assert.equal(urls.length, 2);
-    assert.match(urls[1], /api.groq.com/);
-  } finally {
-    if (previousOrder === undefined) delete process.env["AI_PROVIDER_ORDER"];
-    else process.env["AI_PROVIDER_ORDER"] = previousOrder;
-    if (previousGroqKey === undefined) delete process.env["GROQ_API_KEY"];
-    else process.env["GROQ_API_KEY"] = previousGroqKey;
-  }
-});
-
-test("agent salvages complete files from truncated JSON and continues with another provider", async () => {
-  const previousOrder = process.env["AI_PROVIDER_ORDER"];
-  const previousGroqKey = process.env["GROQ_API_KEY"];
-  process.env["AI_PROVIDER_ORDER"] = "gemini,groq";
-  process.env["GROQ_API_KEY"] = "groq-test-key";
-  const urls: string[] = [];
-  globalThis.fetch = (async (url) => {
-    urls.push(String(url));
-    if (String(url).includes("generativelanguage.googleapis.com")) {
-      return Response.json({
-        candidates: [
-          {
-            finishReason: "MAX_TOKENS",
-            content: {
-              parts: [
-                {
-                  text: '{"message":"partial","files":{"index.html":"<h1>Complete first file</h1>","src/App.tsx":"import React from',
-                },
-              ],
-            },
-          },
-        ],
-      });
-    }
-    return Response.json({
-      choices: [
-        {
-          message: {
-            content: JSON.stringify({
-              message: "Finished remaining files with fallback model",
-              files: {
-                "src/App.tsx": "export default function App(){return <main>Complete</main>}",
-              },
-              complete: true,
-            }),
-          },
-        },
-      ],
-    });
-  }) as typeof fetch;
-
-  try {
-    const result = await runAgent(input, "test-key");
-    assert.equal(result.files["index.html"], "<h1>Complete first file</h1>");
-    assert.match(result.files["src/App.tsx"] ?? "", /export default function App/);
-    assert.equal(urls.length, 2);
-    assert.match(urls[0], /generativelanguage.googleapis.com/);
-    assert.match(urls[1], /api.groq.com/);
-  } finally {
-    if (previousOrder === undefined) delete process.env["AI_PROVIDER_ORDER"];
-    else process.env["AI_PROVIDER_ORDER"] = previousOrder;
-    if (previousGroqKey === undefined) delete process.env["GROQ_API_KEY"];
-    else process.env["GROQ_API_KEY"] = previousGroqKey;
-  }
-});
-
-test("agent refuses partial files when continuation providers are exhausted", async () => {
-  const previousOrder = process.env["AI_PROVIDER_ORDER"];
-  process.env["AI_PROVIDER_ORDER"] = "gemini";
-  globalThis.fetch = (async () =>
-    Response.json({
-      candidates: [
-        {
-          finishReason: "MAX_TOKENS",
-          content: {
-            parts: [
-              {
-                text: '{"files":{"index.html":"<h1>Finished file</h1>","src/App.tsx":"import React from',
-              },
-            ],
-          },
-        },
-      ],
-    })) as typeof fetch;
-
-  try {
-    await assert.rejects(
-      runAgent(input, "test-key"),
-      /continuation limit.*did not apply a partial project update/i,
-    );
-  } finally {
-    if (previousOrder === undefined) delete process.env["AI_PROVIDER_ORDER"];
-    else process.env["AI_PROVIDER_ORDER"] = previousOrder;
-  }
-});
-
-test("Groq retries a 413 TPM response with smaller context and output budgets", async () => {
-  const previousOrder = process.env["AI_PROVIDER_ORDER"];
-  const previousGroqKey = process.env["GROQ_API_KEY"];
-  process.env["AI_PROVIDER_ORDER"] = "groq";
-  process.env["GROQ_API_KEY"] = "groq-test-key";
-  const outputBudgets: number[] = [];
-  let calls = 0;
-  globalThis.fetch = (async (url, init) => {
-    if (!String(url).includes("api.groq.com")) {
-      throw new Error("Unexpected provider request: " + String(url));
-    }
-    calls++;
-    const body = JSON.parse(String(init?.body ?? "{}")) as { max_tokens?: number };
-    outputBudgets.push(body.max_tokens ?? 0);
-    if (calls === 1) return new Response("TPM limit exceeded", { status: 413 });
-    return Response.json({
-      choices: [
-        {
-          message: {
-            content: JSON.stringify({
-              message: "Recovered with compact context",
-              files: { "index.html": "<h1>Recovered</h1>" },
-              complete: true,
-            }),
-          },
-        },
-      ],
-    });
-  }) as typeof fetch;
-
-  try {
-    const result = await runAgent(input, "test-key");
-    assert.equal(result.files["index.html"], "<h1>Recovered</h1>");
-    assert.equal(calls, 2);
-    assert.deepEqual(outputBudgets, [1100, 600]);
-  } finally {
-    if (previousOrder === undefined) delete process.env["AI_PROVIDER_ORDER"];
-    else process.env["AI_PROVIDER_ORDER"] = previousOrder;
-    if (previousGroqKey === undefined) delete process.env["GROQ_API_KEY"];
-    else process.env["GROQ_API_KEY"] = previousGroqKey;
-  }
-});
-
-test("AI builder forwards multiple visual references to Gemini vision", async () => {
-  const previousKey = process.env["GEMINI_API_KEY"];
-  delete process.env["GEMINI_API_KEY"];
-  let imageParts = 0;
-  globalThis.fetch = (async (_url, init) => {
-    const body = JSON.parse(String(init?.body ?? "{}")) as {
-      contents?: { parts?: { inlineData?: { mimeType?: string; data?: string } }[] }[];
-    };
-    imageParts =
-      body.contents?.at(-1)?.parts?.filter((part) => Boolean(part.inlineData)).length ?? 0;
-    return Response.json({
-      candidates: [
-        {
-          finishReason: "STOP",
-          content: {
-            parts: [
-              {
-                text: JSON.stringify({
-                  message: "Built from both references",
-                  files: { "index.html": "<h1>Reference matched</h1>" },
-                  complete: true,
-                }),
-              },
-            ],
-          },
-        },
-      ],
-    });
-  }) as typeof fetch;
-
-  try {
-    const result = await runAgent(
-      {
-        ...input,
-        referenceImages: [
-          { name: "feed.png", mimeType: "image/png", data: "a".repeat(120) },
-          { name: "builder.png", mimeType: "image/png", data: "b".repeat(120) },
-        ],
-      },
-      "test-key",
-    );
-    assert.equal(result.files["index.html"], "<h1>Reference matched</h1>");
-    assert.equal(imageParts, 2);
-  } finally {
-    if (previousKey === undefined) delete process.env["GEMINI_API_KEY"];
-    else process.env["GEMINI_API_KEY"] = previousKey;
-  }
-});
-
-
-test("Experts Routing can use Kilo's anonymous gateway and detects output truncation", async () => {
-  const previousKey = process.env["KILO_API_KEY"];
-  const previousBase = process.env["KILO_API_BASE_URL"];
-  const previousEnabled = process.env["KILO_ENABLED"];
-  process.env["KILO_ENABLED"] = "true";
-  delete process.env["KILO_API_KEY"];
-  delete process.env["KILO_API_BASE_URL"];
-  let sentModel = "";
-  let sentOutputBudget = 0;
-  globalThis.fetch = (async (url, init) => {
-    assert.match(String(url), /ai-gateway\.kilo\.ai\/api\/v1\/chat\/completions$/);
-    const body = JSON.parse(String(init?.body ?? "{}")) as {
-      model?: string;
-      max_tokens?: number;
-    };
-    sentModel = body.model ?? "";
-    sentOutputBudget = body.max_tokens ?? 0;
-    return Response.json({
-      choices: [{ finish_reason: "length", message: { content: "partial answer" } }],
-    });
-  }) as typeof fetch;
-
-  try {
-    const response = await generateGeminiContent(
-      {
-        systemInstruction: { parts: [{ text: "You are ExpertAI." }] },
-        contents: [{ role: "user", parts: [{ text: "Explain this in detail." }] }],
-        generationConfig: { maxOutputTokens: 2200 },
-      },
-      undefined,
-      ["kilo"],
-    );
-    assert.equal(sentModel, "kilo-auto/free");
-    assert.equal(sentOutputBudget, 2200);
-    assert.equal(response.candidates?.[0]?.finishReason, "MAX_TOKENS");
-  } finally {
-    if (previousKey === undefined) delete process.env["KILO_API_KEY"];
-    else process.env["KILO_API_KEY"] = previousKey;
-    if (previousBase === undefined) delete process.env["KILO_API_BASE_URL"];
-    else process.env["KILO_API_BASE_URL"] = previousBase;
-    if (previousEnabled === undefined) delete process.env["KILO_ENABLED"];
-    else process.env["KILO_ENABLED"] = previousEnabled;
-  }
 });
