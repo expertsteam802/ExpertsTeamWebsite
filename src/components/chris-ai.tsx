@@ -40,7 +40,7 @@ type UploadedFile = {
   size?: number;
 };
 
-function MessageBody({ content }: { content: string }) {
+function MessageBody({ content, streaming = false }: { content: string; streaming?: boolean }) {
   const parts = content.split(/```/);
   return (
     <div className="space-y-2 text-sm leading-relaxed">
@@ -55,7 +55,7 @@ function MessageBody({ content }: { content: string }) {
         ) : (
           part.trim() && (
             <p key={index} className="whitespace-pre-wrap">
-              {part.trim()}
+              {streaming ? part.trim().split("").map((character, characterIndex) => <span key={characterIndex} className="expertai-stream-char">{character}</span>) : part.trim()}
             </p>
           )
         ),
@@ -190,6 +190,7 @@ export function ChrisAiChat({
     null,
   );
   const [streamingReply, setStreamingReply] = useState("");
+  const [optimisticMessages, setOptimisticMessages] = useState<ChatRow[]>([]);
   const [guestMessages, setGuestMessages] = useState<ChatRow[]>([]);
   const [guestSessionId] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -316,7 +317,7 @@ export function ChrisAiChat({
     },
   });
   const visibleThreads = useMemo(() => chatThreads, [chatThreads]);
-  const messages = user ? savedMessages : guestMessages;
+  const messages = user ? [...savedMessages, ...optimisticMessages] : guestMessages;
 
   const send = useMutation({
     mutationFn: async (prompt: string) => {
@@ -335,6 +336,7 @@ export function ChrisAiChat({
         thread_id: activeThreadId,
       };
       if (user) {
+        setOptimisticMessages((current) => [...current, userMessage]);
         const { error: userMessageError } = await supabase.from("ai_chats").insert({
           user_id: user.id,
           thread_id: activeThreadId,
@@ -342,6 +344,8 @@ export function ChrisAiChat({
           content: prompt,
         });
         if (userMessageError) throw userMessageError;
+        await queryClient.invalidateQueries({ queryKey: ["ai-chats", user.id, activeThreadId] });
+        setOptimisticMessages((current) => current.filter((message) => message.id !== userMessage.id));
       } else {
         setGuestMessages((current) => [...current, userMessage]);
       }
@@ -572,6 +576,7 @@ export function ChrisAiChat({
 
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden bg-background">
+      <style>{`@keyframes expertai-character-in { from { opacity: 0; filter: blur(1.5px); transform: translateY(2px); } to { opacity: 1; filter: blur(0); transform: translateY(0); } } .expertai-stream-char { animation: expertai-character-in 180ms ease-out both; } @media (prefers-reduced-motion: reduce) { .expertai-stream-char { animation: none; } }`}</style>
       {user && !compact && (
         <aside className="hidden w-60 shrink-0 flex-col border-r border-border/70 bg-card/70 md:flex">
           <div className="flex items-center justify-between border-b border-border/70 p-3">
@@ -641,7 +646,8 @@ export function ChrisAiChat({
               <img src="/expertai-mark.svg" alt="" className="h-7 w-7" />
             </span>
             <div>
-              <p className="text-sm font-semibold">ExpertAI Chat</p>
+              <p className="text-sm font-semibold">ExpertAI</p>
+              <p className="text-[11px] text-muted-foreground">Created by M.Chris.T</p>
               <p className="text-xs font-medium text-blue-300">
                 {user ? `${profile?.ai_credits ?? 0} credits` : `${guestCredits} free credits`}
               </p>
@@ -749,7 +755,7 @@ export function ChrisAiChat({
               </span>
               <div className="max-w-[80%] rounded-2xl border border-border bg-secondary px-4 py-2">
                 {streamingReply ? (
-                  <MessageBody content={streamingReply} />
+                  <MessageBody content={streamingReply} streaming />
                 ) : (
                   <p className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Loader2 className="h-3 w-3 animate-spin" /> ExpertAI is thinking…
