@@ -81,7 +81,10 @@ export function AddVideoDialog({ category, triggerLabel = "Add a YouTube video" 
   if (!user) return null;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(next) => {
+      setOpen(next);
+      if (!next) setRightsConfirmed(false);
+    }}>
       <DialogTrigger asChild>
         <Button variant="secondary">
           <Youtube className="mr-2 h-4 w-4" /> {triggerLabel}
