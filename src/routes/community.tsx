@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageShell } from "@/components/layout/page-shell";
+import { ReportContentButton } from "@/components/report-content-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -1019,7 +1020,8 @@ function PostCard({
             {post.link_url}
           </a>
         )}
-        <div className="flex items-center gap-4 border-t border-border/60 pt-3">
+        <div className="flex flex-wrap items-center gap-3 border-t border-border/60 pt-3">
+          <ReportContentButton contentType="post" contentId={post.id} />
           <button
             onClick={() => like.mutate()}
             disabled={!userId || like.isPending}
