@@ -1,4 +1,4 @@
-Authenticated AI requests run through server functions so the Gemini API key is not sent to the browser. Set `GEMINI_API_KEY=your-key` in the server environment and restart the server. `VITE_GEMINI_API_KEY` is supported for local development only; rotate any key previously exposed in a deployed client bundle.
+ExpertAI chat and the coding agent use the Kilo AI Gateway exclusively. Anonymous free-model requests do not require a Kilo API key. Set `KILO_API_BASE_URL` or `KILO_MODEL` only when overriding the documented defaults. Never expose a Kilo API key through a `VITE_*` variable. Kilo's anonymous free-model allowance is IP-based; when called through serverless hosting, visitors may share the hosting egress IP, so do not promise a separate per-visitor quota.
 
 ## Authentication configuration
 
@@ -10,7 +10,7 @@ Google sign-in and email/password authentication are handled by Supabase Auth:
 - Under **Authentication → URL Configuration**, set the site URL and allow the local app URL (`http://localhost:5173/**`) and your deployed app URL as redirects.
 - To allow users to sign up without verifying their email, disable **Confirm email** under **Authentication → Providers → Email** in Supabase. With confirmation enabled, Supabase does not create an authenticated session after signup.
 
-The Gemini API key is used by authenticated server functions. Set `GEMINI_API_KEY` in the server environment; `VITE_GEMINI_API_KEY` remains supported for local development. Supabase provider, redirect, and server environment settings must also match the active project.
+ExpertAI uses Kilo Gateway and does not require Gemini credentials. Supabase provider, redirect, and server environment settings must match the active project.
 
 ## Production deployment to Vercel
 
