@@ -91,61 +91,10 @@ export async function askChrisAi(
 }
 
 export async function generateExpertImage(
-  { prompt }: { prompt: string },
-  apiKey?: string,
+  _input: { prompt: string },
+  _apiKey?: string,
 ): Promise<{ mimeType: string; data: string }> {
-  const cleanPrompt = prompt.trim();
-  if (!cleanPrompt) throw new Error("Please describe the image you want.");
-
-  const resolvedKey = apiKey || process.env["GEMINI_API_KEY"] || process.env["VITE_GEMINI_API_KEY"];
-  if (!resolvedKey) {
-    throw new Error(
-      "ExpertAI image generation is not configured. Add GEMINI_API_KEY to the server environment.",
-    );
-  }
-
-  const response = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent",
-    {
-      method: "POST",
-      headers: {
-        "x-goog-api-key": resolvedKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: cleanPrompt }] }],
-        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
-      }),
-      signal: AbortSignal.timeout(45000),
-    },
+  throw new Error(
+    "Image generation is temporarily unavailable during the Kilo-only migration. ExpertAI chat and the coding agent are available.",
   );
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Image generation failed (${response.status}): ${text || "unknown error"}`);
-  }
-
-  const json = (await response.json()) as {
-    candidates?: {
-      content?: {
-        parts?: Array<{
-          text?: string;
-          inlineData?: { mimeType?: string; data?: string };
-        }>;
-      };
-    }[];
-  };
-
-  const inline = json.candidates
-    ?.flatMap((candidate) => candidate.content?.parts ?? [])
-    .find((part) => part.inlineData?.data);
-
-  if (!inline?.inlineData?.data) {
-    throw new Error("Image generation returned no image data.");
-  }
-
-  return {
-    mimeType: inline.inlineData.mimeType || "image/png",
-    data: inline.inlineData.data,
-  };
 }
