@@ -586,6 +586,7 @@ function CommunityPage() {
             setStoryImage(null);
             setStoryPreview("");
             setStoryCaption("");
+            setStoryRightsConfirmed(false);
           }
         }}
       >
@@ -702,7 +703,10 @@ function CommunityPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={composerOpen} onOpenChange={setComposerOpen}>
+      <Dialog open={composerOpen} onOpenChange={(open) => {
+        setComposerOpen(open);
+        if (!open) setPostRightsConfirmed(false);
+      }}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>Create a community post</DialogTitle>
