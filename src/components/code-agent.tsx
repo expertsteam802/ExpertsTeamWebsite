@@ -1661,6 +1661,18 @@ export function CodeAgent() {
     }
   }
 
+  async function attachReferenceImages(fileList: FileList | null) {
+    const selected = Array.from(fileList ?? []).slice(0, 3);
+    if (!selected.length) return;
+    try {
+      const compressed = await Promise.all(selected.map(compressReferenceImage));
+      setReferenceImages((current) => [...current, ...compressed].slice(0, 3));
+      toast.success("Visual reference attached.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not attach that image.");
+    }
+  }
+
   async function sendPrompt() {
     if (CODING_AGENT_UNDER_DEVELOPMENT) return;
     const text = prompt.trim();
@@ -2678,7 +2690,7 @@ export function CodeAgent() {
                       <Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendPrompt(); } }} placeholder="Ask ExpertsAI Agent to build or change something…" className="min-h-[76px] resize-none border-0 bg-transparent text-xs text-white shadow-none focus-visible:ring-0" disabled={busy} />
                       <div className="flex items-center justify-between gap-2 px-1 pt-2">
                         <div className="flex items-center gap-1">
-                          <input ref={referenceInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={(event) => { void handleReferenceImages(event.target.files); event.currentTarget.value = ""; }} />
+                          <input ref={referenceInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={(event) => { void attachReferenceImages(event.target.files); event.currentTarget.value = ""; }} />
                           <button type="button" onClick={() => referenceInputRef.current?.click()} disabled={busy} className="rounded-lg p-2 text-slate-400 hover:bg-white/5 hover:text-cyan-200 disabled:opacity-40" title="Attach visual references"><ImagePlus className="h-4 w-4" /></button>
                           <span className="text-[9px] text-slate-600">Enter to send · Shift+Enter for new line</span>
                         </div>
