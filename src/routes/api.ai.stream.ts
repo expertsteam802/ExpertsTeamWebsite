@@ -373,6 +373,9 @@ export const Route = createFileRoute("/api/ai/stream")({
           if (/cannot fit the current request/i.test(message)) {
             return Response.json({ error: message }, { status: 413 });
           }
+          if (/does not support image input/i.test(message)) {
+            return Response.json({ error: message }, { status: 400 });
+          }
           return Response.json(
             { error: "ExpertAI is temporarily unavailable through Kilo. Please try again shortly." },
             { status: 503 },
