@@ -27,7 +27,7 @@ export function SiteFooter() {
             <img
               src={settings.logo_url || "/experts-team-mark.svg"}
               alt="ExpertsTeam logo"
-              className="h-14 w-14 rounded-none border-0 bg-transparent object-contain p-0 shadow-[0_0_24px_rgba(30,110,255,0.32)]"
+              className="h-14 w-14 rounded-full border-0 bg-transparent object-cover p-0 shadow-[0_0_24px_rgba(30,110,255,0.32)]"
             />
             <div>
               <h2 className="font-display text-lg font-bold">{settings.site_name}</h2>
