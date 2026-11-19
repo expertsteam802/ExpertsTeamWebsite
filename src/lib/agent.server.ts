@@ -382,7 +382,7 @@ export async function runAgent(
       }
       lastFailure = error instanceof Error ? error.message : String(error);
       // Quota/auth failures will not improve by repeating the same request.
-      if (/rate limit|free access is unavailable|HTTP 401|HTTP 402|HTTP 403/i.test(lastFailure)) {
+      if (/rate limit|free access is unavailable|HTTP 401|HTTP 402|HTTP 403|does not support image input/i.test(lastFailure)) {
         throw new Error(lastFailure);
       }
     }
