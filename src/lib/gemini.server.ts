@@ -25,7 +25,7 @@ function openAiMessages(request: GeminiRequest, maxInputCharacters: number): Gat
   const system = request.systemInstruction.parts.map((part) => part.text).join("\n")
     .slice(0, Math.min(6000, Math.floor(maxInputCharacters * 0.15)));
   const messages: GatewayMessage[] = [{ role: "system", content: system }];
-  for (const item of request.contents.slice(-10)) {
+  for (const item of request.contents.slice(-21)) {
     const parts: ContentPart[] = [];
     for (const part of item.parts) {
       if (part.text) parts.push({ type: "text", text: part.text });
