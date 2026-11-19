@@ -344,11 +344,11 @@ export const Route = createFileRoute("/api/ai/stream")({
                 controller.close();
                 return;
               }
-              const text = answerText.slice(cursor, cursor + 4);
+              const text = answerText.slice(cursor, cursor + 20);
               cursor += text.length;
               const event = { candidates: [{ content: { parts: [{ text }] } }] };
               controller.enqueue(encoder.encode("data: " + JSON.stringify(event) + "\n\n"));
-              await new Promise((resolve) => setTimeout(resolve, 22));
+              await new Promise((resolve) => setTimeout(resolve, 12));
             },
           });
           return new Response(typedStream, {
@@ -369,6 +369,9 @@ export const Route = createFileRoute("/api/ai/stream")({
           }
           if (/Kilo free access is unavailable/i.test(message)) {
             return Response.json({ error: message }, { status: 503 });
+          }
+          if (/cannot fit the current request/i.test(message)) {
+            return Response.json({ error: message }, { status: 413 });
           }
           return Response.json(
             { error: "ExpertAI is temporarily unavailable through Kilo. Please try again shortly." },
