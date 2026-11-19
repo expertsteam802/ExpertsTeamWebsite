@@ -1,46 +1,49 @@
-# Free-tier AI provider setup
+# ExpertAI — Kilo Gateway only
 
-ExpertsTeam sends AI requests through server-side routes. Provider keys must be stored in **Vercel → Project → Settings → Environment Variables**. Never put provider keys in a `VITE_*` variable, browser code, a committed `.env` file, or a chat message.
+ExpertAI chat and the coding agent use the Kilo AI Gateway as their sole model provider. Gemini, Groq, and OpenRouter are not configured as fallback providers.
 
-## Recommended free-first configuration
+## Default free configuration
 
-Set these variables in Vercel (Production, Preview, and Development as needed):
+No API key is required for Kilo's anonymous free models.
 
-| Variable             | Suggested value           | Required          |
-| -------------------- | ------------------------- | ----------------- |
-| `AI_PROVIDER_ORDER`  | `groq,gemini,openrouter`  | Yes               |
-| `GEMINI_API_KEY`     | Your Google AI Studio key | Optional fallback |
-| `GEMINI_CODE_MODEL`  | `gemini-3.8-flash`        | Optional          |
-| `GEMINI_MODEL`       | `gemini-3.8-flash`        | Optional          |
-| `GEMINI_CHAT_MODEL`  | `gemini-3.8-flash`        | Optional          |
-| `GROQ_API_KEY`       | Your Groq key             | Optional fallback |
-| `GROQ_MODEL`         | `openai/gpt-oss-120b`     | Optional          |
-| `OPENROUTER_API_KEY` | Your OpenRouter key       | Optional fallback |
-| `OPENROUTER_MODEL`   | `openrouter/free`         | Optional          |
+| Variable | Value | Required |
+| --- | --- | --- |
+| `KILO_API_BASE_URL` | `https://ai-gateway.kilo.ai/api/v1` | No (default is used) |
+| `KILO_MODEL` | `kilo-auto/free` | No (default is used) |
+| `KILO_API_KEY` | Your Kilo Gateway key, if using authenticated/paid Kilo access | No |
 
-At least one provider must be configured. Configure two or more providers for meaningful failover. The router tries Groq, Gemini, then OpenRouter by default (or the providers in `AI_PROVIDER_ORDER` if you override it); missing provider keys are skipped. It moves to the next provider after a failed request and temporarily cools down providers after rate limits, authentication failures, unavailable models, or outages. Provider quotas are account-specific and can change, so free access is never guaranteed to be unlimited.
+Do not add Kilo keys to `VITE_*` variables or browser code. If a key is configured, the backend sends it server-side. Without a key, the backend uses Kilo's anonymous free-model access.
 
-## Get keys
+## Anonymous free limits and IP behavior
 
-- Google AI Studio: https://aistudio.google.com/api-keys
-- Groq: https://console.groq.com/keys
-- OpenRouter: https://openrouter.ai/settings/keys
+Kilo documents a limit of **200 free-model requests per hour per IP address**. Kilo's free-model availability and upstream provider limits can change.
 
-## Free-tier notes
+Important: the current ExpertsTeam implementation calls Kilo from the server. On serverless hosting, Kilo may see a shared hosting egress IP rather than each visitor's IP. Therefore, visitors may share the gateway's IP-based allowance. Do not advertise 200 requests per visitor.
 
-- Gemini API has a free tier for eligible models/projects. Review its current model availability, rate limits, and data-use terms before using it with private customer information.
-- Groq publishes per-model free-plan limits. The default model above is fast, but free-tier TPM limits can be tight. ExpertsTeam now trims conversation history and caps completion tokens to reduce 413 token-limit errors.
-- OpenRouter's `openrouter/free` is a dynamic free-model route. The available underlying model can change and request/day limits apply.
+We must not spoof forwarded-IP headers to bypass Kilo's rate limits. A future direct-browser integration would require confirming Kilo's browser CORS support and designing safe user/session credit enforcement first.
 
-## After adding keys
+## Model and attachment behavior
 
-1. Add the variables in Vercel without the `VITE_` prefix.
-2. Redeploy the project so the server receives the new environment.
-3. Test Expert AI chat and Studio generation separately.
-4. If all providers are out of quota, wait for quota reset or add another eligible provider key. Do not keep retrying rapidly.
+- `kilo-auto/free` dynamically selects from currently available free models.
+- Not every free model supports images or every file modality. Image requests are sent using OpenAI-compatible image content; a selected model without vision support may reject them.
+- Text attachments are extracted/compacted by ExpertsTeam before being sent to Kilo.
+- Kilo Auto Free may route prompts and outputs to upstream providers that log or use data to improve their services. Users should not submit confidential or sensitive information through the free tier.
 
-## Important security and cost behavior
+## Removed providers
 
-- Keys are only read by server-side code and must never be returned to the browser.
-- Do not enable automatic paid billing unless you deliberately choose to.
-- Administrators bypass credit limits. The $1 subscription must have a configurable AI allowance. It cannot promise unlimited AI usage while relying on third-party free quotas.
+The application no longer routes to Gemini, Groq, or OpenRouter. Old environment variables for those providers are not used by ExpertAI and can be removed from Vercel after the Kilo-only deployment is verified.
+
+## Deployment checks
+
+1. Deploy the `main` branch.
+2. Confirm ExpertAI chat works without `KILO_API_KEY`.
+3. Test signed-in and guest chat separately.
+4. Test the coding agent separately.
+5. Verify rate-limit errors are presented clearly.
+6. Test image attachments with the live free model; image capability depends on the model selected by Kilo.
+7. Check Vercel logs for Kilo Gateway errors without logging prompts, files, or credentials.
+
+Official documentation:
+- https://kilo.ai/docs/gateway/authentication
+- https://kilo.ai/docs/gateway/usage-and-billing
+- https://kilo.ai/docs/gateway/models-and-providers
