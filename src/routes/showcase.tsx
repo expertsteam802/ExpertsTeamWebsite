@@ -31,7 +31,7 @@ export const Route = createFileRoute("/showcase")({
         content: "Real projects published by the ExpertsTeam community.",
       },
       { property: "og:url", content: "https://expertsteam.giize.com/showcase" },
-      { property: "og:image", content: "https://btphazswhmkkuuyulqpt.supabase.co/storage/v1/object/public/site-assets/site-branding/logo-1795102812239.jpg" },
+      { property: "og:image", content: "https://btphazswhmkkuuyulqpt.supabase.co/storage/v1/object/public/site-assets/site-branding/logo-1795110115520.png" },
     ],
     links: [{ rel: "canonical", href: "https://expertsteam.giize.com/showcase" }],
   }),
