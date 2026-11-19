@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
+import { ReportContentButton } from "@/components/report-content-button";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -181,7 +182,8 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
                 {formatDate(file.created_at)}
               </p>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <ReportContentButton contentType="file" contentId={file.id} />
                 <Button size="sm" variant="secondary" onClick={() => void requestDownload(file)}>
                   <Download className="mr-2 h-4 w-4" />{" "}
                   {file.source_url ? "Open source" : "Download"}
