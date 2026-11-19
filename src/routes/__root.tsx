@@ -152,14 +152,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:image:alt", content: "ExpertsTeam logo" },
       { name: "twitter:image", content: "https://expertsteam.giize.com/experts-team-brand.svg" },
     ],
-    scripts: [
-      {
-        children: `(function(s){s.dataset.zone='12296060',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`,
-      },
-      {
-        children: `(function(s){s.dataset.zone='12296064',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`,
-      },
-    ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon.png?v=20261117" },
@@ -179,6 +171,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+const MONETAG_PUBLIC_CONTENT_PATHS = new Set(["/", "/learn", "/about"]);
+
 const ADSENSE_PUBLIC_CONTENT_PATHS = new Set([
   "/",
   "/about",
@@ -187,6 +181,32 @@ const ADSENSE_PUBLIC_CONTENT_PATHS = new Set([
 
 function RootShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const shouldLoadMonetag = MONETAG_PUBLIC_CONTENT_PATHS.has(pathname);
+
+  useEffect(() => {
+    if (!shouldLoadMonetag) return;
+    const placements = [
+      { zone: "12296060", src: "https://n6wxm.com/vignette.min.js" },
+      { zone: "12296064", src: "https://nap5k.com/tag.min.js" },
+    ];
+    const added: HTMLScriptElement[] = [];
+    for (const placement of placements) {
+      const existing = document.querySelector(
+        `script[data-expertsteam-monetag="${placement.zone}"]`,
+      );
+      if (existing) continue;
+      const script = document.createElement("script");
+      script.dataset.zone = placement.zone;
+      script.dataset.expertsteamMonetag = placement.zone;
+      script.src = placement.src;
+      script.async = true;
+      document.body.appendChild(script);
+      added.push(script);
+    }
+    return () => {
+      added.forEach((script) => script.remove());
+    };
+  }, [shouldLoadMonetag]);
   const shouldLoadAdsense = ADSENSE_PUBLIC_CONTENT_PATHS.has(pathname);
 
   useEffect(() => {
