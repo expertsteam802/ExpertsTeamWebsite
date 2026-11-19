@@ -1015,7 +1015,7 @@ export async function publishCloudProject(
     let html = publishedEntry.content.toString("utf8");
     const hasProjectIcon = /<link\b[^>]*rel=["'][^"']*icon/i.test(html);
     if (!hasProjectIcon) {
-      const brandIcon = '<link rel="icon" type="image/svg+xml" href="https://expertsteam.giize.com/experts-team-mark.svg">';
+      const brandIcon = '<link rel="icon" type="image/svg+xml" href="https://btphazswhmkkuuyulqpt.supabase.co/storage/v1/object/public/site-assets/site-branding/logo-1795102812239.png">';
       html = /<\/head>/i.test(html)
         ? html.replace(/<\/head>/i, brandIcon + "</head>")
         : html.replace(/<html\b[^>]*>/i, (tag) => tag + "<head>" + brandIcon + "</head>");
