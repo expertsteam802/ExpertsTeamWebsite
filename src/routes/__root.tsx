@@ -134,7 +134,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:site_name", content: "ExpertsTeam" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:title", content: "ExpertsTeam — Learn, Build, Create & Connect" },
+      { property: "og:title", content: "ExpertsTeam - Learn, Code, Games & Apps for Free" },
       { name: "twitter:title", content: "ExpertsTeam - Learn, Code, Games & Apps for Free" },
       {
         property: "og:description",
