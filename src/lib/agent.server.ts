@@ -250,9 +250,9 @@ export async function runAgent(
     .sort((a, b) => b.score - a.score);
 
   const selected: Array<{ name: string; content: string }> = [];
-  let remainingCharacters = 18000;
+  let remainingCharacters = 36000;
   for (const entry of rankedEntries) {
-    if (remainingCharacters <= 0 || selected.length >= 24) break;
+    if (remainingCharacters <= 0 || selected.length >= 32) break;
     const content = entry.content.slice(0, Math.min(entry.content.length, remainingCharacters));
     if (!content) continue;
     selected.push({ name: entry.name, content });
@@ -266,7 +266,7 @@ export async function runAgent(
   const handoffNotes: string[] = [];
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
-  const maxRounds = 24;
+  const maxRounds = 16;
 
   for (let round = 0; round < maxRounds; round++) {
     const existingNames = Object.keys(completedFiles);
@@ -317,11 +317,11 @@ export async function runAgent(
       const response = await generateGeminiContent(
         {
           systemInstruction: { parts: [{ text: systemPrompt }] },
-          generationConfig: { responseMimeType: "application/json", maxOutputTokens: 2600 },
+          generationConfig: { responseMimeType: "application/json", maxOutputTokens: 8192 },
           contents: [
-            ...history.slice(-4).map((message) => ({
+            ...history.slice(-8).map((message) => ({
               role: message.role === "assistant" ? ("model" as const) : ("user" as const),
-              parts: [{ text: message.content.slice(-700) }],
+              parts: [{ text: message.content.slice(-1400) }],
             })),
             {
               role: "user",
