@@ -9,7 +9,7 @@ export const Route = createFileRoute("/cookies")({
       {
         name: "description",
         content:
-          "Details about essential storage, Google AdSense advertising cookies, embedded media and browser controls on ExpertsTeam.",
+          "Details about essential storage, Google AdSense and Monetag advertising technologies, embedded media and browser controls on ExpertsTeam.",
       },
     ],
     links: [{ rel: "canonical", href: "https://expertsteam.giize.com/cookies" }],
@@ -25,7 +25,7 @@ function CookiesPage() {
           Your browser choices
         </p>
         <h1 className="mt-3 font-display text-4xl font-bold">Cookie Notice</h1>
-        <p className="mt-3 text-sm text-muted-foreground">Last updated: November 10, 2026</p>
+        <p className="mt-3 text-sm text-muted-foreground">Last updated: November 19, 2026</p>
         <div className="mt-8 space-y-6 text-sm leading-7 text-muted-foreground">
           <section>
             <h2 className="text-xl font-semibold text-foreground">Essential storage</h2>
@@ -63,6 +63,21 @@ function CookiesPage() {
             </p>
           </section>
           <section>
+            <h2 className="text-xl font-semibold text-foreground">Monetag advertising</h2>
+            <p>
+              ExpertsTeam uses Monetag advertising formats, including Vignette Banner and In-Page
+              Push. Monetag and its advertising partners may use cookies, local storage, device or
+              network identifiers, and similar technologies to deliver ads, control frequency,
+              measure performance and prevent invalid activity. An ad interaction may open an
+              advertiser's website. These technologies and the data processed are subject to
+              Monetag's own privacy information and the choices available in your browser or
+              applicable consent interface. Read{" "}
+              <a href="https://monetag.com/privacy/" target="_blank" rel="noreferrer" className="text-primary underline">
+                Monetag's privacy policy
+              </a>.
+            </p>
+          </section>
+          <section>
             <h2 className="text-xl font-semibold text-foreground">
               Embedded media and other providers
             </h2>
@@ -77,12 +92,12 @@ function CookiesPage() {
               Consent and regional requirements
             </h2>
             <p>
-              Where required, advertising consent is requested using the consent-management tools
-              configured for the relevant region. Google requires publishers serving personalised
-              ads to users in the European Economic Area, the United Kingdom and Switzerland to use
-              a Google-certified consent management platform integrated with the IAB Transparency
-              and Consent Framework. Users may also see non-personalised advertising depending on
-              the available settings and applicable rules.
+              Non-essential cookies and similar technologies must be used only with prior consent
+              where applicable law requires it. Google requires a Google-certified consent
+              management platform integrated with the IAB Transparency and Consent Framework for
+              personalised ads served to users in the EEA, UK and Switzerland. The site operator
+              must ensure the live consent configuration actually blocks tags until the required
+              consent is recorded; this notice alone does not create or implement a consent tool.
             </p>
           </section>
           <section>
