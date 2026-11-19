@@ -976,9 +976,8 @@ export function CodeAgent() {
     void openTerminalRef.current();
   }, [projectId, terminalConnection?.projectId]);
 
-  // Restore the most recently saved project before auto-starting the coding CLI.
-  // Starting Kilo while the project query is still loading can otherwise create a
-  // fresh starter workspace and make an existing project look as if it disappeared.
+  // Restore the most recently saved project before showing the graphical agent.
+  // The CLI is optional and starts only when the user explicitly opens Terminal.
   useEffect(() => {
     if (!user?.id || projectsLoading || autoStartedKiloRef.current) return;
     if (!projectId && projects.length > 0) {
@@ -993,7 +992,6 @@ export function CodeAgent() {
       return;
     }
     autoStartedKiloRef.current = true;
-    void openTerminalRef.current();
   }, [user?.id, projectsLoading, projects, projectId]);
 
 
