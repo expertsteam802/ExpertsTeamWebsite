@@ -17,10 +17,10 @@ export type SmartRequest = {
   };
 };
 
-const DEFAULT_TEXT_BUDGET = 48_000;
+const DEFAULT_TEXT_BUDGET = 80_000;
 const SYSTEM_TEXT_BUDGET = 5_000;
-const LATEST_MESSAGE_BUDGET = 40_000;
-const MAX_HISTORY_MESSAGES = 20;
+const LATEST_MESSAGE_BUDGET = 48_000;
+const MAX_HISTORY_MESSAGES = 100;
 
 function compactText(value: string, limit: number): string {
   if (value.length <= limit) return value;
@@ -55,7 +55,7 @@ export function compactSmartContents(
   const latestImages = latest.parts.filter((part) => part.inlineData?.data);
   const latestLimit = Math.min(
     LATEST_MESSAGE_BUDGET,
-    Math.max(1_000, Math.floor(maxTextCharacters * 0.7)),
+    Math.max(1_000, Math.floor(maxTextCharacters * 0.6)),
   );
   const compactedLatestText = compactText(latestText, Math.min(latestLimit, maxTextCharacters));
   let remaining = Math.max(0, maxTextCharacters - compactedLatestText.length);
