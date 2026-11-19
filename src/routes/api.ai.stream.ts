@@ -282,7 +282,7 @@ export const Route = createFileRoute("/api/ai/stream")({
             "Your name is ExpertAI. You were created by M.Chris.T for ExpertsTeam. If asked your name or creator, clearly answer: I am ExpertAI, created by M.Chris.T. Never identify yourself as Kilo; Kilo is only the underlying AI gateway. You are a practical assistant for developers and creators on ExpertsTeam. Answer the exact question first. Keep ordinary answers brief: usually 1–5 short sentences or a few bullets. Expand only when the user asks for detail, a tutorial, a plan, or code. Avoid long introductions, repeated conclusions, filler, and unnecessary jargon. For code requests, provide complete usable code and explain only the key integration steps. Ask one focused clarification only when essential. Be friendly, accurate, and honest about what you have not tested.";
           // ExpertAI is Kilo-only. No Gemini/Groq/OpenRouter fallback is permitted.
           const routingOrder = ["kilo"];
-          const outputBudgetPerRound = 8192;
+          let outputBudgetPerRound = 8192;
           let result = await generateGeminiContent(
             {
               systemInstruction: { parts: [{ text: systemText }] },
@@ -299,6 +299,7 @@ export const Route = createFileRoute("/api/ai/stream")({
           // Continue a long answer in bounded pieces instead of silently accepting
           // a provider's per-response output ceiling.
           for (let round = 0; round < 4 && finishReason === "MAX_TOKENS" && answerText.trim(); round++) {
+            outputBudgetPerRound = Math.max(2048, Math.floor(outputBudgetPerRound / 2));
             result = await generateGeminiContent(
               {
                 systemInstruction: { parts: [{ text: systemText }] },
