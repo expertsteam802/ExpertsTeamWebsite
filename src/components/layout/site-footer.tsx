@@ -25,7 +25,7 @@ export function SiteFooter() {
         <section className="space-y-3">
           <div className="flex items-center gap-3">
             <img
-              src={settings.logo_url || "/experts-team-mark.svg"}
+              src={settings.logo_url || "https://btphazswhmkkuuyulqpt.supabase.co/storage/v1/object/public/site-assets/site-branding/logo-1795110115520.png"}
               alt="ExpertsTeam logo"
               className="h-14 w-14 rounded-full border-0 bg-transparent object-cover p-0 shadow-[0_0_24px_rgba(30,110,255,0.32)]"
             />
