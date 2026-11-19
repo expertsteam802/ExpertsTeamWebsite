@@ -65,31 +65,26 @@ function PrivacyPage() {
               3. Service providers and advertising
             </h2>
             <p className="mt-2 text-sm leading-7 text-muted-foreground">
-              ExpertsTeam uses third-party providers to operate the service, including Supabase for
+              ExpertsTeam uses service providers to operate the platform, including Supabase for
               authentication, database and storage, and Vercel for hosting and deployment. Embedded
-              YouTube content is provided by Google/YouTube. We use Google AdSense advertising
-              technology. When Google ads are served, Google and its partners may use cookies, web
-              beacons, IP addresses or similar identifiers to deliver, measure, limit and
-              personalise advertising, subject to the settings and consent choices that apply to
-              your location. Learn how Google uses data at{" "}
-              <a
-                href="https://policies.google.com/technologies/partner-sites"
-                target="_blank"
-                rel="noreferrer"
-                className="text-primary underline"
-              >
+              YouTube media is provided by Google/YouTube. Advertising may be supplied by Google
+              AdSense and Monetag (operated by the Propeller Ads group). These advertising providers
+              and their partners may receive technical information such as IP address, browser and
+              device details, ad request and interaction data, and may use cookies or similar
+              technologies to deliver, measure, limit, prevent fraud in, and where permitted,
+              personalise advertising. Their processing is governed by their own terms and privacy
+              notices. See{" "}
+              <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noreferrer" className="text-primary underline">
                 Google's partner-sites privacy information
+              </a>{" "}
+              and{" "}
+              <a href="https://monetag.com/privacy/" target="_blank" rel="noreferrer" className="text-primary underline">
+                Monetag's privacy policy
               </a>
-              . You can manage Google ad personalisation at{" "}
-              <a
-                href="https://myadcenter.google.com/"
-                target="_blank"
-                rel="noreferrer"
-                className="text-primary underline"
-              >
+              . You can manage Google ad personalisation through{" "}
+              <a href="https://myadcenter.google.com/" target="_blank" rel="noreferrer" className="text-primary underline">
                 My Ad Center
-              </a>
-              . Providers process information under their own terms and privacy notices.
+              </a>.
             </p>
           </Card>
           <Card className="p-5 sm:p-6">
@@ -107,16 +102,13 @@ function PrivacyPage() {
           <Card className="p-5 sm:p-6">
             <h2 className="font-display text-lg font-semibold">5. Cookies and choices</h2>
             <p className="mt-2 text-sm leading-7 text-muted-foreground">
-              Essential browser storage supports sign-in, security and preferences. Google
-              advertising and embedded media may use their own cookies or similar technologies. You
-              can control cookies through your browser and use the privacy controls offered by
-              Google and other providers. Where required, the site operator must configure an appropriate consent-management solution
-              before serving personalised ads. Google requires a certified CMP for personalised ads
-              in the EEA, UK and Switzerland. See our{" "}
-              <Link to="/cookies" className="text-primary underline">
-                Cookie Notice
-              </Link>
-              .
+              Essential browser storage supports sign-in, security and preferences. Google AdSense,
+              Monetag and embedded media may use cookies or similar technologies. Where applicable
+              law requires prior consent for non-essential storage or advertising technologies, the
+              relevant tags must not run until valid consent has been obtained. Google requires a
+              Google-certified consent management platform for personalised ads in the EEA, UK and
+              Switzerland. See our{" "}
+              <Link to="/cookies" className="text-primary underline">Cookie Notice</Link>.
             </p>
           </Card>
           <Card className="p-5 sm:p-6">
