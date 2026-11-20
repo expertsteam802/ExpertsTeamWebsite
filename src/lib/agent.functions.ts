@@ -430,6 +430,48 @@ export const runAgentTerminalCommand = createServerFn({ method: "POST" })
     return runCloudProjectCommand(context.userId, data.sandboxName, data.command);
   });
 
+export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z.object({
+      projectId: z.string().uuid(),
+      sandboxName: z.string().min(40).max(80),
+      cli: z.enum(["kilo", "opencode", "aider"]),
+      prompt: z.string().trim().min(1).max(16000),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const { data: profile, error: profileError } = await context.supabase
+      .from("profiles").select("ai_credits").eq("id", context.userId).single();
+    if (profileError) throw new Error(profileError.message);
+    const { data: isAdmin, error: roleError } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId, _role: "admin",
+    });
+    if (roleError) throw new Error(roleError.message);
+    if (!isAdmin && profile.ai_credits < 1)
+      throw new Error("You have no AI credits remaining on this account. Ask an administrator about your usage allowance.");
+
+    const quote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
+    const command = data.cli === "kilo"
+      ? "kilo run --auto " + quote(data.prompt)
+      : data.cli === "opencode"
+        ? "opencode run " + quote(data.prompt)
+        : "aider --yes --message " + quote(data.prompt);
+    const { runCloudProjectCommand, readCloudProjectFiles } = await import("./agent-sandbox.server");
+    const result = await runCloudProjectCommand(context.userId, data.sandboxName, command);
+    if (result.exitCode !== 0) {
+      const detail = result.stderr || result.stdout || "The coding CLI exited without an error message.";
+      throw new Error(detail.slice(-6000));
+    }
+    const files = await readCloudProjectFiles(context.userId, data.sandboxName);
+    if (!isAdmin) {
+      const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
+      if (creditError) throw new Error(creditError.message);
+    }
+    return { message: (result.stdout || "The CLI completed the request.").slice(-12000), files: files.files };
+  });
+
 export const stopAgentPreview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
