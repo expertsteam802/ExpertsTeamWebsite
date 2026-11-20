@@ -453,11 +453,15 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
       throw new Error("You have no AI credits remaining on this account. Ask an administrator about your usage allowance.");
 
     const quote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
-    const command = data.cli === "kilo"
+    const cliCommand = data.cli === "kilo"
       ? "kilo run --auto " + quote(data.prompt)
       : data.cli === "opencode"
         ? "opencode run " + quote(data.prompt)
         : "aider --yes --message " + quote(data.prompt);
+    const command =
+      "runuser -u experts-shell -- env HOME=/home/experts-shell USER=experts-shell LOGNAME=experts-shell " +
+      "PATH=/home/experts-shell/.local/bin:/home/experts-shell/.cargo/bin:/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin " +
+      cliCommand;
     const { runCloudProjectCommand, readCloudProjectFiles } = await import("./agent-sandbox.server");
     const result = await runCloudProjectCommand(context.userId, data.sandboxName, command);
     if (result.exitCode !== 0) {
