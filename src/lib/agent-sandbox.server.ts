@@ -46,10 +46,8 @@ async function deleteDisposableSandbox(name: string) {
 
 function validateFiles(files: AgentProjectFiles) {
   const entries = Object.entries(files);
-  if (entries.length > 400)
-    throw new Error(
-      "This project contains more than 400 files; the workspace preview limit is 400.",
-    );
+  if (entries.length > 2_000)
+    throw new Error("This project contains more than 2,000 files.");
   let total = 0;
   for (const [path, content] of entries) {
     if (
@@ -60,11 +58,11 @@ function validateFiles(files: AgentProjectFiles) {
       !/^[a-zA-Z0-9_@./-]+$/.test(path)
     )
       throw new Error("The project contains an invalid file path.");
-    if (typeof content !== "string" || content.length > 500_000)
-      throw new Error("A project file is too large to preview.");
+    if (typeof content !== "string" || content.length > 10_000_000)
+      throw new Error("A project file exceeds the 10 MB workspace limit.");
     total += content.length;
   }
-  if (total > 3_000_000) throw new Error("This project is too large to preview.");
+  if (total > 25_000_000) throw new Error("This project exceeds the 25 MB workspace limit.");
 }
 
 async function readText(sandbox: Awaited<ReturnType<typeof Sandbox.getOrCreate>>, path: string) {
@@ -489,7 +487,7 @@ export async function startCloudProjectTerminal(
   const cliLaunch = cli === "kilo"
     ? "if ! command -v kilo >/dev/null 2>&1; then printf \"\nInstalling Kilo Code...\n\"; npm install -g --no-audit --no-fund @kilocode/cli; fi\ncommand -v kilo >/dev/null 2>&1 && exec kilo || printf \"\nKilo installation failed. Try: npm install -g @kilocode/cli\n\""
     : cli === "opencode"
-      ? "if ! command -v opencode >/dev/null 2>&1; then printf \"\nInstalling OpenCode...\n\"; npm install -g --no-audit --no-fund opencode-ai; fi\ncommand -v opencode >/dev/null 2>&1 && exec opencode || printf \"\nOpenCode installation failed. Try: npm install -g opencode-ai\n\""
+      ? "if ! command -v opencode >/dev/null 2>&1; then printf \"\nInstalling OpenCode...\n\"; npm install -g --no-audit --no-fund @opencode/cli; fi\ncommand -v opencode >/dev/null 2>&1 && exec opencode || printf \"\nOpenCode installation failed. Try: npm install -g @opencode/cli\n\""
       : "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:/home/experts-shell/.npm-global/bin:$PATH\"\nif ! command -v aider >/dev/null 2>&1; then printf \"\\nInstalling Aider with its supported isolated Python 3.12 environment...\\n\"; if ! command -v uv >/dev/null 2>&1; then curl -LsSf https://aider.chat/install.sh | sh; export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$PATH\"; fi; command -v uv >/dev/null 2>&1 && uv tool install --force --python 3.12 aider-chat@latest; fi\nexport PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:/home/experts-shell/.npm-global/bin:$PATH\"\ncommand -v aider >/dev/null 2>&1 && exec aider || printf \"\\nAider installation failed. Retry with: uv tool install --force --python 3.12 aider-chat@latest\\n\"";
   const promptScript = "PS1=" + shellQuote((username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam") + "@expertsteam:\\w$ ") + "\n" + "export PS1\nPROMPT_COMMAND=\nif [ \"${EXPERTS_SKIP_KILO:-0}\" != \"1\" ]; then\n  " + cliLaunch + "\nfi\n"; 
   await sandbox.writeFiles([
@@ -750,18 +748,16 @@ export async function readCloudProjectFiles(userId: string, sessionName: string)
         !/\.(?:pem|key|p12|pfx)$/i.test(filename)
       );
     });
-  if (paths.length > 120)
-    throw new Error(
-      "The project has more than 120 files; remove generated files before importing.",
-    );
+  if (paths.length > 2_000)
+    throw new Error("The project has more than 2,000 files; remove generated files before importing.");
   const files: AgentProjectFiles = {};
   let totalBytes = 0;
   for (const path of paths) {
     const buffer = await sandbox.readFileToBuffer({ path: WORKDIR + "/" + path });
     if (!buffer) continue;
     totalBytes += buffer.byteLength;
-    if (buffer.byteLength > 150_000 || totalBytes > 1_000_000)
-      throw new Error("The project files exceed the 1 MB import limit.");
+    if (buffer.byteLength > 10_000_000 || totalBytes > 25_000_000)
+      throw new Error("The project files exceed the 25 MB workspace limit.");
     files[path] = buffer.toString("utf8");
   }
   // An empty terminal snapshot is never a valid project save. In particular,
@@ -774,7 +770,7 @@ export async function readCloudProjectFiles(userId: string, sessionName: string)
 }
 
 export async function runCloudProjectCommand(userId: string, sessionName: string, command: string) {
-  if (!command.trim() || command.length > 18_000)
+  if (!command.trim() || command.length > 48_000)
     throw new Error("The agent command is too long.");
   const sandbox = await Sandbox.get({ name: assertTerminalSandboxName(userId, sessionName) });
   const cwdPath = `${WORKDIR}/.experts-terminal-cwd`;
