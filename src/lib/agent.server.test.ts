@@ -106,20 +106,33 @@ test("Kilo adapter forwards image attachments in OpenAI-compatible format", asyn
   assert.equal(sawImage, true);
 });
 
-test("Kilo rate limits fail once instead of repeatedly consuming requests", async () => {
+test("Kilo free-model IP quota is identified separately and fails once", async () => {
   let calls = 0;
   globalThis.fetch = (async () => {
     calls++;
-    return new Response("rate limit exceeded", { status: 429 });
+    return Response.json({ error: { message: "Rate limit exceeded for free models per IP address." } }, { status: 429 });
   }) as typeof fetch;
   await assert.rejects(
     generateGeminiContent({
       systemInstruction: { parts: [{ text: "You are ExpertAI." }] },
       contents: [{ role: "user", parts: [{ text: "Help." }] }],
     }),
-    /rate limit/i,
+    /shared free-model IP quota/i,
   );
   assert.equal(calls, 1);
+});
+
+test("Kilo upstream provider 429 is not mislabeled as the shared IP quota", async () => {
+  globalThis.fetch = (async () =>
+    Response.json({ error: { message: "The selected upstream model is temporarily rate limited." } }, { status: 429 })
+  ) as typeof fetch;
+  await assert.rejects(
+    generateGeminiContent({
+      systemInstruction: { parts: [{ text: "You are ExpertAI." }] },
+      contents: [{ role: "user", parts: [{ text: "Help." }] }],
+    }),
+    /upstream model provider returned HTTP 429/i,
+  );
 });
 
 test("coding agent sends 8192 output tokens to Kilo and returns complete files", async () => {
