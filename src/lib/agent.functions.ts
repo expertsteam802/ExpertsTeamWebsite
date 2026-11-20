@@ -344,7 +344,7 @@ const publishRequest = z
 
 export const stopAgentTerminal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => z.object({ sandboxName: z.string().min(40).max(80) }).parse(input))
+  .validator((input: unknown) => z.object({ sandboxName: z.string().min(20).max(80) }).parse(input))
   .handler(async ({ data, context }) => {
     const { stopCloudProjectTerminal } = await import("./agent-sandbox.server");
     return stopCloudProjectTerminal(context.userId, data.sandboxName);
@@ -353,7 +353,7 @@ export const stopAgentTerminal = createServerFn({ method: "POST" })
 export const syncAgentTerminalFiles = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
-    z.object({ projectId: z.string().uuid(), sandboxName: z.string().min(40).max(80) }).parse(input),
+    z.object({ projectId: z.string().uuid(), sandboxName: z.string().min(20).max(80) }).parse(input),
   )
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
@@ -420,7 +420,7 @@ export const runAgentTerminalCommand = createServerFn({ method: "POST" })
     z
       .object({
         projectId: z.string().uuid(),
-        sandboxName: z.string().min(40).max(80),
+        sandboxName: z.string().min(20).max(80),
         command: z.string().trim().min(1).max(3000),
       })
       .parse(input),
@@ -436,7 +436,7 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
   .validator((input: unknown) =>
     z.object({
       projectId: z.string().uuid(),
-      sandboxName: z.string().min(40).max(80),
+      sandboxName: z.string().min(20).max(80),
       cli: z.enum(["kilo", "opencode", "aider"]),
       prompt: z.string().trim().min(1).max(40000),
     }).parse(input),
