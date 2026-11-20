@@ -18,22 +18,26 @@ function sandboxName(projectId: string) {
 }
 
 function terminalSandboxName(userId: string) {
+  // One durable terminal workspace per account. Reopening Studio resumes this
+  // named sandbox instead of allocating another concurrent VM each time.
   const owner = createHash("sha256").update(userId).digest("hex").slice(0, 12);
-  return "experts-terminal-" + owner + "-" + randomUUID();
+  return "experts-terminal-" + owner;
 }
 
 function assertTerminalSandboxName(userId: string, name: string) {
+  const stableName = terminalSandboxName(userId);
   const owner = createHash("sha256").update(userId).digest("hex").slice(0, 12);
-  const prefix = "experts-terminal-" + owner + "-";
-  const sessionId = name.startsWith(prefix) ? name.slice(prefix.length) : "";
-  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(sessionId)) {
+  const legacyPrefix = "experts-terminal-" + owner + "-";
+  const legacyId = name.startsWith(legacyPrefix) ? name.slice(legacyPrefix.length) : "";
+  const isLegacySession = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(legacyId);
+  if (name !== stableName && !isLegacySession) {
     throw new Error("This terminal session does not belong to the signed-in account.");
   }
   return name;
 }
 
-// Non-persistent sandboxes lose their filesystem when stopped. Delete only the
-// exact session being closed; every new terminal launch receives a fresh name.
+// Disposable preview sandboxes are deleted when finished. Terminal workspaces
+// use a separate persistent lifecycle and are stopped (snapshotted), not deleted.
 async function deleteDisposableSandbox(name: string) {
   try {
     const existing = await Sandbox.get({ name });
@@ -365,20 +369,19 @@ export async function startCloudProjectTerminal(
     throw new Error("Cannot start Kilo with an empty workspace. Reload the saved project files and reconnect.");
   }
   const name = terminalSandboxName(userId);
-  let stage = "creating the disposable Linux sandbox";
+  let stage = "opening the account's persistent Linux workspace";
   try {
-  const sandbox = await Sandbox.create({
+  const sandbox = await Sandbox.getOrCreate({
     name,
-    // Terminal sessions are scoped to the signed-in user, not a project, so switching folders
-    // does not terminate the shell. Project source remains saved in Supabase.
-    // Use Vercel's Ubuntu universal image for a consistent Linux shell and package manager.
-    // Never snapshot this disposable Linux VM.
-    persistent: false,
+    // Reuse one durable workspace per account. Stopping snapshots its filesystem,
+    // so reopening Studio does not allocate another disposable VM.
+    persistent: true,
     image: "vercel/sandbox/universal:latest",
     resources: { vcpus: 1 },
     timeout: 45 * 60 * 1000,
     networkPolicy: "allow-all",
     ports: [5173, 4175],
+    resume: true,
   });
   // The Ubuntu universal image does not guarantee Vercel's legacy /vercel/sandbox
   // directory exists. Create the terminal workspace from the always-present root
@@ -706,12 +709,14 @@ export async function startCloudProjectTerminal(
 
   return { sandboxName: name, url: sandbox.domain(4175).replace(/^https:/, "wss:") + "/terminal", token, toolkitStatus, cli };
   } catch (error) {
-    try {
-      await deleteDisposableSandbox(name);
-    } catch {
-      // Preserve the original startup error; the provider will expire any orphaned VM.
-    }
     const detail = error instanceof Error ? error.message : String(error);
+    if (/429|concurrency limit exceeded/i.test(detail)) {
+      throw new Error(
+        "Vercel has reached its active Sandbox limit. ExpertsTeam now reuses one persistent terminal per account; close an unused terminal or retry in a moment. No project files were deleted.",
+      );
+    }
+    // Keep a partially prepared persistent workspace so the next launch can resume
+    // and repair it instead of creating yet another VM and consuming concurrency.
     throw new Error("Terminal startup failed during " + stage + ": " + detail);
   }
 }
@@ -719,11 +724,12 @@ export async function startCloudProjectTerminal(
 export async function stopCloudProjectTerminal(userId: string, sessionName: string) {
   const name = assertTerminalSandboxName(userId, sessionName);
   try {
-    await deleteDisposableSandbox(name);
-    return { stopped: true };
+    const sandbox = await Sandbox.get({ name });
+    await sandbox.stop();
+    return { stopped: true, preserved: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (/not found|does not exist|already stopped|404/i.test(message)) return { stopped: true };
+    if (/not found|does not exist|already stopped|404/i.test(message)) return { stopped: true, preserved: true };
     throw error;
   }
 }
