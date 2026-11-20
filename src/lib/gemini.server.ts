@@ -120,9 +120,21 @@ export async function generateGeminiContent(
       signal: AbortSignal.timeout(60000),
     });
     if (!response.ok) {
-      const detail = (await response.text()).slice(0, 500);
+      const detail = (await response.text()).slice(0, 1500);
       if (response.status === 429) {
-        throw new Error("Kilo's free-model rate limit has been reached for the current network IP. Please wait and try again later.");
+        let providerMessage = detail;
+        try {
+          const parsed = JSON.parse(detail) as { error?: { message?: string }; message?: string };
+          providerMessage = parsed.error?.message || parsed.message || detail;
+        } catch {
+          // Keep the raw gateway response when it is not JSON.
+        }
+        const freeIpLimit = /free model|free models|per.?ip|ip address/i.test(providerMessage);
+        throw new Error(
+          freeIpLimit
+            ? "Kilo's shared free-model IP quota is exhausted. ExpertsTeam sends chat requests through its server, so visitors may share this hourly allowance. This is an upstream Kilo limit, not an OpenCode error. Please wait for Kilo's quota window to reset."
+            : "Kilo or the selected upstream model provider returned HTTP 429 (rate limited). This is separate from the OpenCode terminal connection. Please wait briefly and retry."
+        );
       }
       if (response.status === 402 || response.status === 403) {
         throw new Error("Kilo free access is unavailable for this request (HTTP " + response.status + "). Please try again later.");
