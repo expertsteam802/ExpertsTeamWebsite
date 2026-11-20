@@ -1106,16 +1106,8 @@ export function CodeAgent() {
       setPreviewAddress(result.url);
       setRuntimeStatus("Running · Linux sandbox");
       runtimeFilesRef.current = { ...files };
-      if (!terminalConnection) {
-        try {
-          const selectedCli = await chooseTerminalCli();
-          const connection = await connectTerminal({ data: { projectId: activeProjectId, files, username: terminalUsername, cli: selectedCli } });
-          setTerminalConnection({ ...connection, projectId: activeProjectId, cli: selectedCli });
-          if (connection.toolkitStatus === "installing") toast.info("The CTF starter toolkit is installing in the Linux sandbox.");
-        } catch (terminalError) {
-          setLogs((current) => [...current, { type: "warn", message: terminalError instanceof Error ? terminalError.message : "Project builder could not auto-connect." }]);
-        }
-      }
+      // Preview is independent from the advanced CLI. Opening or running a project
+      // must never start Kilo/OpenCode in a terminal behind the graphical agent.
       if (result.installOutput) setLogs([{ type: "runtime", message: result.installOutput }]);
       toast.success("Cloud preview is running");
     } catch (error) {
