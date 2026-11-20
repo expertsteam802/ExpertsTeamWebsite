@@ -1706,10 +1706,10 @@ export function CodeAgent() {
       await saveCheckpoint(`Before: ${text.slice(0, 96)}`);
       const conversationContext = messages.slice(-8).map((message) =>
         (message.role === "user" ? "USER: " : "ASSISTANT: ") + message.content.slice(-1800)
-      ).join("\\n\\n");
+      ).join("\n\n");
       const cliPrompt = conversationContext
-        ? "Continue this ExpertsTeam Agent conversation. Use the existing project files as the source of truth.\\n\\n" +
-          conversationContext + "\\n\\nUSER: " + text
+        ? "Continue this ExpertsTeam Agent conversation. Use the existing project files as the source of truth.\n\n" +
+          conversationContext + "\n\nUSER: " + text
         : text;
       const result = await runCliPrompt({
         data: {
@@ -1732,7 +1732,7 @@ export function CodeAgent() {
         }
       }
 
-      const answer = `${result.message}${changed.length ? `\\n\\nUpdated files:\\n${changed.map((path) => `- ${path}`).join("\\n")}` : ""}`;
+      const answer = `${result.message}${changed.length ? `\n\nUpdated files:\n${changed.map((path) => `- ${path}`).join("\n")}` : ""}`;
       const finalMessages: Message[] = [...nextMessages, { role: "assistant", content: answer }];
       setFiles(updatedFiles);
       setMessages(finalMessages);
@@ -1752,7 +1752,7 @@ export function CodeAgent() {
       const detail = error instanceof Error ? error.message : "The connected coding CLI could not complete that request.";
       const failedMessages: Message[] = [
         ...nextMessages,
-        { role: "assistant", content: `I couldn't finish that change.\\n\\n${detail}` },
+        { role: "assistant", content: `I couldn't finish that change.\n\n${detail}` },
       ];
       setMessages(failedMessages);
       setTypingMessageIndex(failedMessages.length - 1);
