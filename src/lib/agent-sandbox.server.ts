@@ -604,7 +604,7 @@ export async function startCloudProjectTerminal(
     stage = "starting the shared Kilo agent server";
     await sandbox.writeFiles([{
       path: WORKDIR + "/.experts-terminal-env",
-      content: Buffer.from("export KILO_SERVER_PASSWORD=" + shellQuote(token) + "\\n", "utf8"),
+      content: Buffer.from("export KILO_SERVER_PASSWORD=" + shellQuote(token) + "\n", "utf8"),
       mode: 0o600,
     }]);
     const serverStart = await sandbox.runCommand({
