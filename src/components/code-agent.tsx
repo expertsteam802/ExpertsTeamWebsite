@@ -67,7 +67,7 @@ import {
   pushProjectToGithub,
   importGitHubProject,
   publishAgentProject,
-  runCodingAgent,
+  runAgentTerminalPrompt,
   startAgentTerminal,
   stopAgentTerminal,
   syncAgentTerminalFiles,
@@ -258,7 +258,7 @@ export function CodeAgent() {
     .replace(/[^a-zA-Z0-9_-]/g, "")
     .slice(0, 39) || "user";
   const queryClient = useQueryClient();
-  const run = useServerFn(runCodingAgent);
+  const runCliPrompt = useServerFn(runAgentTerminalPrompt);
   const push = useServerFn(pushProjectToGithub);
   const importGithub = useServerFn(importGitHubProject);
   const publish = useServerFn(publishAgentProject);
@@ -1684,44 +1684,61 @@ export function CodeAgent() {
     if (CODING_AGENT_UNDER_DEVELOPMENT) return;
     const text = prompt.trim();
     if (!text || busy) return;
+    if (referenceImages.length) {
+      toast.error("Image attachments are not supported by the connected CLI agent yet. Remove the image and send your text prompt.");
+      return;
+    }
 
-    const userText = referenceImages.length
-      ? `${text}\n[Attached visual references: ${referenceImages.map((image) => image.name).join(", ")}]`
-      : text;
-    const nextMessages: Message[] = [...messages, { role: "user", content: userText }];
+    const session = terminalConnection;
+    if (!session || session.projectId !== projectId) {
+      toast.info("Your selected coding CLI is still connecting. Try sending again in a moment.");
+      void openTerminalRef.current();
+      return;
+    }
+
+    const nextMessages: Message[] = [...messages, { role: "user", content: text }];
     setMessages(nextMessages);
     setPrompt("");
     setBusy(true);
 
     try {
+      const activeProjectId = projectId ?? (await persist());
       await saveCheckpoint(`Before: ${text.slice(0, 96)}`);
-      const result = await run({
+      const conversationContext = messages.slice(-8).map((message) =>
+        (message.role === "user" ? "USER: " : "ASSISTANT: ") + message.content.slice(-1800)
+      ).join("\\n\\n");
+      const cliPrompt = conversationContext
+        ? "Continue this ExpertsTeam Agent conversation. Use the existing project files as the source of truth.\\n\\n" +
+          conversationContext + "\\n\\nUSER: " + text
+        : text;
+      const result = await runCliPrompt({
         data: {
-          prompt: text,
-          files,
-          history: messages.slice(-8),
-          referenceImages: referenceImages.length ? referenceImages : undefined,
+          projectId: activeProjectId,
+          sandboxName: session.sandboxName,
+          cli: session.cli,
+          prompt: cliPrompt,
         },
       });
-      setReferenceImages([]);
-      if (referenceInputRef.current) referenceInputRef.current.value = "";
       const updatedFiles: ProjectFiles = { ...files };
       const changed: string[] = [];
-
       for (const [path, content] of Object.entries(result.files)) {
-        if (content === null) delete updatedFiles[path];
-        else updatedFiles[path] = String(content);
-        changed.push(path);
+        if (files[path] !== content) changed.push(path);
+        updatedFiles[path] = String(content);
+      }
+      for (const path of Object.keys(files)) {
+        if (!(path in result.files)) {
+          delete updatedFiles[path];
+          changed.push(path);
+        }
       }
 
-      const answer = `${result.message}${changed.length ? `\n\nUpdated files:\n${changed.map((path) => `- ${path}`).join("\n")}` : ""}`;
+      const answer = `${result.message}${changed.length ? `\\n\\nUpdated files:\\n${changed.map((path) => `- ${path}`).join("\\n")}` : ""}`;
       const finalMessages: Message[] = [...nextMessages, { role: "assistant", content: answer }];
-
       setFiles(updatedFiles);
       setMessages(finalMessages);
       setTypingMessageIndex(finalMessages.length - 1);
       if (changed.length) {
-        setDirty(true);
+        setDirty(false);
         const firstExistingFile = changed.find((path) => updatedFiles[path] !== undefined);
         if (firstExistingFile) {
           setActiveFile(firstExistingFile);
@@ -1729,26 +1746,20 @@ export function CodeAgent() {
         }
         setPreviewKey((value) => value + 1);
       }
-      void queryClient.invalidateQueries({ queryKey: ["profile"] });
       await persist({ files: updatedFiles, messages: finalMessages });
+      await queryClient.invalidateQueries({ queryKey: ["profile"] });
     } catch (error) {
-      const detail =
-        error instanceof Error ? error.message : "ExpertAI could not complete that change.";
+      const detail = error instanceof Error ? error.message : "The connected coding CLI could not complete that request.";
       const failedMessages: Message[] = [
         ...nextMessages,
-        {
-          role: "assistant",
-          content: `I couldn't finish that change. Your existing project files were left unchanged.\n\n${detail}`,
-        },
+        { role: "assistant", content: `I couldn't finish that change.\\n\\n${detail}` },
       ];
       setMessages(failedMessages);
       setTypingMessageIndex(failedMessages.length - 1);
       toast.error(detail);
-      await persist({ messages: failedMessages });
+      await persist({ messages: failedMessages }).catch(() => undefined);
     } finally {
       setBusy(false);
-      // Keep the Linux terminal available after AI tasks; only the configured
-      // inactivity policy or an explicit user action should close the session.
     }
   }
 
