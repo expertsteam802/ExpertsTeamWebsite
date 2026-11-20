@@ -550,9 +550,16 @@ export async function startCloudProjectTerminal(
   // Install the selected CLI before returning the connection. The graphical agent
   // runs headless commands without opening the optional terminal WebSocket, so
   // lazy installation in prompt.rc alone leaves the GUI with a missing executable.
-  if (cli === "kilo" || cli === "opencode") {
+  {
     stage = `installing the ${cli} coding CLI for the graphical agent`;
-    const packageName = cli === "kilo" ? "@kilocode/cli" : "@opencode/cli";
+    const installScript = cli === "aider"
+      ? [
+          "export PATH=/home/experts-shell/.local/bin:/home/experts-shell/.cargo/bin:/home/experts-shell/.npm-global/bin:$PATH",
+          "if ! command -v uv >/dev/null 2>&1; then curl -LsSf https://aider.chat/install.sh | sh; fi",
+          "export PATH=/home/experts-shell/.local/bin:/home/experts-shell/.cargo/bin:/home/experts-shell/.npm-global/bin:$PATH",
+          "command -v uv >/dev/null 2>&1 && uv tool install --force --python 3.12 aider-chat@latest",
+        ].join(" && ")
+      : "npm install -g --no-audit --no-fund " + (cli === "kilo" ? "@kilocode/cli" : "@opencode/cli");
     const cliInstall = await sandbox.runCommand({
       cmd: "runuser",
       args: [
@@ -560,8 +567,8 @@ export async function startCloudProjectTerminal(
         "HOME=/home/experts-shell",
         "USER=experts-shell",
         "LOGNAME=experts-shell",
-        "PATH=/usr/local/bin:/usr/bin:/bin:/home/experts-shell/.npm-global/bin",
-        "npm", "install", "-g", "--no-audit", "--no-fund", packageName,
+        "PATH=/home/experts-shell/.local/bin:/home/experts-shell/.cargo/bin:/usr/local/bin:/usr/bin:/bin:/home/experts-shell/.npm-global/bin",
+        "sh", "-c", installScript,
       ],
       cwd: WORKDIR,
       timeoutMs: 240_000,
@@ -572,13 +579,13 @@ export async function startCloudProjectTerminal(
         `Could not install ${cli}. ${(await cliInstall.stderr()).slice(-2500) || (await cliInstall.stdout()).slice(-2500)}`,
       );
     }
-    const executable = cli === "kilo" ? "kilo" : "opencode";
+    const executable = cli === "kilo" ? "kilo" : cli === "opencode" ? "opencode" : "aider";
     const cliCheck = await sandbox.runCommand({
       cmd: "runuser",
       args: [
         "-u", "experts-shell", "--", "env",
         "HOME=/home/experts-shell",
-        "PATH=/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin",
+        "PATH=/home/experts-shell/.local/bin:/home/experts-shell/.cargo/bin:/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin",
         "sh", "-c", `command -v ${executable}`,
       ],
       cwd: WORKDIR,
