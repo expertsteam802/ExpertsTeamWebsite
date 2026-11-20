@@ -1205,6 +1205,10 @@ export function CodeAgent() {
   }
 
   async function publishProject() {
+    if (!CLOUD_SANDBOX_ENABLED) {
+      toast.info("New app builds are temporarily paused because the free cloud sandbox quota is exhausted. Your saved project and existing published apps are unaffected.");
+      return;
+    }
     if (publishing) return;
     setPublishing(true);
     setPublishedUrl(null);
