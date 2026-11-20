@@ -262,7 +262,8 @@ export async function runAgent(
     .map(({ name, content }) => "--- " + name + " ---\\n" + content)
     .join("\\n\\n");
 
-  // All coding-agent generations use Kilo Gateway only.\n  const providerSequence = ["kilo"];\n  const completedFiles: Record<string, string | null> = {};
+  // All coding-agent generations use Kilo Gateway only.
+  const providerSequence = ["kilo"];\n  const completedFiles: Record<string, string | null> = {};
   const handoffNotes: string[] = [];
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
