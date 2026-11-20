@@ -844,6 +844,9 @@ export async function runCloudProjectCommand(userId: string, sessionName: string
     args: ["--login", commandPath],
     cwd: WORKDIR,
     timeoutMs: 10 * 60 * 1000,
+    // runuser must be invoked by root; the sandbox command runner otherwise
+    // starts this process as the ordinary sandbox user.
+    sudo: true,
   });
   return {
     exitCode: result.exitCode,
