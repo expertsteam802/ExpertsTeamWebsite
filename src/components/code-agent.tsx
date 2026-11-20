@@ -965,6 +965,9 @@ export function CodeAgent() {
         data: { projectId: activeProjectId, files: nextFiles, username: terminalUsername, cli: selectedCli },
       });
       setTerminalConnection({ ...connection, projectId: activeProjectId, cli: selectedCli });
+      setConnectionProgress(100);
+      setShowConnectionCinematic(false);
+      setRuntimeStatus("CLI connected");
       if (connection.toolkitStatus === "installing") toast.info("The CTF starter toolkit is installing in the Linux sandbox.");
     } catch (error) {
       setShowConnectionCinematic(false);
@@ -2693,7 +2696,12 @@ export function CodeAgent() {
                       </div>
                     ) : messages.map((message, index) => (
                       <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                        <div className={`max-w-[94%] rounded-2xl px-3.5 py-3 text-xs leading-6 ${message.role === "user" ? "rounded-br-md bg-cyan-400/15 text-cyan-50" : "rounded-bl-md border border-white/[0.07] bg-white/[0.035] text-slate-200"}`}>
+                        <div
+                          onAnimationEnd={() => {
+                            if (typingMessageIndex === index) setTypingMessageIndex(null);
+                          }}
+                          className={`max-w-[94%] rounded-2xl px-3.5 py-3 text-xs leading-6 ${message.role === "user" ? "rounded-br-md bg-cyan-400/15 text-cyan-50" : "rounded-bl-md border border-white/[0.07] bg-white/[0.035] text-slate-200"} ${message.role === "assistant" && typingMessageIndex === index ? "et-agent-answer-reveal" : ""}`}
+                        >
                           <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-slate-500">{message.role === "user" ? "You" : "ExpertsAI Agent"}</div>
                           <p className="whitespace-pre-wrap break-words">{message.content}</p>
                         </div>
@@ -2751,7 +2759,7 @@ export function CodeAgent() {
         </main>
       </div>
 
-      <style>{`\n        @keyframes expertStudioTabA { from { opacity: .35; transform: translate3d(0, 13px, 0) scale(.992); filter: blur(3px); } to { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); } }\n        @keyframes expertStudioTabB { from { opacity: .35; transform: translate3d(0, -10px, 0) scale(.992); filter: blur(3px); } to { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); } }\n        @keyframes expertTerminalRevealA { 0% { opacity: 0; transform: perspective(1200px) translateY(34px) scale(.965); filter: blur(12px) brightness(.45); box-shadow: inset 0 0 0 1px rgba(34,211,238,0); } 38% { opacity: 1; filter: blur(1px) brightness(1.45); box-shadow: inset 0 0 90px rgba(34,211,238,.18); } 100% { opacity: 1; transform: perspective(1200px) translateY(0) scale(1); filter: blur(0) brightness(1); box-shadow: inset 0 0 0 rgba(34,211,238,0); } }\n        @keyframes expertTerminalRevealB { 0% { opacity: 0; transform: perspective(1200px) translateY(-30px) scale(.965); filter: blur(12px) brightness(.45); box-shadow: inset 0 0 0 1px rgba(59,130,246,0); } 38% { opacity: 1; filter: blur(1px) brightness(1.5); box-shadow: inset 0 0 100px rgba(59,130,246,.2); } 100% { opacity: 1; transform: perspective(1200px) translateY(0) scale(1); filter: blur(0) brightness(1); box-shadow: inset 0 0 0 rgba(59,130,246,0); } }\n        .expert-agent-light { background:#f5f7fb!important; color:#172033!important; color-scheme:light; }
+      <style>{`\n        @keyframes et-agent-answer-reveal { from { opacity: 0; transform: translateY(7px); filter: blur(2px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }\n        .et-agent-answer-reveal { animation: et-agent-answer-reveal 1.15s cubic-bezier(.2,.75,.25,1) both; will-change: opacity, transform, filter; }\n        @keyframes expertStudioTabA { from { opacity: .35; transform: translate3d(0, 13px, 0) scale(.992); filter: blur(3px); } to { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); } }\n        @keyframes expertStudioTabB { from { opacity: .35; transform: translate3d(0, -10px, 0) scale(.992); filter: blur(3px); } to { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); } }\n        @keyframes expertTerminalRevealA { 0% { opacity: 0; transform: perspective(1200px) translateY(34px) scale(.965); filter: blur(12px) brightness(.45); box-shadow: inset 0 0 0 1px rgba(34,211,238,0); } 38% { opacity: 1; filter: blur(1px) brightness(1.45); box-shadow: inset 0 0 90px rgba(34,211,238,.18); } 100% { opacity: 1; transform: perspective(1200px) translateY(0) scale(1); filter: blur(0) brightness(1); box-shadow: inset 0 0 0 rgba(34,211,238,0); } }\n        @keyframes expertTerminalRevealB { 0% { opacity: 0; transform: perspective(1200px) translateY(-30px) scale(.965); filter: blur(12px) brightness(.45); box-shadow: inset 0 0 0 1px rgba(59,130,246,0); } 38% { opacity: 1; filter: blur(1px) brightness(1.5); box-shadow: inset 0 0 100px rgba(59,130,246,.2); } 100% { opacity: 1; transform: perspective(1200px) translateY(0) scale(1); filter: blur(0) brightness(1); box-shadow: inset 0 0 0 rgba(59,130,246,0); } }\n        .expert-agent-light { background:#f5f7fb!important; color:#172033!important; color-scheme:light; }
         .expert-agent-light .expert-agent-topbar { background:#ffffff!important; border-color:#dce3ed!important; color:#172033!important; }
         .expert-agent-light .expert-agent-sidebar { background:#f0f3f8!important; border-color:#dce3ed!important; }
         .expert-agent-light .expert-agent-toolbar { background:#ffffff!important; border-color:#dce3ed!important; }
