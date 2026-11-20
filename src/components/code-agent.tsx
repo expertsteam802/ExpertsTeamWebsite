@@ -385,6 +385,7 @@ export function CodeAgent() {
   const runtimeFilesRef = useRef<ProjectFiles>({});
   const autoStartedProjectRef = useRef<string | null>(null);
   const autoStartedKiloRef = useRef(false);
+  const autoConnectCliRef = useRef(false);
   const openTerminalRef = useRef<() => Promise<void>>(async () => {});
   const runtimeSyncQueueRef = useRef<Promise<void>>(Promise.resolve());
 
@@ -973,11 +974,12 @@ export function CodeAgent() {
 
   useEffect(() => {
     if (!terminalConnection || terminalConnection.projectId === projectId) return;
+    autoConnectCliRef.current = true;
     void openTerminalRef.current();
   }, [projectId, terminalConnection?.projectId]);
 
-  // Restore the most recently saved project before showing the graphical agent.
-  // The CLI is optional and starts only when the user explicitly opens Terminal.
+  // Restore the latest project first, then automatically connect the admin-selected
+  // CLI (OpenCode/Kilo/Aider) once the workspace files are ready.
   useEffect(() => {
     if (!user?.id || projectsLoading || autoStartedKiloRef.current) return;
     if (!projectId && projects.length > 0) {
@@ -994,6 +996,16 @@ export function CodeAgent() {
     autoStartedKiloRef.current = true;
   }, [user?.id, projectsLoading, projects, projectId]);
 
+  // Start the selected CLI automatically when Studio opens. A blank first-time
+  // workspace is persisted by openTerminal before the sandbox is created.
+  useEffect(() => {
+    if (!user?.id || projectsLoading || !autoStartedKiloRef.current) return;
+    if (autoConnectCliRef.current || terminalConnection) return;
+    if (!projectId && projects.length > 0) return;
+    if (!Object.keys(files).length) return;
+    autoConnectCliRef.current = true;
+    void openTerminalRef.current();
+  }, [user?.id, projectsLoading, projects.length, projectId, files, terminalConnection]);
 
   async function importLocalProjectFiles(selectedFiles: FileList | File[]) {
     const incoming = Array.from(selectedFiles);
@@ -1155,6 +1167,7 @@ export function CodeAgent() {
 
   function resetRuntimeForProjectChange() {
     autoStartedProjectRef.current = null;
+    autoConnectCliRef.current = false;
     if (projectId && runtimeUrl) void stopPreview({ data: { projectId } }).catch(() => undefined);
     // Keep the user-scoped terminal connection alive while the project folder changes.
     setRuntimeUrl(null);
