@@ -460,8 +460,7 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
         ? "opencode run " + quote(data.prompt)
         : "aider --yes --message " + quote(data.prompt);
     const command =
-      "runuser -u experts-shell -- env HOME=/home/experts-shell USER=experts-shell LOGNAME=experts-shell " +
-      "PATH=/home/experts-shell/.local/bin:/home/experts-shell/.cargo/bin:/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin " +
+      "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.npm-global/bin:" + "/vercel/sandbox/.experts-terminal-bridge/node_modules/.bin:$PATH\"; " +
       cliCommand;
     const { runCloudProjectCommand, readCloudProjectFiles } = await import("./agent-sandbox.server");
     const result = await runCloudProjectCommand(context.userId, data.sandboxName, command);
