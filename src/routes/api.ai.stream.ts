@@ -372,11 +372,8 @@ export const Route = createFileRoute("/api/ai/stream")({
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           console.error("[ExpertAI stream]", message);
-          if (/Kilo.*rate limit|free-model rate limit/i.test(message)) {
-            return Response.json(
-              { error: "Kilo's free-model limit has been reached for this network IP. Please wait and try again." },
-              { status: 429 },
-            );
+          if (/Kilo.*(quota is exhausted|HTTP 429)|free-model rate limit|upstream model provider returned HTTP 429/i.test(message)) {
+            return Response.json({ error: message }, { status: 429 });
           }
           if (/Kilo free access is unavailable/i.test(message)) {
             return Response.json({ error: message }, { status: 503 });
