@@ -941,13 +941,17 @@ export function CodeAgent() {
   }
 
   async function openTerminal() {
-    setConnectionProgress(0);
-    setShowConnectionCinematic(true);
-    if (terminalReady && terminalConnection?.projectId === projectId) {
+    // Reuse the already-running CLI sandbox when the user returns from Agent Chat.
+    // The terminal panel may have closed its WebSocket while hidden, but that must
+    // not create a replacement VM or restart the CLI process.
+    if (terminalConnection?.projectId === projectId) {
       setShowConnectionCinematic(false);
+      setAgentPanelMode("terminal");
       terminalLastActivityRef.current = Date.now();
       return;
     }
+    setConnectionProgress(0);
+    setShowConnectionCinematic(true);
     try {
       const selectedCli = await chooseTerminalCli();
       let nextFiles = files;
