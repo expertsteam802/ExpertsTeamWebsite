@@ -264,6 +264,7 @@ export function ChrisAiChat({
     null,
   );
   const [streamingReply, setStreamingReply] = useState("");
+  const [revealingMessageId, setRevealingMessageId] = useState<string | null>(null);
   const [optimisticMessages, setOptimisticMessages] = useState<ChatRow[]>([]);
   const [guestMessages, setGuestMessages] = useState<ChatRow[]>([]);
   const [guestSessionId] = useState(() => {
@@ -541,12 +542,23 @@ export function ChrisAiChat({
       }
 
       if (user) {
-        const { error: aiMessageError } = await supabase
+        const { data: savedAiMessage, error: aiMessageError } = await supabase
           .from("ai_chats")
-          .insert({ user_id: user.id, thread_id: activeThreadId, role: "ai", content: reply });
-        if (aiMessageError) {
+          .insert({ user_id: user.id, thread_id: activeThreadId, role: "ai", content: reply })
+          .select("id, role, content, created_at, thread_id")
+          .single();
+        if (aiMessageError || !savedAiMessage) {
           throw new Error("ExpertAI replied, but the reply could not be saved. Please try again.");
         }
+        // Cache the final row before removing the temporary stream bubble so
+        // the reply never disappears during the database refetch.
+        const savedRow = savedAiMessage as ChatRow;
+        queryClient.setQueryData<ChatRow[]>(["ai-chats", user.id, activeThreadId], (current) => {
+          const existing = current ?? [];
+          if (existing.some((message) => message.id === savedRow.id)) return existing;
+          return [...existing, savedRow].sort((a, b) => a.created_at.localeCompare(b.created_at));
+        });
+        setRevealingMessageId(savedRow.id);
       } else {
         setGuestMessages((current) => [
           ...current,
@@ -699,7 +711,7 @@ export function ChrisAiChat({
 
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden bg-background">
-      <style>{`@keyframes expertai-response-fade { from { opacity: 0.38; } to { opacity: 1; } } .expertai-response-fade { animation: expertai-response-fade 1400ms ease-in-out both; } @media (prefers-reduced-motion: reduce) { .expertai-response-fade { animation: none; } }`}</style>
+      <style>{`@keyframes expertai-response-fade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } } .expertai-response-fade { animation: expertai-response-fade 420ms ease-out both; } @media (prefers-reduced-motion: reduce) { .expertai-response-fade { animation: none; } }`}</style>
       {user && !compact && (
         <aside className="hidden w-60 shrink-0 flex-col border-r border-border/70 bg-card/70 md:flex">
           <div className="flex items-center justify-between border-b border-border/70 p-3">
@@ -856,11 +868,14 @@ export function ChrisAiChat({
                 </span>
               )}
               <div
+                onAnimationEnd={() => {
+                  if (revealingMessageId === message.id) setRevealingMessageId(null);
+                }}
                 className={`max-w-[80%] rounded-2xl px-4 py-2 ${
                   message.role === "user"
                     ? "bg-primary text-primary-foreground"
                     : "border border-border bg-secondary"
-                }`}
+                } ${message.role === "ai" && revealingMessageId === message.id ? "expertai-response-fade" : ""}`}
               >
                 <MessageBody content={message.content} />
               </div>
@@ -876,7 +891,7 @@ export function ChrisAiChat({
               <span className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/15">
                 <Bot className="h-3.5 w-3.5 text-primary" />
               </span>
-              <div className="expertai-response-fade max-w-[80%] rounded-2xl border border-border bg-secondary px-4 py-2">
+              <div className="max-w-[80%] rounded-2xl border border-border bg-secondary px-4 py-2">
                 {streamingReply ? (
                   <MessageBody content={streamingReply} />
                 ) : (
