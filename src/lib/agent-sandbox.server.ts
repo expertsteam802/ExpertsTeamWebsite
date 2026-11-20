@@ -485,7 +485,7 @@ export async function startCloudProjectTerminal(
   ].join("\n");
 
   const cliLaunch = cli === "kilo"
-    ? "if ! command -v kilo >/dev/null 2>&1; then printf \"\nInstalling Kilo Code...\n\"; npm install -g --no-audit --no-fund @kilocode/cli; fi\ncommand -v kilo >/dev/null 2>&1 && exec kilo || printf \"\nKilo installation failed. Try: npm install -g @kilocode/cli\n\""
+    ? "if ! command -v kilo >/dev/null 2>&1; then printf \"\nKilo Code is not installed. Reconnect the workspace to repair it.\n\"; exit 127; fi\nexec kilo attach http://127.0.0.1:4096 --username kilo --password \"$KILO_SERVER_PASSWORD\" --dir " + shellQuote(WORKDIR) + " --continue"
     : cli === "opencode"
       ? "if ! command -v opencode >/dev/null 2>&1; then printf \"\nInstalling OpenCode...\n\"; npm install -g --no-audit --no-fund @opencode/cli; fi\ncommand -v opencode >/dev/null 2>&1 && exec opencode || printf \"\nOpenCode installation failed. Try: npm install -g @opencode/cli\n\""
       : "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:/home/experts-shell/.npm-global/bin:$PATH\"\nif ! command -v aider >/dev/null 2>&1; then printf \"\\nInstalling Aider with its supported isolated Python 3.12 environment...\\n\"; if ! command -v uv >/dev/null 2>&1; then curl -LsSf https://aider.chat/install.sh | sh; export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$PATH\"; fi; command -v uv >/dev/null 2>&1 && uv tool install --force --python 3.12 aider-chat@latest; fi\nexport PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:/home/experts-shell/.npm-global/bin:$PATH\"\ncommand -v aider >/dev/null 2>&1 && exec aider || printf \"\\nAider installation failed. Retry with: uv tool install --force --python 3.12 aider-chat@latest\\n\"";
@@ -597,6 +597,55 @@ export async function startCloudProjectTerminal(
     }
   }
 
+  // Run one shared Kilo runtime for both the visible terminal TUI and the graphical chat.
+  // The chat uses `kilo run --attach --continue`, so both surfaces resume the same
+  // project-scoped Kilo session instead of launching unrelated agent processes.
+  if (cli === "kilo") {
+    stage = "starting the shared Kilo agent server";
+    await sandbox.writeFiles([{
+      path: WORKDIR + "/.experts-terminal-env",
+      content: Buffer.from("export KILO_SERVER_PASSWORD=" + shellQuote(token) + "\\n", "utf8"),
+      mode: 0o600,
+    }]);
+    const serverStart = await sandbox.runCommand({
+      cmd: "runuser",
+      args: [
+        "-u", "experts-shell", "--", "env",
+        "HOME=/home/experts-shell",
+        "USER=experts-shell",
+        "LOGNAME=experts-shell",
+        "KILO_SERVER_USERNAME=kilo",
+        "KILO_SERVER_PASSWORD=" + token,
+        "PATH=/home/experts-shell/.local/bin:/home/experts-shell/.cargo/bin:/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin",
+        "kilo", "serve", "--hostname", "127.0.0.1", "--port", "4096",
+      ],
+      cwd: WORKDIR,
+      timeoutMs: 15_000,
+      detached: true,
+      sudo: true,
+    });
+    if (serverStart.exitCode !== 0) {
+      throw new Error("Could not start the shared Kilo server: " + (await serverStart.stderr()).slice(-1600));
+    }
+    let kiloServerReady = false;
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const health = await sandbox.runCommand({
+        cmd: "curl",
+        args: ["-fsS", "-u", "kilo:" + token, "http://127.0.0.1:4096/global/health"],
+        cwd: WORKDIR,
+        timeoutMs: 3000,
+      });
+      if (health.exitCode === 0) {
+        kiloServerReady = true;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    if (!kiloServerReady) {
+      throw new Error("The shared Kilo server did not become healthy. The terminal and chat were not connected.");
+    }
+  }
+
   // Kilo may inspect and edit project files in this isolated workspace without repetitive prompts.
   // Shell execution and access outside the workspace remain gated.
   const kiloPermissions = { permission: {
@@ -662,7 +711,7 @@ export async function startCloudProjectTerminal(
       cmd: "node",
       args: ["server.cjs"],
       cwd: bridgeDir,
-      env: { TERMINAL_TOKEN: token, TERMINAL_CWD: WORKDIR, TERMINAL_PORT: "4175", TERMINAL_TTY_FILE: WORKDIR + "/.experts-terminal-tty", TERMINAL_USERNAME: username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam" },
+      env: { TERMINAL_TOKEN: token, TERMINAL_CWD: WORKDIR, TERMINAL_PORT: "4175", TERMINAL_TTY_FILE: WORKDIR + "/.experts-terminal-tty", TERMINAL_USERNAME: username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam", KILO_SERVER_USERNAME: "kilo", KILO_SERVER_PASSWORD: token },
       detached: true,
       sudo: true,
     });
