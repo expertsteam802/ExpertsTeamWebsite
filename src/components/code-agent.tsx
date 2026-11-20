@@ -101,6 +101,10 @@ type ProjectRow = {
 type Panel = "preview" | "code" | "console" | "terminal";
 
 const CODING_AGENT_UNDER_DEVELOPMENT = false;
+// Vercel Hobby Sandbox has exhausted its included quota. Keep the editor,
+// AI file agent, saved projects and browser HTML preview available without
+// repeatedly starting cloud VMs. Re-enable only after a tested runner is configured.
+const CLOUD_SANDBOX_ENABLED = false;
 
 
 async function copyTextToSystemClipboard(value: string) {
@@ -941,6 +945,12 @@ export function CodeAgent() {
   }
 
   async function openTerminal() {
+    if (!CLOUD_SANDBOX_ENABLED) {
+      setAgentPanelMode("terminal");
+      setRuntimeStatus("Cloud terminal temporarily unavailable");
+      toast.info("The cloud terminal is temporarily paused because the free Vercel Sandbox quota is exhausted. Your project files and AI chat are still available.");
+      return;
+    }
     // Reuse the already-running CLI sandbox when the user returns from Agent Chat.
     // The terminal panel may have closed its WebSocket while hidden, but that must
     // not create a replacement VM or restart the CLI process.
@@ -1008,6 +1018,7 @@ export function CodeAgent() {
   // Start the selected CLI automatically when Studio opens. A blank first-time
   // workspace is persisted by openTerminal before the sandbox is created.
   useEffect(() => {
+    if (!CLOUD_SANDBOX_ENABLED) return;
     if (!user?.id || projectsLoading || !autoStartedKiloRef.current) return;
     if (autoConnectCliRef.current || terminalConnection) return;
     if (!projectId && projects.length > 0) return;
@@ -1114,6 +1125,13 @@ export function CodeAgent() {
   }
 
   async function runProject() {
+    if (!CLOUD_SANDBOX_ENABLED) {
+      switchPanel("preview");
+      setRuntimeUrl(null);
+      setRuntimeStatus("Browser preview · cloud runtime paused");
+      toast.info("Browser preview is available for supported HTML/CSS/JavaScript projects. React/Vite cloud execution is temporarily paused while we replace the sandbox service.");
+      return;
+    }
     if (runtimeBusy) return;
     setRuntimeBusy(true);
     setRuntimeStatus("Preparing cloud sandbox…");
@@ -1143,6 +1161,7 @@ export function CodeAgent() {
   }
 
   useEffect(() => {
+    if (!CLOUD_SANDBOX_ENABLED) return;
     if (!projectId || autoStartedProjectRef.current === projectId) return;
     let scripts: Record<string, string> = {};
     try {
@@ -2731,11 +2750,11 @@ export function CodeAgent() {
               ) : (
                 <>
                   <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/[0.07] px-3 py-2">
-                    <span className="text-[10px] text-slate-500">Advanced CLI session · {terminalConnection?.cli ?? "not connected"}</span>
+                    <span className="text-[10px] text-slate-500">{CLOUD_SANDBOX_ENABLED ? `Advanced CLI session · ${terminalConnection?.cli ?? "not connected"}` : "Cloud CLI paused · project files remain saved"}</span>
                     <div className="flex items-center gap-1.5">
                       <button type="button" disabled={!terminalReady} onClick={() => xtermRef.current?.clear()} className="rounded px-2 py-1 text-[10px] text-slate-500 hover:bg-white/5 hover:text-white disabled:opacity-30">Clear</button>
                       <button type="button" disabled={!terminalReady} onClick={() => void importTerminalChanges()} className="rounded border border-cyan-400/20 px-2 py-1 text-[10px] text-cyan-200 hover:bg-cyan-400/10 disabled:opacity-30">Save files</button>
-                      {!terminalReady && <button type="button" onClick={() => void openTerminal()} className="rounded-md bg-cyan-400/15 px-2.5 py-1 text-[10px] font-semibold text-cyan-100 hover:bg-cyan-400/25">Connect CLI</button>}
+                      {!terminalReady && <button type="button" onClick={() => void openTerminal()} className="rounded-md bg-cyan-400/15 px-2.5 py-1 text-[10px] font-semibold text-cyan-100 hover:bg-cyan-400/25">{CLOUD_SANDBOX_ENABLED ? "Connect CLI" : "Unavailable"}</button>}
                     </div>
                   </div>
                   <div ref={terminalContainerRef} role="region" aria-label="Advanced coding CLI terminal" className="expert-agent-kilo-surface min-h-0 flex-1 overflow-hidden" onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; }} onDrop={(event) => { event.preventDefault(); if (event.dataTransfer.files.length) void importLocalProjectFiles(event.dataTransfer.files); }} onPaste={(event) => { const pastedFiles = event.clipboardData?.files; if (pastedFiles?.length) { event.preventDefault(); void importLocalProjectFiles(pastedFiles); } }} />
