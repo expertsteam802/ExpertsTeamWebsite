@@ -355,11 +355,13 @@ export const Route = createFileRoute("/api/ai/stream")({
                 controller.close();
                 return;
               }
-              const text = answerText.slice(cursor, cursor + 20);
+              // The Kilo gateway currently returns a completed response rather than
+              // upstream token events. Do not add an artificial per-chunk delay here:
+              // flush larger chunks immediately so the UI does not make replies slower.
+              const text = answerText.slice(cursor, cursor + 160);
               cursor += text.length;
               const event = { candidates: [{ content: { parts: [{ text }] } }] };
               controller.enqueue(encoder.encode("data: " + JSON.stringify(event) + "\n\n"));
-              await new Promise((resolve) => setTimeout(resolve, 12));
             },
           });
           return new Response(typedStream, {
