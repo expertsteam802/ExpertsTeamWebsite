@@ -437,7 +437,7 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
       projectId: z.string().uuid(),
       sandboxName: z.string().min(40).max(80),
       cli: z.enum(["kilo", "opencode", "aider"]),
-      prompt: z.string().trim().min(1).max(16000),
+      prompt: z.string().trim().min(1).max(40000),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
