@@ -579,7 +579,7 @@ export async function startCloudProjectTerminal(
         "-u", "experts-shell", "--", "env",
         "HOME=/home/experts-shell",
         "PATH=/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin",
-        "bash", "-lc", `command -v ${executable}`,
+        "sh", "-c", `command -v ${executable}`,
       ],
       cwd: WORKDIR,
       timeoutMs: 10_000,
