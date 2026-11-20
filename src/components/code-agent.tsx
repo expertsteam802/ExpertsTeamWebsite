@@ -1712,16 +1712,10 @@ export function CodeAgent() {
       const conversationContext = messages.slice(-8).map((message) =>
         (message.role === "user" ? "USER: " : "ASSISTANT: ") + message.content.slice(-1800)
       ).join("\n\n");
-      // Kilo resumes the exact server-backed session used by the visible terminal,
-      // so replaying the UI transcript would duplicate context and slow every turn.
-      // Other CLIs still receive the compact transcript because they do not share
-      // this Kilo session runtime.
-      const cliPrompt = session.cli === "kilo"
-        ? text
-        : conversationContext
-          ? "Continue this ExpertsTeam Agent conversation. Use the existing project files as the source of truth.\n\n" +
-            conversationContext + "\n\nUSER: " + text
-          : text;
+      const cliPrompt = conversationContext
+        ? "Continue this ExpertsTeam Agent conversation. Use the existing project files as the source of truth.\n\n" +
+          conversationContext + "\n\nUSER: " + text
+        : text;
       const result = await runCliPrompt({
         data: {
           projectId: activeProjectId,
