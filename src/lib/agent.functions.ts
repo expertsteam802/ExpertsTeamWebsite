@@ -455,7 +455,7 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
 
     const quote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
     const cliCommand = data.cli === "kilo"
-      ? "kilo run --auto " + quote(data.prompt)
+      ? "kilo run --attach http://127.0.0.1:4096 --username kilo --password \"$KILO_SERVER_PASSWORD\" --dir " + quote("/vercel/sandbox") + " --continue --auto " + quote(data.prompt)
       : data.cli === "opencode"
         ? "opencode run " + quote(data.prompt)
         : "aider --yes --message " + quote(data.prompt);
