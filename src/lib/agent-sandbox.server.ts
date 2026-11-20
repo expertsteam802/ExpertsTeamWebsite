@@ -774,8 +774,8 @@ export async function readCloudProjectFiles(userId: string, sessionName: string)
 }
 
 export async function runCloudProjectCommand(userId: string, sessionName: string, command: string) {
-  if (!command.trim() || command.length > 3000)
-    throw new Error("Enter a command under 3,000 characters.");
+  if (!command.trim() || command.length > 18_000)
+    throw new Error("The agent command is too long.");
   const sandbox = await Sandbox.get({ name: assertTerminalSandboxName(userId, sessionName) });
   const cwdPath = `${WORKDIR}/.experts-terminal-cwd`;
   const envPath = `${WORKDIR}/.experts-terminal-env`;
@@ -797,7 +797,7 @@ export async function runCloudProjectCommand(userId: string, sessionName: string
     cmd: "bash",
     args: ["--login", commandPath],
     cwd: WORKDIR,
-    timeoutMs: 120_000,
+    timeoutMs: 10 * 60 * 1000,
   });
   return {
     exitCode: result.exitCode,
