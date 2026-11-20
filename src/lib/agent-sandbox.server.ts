@@ -547,6 +547,49 @@ export async function startCloudProjectTerminal(
     throw new Error("Could not prepare the unprivileged Linux shell: " + (await shellSetup.stderr()).slice(-1500));
   }
 
+  // Install the selected CLI before returning the connection. The graphical agent
+  // runs headless commands without opening the optional terminal WebSocket, so
+  // lazy installation in prompt.rc alone leaves the GUI with a missing executable.
+  if (cli === "kilo" || cli === "opencode") {
+    stage = `installing the ${cli} coding CLI for the graphical agent`;
+    const packageName = cli === "kilo" ? "@kilocode/cli" : "@opencode/cli";
+    const cliInstall = await sandbox.runCommand({
+      cmd: "runuser",
+      args: [
+        "-u", "experts-shell", "--", "env",
+        "HOME=/home/experts-shell",
+        "USER=experts-shell",
+        "LOGNAME=experts-shell",
+        "PATH=/usr/local/bin:/usr/bin:/bin:/home/experts-shell/.npm-global/bin",
+        "npm", "install", "-g", "--no-audit", "--no-fund", packageName,
+      ],
+      cwd: WORKDIR,
+      timeoutMs: 240_000,
+      sudo: true,
+    });
+    if (cliInstall.exitCode !== 0) {
+      throw new Error(
+        `Could not install ${cli}. ${(await cliInstall.stderr()).slice(-2500) || (await cliInstall.stdout()).slice(-2500)}`,
+      );
+    }
+    const executable = cli === "kilo" ? "kilo" : "opencode";
+    const cliCheck = await sandbox.runCommand({
+      cmd: "runuser",
+      args: [
+        "-u", "experts-shell", "--", "env",
+        "HOME=/home/experts-shell",
+        "PATH=/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin",
+        "bash", "-lc", `command -v ${executable}`,
+      ],
+      cwd: WORKDIR,
+      timeoutMs: 10_000,
+      sudo: true,
+    });
+    if (cliCheck.exitCode !== 0 || !(await cliCheck.stdout()).trim()) {
+      throw new Error(`The ${cli} package installed but its ${executable} command is not available to the workspace user.`);
+    }
+  }
+
   // Kilo may inspect and edit project files in this isolated workspace without repetitive prompts.
   // Shell execution and access outside the workspace remain gated.
   const kiloPermissions = { permission: {
