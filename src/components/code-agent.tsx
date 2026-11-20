@@ -970,7 +970,9 @@ export function CodeAgent() {
       setRuntimeStatus("CLI connected");
       if (connection.toolkitStatus === "installing") toast.info("The CTF starter toolkit is installing in the Linux sandbox.");
     } catch (error) {
+      autoConnectCliRef.current = false;
       setShowConnectionCinematic(false);
+      setRuntimeStatus("CLI connection failed");
       const message =
         error instanceof Error ? error.message : "Could not start the project builder.";
       toast.error(message);
