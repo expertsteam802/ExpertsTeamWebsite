@@ -1128,8 +1128,26 @@ export function CodeAgent() {
     if (!CLOUD_SANDBOX_ENABLED) {
       switchPanel("preview");
       setRuntimeUrl(null);
-      setRuntimeStatus("Browser preview · cloud runtime paused");
-      toast.info("Browser preview is available for supported HTML/CSS/JavaScript projects. React/Vite cloud execution is temporarily paused while we replace the sandbox service.");
+      setPreviewAddress("");
+      setLogs([]);
+      setPreviewKey((current) => current + 1);
+      const hasHtmlEntry = Boolean(
+        files["index.html"] || Object.keys(files).some((path) => path.toLowerCase().endsWith(".html")),
+      );
+      const packageManifest = (() => {
+        try { return JSON.parse(files["package.json"] ?? "{}") as { scripts?: Record<string, string> }; }
+        catch { return {}; }
+      })();
+      const hasNodeApp = Boolean(packageManifest.scripts?.dev || packageManifest.scripts?.start);
+      if (hasHtmlEntry && !hasNodeApp) {
+        setRuntimeStatus("Running · browser preview (no cloud VM)");
+        setLogs([{ type: "runtime", message: "Running HTML, CSS and JavaScript directly in your browser. No cloud sandbox or snapshots are used." }]);
+        toast.success("Browser preview refreshed");
+      } else {
+        setRuntimeStatus("Browser preview · static HTML/CSS/JS only");
+        setLogs([{ type: "info", message: "This project requires a Node.js build/runtime. Cloud execution is temporarily paused; static HTML/CSS/JavaScript projects can run directly in the browser." }]);
+        toast.info("This project needs a Node.js runtime. Static HTML/CSS/JavaScript preview remains available without cloud compute.");
+      }
       return;
     }
     if (runtimeBusy) return;
