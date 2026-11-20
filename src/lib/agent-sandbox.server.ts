@@ -36,8 +36,8 @@ function assertTerminalSandboxName(userId: string, name: string) {
   return name;
 }
 
-// Disposable preview sandboxes are deleted when finished. Terminal workspaces
-// use a separate persistent lifecycle and are stopped (snapshotted), not deleted.
+// Preview and terminal sandboxes are disposable. Always delete them rather
+// than stopping/snapshotting their filesystems.
 async function deleteDisposableSandbox(name: string) {
   try {
     const existing = await Sandbox.get({ name });
@@ -369,19 +369,19 @@ export async function startCloudProjectTerminal(
     throw new Error("Cannot start Kilo with an empty workspace. Reload the saved project files and reconnect.");
   }
   const name = terminalSandboxName(userId);
-  let stage = "opening the account's persistent Linux workspace";
+  let stage = "creating the disposable Linux sandbox";
   try {
-  const sandbox = await Sandbox.getOrCreate({
+  // Terminals are intentionally ephemeral. Remove the persistent sandbox
+  // created by the previous version, then create a fresh disposable VM.
+  await deleteDisposableSandbox(name);
+  const sandbox = await Sandbox.create({
     name,
-    // Reuse one durable workspace per account. Stopping snapshots its filesystem,
-    // so reopening Studio does not allocate another disposable VM.
-    persistent: true,
+    persistent: false,
     image: "vercel/sandbox/universal:latest",
     resources: { vcpus: 1 },
     timeout: 45 * 60 * 1000,
     networkPolicy: "allow-all",
     ports: [5173, 4175],
-    resume: true,
   });
   // The Ubuntu universal image does not guarantee Vercel's legacy /vercel/sandbox
   // directory exists. Create the terminal workspace from the always-present root
@@ -715,8 +715,8 @@ export async function startCloudProjectTerminal(
         "Vercel has reached its active Sandbox limit. ExpertsTeam now reuses one persistent terminal per account; close an unused terminal or retry in a moment. No project files were deleted.",
       );
     }
-    // Keep a partially prepared persistent workspace so the next launch can resume
-    // and repair it instead of creating yet another VM and consuming concurrency.
+    // Failed disposable launches must release their VM slot; never snapshot.
+    try { await deleteDisposableSandbox(name); } catch { /* retain original startup error */ }
     throw new Error("Terminal startup failed during " + stage + ": " + detail);
   }
 }
@@ -724,12 +724,11 @@ export async function startCloudProjectTerminal(
 export async function stopCloudProjectTerminal(userId: string, sessionName: string) {
   const name = assertTerminalSandboxName(userId, sessionName);
   try {
-    const sandbox = await Sandbox.get({ name });
-    await sandbox.stop();
-    return { stopped: true, preserved: true };
+    await deleteDisposableSandbox(name);
+    return { stopped: true, preserved: false };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (/not found|does not exist|already stopped|404/i.test(message)) return { stopped: true, preserved: true };
+    if (/not found|does not exist|already stopped|404/i.test(message)) return { stopped: true, preserved: false };
     throw error;
   }
 }
