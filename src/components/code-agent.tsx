@@ -62,7 +62,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import { extractZipTextFiles } from "@/lib/zip-text-import";
-import { openMonetagPopup } from "@/lib/monetag";
 import type { Json } from "@/integrations/supabase/types";
 import {
   pushProjectToGithub,
