@@ -224,7 +224,8 @@ function RootShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     const previousPath = previousPathRef.current;
     previousPathRef.current = pathname;
-    const enteredExpertAi = pathname === "/ai" || pathname.startsWith("/ai/");
+    const enteredExpertAi =
+      pathname === "/ai" || pathname.startsWith("/ai/") || pathname === "/chat";
     const previousPageHadAds =
       MONETAG_VIGNETTE_PATHS.has(previousPath) ||
       MONETAG_IN_PAGE_PUSH_PATHS.has(previousPath) ||
@@ -328,9 +329,9 @@ function RootComponent() {
 
 function RootContent() {
   const settings = useSiteSettings();
-  const isPublishedApp = useRouterState({
-    select: (state) => state.location.pathname.startsWith("/apps/"),
-  });
+  const currentPathname = useRouterState({ select: (state) => state.location.pathname });
+  const isPublishedApp = currentPathname.startsWith("/apps/");
+  const isAiWorkspace = currentPathname === "/ai" || currentPathname === "/chat";
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
 
@@ -393,7 +394,7 @@ function RootContent() {
         </DialogContent>
       </Dialog>
 
-      {!isPublishedApp &&
+      {!isPublishedApp && !isAiWorkspace &&
         (aiChatOpen ? (
           <div className="fixed bottom-4 right-4 z-[100] h-[min(680px,calc(100dvh-2rem))] w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
             <ChrisAiChat compact onMinimize={() => setAiChatOpen(false)} />
