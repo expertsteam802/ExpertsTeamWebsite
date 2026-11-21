@@ -183,6 +183,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/ai': typeof AiRoute
+  '/chat': typeof ChatRoute
   '/auth': typeof AuthRoute
   '/community': typeof CommunityRoute
   '/contact': typeof ContactRoute
@@ -261,6 +262,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/ai'
+    | '/chat'
     | '/auth'
     | '/community'
     | '/contact'
@@ -286,6 +288,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/about'
     | '/ai'
+    | '/chat'
     | '/auth'
     | '/community'
     | '/contact'
