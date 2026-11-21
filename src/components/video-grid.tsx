@@ -44,6 +44,21 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
   const [link, setLink] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [alignment, setAlignment] = useState<"left" | "center" | "right">("center");
+  const [adOpenedFor, setAdOpenedFor] = useState<Set<string>>(() => new Set());
+
+  function handleWatchClick(video: VideoItem) {
+    if (!adOpenedFor.has(video.id)) {
+      const adWindow = window.open("https://uplcm.com/4/12313763", "_blank", "noopener,noreferrer");
+      if (!adWindow) {
+        toast.error("Allow pop-ups, then click again to watch.");
+        return;
+      }
+      setAdOpenedFor((current) => new Set(current).add(video.id));
+      toast.info("Ad opened in a new tab. Click Watch again to play the video.");
+      return;
+    }
+    setPlaying(video);
+  }
 
   useEffect(() => {
     if (!playing) return;
@@ -127,7 +142,7 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
             >
               <button
                 type="button"
-                onClick={() => setPlaying(video)}
+                onClick={() => handleWatchClick(video)}
                 className="group relative block w-full overflow-hidden"
               >
                 <img
@@ -155,16 +170,6 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
                   <ReportContentButton contentType="video" contentId={video.id} />
                   <Button size="sm" onClick={() => setPlaying(video)}>
                     Watch
-                  </Button>
-                  <Button asChild size="sm" variant="outline">
-                    <a
-                      href="https://uplcm.com/4/12313763"
-                      target="_blank"
-                      rel="sponsored noopener noreferrer"
-                      aria-label={`Open sponsored offer in a new tab for ${video.title}`}
-                    >
-                      <ExternalLink className="mr-2 h-4 w-4" /> Sponsored
-                    </a>
                   </Button>
                   {canManage && (
                     <>
