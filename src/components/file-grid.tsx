@@ -53,13 +53,22 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
 
   function handleDownloadClick(file: CommunityFile) {
     if (!adOpenedFor.has(file.id)) {
-      const adWindow = window.open("https://uplcm.com/4/12313763", "_blank", "noopener,noreferrer");
+      const popupWidth = 520;
+      const popupHeight = 720;
+      const popupLeft = Math.max(0, Math.round(window.screenX + (window.outerWidth - popupWidth) / 2));
+      const popupTop = Math.max(0, Math.round(window.screenY + (window.outerHeight - popupHeight) / 2));
+      const adWindow = window.open(
+        "https://uplcm.com/4/12313763",
+        "expertsTeamMonetagAd",
+        `popup=yes,width=${popupWidth},height=${popupHeight},left=${popupLeft},top=${popupTop},resizable=yes,scrollbars=yes`
+      );
       if (!adWindow) {
         toast.error("Allow pop-ups, then click again to continue.");
         return;
       }
+      adWindow.opener = null;
       setAdOpenedFor((current) => new Set(current).add(file.id));
-      toast.info("Ad opened in a new tab. Click again to continue to your download.");
+      toast.info("Ad opened in a popup window. Click again to continue to your download.");
       return;
     }
     void requestDownload(file);
