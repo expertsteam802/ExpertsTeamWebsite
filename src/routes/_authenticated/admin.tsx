@@ -62,6 +62,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 type SettingsForm = {
   site_name: string;
   logo_url: string;
+  logo_scale: string;
   background_image_url: string;
   banner_image_url: string;
   youtube_url: string;
@@ -93,7 +94,7 @@ function AdminPage() {
     queryKey: ["site-settings"],
     enabled: isAdmin,
     queryFn: async () => {
-      const { data, error } = await supabase.from("site_settings").select("*").limit(1).single();
+      const { data, error } = await supabase.from("site_settings").select("*").eq("id", 1).single();
       if (error) throw error;
       return data;
     },
@@ -344,6 +345,14 @@ function AdminPage() {
       setForm({
         site_name: settings.site_name,
         logo_url: settings.logo_url ?? "",
+        logo_scale: (() => {
+          const root = settings.site_branding_settings && typeof settings.site_branding_settings === "object" && !Array.isArray(settings.site_branding_settings)
+            ? settings.site_branding_settings as Record<string, unknown> : {};
+          const brand = root.siteBranding && typeof root.siteBranding === "object" && !Array.isArray(root.siteBranding)
+            ? root.siteBranding as Record<string, unknown> : {};
+          const scale = Number(brand.logo_scale ?? 100);
+          return String(Number.isFinite(scale) ? Math.min(150, Math.max(50, scale)) : 100);
+        })(),
         background_image_url: (() => {
           const branding =
             settings.site_branding_settings &&
@@ -482,6 +491,10 @@ function AdminPage() {
         !Array.isArray(existingBranding.siteBranding)
           ? (existingBranding.siteBranding as Record<string, unknown>)
           : {};
+      const logoScale = Number(form.logo_scale);
+      if (!Number.isInteger(logoScale) || logoScale < 50 || logoScale > 150) {
+        throw new Error("Logo display size must be between 50% and 150%.");
+      }
       const existingTerminalSettings =
         existingBranding.terminalSettings &&
         typeof existingBranding.terminalSettings === "object" &&
@@ -510,6 +523,7 @@ function AdminPage() {
             ...existingBranding,
             siteBranding: {
               ...existingSiteBranding,
+              logo_scale: logoScale,
               background_image_url: form.background_image_url.trim(),
               banner_image_url: form.banner_image_url.trim(),
             },
@@ -1270,6 +1284,40 @@ function AdminPage() {
                         ) : (
                           <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No custom logo selected. Upload an image to preview it here.</div>
                         )}
+                        <div className="space-y-3 rounded-lg border border-border/70 bg-background/50 p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <Label htmlFor="logo-display-size">Logo display size</Label>
+                            <span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold tabular-nums text-primary">{form.logo_scale}%</span>
+                          </div>
+                          <input
+                            id="logo-display-size"
+                            type="range"
+                            min="50"
+                            max="150"
+                            step="5"
+                            value={form.logo_scale}
+                            onChange={(event) => setForm({ ...form, logo_scale: event.target.value })}
+                            className="w-full cursor-pointer accent-primary"
+                          />
+                          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                            <span>50% · Compact</span>
+                            <span>100% · Default</span>
+                            <span>150% · Large</span>
+                          </div>
+                          <div className="flex min-h-24 items-center gap-4 rounded-lg bg-muted/40 p-3">
+                            <img
+                              src={form.logo_url || "/favicon.svg"}
+                              alt="Logo size preview"
+                              className="shrink-0 rounded-full object-contain"
+                              style={{ width: `${72 * Number(form.logo_scale) / 100}px`, height: `${72 * Number(form.logo_scale) / 100}px` }}
+                            />
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold">Experts<span className="text-primary">Team</span></p>
+                              <p className="text-xs text-muted-foreground">Live header-size preview</p>
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground">This controls the logo size in the website header on desktop and mobile. Save settings to publish the size everywhere.</p>
+                        </div>
                       </div>
                       <div className="space-y-3 rounded-xl border border-border/70 p-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
