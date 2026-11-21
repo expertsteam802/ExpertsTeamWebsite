@@ -361,6 +361,17 @@ function RootContent() {
     document.querySelectorAll<HTMLMetaElement>('meta[property="og:image"], meta[name="twitter:image"]').forEach((meta) => {
       meta.content = logo;
     });
+    document.querySelectorAll<HTMLScriptElement>('script[type="application/ld+json"]').forEach((script) => {
+      try {
+        const data = JSON.parse(script.textContent || "null");
+        if (data && typeof data === "object" && data["@type"] === "Organization") {
+          data.logo = logo;
+          script.textContent = JSON.stringify(data);
+        }
+      } catch {
+        // Ignore unrelated structured data blocks.
+      }
+    });
     const safeBackground = background.replace(/["\\\\]/g, "");
     document.documentElement.style.setProperty("--et-site-background-image", `url("${safeBackground}")`);
   }, [siteSettings.logo_url, siteSettings.background_image_url, currentPathname]);
