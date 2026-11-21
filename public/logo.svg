@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">ExpertsTeam ET logo</title>
+  <desc id="desc">A clean circular ExpertsTeam monogram with electric blue E and warm gold T lettering.</desc>
+  <defs>
+    <linearGradient id="ring" x1="70" y1="70" x2="440" y2="440" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#28D9FF"/>
+      <stop offset=".52" stop-color="#347BFF"/>
+      <stop offset="1" stop-color="#FFC247"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="100" y1="130" x2="300" y2="390" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#74F2FF"/>
+      <stop offset=".5" stop-color="#16B9F4"/>
+      <stop offset="1" stop-color="#3974FF"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="280" y1="130" x2="420" y2="390" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF0A6"/>
+      <stop offset=".5" stop-color="#FFC247"/>
+      <stop offset="1" stop-color="#E58A18"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="256" cy="256" r="226" fill="#061426" stroke="url(#ring)" stroke-width="13"/>
+  <circle cx="256" cy="256" r="207" fill="none" stroke="#B9E9FF" stroke-opacity=".13" stroke-width="2"/>
+  <path d="M101 137h192v53H160v48h119v51H160v49h133v53H101z" fill="url(#blue)" filter="url(#glow)"/>
+  <path d="M273 137h139v53h-43v201h-57V190h-39z" fill="url(#gold)" filter="url(#glow)"/>
+  <circle cx="256" cy="30" r="5" fill="#28D9FF"/>
+  <circle cx="482" cy="256" r="5" fill="#FFC247"/>
+</svg>
