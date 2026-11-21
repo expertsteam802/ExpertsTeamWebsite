@@ -44,28 +44,7 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
   const [link, setLink] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [alignment, setAlignment] = useState<"left" | "center" | "right">("center");
-  const [adOpenedFor, setAdOpenedFor] = useState<Set<string>>(() => new Set());
-
   function handleWatchClick(video: VideoItem) {
-    if (!adOpenedFor.has(video.id)) {
-      const popupWidth = 520;
-      const popupHeight = 720;
-      const popupLeft = Math.max(0, Math.round(window.screenX + (window.outerWidth - popupWidth) / 2));
-      const popupTop = Math.max(0, Math.round(window.screenY + (window.outerHeight - popupHeight) / 2));
-      const adWindow = window.open(
-        "https://uplcm.com/4/12313763",
-        "expertsTeamMonetagAd",
-        `popup=yes,width=${popupWidth},height=${popupHeight},left=${popupLeft},top=${popupTop},resizable=yes,scrollbars=yes`
-      );
-      if (!adWindow) {
-        toast.error("Allow pop-ups, then click again to watch.");
-        return;
-      }
-      adWindow.opener = null;
-      setAdOpenedFor((current) => new Set(current).add(video.id));
-      toast.info("Ad opened in a popup window. Click Watch again to play the video.");
-      return;
-    }
     void navigate({ to: "/learn/video/$videoId", params: { videoId: video.id } });
   }
 
@@ -163,7 +142,7 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
                 <div className="flex flex-wrap items-center gap-2">
                   <ReportContentButton contentType="video" contentId={video.id} />
                   <Button size="sm" onClick={() => handleWatchClick(video)}>
-                    {adOpenedFor.has(video.id) ? "Continue watching" : "Watch"}
+                    Watch now
                   </Button>
                   {canManage && (
                     <>
