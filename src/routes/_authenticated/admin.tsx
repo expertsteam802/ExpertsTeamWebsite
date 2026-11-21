@@ -699,10 +699,10 @@ function AdminPage() {
       <PageShell>
         <section className="mx-auto flex max-w-xl flex-col items-center gap-3 px-4 py-24 text-center">
           <ShieldAlert className="h-10 w-10 text-destructive" />
-          <h1 className="font-display text-2xl font-semibold">Creator access only</h1>
+          <h1 className="font-display text-2xl font-semibold">Admin access only</h1>
           <p className="text-sm text-muted-foreground">
-            This panel is reserved for the site creator. If this is your site, sign in with the
-            creator account.
+            This panel is reserved for authorized site administrators. Sign in with an admin
+            account to continue.
           </p>
         </section>
       </PageShell>
