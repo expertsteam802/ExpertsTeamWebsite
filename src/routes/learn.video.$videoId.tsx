@@ -32,7 +32,7 @@ type LessonVideo = {
   user_id: string;
   created_at: string;
   player_alignment?: "left" | "center" | "right";
-  profiles?: { username: string; display_name: string | null } | null;
+
 };
 
 function LearningVideoPage() {
@@ -43,7 +43,7 @@ function LearningVideoPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("videos")
-        .select("*, profiles(username, display_name)")
+        .select("id, title, description, youtube_id, category, user_id, created_at, player_alignment")
         .eq("id", videoId)
         .eq("category", "lesson")
         .maybeSingle();
@@ -87,7 +87,7 @@ function LearningVideoPage() {
                 <Card className="mt-5 p-5">
                   <h2 className="font-semibold">About this lesson</h2>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{video.description}</p>
-                  <p className="mt-4 text-xs text-muted-foreground">Shared by {video.profiles?.display_name || video.profiles?.username || "ExpertsTeam community"}</p>
+                  <p className="mt-4 text-xs text-muted-foreground">Shared by ExpertsTeam community</p>
                 </Card>
               )}
             </div>
