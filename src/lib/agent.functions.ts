@@ -5,6 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export const claimFreeAiCredits = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({}).parse(input))
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase.rpc("claim_free_ai_credits");
     if (error) throw new Error(error.message || "Could not reset your free AI credits.");
