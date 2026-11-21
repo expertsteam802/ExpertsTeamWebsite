@@ -181,10 +181,11 @@ const ADSENSE_PUBLIC_CONTENT_PATHS = new Set([
 function RootShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const previousPathRef = useRef(pathname);
-  const shouldLoadVignette = MONETAG_VIGNETTE_PATHS.has(pathname);
-  const shouldLoadInPagePush = MONETAG_IN_PAGE_PUSH_PATHS.has(pathname);
+  const isLearningVideoPage = pathname.startsWith("/learn/video/");
+  const shouldLoadVignette = MONETAG_VIGNETTE_PATHS.has(pathname) || isLearningVideoPage;
+  const shouldLoadInPagePush = MONETAG_IN_PAGE_PUSH_PATHS.has(pathname) || isLearningVideoPage;
   const shouldLoadMonetag = shouldLoadVignette || shouldLoadInPagePush;
-  const shouldLoadAdsense = ADSENSE_PUBLIC_CONTENT_PATHS.has(pathname);
+  const shouldLoadAdsense = ADSENSE_PUBLIC_CONTENT_PATHS.has(pathname) || isLearningVideoPage;
 
   // Monetag and AdSense are permitted only on the explicitly approved public
   // content routes above. On every other tab, remove their loaders and creatives.
@@ -254,7 +255,7 @@ function RootShell({ children }: { children: ReactNode }) {
     const previousPageAllowsAds =
       MONETAG_VIGNETTE_PATHS.has(previousPath) ||
       MONETAG_IN_PAGE_PUSH_PATHS.has(previousPath) ||
-      ADSENSE_PUBLIC_CONTENT_PATHS.has(previousPath);
+      ADSENSE_PUBLIC_CONTENT_PATHS.has(previousPath) ||\n      previousPath.startsWith("/learn/video/");
     const currentPageAllowsAds = shouldLoadMonetag || shouldLoadAdsense;
 
     if (previousPath !== pathname && previousPageAllowsAds !== currentPageAllowsAds) {
