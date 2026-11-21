@@ -111,11 +111,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       // YouTube requires a Referer header for embedded playback (error 153).
       { name: "referrer", content: "strict-origin-when-cross-origin" },
-      { title: "ExpertsTeam - Learn, Code, Games & Apps for Free" },
+      { title: "ExpertsTeam | AI, Software & Technology Solutions" },
       {
         name: "description",
         content:
-          "Learn to code, explore games and apps, download useful resources, build software with ExpertAI and connect with the ExpertsTeam community.",
+          "ExpertsTeam is a software and technology company building AI systems, websites, applications and digital solutions for people and businesses.",
       },
 
       {
@@ -126,17 +126,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:site_name", content: "ExpertsTeam" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:title", content: "ExpertsTeam - Learn, Code, Games & Apps for Free" },
+      { property: "og:title", content: "ExpertsTeam | AI, Software & Technology Solutions" },
       { name: "twitter:title", content: "ExpertsTeam - Learn, Code, Games & Apps for Free" },
       {
         property: "og:description",
         content:
-          "ExpertsTeam helps you learn coding, discover games and apps, download resources and build software with ExpertAI.",
+          "ExpertsTeam builds intelligent AI systems, custom software, websites, mobile applications and digital solutions.",
       },
       {
         name: "twitter:description",
         content:
-          "Learn, code, explore games and apps for free with ExpertsTeam. Build projects with ExpertAI and connect with developers.",
+          "Discover AI development, software engineering, web and mobile applications, and digital innovation from ExpertsTeam.",
       },
       { property: "og:image", content: "https://expertsteam.giize.com/favicon.svg?v=20261121-1" },
       { property: "og:image:width", content: "1248" },
@@ -296,7 +296,7 @@ function RootShell({ children }: { children: ReactNode }) {
               contactPoint: [{ "@type": "ContactPoint", contactType: "customer support", email: "mucyochristhecla@gmail.com" }],
               url: "https://expertsteam.giize.com/",
               description:
-                "ExpertsTeam is a digital learning and creator platform to learn coding, build real software with ExpertAI, share projects, connect with developers and discover useful tools.",
+                "ExpertsTeam is a software and technology company building AI systems, custom software, websites, mobile applications and digital solutions.",
             }),
           }}
         />
