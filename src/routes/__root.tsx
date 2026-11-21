@@ -236,19 +236,23 @@ function RootShell({ children }: { children: ReactNode }) {
     return () => observer.disconnect();
   }, [pathname, shouldLoadMonetag, shouldLoadAdsense]);
 
-  // Third-party ad scripts can keep document-level listeners alive after a
-  // client-side route change. Do a clean document navigation when leaving an
-  // ad-enabled page for any tab where ads are not permitted.
+  // Ad providers attach document-level scripts, listeners and creatives.
+  // A client-side route transition across the ad boundary must become a full
+  // document navigation in BOTH directions: ad -> ad-free and ad-free -> ad.
+  // This gives the destination page a clean document and initializes only the
+  // ad providers allowed for that destination route.
   useEffect(() => {
     const previousPath = previousPathRef.current;
     previousPathRef.current = pathname;
-    const previousPageHadAds =
+
+    const previousPageAllowsAds =
       MONETAG_VIGNETTE_PATHS.has(previousPath) ||
       MONETAG_IN_PAGE_PUSH_PATHS.has(previousPath) ||
       ADSENSE_PUBLIC_CONTENT_PATHS.has(previousPath);
     const currentPageAllowsAds = shouldLoadMonetag || shouldLoadAdsense;
-    if (previousPath !== pathname && previousPageHadAds && !currentPageAllowsAds) {
-      window.location.replace(window.location.pathname + window.location.search + window.location.hash);
+
+    if (previousPath !== pathname && previousPageAllowsAds !== currentPageAllowsAds) {
+      window.location.reload();
     }
   }, [pathname, shouldLoadMonetag, shouldLoadAdsense]);
 
