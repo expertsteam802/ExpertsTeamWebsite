@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 const PRIMARY_LINKS = [
   { to: "/", key: "home", label: "Home", icon: Compass, exact: true },
   { to: "/explore", key: "explore", label: "Explore", icon: Compass },
-  { to: "/learn", key: "learn", label: "Learn", icon: GraduationCap },
+  { to: "/learn", key: "learn", label: "Learning", icon: GraduationCap },
   { to: "/community", key: "community", label: "Community", icon: Users },
   { to: "/ai", key: "expertai", label: "ExpertAI", icon: Sparkles },
   { to: "/pricing", key: "plans", label: "Pricing", icon: CreditCard },
@@ -106,7 +106,9 @@ export function SiteHeader() {
                 <span>
                   {item.key === "plans"
                     ? "Pricing"
-                    : settings.navigation_labels[item.key] || item.label}
+                    : item.key === "learn"
+                      ? "Learning"
+                      : settings.navigation_labels[item.key] || item.label}
                 </span>
               </Link>
             );
@@ -217,7 +219,9 @@ export function SiteHeader() {
                 <item.icon className="h-4 w-4" />
                 {item.key === "plans"
                   ? "Pricing"
-                  : settings.navigation_labels[item.key] || item.label}
+                  : item.key === "learn"
+                    ? "Learning"
+                    : settings.navigation_labels[item.key] || item.label}
               </Link>
             );
           })}
