@@ -1,8 +1,5 @@
 -- Reset an exhausted free AI allowance to the current admin-configured baseline.
 -- This does not add bonus credits and never overwrites an active subscription allowance.
-ALTER TABLE public.profiles
-  ADD COLUMN IF NOT EXISTS ai_reward_claimed_at timestamptz;
-
 CREATE OR REPLACE FUNCTION public.claim_free_ai_credits()
 RETURNS integer
 LANGUAGE plpgsql
@@ -29,8 +26,7 @@ BEGIN
   END IF;
 
   UPDATE public.profiles
-     SET ai_credits = v_allowance,
-         ai_reward_claimed_at = now()
+     SET ai_credits = v_allowance
    WHERE id = v_user
      AND ai_credits < 1
      AND NOT (
