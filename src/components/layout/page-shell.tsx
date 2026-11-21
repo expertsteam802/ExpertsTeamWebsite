@@ -6,7 +6,7 @@ import { useSiteSettings } from "@/hooks/use-site-settings";
 
 export function PageShell({ children, hideFooter = false }: { children: ReactNode; hideFooter?: boolean }) {
   const settings = useSiteSettings();
-  const background = settings.background_image_url || "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=2400&q=88";
+  const background = settings.background_image_url || "/experts-team-background.svg?v=20261121-3";
   return (
     <div className="et-shell relative flex h-[100dvh] min-h-[100dvh] w-full flex-col overflow-hidden bg-background text-foreground">
       <div
