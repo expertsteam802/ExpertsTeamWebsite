@@ -13,7 +13,6 @@ import {
   Sparkles,
   Users,
   BriefcaseBusiness,
-  Code2,
   FolderKanban,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -41,7 +40,6 @@ const PRIMARY_LINKS = [
 
 const SECONDARY_LINKS = [
   { to: "/software", label: "Request software", icon: BriefcaseBusiness },
-  { to: "/projects", label: "Developer Apply", icon: Code2 },
   { to: "/videos", label: "Video library", icon: FileVideo },
   { to: "/entertainment", label: "Games & downloads", icon: Gamepad2 },
   { to: "/showcase", label: "Project showcase", icon: FolderKanban },
