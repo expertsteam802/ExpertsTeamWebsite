@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Play, Trash2 } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -36,6 +37,7 @@ export type VideoItem = {
 
 export function VideoGrid({ videos }: { videos: VideoItem[] }) {
   const { user, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<VideoItem | null>(null);
   const [title, setTitle] = useState("");
@@ -64,7 +66,7 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
       toast.info("Ad opened in a popup window. Click Watch again to play the video.");
       return;
     }
-    window.location.assign(`/learn/video/${encodeURIComponent(video.id)}`);
+    void navigate({ to: "/learn/video/$videoId", params: { videoId: video.id } });
   }
 
   const saveEdit = useMutation({
@@ -150,7 +152,7 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
                 </span>
               </button>
               <div className="space-y-2 p-4">
-                <h3 className="line-clamp-2 font-display font-semibold"><a href={`/learn/video/${encodeURIComponent(video.id)}`} className="transition hover:text-primary">{video.title}</a></h3>
+                <h3 className="line-clamp-2 font-display font-semibold"><Link to="/learn/video/$videoId" params={{ videoId: video.id }} className="transition hover:text-primary">{video.title}</Link></h3>
                 {video.description && (
                   <p className="line-clamp-2 text-sm text-muted-foreground">{video.description}</p>
                 )}
