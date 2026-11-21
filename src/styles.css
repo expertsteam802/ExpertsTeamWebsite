@@ -794,11 +794,11 @@ html, body, .et-shell, .et-topbar, .et-secondary-sidebar, .et-main,
 @media(prefers-reduced-motion:reduce){.et-page-content,.et-cinema-backdrop,.et-cinema-atmosphere,.et-cinema-atmosphere::before,.et-cinema-atmosphere::after{animation:none!important;transform:none!important}}
 
 /* Cinematic AI builder connection sequence and shared interaction motion. */
-.et-ai-cinematic-backdrop{z-index:0;background-image:linear-gradient(180deg,rgba(0,0,0,.34),rgba(0,0,0,.56)),url("/experts-team-background.svg?v=20261121-2");background-size:cover;background-position:center;opacity:.24;transform:translateZ(0);will-change:auto}
+.et-ai-cinematic-backdrop{z-index:0;background-image:linear-gradient(180deg,rgba(0,0,0,.34),rgba(0,0,0,.56)),var(--et-site-background-image,url("/experts-team-background.svg?v=20261121-3"));background-size:cover;background-position:center;opacity:.24;transform:translateZ(0);will-change:auto}
 .et-ai-cinematic-atmosphere{z-index:1;background:radial-gradient(ellipse at 50% 100%,rgba(0,185,225,.14),transparent 48%),radial-gradient(ellipse at 80% 15%,rgba(255,174,62,.10),transparent 36%);animation:et-ai-atmosphere 18s ease-in-out infinite alternate}
 @keyframes et-ai-atmosphere{0%{opacity:.52}100%{opacity:.9}}
 .et-ai-link-cinematic{background:#030711;isolation:isolate}
-.et-ai-link-backdrop{background-image:linear-gradient(180deg,rgba(1,5,14,.48),rgba(1,5,14,.88)),url("/experts-team-background.svg?v=20261121-2");background-size:cover;background-position:center;filter:none;transform:translateZ(0)}
+.et-ai-link-backdrop{background-image:linear-gradient(180deg,rgba(1,5,14,.48),rgba(1,5,14,.88)),var(--et-site-background-image,url("/experts-team-background.svg?v=20261121-3"));background-size:cover;background-position:center;filter:none;transform:translateZ(0)}
 .et-ai-link-vortex{background:radial-gradient(ellipse at 50% 48%,rgba(0,195,255,.18),transparent 24%),radial-gradient(ellipse at 50% 48%,transparent 26%,rgba(255,166,50,.12) 27%,transparent 40%);animation:et-ai-vortex-breathe 8s ease-in-out infinite alternate}
 .et-ai-link-kicker{color:#75e5ff;text-shadow:0 0 18px rgba(0,190,255,.5)}
 .et-ai-link-progress span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#168fc2,#73e7ff,#fff);box-shadow:0 0 18px rgba(53,207,255,.75);transition:width .28s ease-out}
