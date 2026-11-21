@@ -24,7 +24,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { generateExpertImage } from "@/lib/ai.functions";
 import { formatDateOnly } from "@/lib/format";
-import { openMonetagPopup } from "@/lib/monetag";
 
 type ChatRow = {
   id: string;
@@ -266,7 +265,6 @@ export function ChrisAiChat({
   );
   const [streamingReply, setStreamingReply] = useState("");
   const [chatLimitUnlocked, setChatLimitUnlocked] = useState(false);
-  const [chatUnlockAdOpened, setChatUnlockAdOpened] = useState(false);
   const [revealingMessageId, setRevealingMessageId] = useState<string | null>(null);
   const [optimisticMessages, setOptimisticMessages] = useState<ChatRow[]>([]);
   const [guestMessages, setGuestMessages] = useState<ChatRow[]>([]);
@@ -406,7 +404,6 @@ export function ChrisAiChat({
     } catch {
       setChatLimitUnlocked(false);
     }
-    setChatUnlockAdOpened(false);
   }, [threadId]);
 
   useEffect(() => {
@@ -713,17 +710,7 @@ export function ChrisAiChat({
   }
 
   function continueChatting() {
-    if (!chatUnlockAdOpened) {
-      if (!openMonetagPopup()) {
-        toast.error("Your browser blocked the ad popup. Allow popups for ExpertsTeam, then try again.");
-        return;
-      }
-      setChatUnlockAdOpened(true);
-      toast.info("The popup opened. Click Continue chatting again to resume this conversation.");
-      return;
-    }
     setChatLimitUnlocked(true);
-    setChatUnlockAdOpened(false);
     if (threadId) {
       try { window.localStorage.setItem("experts-team:chat-unlocked:" + threadId, "1"); } catch { /* Current session remains unlocked. */ }
     }
