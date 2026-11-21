@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION public.claim_free_ai_credits()
 RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   v_user uuid := auth.uid();
