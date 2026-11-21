@@ -363,7 +363,7 @@ function RootContent() {
     });
     const safeBackground = background.replace(/["\\\\]/g, "");
     document.documentElement.style.setProperty("--et-site-background-image", `url("${safeBackground}")`);
-  }, [siteSettings.logo_url, siteSettings.background_image_url]);
+  }, [siteSettings.logo_url, siteSettings.background_image_url, currentPathname]);
 
   // Record unexpected browser errors for debugging without interrupting a page
   // that has already rendered. Background rejections must never open a modal.
