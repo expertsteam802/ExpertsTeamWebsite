@@ -2750,7 +2750,7 @@ export function CodeAgent() {
                   <span className="max-w-[150px] truncate">{name}</span>
                   <span className="text-slate-600">·</span>
                   <span className="text-cyan-200">{profile?.ai_credits ?? 0} credits remaining</span>
-                  {(profile?.ai_credits ?? 0) < 1 && !profile?.ai_subscribed && (
+                  {(profile?.ai_credits ?? 0) < 1 && (
                     <button
                       type="button"
                       onClick={() => void handleClaimFreeCredits()}
