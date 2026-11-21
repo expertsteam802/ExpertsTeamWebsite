@@ -171,7 +171,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
-const MONETAG_PUBLIC_CONTENT_PATHS = new Set(["/", "/learn", "/about"]);
+const MONETAG_VIGNETTE_PATHS = new Set(["/", "/learn", "/about"]);
+const MONETAG_IN_PAGE_PUSH_PATHS = new Set(["/learn", "/about"]);
 
 const ADSENSE_PUBLIC_CONTENT_PATHS = new Set([
   "/",
@@ -181,7 +182,9 @@ const ADSENSE_PUBLIC_CONTENT_PATHS = new Set([
 
 function RootShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const shouldLoadMonetag = MONETAG_PUBLIC_CONTENT_PATHS.has(pathname);
+  const shouldLoadVignette = MONETAG_VIGNETTE_PATHS.has(pathname);
+  const shouldLoadInPagePush = MONETAG_IN_PAGE_PUSH_PATHS.has(pathname);
+  const shouldLoadMonetag = shouldLoadVignette || shouldLoadInPagePush;
 
   // Monetag is intentionally limited to public content pages. If a visitor
   // navigates from a public page into ExpertAI, Community or Messages, remove
@@ -228,21 +231,21 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="theme-dark dark">
       <head>
-        {shouldLoadMonetag && (
-          <>
-            <script
-              dangerouslySetInnerHTML={{
-                __html:
-                  "(function(s){s.dataset.zone='12296060',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))",
-              }}
-            />
-            <script
-              dangerouslySetInnerHTML={{
-                __html:
-                  "(function(s){s.dataset.zone='12296064',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))",
-              }}
-            />
-          </>
+        {shouldLoadVignette && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html:
+                "(function(s){s.dataset.zone='12296060',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))",
+            }}
+          />
+        )}
+        {shouldLoadInPagePush && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html:
+                "(function(s){s.dataset.zone='12296064',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))",
+            }}
+          />
         )}
         <HeadContent />
         {shouldLoadAdsense && (
