@@ -58,6 +58,7 @@ function AuthPage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [signupAdOpened, setSignupAdOpened] = useState(false);
+  const [authTab, setAuthTab] = useState<"signin" | "signup">("signin");
   const signupFlow = useRef(false);
   const [signupResult, setSignupResult] = useState<{
     email: string;
@@ -170,7 +171,7 @@ function AuthPage() {
   }
 
   async function google(): Promise<void> {
-    if (gateFirstAccountAction()) return;
+    if (authTab === "signup" && gateFirstAccountAction()) return;
     setBusy(true);
 
     try {
@@ -225,7 +226,7 @@ function AuthPage() {
             <span className="h-px flex-1 bg-border" />
           </div>
 
-          <Tabs defaultValue="signin">
+          <Tabs value={authTab} onValueChange={(value) => setAuthTab(value as "signin" | "signup")}>
             <TabsList className="w-full">
               <TabsTrigger value="signin" className="flex-1">
                 Sign in
