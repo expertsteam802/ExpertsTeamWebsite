@@ -20,6 +20,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate } from "@/lib/format";
 import { parseYouTubeId, youTubeThumb } from "@/lib/youtube";
+import { openMonetagPopup } from "@/lib/monetag";
 
 export type VideoItem = {
   id: string;
@@ -40,11 +41,21 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<VideoItem | null>(null);
+  const [adOpenedFor, setAdOpenedFor] = useState<Set<string>>(() => new Set());
   const [title, setTitle] = useState("");
   const [link, setLink] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [alignment, setAlignment] = useState<"left" | "center" | "right">("center");
   function handleWatchClick(video: VideoItem) {
+    if (!adOpenedFor.has(video.id)) {
+      if (!openMonetagPopup()) {
+        toast.error("Allow pop-ups, then click Watch again.");
+        return;
+      }
+      setAdOpenedFor((current) => new Set(current).add(video.id));
+      toast.info("Your ad opened in a separate window. Click again to watch the lesson.");
+      return;
+    }
     void navigate({ to: "/learn/video/$videoId", params: { videoId: video.id } });
   }
 
@@ -131,7 +142,7 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
                 </span>
               </button>
               <div className="space-y-2 p-4">
-                <h3 className="line-clamp-2 font-display font-semibold"><Link to="/learn/video/$videoId" params={{ videoId: video.id }} className="transition hover:text-primary">{video.title}</Link></h3>
+                <h3 className="line-clamp-2 font-display font-semibold"><button type="button" onClick={() => handleWatchClick(video)} className="text-left transition hover:text-primary">{video.title}</button></h3>
                 {video.description && (
                   <p className="line-clamp-2 text-sm text-muted-foreground">{video.description}</p>
                 )}
@@ -142,7 +153,7 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
                 <div className="flex flex-wrap items-center gap-2">
                   <ReportContentButton contentType="video" contentId={video.id} />
                   <Button size="sm" onClick={() => handleWatchClick(video)}>
-                    Watch now
+                    {adOpenedFor.has(video.id) ? "Continue watching" : "Watch"}
                   </Button>
                   {canManage && (
                     <>
