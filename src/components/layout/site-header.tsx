@@ -77,7 +77,7 @@ export function SiteHeader() {
       <div className="mx-auto flex min-h-[68px] max-w-[1680px] items-center gap-3 px-3 sm:px-5 lg:px-7">
         <Link to="/" aria-label="ExpertsTeam home" className="group flex shrink-0 items-center">
           <img
-            src={settings.logo_url || "/logo.svg"}
+            src={settings.logo_url || "/logo.svg?v=20261121-2"}
             alt="ExpertsTeam logo"
             className="et-site-logo h-12 w-12 rounded-full border-0 bg-transparent object-contain p-0 shadow-[0_0_22px_rgba(30,110,255,0.38)] transition duration-200 group-hover:scale-[1.04] sm:h-14 sm:w-14"
             style={{
