@@ -79,7 +79,7 @@ test("Kilo adapter retries context-capacity failures with smaller budgets", asyn
     generationConfig: { maxOutputTokens: 8192 },
   });
   assert.equal(response.candidates?.[0]?.content?.parts?.[0]?.text, "Recovered");
-  assert.deepEqual(budgets, [8192, 4096]);
+  assert.deepEqual(budgets, [8192, 6144]);
 });
 
 test("Kilo adapter forwards image attachments in OpenAI-compatible format", async () => {
