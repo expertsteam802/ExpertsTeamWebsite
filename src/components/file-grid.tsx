@@ -49,6 +49,21 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
   const [price, setPrice] = useState("0");
   const [editSourceUrl, setEditSourceUrl] = useState("");
   const [editThumbnailUrl, setEditThumbnailUrl] = useState("");
+  const [adOpenedFor, setAdOpenedFor] = useState<Set<string>>(() => new Set());
+
+  function handleDownloadClick(file: CommunityFile) {
+    if (!adOpenedFor.has(file.id)) {
+      const adWindow = window.open("https://uplcm.com/4/12313763", "_blank", "noopener,noreferrer");
+      if (!adWindow) {
+        toast.error("Allow pop-ups, then click again to continue.");
+        return;
+      }
+      setAdOpenedFor((current) => new Set(current).add(file.id));
+      toast.info("Ad opened in a new tab. Click again to continue to your download.");
+      return;
+    }
+    void requestDownload(file);
+  }
 
   const saveEdit = useMutation({
     mutationFn: async () => {
@@ -184,19 +199,9 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
 
               <div className="flex flex-wrap items-center gap-2">
                 <ReportContentButton contentType="file" contentId={file.id} />
-                <Button size="sm" variant="secondary" onClick={() => void requestDownload(file)}>
+                <Button size="sm" variant="secondary" onClick={() => handleDownloadClick(file)}>
                   <Download className="mr-2 h-4 w-4" />{" "}
-                  {file.source_url ? "Open source" : "Download"}
-                </Button>
-                <Button asChild size="sm" variant="outline">
-                  <a
-                    href="https://uplcm.com/4/12313763"
-                    target="_blank"
-                    rel="sponsored noopener noreferrer"
-                    aria-label={`Open sponsored offer in a new tab for ${file.title}`}
-                  >
-                    <ExternalLink className="mr-2 h-4 w-4" /> Sponsored
-                  </a>
+                  {adOpenedFor.has(file.id) ? (file.source_url ? "Continue to source" : "Continue download") : (file.source_url ? "Open source" : "Download")}
                 </Button>
                 {canManage && (
                   <>
