@@ -17,6 +17,7 @@ import { SiteTextEditor } from "@/components/site-text-editor";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/hooks/use-theme";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
@@ -344,9 +345,25 @@ function RootComponent() {
 
 function RootContent() {
   const currentPathname = useRouterState({ select: (state) => state.location.pathname });
+  const siteSettings = useSiteSettings();
   const isPublishedApp = currentPathname.startsWith("/apps/");
   const isAiWorkspace = currentPathname === "/ai" || currentPathname === "/chat";
   const [aiChatOpen, setAiChatOpen] = useState(false);
+
+  // Keep browser icons, social previews and cinematic backdrops tied to the
+  // single logo/background uploaded from Admin -> Site settings.
+  useEffect(() => {
+    const logo = siteSettings.logo_url || "/logo.svg?v=20261121-3";
+    const background = siteSettings.background_image_url || "/experts-team-background.svg?v=20261121-3";
+    document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"], link[rel="apple-touch-icon"], link[rel="shortcut icon"]').forEach((link) => {
+      link.href = logo;
+    });
+    document.querySelectorAll<HTMLMetaElement>('meta[property="og:image"], meta[name="twitter:image"]').forEach((meta) => {
+      meta.content = logo;
+    });
+    const safeBackground = background.replace(/["\\\\]/g, "");
+    document.documentElement.style.setProperty("--et-site-background-image", `url("${safeBackground}")`);
+  }, [siteSettings.logo_url, siteSettings.background_image_url]);
 
   // Record unexpected browser errors for debugging without interrupting a page
   // that has already rendered. Background rejections must never open a modal.
