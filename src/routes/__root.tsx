@@ -50,9 +50,14 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
-  const dialogEnabled =
-    typeof window === "undefined" ||
-    window.localStorage.getItem("expertsteam.error-dialog-enabled") !== "false";
+  const dialogEnabled = (() => {
+    if (typeof window === "undefined") return true;
+    try {
+      return window.localStorage.getItem("expertsteam.error-dialog-enabled") !== "false";
+    } catch {
+      return true;
+    }
+  })();
 
   return dialogEnabled ? (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -127,7 +132,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:title", content: "ExpertsTeam | AI, Software & Technology Solutions" },
-      { name: "twitter:title", content: "ExpertsTeam - Learn, Code, Games & Apps for Free" },
+      { name: "twitter:title", content: "ExpertsTeam | AI, Software & Technology Solutions" },
       {
         property: "og:description",
         content:
@@ -310,7 +315,7 @@ function RootShell({ children }: { children: ReactNode }) {
               alternateName: ["Experts Team", "expertsteam.giize.com"],
               url: "https://expertsteam.giize.com/",
               description:
-                "ExpertsTeam is a digital learning and creator platform to learn coding, build real software with ExpertAI, share projects, connect with developers and discover useful tools.",
+                "ExpertsTeam is a software and technology company building AI systems, custom software, websites, mobile applications and digital solutions for people and businesses.",
             }),
           }}
         />
