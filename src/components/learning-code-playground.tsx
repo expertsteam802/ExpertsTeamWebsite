@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Code2, Eye, Maximize2, Play, X } from "lucide-react";
+import { Code2, Eye, Play, X } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
