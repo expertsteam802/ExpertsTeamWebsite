@@ -1,8 +1,6 @@
-import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Code2, MessageSquare, Users } from "lucide-react";
+import { ArrowLeft, MessageSquare, Users } from "lucide-react";
 
-import { ChrisAiChat } from "@/components/chris-ai";
 import { CodeAgent } from "@/components/code-agent";
 
 export const Route = createFileRoute("/ai")({
@@ -20,8 +18,6 @@ export const Route = createFileRoute("/ai")({
 });
 
 function AiPage() {
-  const [activeView, setActiveView] = useState<"builder" | "chat">("builder");
-
   return (
     <main className="expert-ai-page fixed inset-0 z-40 flex h-[100dvh] w-full flex-col overflow-hidden bg-background text-foreground">
       <header className="relative z-20 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-background/90 px-3 backdrop-blur-xl sm:px-4">
@@ -45,52 +41,28 @@ function AiPage() {
             <p className="hidden text-[10px] text-muted-foreground sm:block">Build. Test. Ship.</p>
           </div>
         </div>
-
-        <nav
-          aria-label="ExpertAI workspace"
-          className="flex items-center gap-1 rounded-xl border border-border bg-muted p-1"
-        >
-          <button
-            type="button"
-            onClick={() => setActiveView("builder")}
-            aria-pressed={activeView === "builder"}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all duration-300 ${activeView === "builder" ? "bg-muted text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
-          >
-            <Code2 className="h-4 w-4" />
-            <span>ExpertsAI Agent</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveView("chat")}
-            aria-pressed={activeView === "chat"}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all duration-300 ${activeView === "chat" ? "bg-muted text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+        <nav aria-label="ExpertAI tools" className="flex items-center gap-1">
+          <Link
+            to="/chat"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted"
           >
             <MessageSquare className="h-4 w-4" />
             <span>AI Chat</span>
-          </button>
+          </Link>
+          <Link
+            to="/community"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition-all duration-300 hover:-translate-y-0.5 hover:bg-muted"
+          >
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">Community</span>
+          </Link>
         </nav>
-
-        <Link
-          to="/community"
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition-all duration-300 hover:-translate-y-0.5 hover:bg-muted"
-        >
-          <Users className="h-4 w-4" />
-          <span className="hidden sm:inline">Community</span>
-        </Link>
       </header>
-
       <section className="relative min-h-0 flex-1 overflow-hidden">
         <div aria-hidden="true" className="et-ai-cinematic-backdrop pointer-events-none absolute inset-0" />
         <div aria-hidden="true" className="et-ai-cinematic-atmosphere pointer-events-none absolute inset-0" />
-        <div
-          className={`h-full min-h-0 overflow-hidden ${activeView === "builder" ? "block" : "hidden"}`}
-        >
+        <div className="h-full min-h-0 overflow-hidden">
           <CodeAgent />
-        </div>
-        <div
-          className={`h-full min-h-0 overflow-hidden ${activeView === "chat" ? "block" : "hidden"}`}
-        >
-          <ChrisAiChat />
         </div>
       </section>
     </main>
