@@ -1,134 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { BannerUnlockAd } from "@/components/ads/banner-unlock-ad";
 
-type YouTubePlayer = { destroy: () => void; getIframe: () => HTMLIFrameElement };
-type YouTubeApi = {
-  Player: new (
-    element: HTMLElement,
-    options: {
-      videoId: string;
-      playerVars?: Record<string, string | number>;
-      events?: {
-        onReady?: (event: { target: YouTubePlayer }) => void;
-        onStateChange?: (event: { data: number }) => void;
-        onError?: (event: { data: number }) => void;
-      };
-    },
-  ) => YouTubePlayer;
-  PlayerState: { PLAYING: number; BUFFERING: number; PAUSED: number; ENDED: number };
-};
-declare global {
-  interface Window {
-    YT?: YouTubeApi;
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
-let youtubeApiPromise: Promise<YouTubeApi> | null = null;
-const PLAYER_TIMEOUT_MS = 12000;
-
-/**
- * Load the YouTube IFrame API safely, including when another component has
- * already inserted the script or its ready callback fired before this player
- * mounted. Always time out instead of leaving the video dialog stuck loading.
- */
-function loadYouTubeApi(): Promise<YouTubeApi> {
-  if (window.YT?.Player) return Promise.resolve(window.YT);
-  if (youtubeApiPromise) return youtubeApiPromise;
-
-  youtubeApiPromise = new Promise<YouTubeApi>((resolve, reject) => {
-    const scriptUrl = "https://www.youtube.com/iframe_api";
-    let settled = false;
-    const previousCallback = window.onYouTubeIframeAPIReady;
-
-    const cleanup = () => {
-      window.clearInterval(pollId);
-      window.clearTimeout(timeoutId);
-    };
-
-    const finish = (error?: Error) => {
-      if (settled) return;
-      const api = window.YT;
-      if (!error && api?.Player) {
-        settled = true;
-        cleanup();
-        resolve(api);
-      } else if (error) {
-        settled = true;
-        cleanup();
-        if (window.onYouTubeIframeAPIReady === handleApiReady) {
-          window.onYouTubeIframeAPIReady = previousCallback;
-        }
-        reject(error);
-      }
-    };
-
-    const checkReady = () => {
-      if (window.YT?.Player) finish();
-    };
-
-    const handleApiReady = () => {
-      try {
-        previousCallback?.();
-      } finally {
-        checkReady();
-      }
-    };
-
-    // Register before appending the script to avoid missing a fast callback.
-    window.onYouTubeIframeAPIReady = handleApiReady;
-    let script = document.querySelector<HTMLScriptElement>(`script[src="${scriptUrl}"]`);
-
-    if (!script) {
-      script = document.createElement("script");
-      script.src = scriptUrl;
-      script.async = true;
-      script.onerror = () =>
-        finish(
-          new Error(
-            "Could not load the YouTube player. Check your connection or content blockers.",
-          ),
-        );
-      document.head.appendChild(script);
-    } else {
-      script.addEventListener(
-        "error",
-        () => {
-          finish(
-            new Error(
-              "Could not load the YouTube player. Check your connection or content blockers.",
-            ),
-          );
-        },
-        { once: true },
-      );
-    }
-
-    // Covers an existing script whose ready callback was fired before we mounted.
-    const pollId = window.setInterval(checkReady, 100);
-    const timeoutId = window.setTimeout(() => {
-      finish(new Error("YouTube's player took too long to load. Refresh the page and try again."));
-    }, PLAYER_TIMEOUT_MS);
-    checkReady();
-  }).catch((error: unknown) => {
-    youtubeApiPromise = null;
-    throw error;
-  });
-
-  return youtubeApiPromise;
-}
-function playerErrorMessage(code: number) {
-  if (code === 2) return "This video has an invalid ID or URL.";
-  if (code === 5) return "YouTube could not play this video in the embedded player.";
-  if (code === 100) return "This video was removed, deleted or made private.";
-  if (code === 101 || code === 150)
-    return "The video owner does not allow playback on other websites.";
-  if (code === 153)
-    return "YouTube did not receive the required referrer information. Check the site's domain and referrer policy.";
-  return `YouTube player error (${code}). Try opening the video on YouTube.`;
-}
 type Props = {
   videoId: string | null;
   title: string;
@@ -136,188 +9,42 @@ type Props = {
   onClose: () => void;
 };
 export function VideoPlayerDialog({ videoId, title, alignment = "center", onClose }: Props) {
-  const playerContainerRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<YouTubePlayer | null>(null);
-  const countedRef = useRef(false);
-  const [playbackError, setPlaybackError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [useNativeEmbed, setUseNativeEmbed] = useState(false);
-  const nativeEmbedTimeoutRef = useRef<number | null>(null);
-  const shouldLoadLesson = Boolean(videoId);
-
-  const clearNativeEmbedTimeout = useCallback(() => {
-    if (nativeEmbedTimeoutRef.current !== null) {
-      window.clearTimeout(nativeEmbedTimeoutRef.current);
-      nativeEmbedTimeoutRef.current = null;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!useNativeEmbed || !videoId) return;
-    setLoading(true);
-    nativeEmbedTimeoutRef.current = window.setTimeout(() => {
-      nativeEmbedTimeoutRef.current = null;
-      setLoading(false);
-      setPlaybackError("YouTube did not respond. The video may be unavailable or may block playback on other websites.");
-    }, 12000);
-    return clearNativeEmbedTimeout;
-  }, [useNativeEmbed, videoId, clearNativeEmbedTimeout]);
-
-  useEffect(() => {
-    setPlaybackError(null);
-    setLoading(false);
-    setUseNativeEmbed(false);
-  }, [videoId]);
-
-  useEffect(() => {
-    if (!videoId || !shouldLoadLesson || !playerContainerRef.current) return;
-    let cancelled = false;
-    let readyTimedOut = false;
-    let readyTimeout: number | undefined;
-    countedRef.current = false;
-    setPlaybackError(null);
-    setLoading(true);
-    void loadYouTubeApi()
-      .then((YT) => {
-        if (cancelled || !playerContainerRef.current) return;
-        // The IFrame API expects a placeholder element and creates its own iframe.
-        const placeholder = document.createElement("div");
-        placeholder.className = "h-full w-full";
-        playerContainerRef.current.replaceChildren(placeholder);
-        playerRef.current = new YT.Player(placeholder, {
-          videoId,
-          playerVars: {
-            autoplay: 0,
-            playsinline: 1,
-            rel: 0,
-            enablejsapi: 1,
-            origin: window.location.origin,
-          },
-          events: {
-            onReady: (event) => {
-              if (readyTimedOut || cancelled) return;
-              if (readyTimeout !== undefined) window.clearTimeout(readyTimeout);
-              setLoading(false);
-              const iframe = event.target.getIframe();
-              iframe.title = title;
-              iframe.referrerPolicy = "strict-origin-when-cross-origin";
-              iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
-              iframe.allowFullscreen = true;
-              iframe.className = "h-full w-full";
-            },
-            onStateChange: (event) => {
-              if (event.data === YT.PlayerState.BUFFERING) setLoading(true);
-              if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) setLoading(false);
-              if (event.data === YT.PlayerState.PLAYING) {
-                setLoading(false);
-                if (!countedRef.current) {
-                  countedRef.current = true;
-                  void supabase
-                    .rpc("record_video_view", { p_video_id: videoId })
-                    .then(({ error }) => {
-                      if (error)
-                        console.error("[Video analytics] Could not record view:", error.message);
-                    });
-                }
-              }
-            },
-            onError: (event) => {
-              if (readyTimeout !== undefined) window.clearTimeout(readyTimeout);
-              setLoading(false);
-              if (event.data === 153) {
-                setLoading(true);
-                setUseNativeEmbed(true);
-              } else {
-                setPlaybackError(playerErrorMessage(event.data));
-              }
-            },
-          },
-        });
-        // Do not leave the loading overlay covering a player that never becomes ready.
-        readyTimeout = window.setTimeout(() => {
-          readyTimedOut = true;
-          if (cancelled) return;
-          playerRef.current?.destroy();
-          playerRef.current = null;
-          setLoading(true);
-          setUseNativeEmbed(true);
-        }, PLAYER_TIMEOUT_MS);
-      })
-      .catch((error: unknown) => {
-        if (readyTimeout !== undefined) window.clearTimeout(readyTimeout);
-        if (!cancelled) {
-          setLoading(true);
-          console.warn("[Video player] IFrame API unavailable; using standard embed:", error);
-          setUseNativeEmbed(true);
-        }
-      });
-    return () => {
-      cancelled = true;
-      if (readyTimeout !== undefined) window.clearTimeout(readyTimeout);
-      playerRef.current?.destroy();
-      playerRef.current = null;
-      playerContainerRef.current?.replaceChildren();
-    };
-  }, [videoId, shouldLoadLesson, title]);
-
+  const [embedFailed, setEmbedFailed] = useState(false);
+  useEffect(() => setEmbedFailed(false), [videoId]);
   if (!videoId) return null;
 
+  const embedUrl = `https://www.youtube.com/embed/${encodeURIComponent(videoId)}?playsinline=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+
   return (
-    <>
-      <section id="video-watch-panel" className="mb-8 w-full scroll-mt-24 rounded-2xl border border-border/70 bg-card p-3 shadow-xl sm:p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wider text-primary">Now watching</p>
-            <h2 className="mt-1 line-clamp-2 text-lg font-semibold sm:text-xl">{title}</h2>
-          </div>
-          <Button variant="outline" size="sm" onClick={onClose} className="shrink-0">Close player</Button>
+    <section id="video-watch-panel" className="mb-8 w-full scroll-mt-24 rounded-2xl border border-border/70 bg-card p-3 shadow-xl sm:p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">Now watching</p>
+          <h2 className="mt-1 line-clamp-2 text-lg font-semibold sm:text-xl">{title}</h2>
         </div>
-          <div
-            className={`expertsteam-video-player relative aspect-video max-h-[75vh] w-full max-w-[1200px] overflow-hidden rounded-xl bg-black ${alignment === "left" ? "mr-auto" : alignment === "right" ? "ml-auto" : "mx-auto"}`}
-          >
-            {videoId &&
-              (useNativeEmbed ? (
-                <iframe
-                  key={videoId}
-                  title={title}
-                  src={`https://www.youtube.com/embed/${encodeURIComponent(videoId)}?playsinline=1&rel=0`}
-                  className="h-full w-full border-0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  onLoad={() => { clearNativeEmbedTimeout(); setLoading(false); }}
-                  onError={() => { clearNativeEmbedTimeout(); setLoading(false); setPlaybackError("The video could not be loaded. Check the video link or open it on YouTube."); }}
-                />
-              ) : (
-                <div ref={playerContainerRef} className="h-full w-full" />
-              ))}
-            {videoId && loading && !playbackError && (
-              <div className="absolute inset-0 z-20 grid place-items-center bg-background/80 text-sm text-muted-foreground">
-                Loading video…
-              </div>
-            )}
-            {videoId && playbackError && (
-              <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center">
-                <p className="max-w-xl text-sm text-destructive">{playbackError}</p>
-                {videoId && (
-                  <Button asChild>
-                    <a
-                      href={`https://www.youtube.com/watch?v=${videoId}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Open on YouTube
-                    </a>
-                  </Button>
-                )}
-              </div>
-            )}
+        <Button variant="outline" size="sm" onClick={onClose} className="shrink-0">Close player</Button>
+      </div>
+      <div className={`expertsteam-video-player relative mx-auto aspect-video max-h-[75vh] w-full max-w-[1200px] overflow-hidden rounded-xl bg-black ${alignment === "left" ? "mr-auto" : alignment === "right" ? "ml-auto" : "mx-auto"}`}>
+        {!embedFailed ? (
+          <iframe
+            key={videoId}
+            title={title}
+            src={embedUrl}
+            className="absolute inset-0 h-full w-full border-0"
+            loading="eager"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+            onError={() => setEmbedFailed(true)}
+          />
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center">
+            <p className="max-w-xl text-sm text-muted-foreground">The embedded player could not load. This video may restrict playback on other websites.</p>
+            <Button asChild><a href={`https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`} target="_blank" rel="noreferrer">Open on YouTube</a></Button>
           </div>
-          <BannerUnlockAd compact />
-          <p className="text-xs text-muted-foreground">
-            A view is counted only after YouTube confirms that playback has started.
-          </p>
-      </section>
-    </>
+        )}
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">If playback is restricted by the video owner, use Open on YouTube to watch the original.</p>
+    </section>
   );
 }
