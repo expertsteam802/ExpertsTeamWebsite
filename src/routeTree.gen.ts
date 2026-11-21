@@ -22,6 +22,7 @@ import { Route as EntertainmentRouteImport } from './routes/entertainment'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as LearnVideoVideoIdRouteImport } from './routes/learn.video.$videoId'
+import { Route as SoftwareRouteImport } from './routes/software'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -32,6 +33,7 @@ import { Route as VaultRouteImport } from './routes/vault'
 import { Route as VideosRouteImport } from './routes/videos'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedCreatorRouteImport } from './routes/_authenticated/creator'
 import { Route as AppsSlugRouteImport } from './routes/apps.$slug'
 import { Route as ApiAiStreamRouteImport } from './routes/api.ai.stream'
 
@@ -99,6 +101,11 @@ const LearnVideoVideoIdRoute = LearnVideoVideoIdRouteImport.update({
   path: '/learn/video/$videoId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SoftwareRoute = SoftwareRouteImport.update({
+  id: '/software',
+  path: '/software',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MessagesRoute = MessagesRouteImport.update({
   id: '/messages',
   path: '/messages',
@@ -149,6 +156,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCreatorRoute = AuthenticatedCreatorRouteImport.update({
+  id: '/creator',
+  path: '/creator',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AppsSlugRoute = AppsSlugRouteImport.update({
   id: '/apps/$slug',
   path: '/apps/$slug',
@@ -173,8 +185,8 @@ export interface FileRoutesByFullPath {
   '/explore': typeof ExploreRoute
   '/learn': typeof LearnRoute
   '/learn/video/$videoId': typeof LearnVideoVideoIdRoute
-  '/learn/video/$videoId': typeof LearnVideoVideoIdRoute
-  '/learn/video/$videoId': typeof LearnVideoVideoIdRoute
+  '/software': typeof SoftwareRoute
+  '/creator': typeof AuthenticatedCreatorRoute
   '/messages': typeof MessagesRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -200,6 +212,9 @@ export interface FileRoutesByTo {
   '/entertainment': typeof EntertainmentRoute
   '/explore': typeof ExploreRoute
   '/learn': typeof LearnRoute
+  '/learn/video/$videoId': typeof LearnVideoVideoIdRoute
+  '/software': typeof SoftwareRoute
+  '/creator': typeof AuthenticatedCreatorRoute
   '/messages': typeof MessagesRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -237,6 +252,7 @@ export interface FileRoutesById {
   '/videos': typeof VideosRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/creator': typeof AuthenticatedCreatorRoute
   '/apps/$slug': typeof AppsSlugRoute
   '/api/ai/stream': typeof ApiAiStreamRoute
 }
@@ -255,8 +271,8 @@ export interface FileRouteTypes {
     | '/explore'
     | '/learn'
     | '/learn/video/$videoId'
-    | '/learn/video/$videoId'
-    | '/learn/video/$videoId'
+    | '/software'
+    | '/creator'
     | '/messages'
     | '/pricing'
     | '/privacy'
@@ -282,6 +298,9 @@ export interface FileRouteTypes {
     | '/entertainment'
     | '/explore'
     | '/learn'
+    | '/learn/video/$videoId'
+    | '/software'
+    | '/creator'
     | '/messages'
     | '/pricing'
     | '/privacy'
@@ -318,6 +337,7 @@ export interface FileRouteTypes {
     | '/videos'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
+    | '/_authenticated/creator'
     | '/apps/$slug'
     | '/api/ai/stream'
   fileRoutesById: FileRoutesById
@@ -441,6 +461,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LearnVideoVideoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/software': {
+      id: '/software'
+      path: '/software'
+      fullPath: '/software'
+      preLoaderRoute: typeof SoftwareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/messages': {
       id: '/messages'
       path: '/messages'
@@ -511,6 +538,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/creator': {
+      id: '/_authenticated/creator'
+      path: '/creator'
+      fullPath: '/creator'
+      preLoaderRoute: typeof AuthenticatedCreatorRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/apps/$slug': {
       id: '/apps/$slug'
       path: '/apps/$slug'
@@ -531,11 +565,13 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedCreatorRoute: typeof AuthenticatedCreatorRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedCreatorRoute: AuthenticatedCreatorRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -555,6 +591,7 @@ const rootRouteChildren: RootRouteChildren = {
   ExploreRoute: ExploreRoute,
   LearnRoute: LearnRoute,
   LearnVideoVideoIdRoute: LearnVideoVideoIdRoute,
+  SoftwareRoute: SoftwareRoute,
   MessagesRoute: MessagesRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
