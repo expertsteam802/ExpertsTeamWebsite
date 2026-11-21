@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Play, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 
-import { VideoPlayerDialog } from "@/components/video-player-dialog";
 import { ReportContentButton } from "@/components/report-content-button";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -38,7 +38,7 @@ export type VideoItem = {
 export function VideoGrid({ videos }: { videos: VideoItem[] }) {
   const { user, isAdmin } = useAuth();
   const queryClient = useQueryClient();
-  const [playing, setPlaying] = useState<VideoItem | null>(null);
+  const navigate = useNavigate();
   const [editing, setEditing] = useState<VideoItem | null>(null);
   const [title, setTitle] = useState("");
   const [link, setLink] = useState("");
@@ -66,16 +66,8 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
       toast.info("Ad opened in a popup window. Click Watch again to play the video.");
       return;
     }
-    setPlaying(video);
+    void navigate({ to: "/learn/video/$videoId", params: { videoId: video.id } });
   }
-
-  useEffect(() => {
-    if (!playing) return;
-    document.getElementById("video-watch-panel")?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }, [playing]);
 
   const saveEdit = useMutation({
     mutationFn: async () => {
@@ -134,13 +126,6 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
 
   return (
     <>
-      <VideoPlayerDialog
-        videoId={playing?.youtube_id ?? null}
-        title={playing?.title ?? ""}
-        alignment={playing?.player_alignment ?? "center"}
-        onClose={() => setPlaying(null)}
-      />
-
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {videos.map((video) => {
           const canManage = user?.id === video.user_id || isAdmin;
