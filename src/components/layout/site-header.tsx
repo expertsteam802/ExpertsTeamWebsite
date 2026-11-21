@@ -80,7 +80,10 @@ export function SiteHeader() {
             src={settings.logo_url || "/logo.svg"}
             alt="ExpertsTeam logo"
             className="et-site-logo h-12 w-12 rounded-full border-0 bg-transparent object-contain p-0 shadow-[0_0_22px_rgba(30,110,255,0.38)] transition duration-200 group-hover:scale-[1.04] sm:h-14 sm:w-14"
-            style={{ "--logo-scale": settings.logo_scale / 100 } as CSSProperties}
+            style={{
+              "--logo-size-mobile": `${48 * settings.logo_scale / 100}px`,
+              "--logo-size-desktop": `${56 * settings.logo_scale / 100}px`,
+            } as CSSProperties}
           />
           <span className="ml-2 hidden font-display text-base font-extrabold tracking-tight text-foreground sm:inline">Experts<span className="text-primary">Team</span></span>
         </Link>
@@ -289,8 +292,8 @@ export function SiteHeader() {
       )}
 
       <style>{`
-        .et-site-logo{width:calc(3rem * var(--logo-scale));height:calc(3rem * var(--logo-scale))}
-        @media(min-width:640px){.et-site-logo{width:calc(3.5rem * var(--logo-scale));height:calc(3.5rem * var(--logo-scale))}}
+        .et-site-logo{width:var(--logo-size-mobile);height:var(--logo-size-mobile)}
+        @media(min-width:640px){.et-site-logo{width:var(--logo-size-desktop);height:var(--logo-size-desktop)}}
         .et-nav-tab{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;border:1px solid transparent;border-radius:11px;padding:9px 11px;color:var(--muted-foreground);font-size:12px;font-weight:650;letter-spacing:.01em;transition:all .18s ease}
         .et-nav-tab:hover{color:var(--foreground);background:var(--muted);border-color:var(--border)}
         .et-nav-active{color:var(--foreground);background:var(--muted);border-color:var(--border);box-shadow:none}
