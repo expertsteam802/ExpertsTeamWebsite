@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Play, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import { ReportContentButton } from "@/components/report-content-button";
@@ -38,7 +37,6 @@ export type VideoItem = {
 export function VideoGrid({ videos }: { videos: VideoItem[] }) {
   const { user, isAdmin } = useAuth();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [editing, setEditing] = useState<VideoItem | null>(null);
   const [title, setTitle] = useState("");
   const [link, setLink] = useState("");
@@ -66,7 +64,7 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
       toast.info("Ad opened in a popup window. Click Watch again to play the video.");
       return;
     }
-    void navigate({ to: "/learn/video/$videoId", params: { videoId: video.id } });
+    window.location.assign(`/learn/video/${encodeURIComponent(video.id)}`);
   }
 
   const saveEdit = useMutation({
