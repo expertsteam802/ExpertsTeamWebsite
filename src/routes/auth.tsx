@@ -122,6 +122,11 @@ function AuthPage() {
         email: email.trim(),
         password,
         options: {
+          emailRedirectTo: (() => {
+            const returnTo = new URL("/auth", window.location.origin);
+            returnTo.searchParams.set("next", getPostAuthPath());
+            return returnTo.toString();
+          })(),
           data: { username: username.trim(), display_name: username.trim() },
         },
       });
@@ -325,11 +330,11 @@ function AuthPage() {
         open={!!signupResult}
         onOpenChange={(open) => {
           if (!open) {
-            const shouldGoToDashboard = !signupResult?.needsConfirmation;
+            const shouldContinueToDestination = !signupResult?.needsConfirmation;
             setSignupResult(null);
             signupFlow.current = false;
 
-            if (shouldGoToDashboard) void navigate({ to: "/dashboard", replace: true });
+            if (shouldContinueToDestination) window.location.replace(getPostAuthPath());
           }
         }}
       >
@@ -347,14 +352,14 @@ function AuthPage() {
           <Button
             className="w-full sm:w-auto"
             onClick={() => {
-              const shouldGoToDashboard = !signupResult?.needsConfirmation;
+              const shouldContinueToDestination = !signupResult?.needsConfirmation;
               setSignupResult(null);
               signupFlow.current = false;
 
-              if (shouldGoToDashboard) void navigate({ to: "/dashboard", replace: true });
+              if (shouldContinueToDestination) window.location.replace(getPostAuthPath());
             }}
           >
-            {signupResult?.needsConfirmation ? "Back to sign in" : "Open my dashboard"}
+            {signupResult?.needsConfirmation ? "Back to sign in" : "Continue to ExpertAI"}
           </Button>
         </DialogContent>
       </Dialog>
