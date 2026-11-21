@@ -1092,7 +1092,7 @@ function AdminPage() {
                     <div>
                       <h3 className="font-display text-lg font-semibold">Most-watched videos</h3>
                       <p className="text-sm text-muted-foreground">
-                        Automatically refreshes every 30 seconds.
+                        Automatically refreshes every 5 minutes.
                       </p>
                     </div>
                     <Button
