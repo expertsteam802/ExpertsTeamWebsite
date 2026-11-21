@@ -13,7 +13,7 @@ export function VideoPlayerDialog({ videoId, title, alignment = "center", onClos
   useEffect(() => setEmbedFailed(false), [videoId]);
   if (!videoId) return null;
 
-  const embedUrl = `https://www.youtube.com/embed/${encodeURIComponent(videoId)}?playsinline=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+  const embedUrl = `https://www.youtube.com/embed/${encodeURIComponent(videoId)}?playsinline=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(typeof window !== "undefined" ? window.location.origin : "https://expertsteam.giize.com")}`;
 
   return (
     <section id="video-watch-panel" className="mb-8 w-full scroll-mt-24 rounded-2xl border border-border/70 bg-card p-3 shadow-xl sm:p-5">
