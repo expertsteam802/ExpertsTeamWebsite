@@ -3,6 +3,14 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+export const claimFreeAiCredits = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase.rpc("claim_free_ai_credits");
+    if (error) throw new Error(error.message || "Could not reset your free AI credits.");
+    return { credits: Number(data ?? 0) };
+  });
+
 const referenceImageSchema = z.object({
   name: z.string().max(180),
   mimeType: z.enum(["image/png", "image/jpeg", "image/webp"]),
