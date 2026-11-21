@@ -63,7 +63,7 @@ function LearningVideoPage() {
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">ExpertsTeam learning</p>
             <h1 className="mt-1 font-display text-2xl font-bold sm:text-3xl">{video?.title ?? "Video lesson"}</h1>
           </div>
-          <Button asChild variant="outline"><Link to="/learn"><BookOpen className="mr-2 h-4 w-4" /> All lessons</Link></Button>
+          <div className="flex flex-wrap items-center gap-2"><LearningCodePlayground floating={false} /><Button asChild variant="outline"><Link to="/learn"><BookOpen className="mr-2 h-4 w-4" /> All lessons</Link></Button></div>
         </div>
 
         {isLoading ? (
@@ -99,7 +99,6 @@ function LearningVideoPage() {
             </aside>
           </div>
         )}
-        {video && <LearningCodePlayground />}
       </main>
     </PageShell>
   );
