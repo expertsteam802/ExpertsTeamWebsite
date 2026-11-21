@@ -188,6 +188,16 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
                   <Download className="mr-2 h-4 w-4" />{" "}
                   {file.source_url ? "Open source" : "Download"}
                 </Button>
+                <Button asChild size="sm" variant="outline">
+                  <a
+                    href="https://uplcm.com/4/12313763"
+                    target="_blank"
+                    rel="sponsored noopener noreferrer"
+                    aria-label={`Open sponsored offer in a new tab for ${file.title}`}
+                  >
+                    <ExternalLink className="mr-2 h-4 w-4" /> Sponsored
+                  </a>
+                </Button>
                 {canManage && (
                   <>
                     <Button
