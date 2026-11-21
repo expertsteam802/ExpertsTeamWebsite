@@ -1306,7 +1306,7 @@ function AdminPage() {
                           </div>
                           <div className="flex min-h-24 items-center gap-4 rounded-lg bg-muted/40 p-3">
                             <img
-                              src={form.logo_url || "/favicon.svg"}
+                              src={form.logo_url || "/logo.svg"}
                               alt="Logo size preview"
                               className="shrink-0 rounded-full object-contain"
                               style={{ width: `${72 * Number(form.logo_scale) / 100}px`, height: `${72 * Number(form.logo_scale) / 100}px` }}
