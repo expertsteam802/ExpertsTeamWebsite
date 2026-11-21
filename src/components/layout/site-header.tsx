@@ -15,7 +15,7 @@ import {
   BriefcaseBusiness,
   FolderKanban,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -77,9 +77,10 @@ export function SiteHeader() {
       <div className="mx-auto flex min-h-[68px] max-w-[1680px] items-center gap-3 px-3 sm:px-5 lg:px-7">
         <Link to="/" aria-label="ExpertsTeam home" className="group flex shrink-0 items-center">
           <img
-            src={settings.logo_url || "https://btphazswhmkkuuyulqpt.supabase.co/storage/v1/object/public/site-assets/site-branding/logo-1795110115520.png"}
+            src={settings.logo_url || "/favicon.svg"}
             alt="ExpertsTeam logo"
-            className="h-12 w-12 rounded-full border-0 bg-transparent object-cover p-0 shadow-[0_0_22px_rgba(30,110,255,0.38)] transition duration-200 group-hover:scale-[1.04] sm:h-14 sm:w-14"
+            className="et-site-logo h-12 w-12 rounded-full border-0 bg-transparent object-contain p-0 shadow-[0_0_22px_rgba(30,110,255,0.38)] transition duration-200 group-hover:scale-[1.04] sm:h-14 sm:w-14"
+            style={{ "--logo-scale": settings.logo_scale / 100 } as CSSProperties}
           />
           <span className="ml-2 hidden font-display text-base font-extrabold tracking-tight text-foreground sm:inline">Experts<span className="text-primary">Team</span></span>
         </Link>
@@ -288,6 +289,8 @@ export function SiteHeader() {
       )}
 
       <style>{`
+        .et-site-logo{width:calc(3rem * var(--logo-scale));height:calc(3rem * var(--logo-scale))}
+        @media(min-width:640px){.et-site-logo{width:calc(3.5rem * var(--logo-scale));height:calc(3.5rem * var(--logo-scale))}}
         .et-nav-tab{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;border:1px solid transparent;border-radius:11px;padding:9px 11px;color:var(--muted-foreground);font-size:12px;font-weight:650;letter-spacing:.01em;transition:all .18s ease}
         .et-nav-tab:hover{color:var(--foreground);background:var(--muted);border-color:var(--border)}
         .et-nav-active{color:var(--foreground);background:var(--muted);border-color:var(--border);box-shadow:none}
