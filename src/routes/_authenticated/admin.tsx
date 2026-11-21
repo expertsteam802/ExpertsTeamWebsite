@@ -23,7 +23,7 @@ import {
   FileDown,
   Flag,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
@@ -87,6 +87,26 @@ function AdminPage() {
   const [form, setForm] = useState<SettingsForm | null>(null);
   const [memberSearch, setMemberSearch] = useState("");
   const [contactSearch, setContactSearch] = useState("");
+  const legacyBrandingCleanupStarted = useRef(false);
+  useEffect(() => {
+    if (!isAdmin || legacyBrandingCleanupStarted.current) return;
+    legacyBrandingCleanupStarted.current = true;
+    const legacyPaths = [
+      "site-branding/background-1794057832589.png",
+      "site-branding/background-1794940410648.png",
+      "site-branding/logo-1795102812239.png",
+      "site-branding/logo-1795110115520.png",
+    ];
+    void supabase.storage.from("site-assets").remove(legacyPaths).then(({ error }) => {
+      if (error) {
+        legacyBrandingCleanupStarted.current = false;
+        toast.error("Old branding files could not be removed from Supabase Storage: " + error.message);
+      } else {
+        toast.success("Old logo and background uploads cleared from Supabase Storage.");
+      }
+    });
+  }, [isAdmin]);
+
   const [backgroundUploadPending, setBackgroundUploadPending] = useState(false);
   const [logoUploadPending, setLogoUploadPending] = useState(false);
 
