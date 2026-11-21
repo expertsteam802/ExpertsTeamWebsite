@@ -24,6 +24,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { generateExpertImage } from "@/lib/ai.functions";
 import { formatDateOnly } from "@/lib/format";
+import { openMonetagPopup } from "@/lib/monetag";
 
 type ChatRow = {
   id: string;
@@ -264,6 +265,8 @@ export function ChrisAiChat({
     null,
   );
   const [streamingReply, setStreamingReply] = useState("");
+  const [chatLimitUnlocked, setChatLimitUnlocked] = useState(false);
+  const [chatUnlockAdOpened, setChatUnlockAdOpened] = useState(false);
   const [revealingMessageId, setRevealingMessageId] = useState<string | null>(null);
   const [optimisticMessages, setOptimisticMessages] = useState<ChatRow[]>([]);
   const [guestMessages, setGuestMessages] = useState<ChatRow[]>([]);
@@ -395,6 +398,16 @@ export function ChrisAiChat({
   });
   const visibleThreads = useMemo(() => chatThreads, [chatThreads]);
   const messages = user ? [...savedMessages, ...optimisticMessages] : guestMessages;
+
+  useEffect(() => {
+    if (!threadId) return;
+    try {
+      setChatLimitUnlocked(window.localStorage.getItem("experts-team:chat-unlocked:" + threadId) === "1");
+    } catch {
+      setChatLimitUnlocked(false);
+    }
+    setChatUnlockAdOpened(false);
+  }, [threadId]);
 
   useEffect(() => {
     const container = messagesContainerRef.current;
@@ -678,7 +691,7 @@ export function ChrisAiChat({
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const chatIsFull = messages.length >= 50;
+  const chatIsFull = messages.length >= 50 && !chatLimitUnlocked;
   const guestCreditsExhausted = !user && guestCredits <= 0;
 
   function submit() {
@@ -699,8 +712,28 @@ export function ChrisAiChat({
     send.mutate(prompt || "Review the uploaded files and analyze them.");
   }
 
+  function continueChatting() {
+    if (!chatUnlockAdOpened) {
+      if (!openMonetagPopup()) {
+        toast.error("Your browser blocked the ad popup. Allow popups for ExpertsTeam, then try again.");
+        return;
+      }
+      setChatUnlockAdOpened(true);
+      toast.info("The popup opened. Click Continue chatting again to resume this conversation.");
+      return;
+    }
+    setChatLimitUnlocked(true);
+    setChatUnlockAdOpened(false);
+    if (threadId) {
+      try { window.localStorage.setItem("experts-team:chat-unlocked:" + threadId, "1"); } catch { /* Current session remains unlocked. */ }
+    }
+    toast.success("Chat limit lifted. Continue in this conversation.");
+  }
+
   function newChat() {
     setAttachments([]);
+    setChatLimitUnlocked(false);
+    setChatUnlockAdOpened(false);
     if (user) {
       setThreadId(crypto.randomUUID());
       void queryClient.invalidateQueries({ queryKey: ["ai-chats", user.id] });
@@ -946,14 +979,10 @@ export function ChrisAiChat({
           {chatIsFull && (
             <div
               role="status"
-              className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm"
+              className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm"
             >
-              <span>
-                This chat is full. Your conversation is saved. Start a new chat to continue.
-              </span>
-              <Button size="sm" onClick={newChat}>
-                New chat
-              </Button>
+              <span>This chat has reached its message limit. Your conversation is saved.</span>
+              <Button size="sm" onClick={continueChatting}>Continue chatting</Button>
             </div>
           )}
           {attachments.length > 0 && (
