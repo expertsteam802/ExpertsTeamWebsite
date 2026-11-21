@@ -24,4 +24,4 @@ Before the workflow can deploy, add these three values in **GitHub → Settings 
 
 Find the project and team IDs in Vercel under **Project → Settings → General** (the project ID) and the Vercel team/account settings (the team ID). Keep the token private; do not commit it to the repository.
 
-After saving all three secrets, open **GitHub → Actions → Deploy to Vercel → Run workflow** and run it on `main`. The workflow pulls the production Vercel settings, builds the app, and deploys the prebuilt output to production. If credentials are missing, the workflow reports that deployment was skipped rather than pretending a deployment succeeded.
+After saving all three secrets, open **GitHub → Actions → Deploy to Vercel → Run workflow** and run it on `main`. The workflow pulls the production Vercel settings, builds the app, and deploys the prebuilt output to production. If any credential is missing, the workflow fails at its validation step and names the missing secret; it does not report a successful deployment.
