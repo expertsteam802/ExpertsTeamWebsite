@@ -970,7 +970,7 @@ export function ChrisAiChat({
               <button
                 type="button"
                 className="ml-2 font-semibold text-primary underline"
-                onClick={() => window.location.assign("/auth")}
+                onClick={() => window.location.assign("/auth?next=%2Fchat")}
               >
                 Create account
               </button>
