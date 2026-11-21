@@ -1466,6 +1466,7 @@ export type Database = {
       }
       can_use_guest_ai_credit: { Args: { p_ip_hash: string }; Returns: boolean }
       consume_ai_credit: { Args: never; Returns: number }
+      claim_free_ai_credits: { Args: never; Returns: number }
       consume_guest_ai_credit: { Args: { p_ip_hash: string }; Returns: boolean }
       has_role: {
         Args: {
