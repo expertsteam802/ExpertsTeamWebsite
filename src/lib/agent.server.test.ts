@@ -221,7 +221,7 @@ test("Kilo adapter drops unsupported JSON response mode and retries", async () =
     const body = JSON.parse(String(init?.body ?? "{}")) as { response_format?: unknown };
     sawFormats.push(Boolean(body.response_format));
     if (calls === 1) return new Response("unsupported parameter response_format", { status: 400 });
-    return Response.json({ choices: [{ finish_reason: "stop", message: { content: "{\\"ok\\":true}" } }] });
+    return Response.json({ choices: [{ finish_reason: "stop", message: { content: "{\"ok\":true}" } }] });
   }) as typeof fetch;
   const response = await generateGeminiContent({
     systemInstruction: { parts: [{ text: "Return JSON." }] },
@@ -230,5 +230,5 @@ test("Kilo adapter drops unsupported JSON response mode and retries", async () =
   });
   assert.equal(calls, 2);
   assert.deepEqual(sawFormats, [true, false]);
-  assert.equal(response.candidates?.[0]?.content?.parts?.[0]?.text, "{\\"ok\\":true}");
+  assert.equal(response.candidates?.[0]?.content?.parts?.[0]?.text, "{\"ok\":true}");
 });
