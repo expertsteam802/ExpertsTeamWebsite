@@ -14,17 +14,9 @@ import { Bot } from "lucide-react";
 
 import { ChrisAiChat } from "@/components/chris-ai";
 import { SiteTextEditor } from "@/components/site-text-editor";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/hooks/use-theme";
-import { useSiteSettings } from "@/hooks/use-site-settings";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
@@ -186,6 +178,7 @@ function RootShell({ children }: { children: ReactNode }) {
   const shouldLoadVignette = MONETAG_VIGNETTE_PATHS.has(pathname);
   const shouldLoadInPagePush = MONETAG_IN_PAGE_PUSH_PATHS.has(pathname);
   const shouldLoadMonetag = shouldLoadVignette || shouldLoadInPagePush;
+  const shouldLoadAdsense = ADSENSE_PUBLIC_CONTENT_PATHS.has(pathname);
 
   // Monetag and AdSense are permitted only on the explicitly approved public
   // content routes above. On every other tab, remove their loaders and creatives.
@@ -227,9 +220,11 @@ function RootShell({ children }: { children: ReactNode }) {
       void navigator.serviceWorker.getRegistrations().then((registrations) => {
         for (const registration of registrations) {
           const scriptUrl = registration.active?.scriptURL ?? registration.waiting?.scriptURL ?? registration.installing?.scriptURL ?? "";
-          if (new URL(scriptUrl, window.location.origin).pathname === "/sw.js") {
-            void registration.unregister();
-          }
+          const workerUrl = new URL(scriptUrl, window.location.origin);
+          const isMonetagWorker =
+            /5gvci\.com|n6wxm\.com|nap5k\.com|monetag/i.test(scriptUrl) ||
+            workerUrl.pathname === "/sw.js";
+          if (isMonetagWorker) void registration.unregister();
         }
       }).catch(() => undefined);
     }
@@ -335,39 +330,24 @@ function RootComponent() {
 }
 
 function RootContent() {
-  const settings = useSiteSettings();
   const currentPathname = useRouterState({ select: (state) => state.location.pathname });
   const isPublishedApp = currentPathname.startsWith("/apps/");
   const isAiWorkspace = currentPathname === "/ai" || currentPathname === "/chat";
   const [aiChatOpen, setAiChatOpen] = useState(false);
-  const [runtimeError, setRuntimeError] = useState<string | null>(null);
 
+  // Record unexpected browser errors for debugging without interrupting a page
+  // that has already rendered. Background rejections must never open a modal.
   useEffect(() => {
-    window.localStorage.setItem(
-      "expertsteam.error-dialog-enabled",
-      settings.error_dialog_enabled === false ? "false" : "true",
-    );
-  }, [settings.error_dialog_enabled]);
-
-  useEffect(() => {
-    const reportRuntimeError = (error: Error, boundary: string) => {
-      reportLovableError(error, { boundary });
-      if (settings.error_dialog_enabled !== false) {
-        setRuntimeError(
-          "Something unexpected happened. The error has been recorded; you can safely retry.",
-        );
-      }
-    };
     const onError = (event: ErrorEvent) => {
-      reportRuntimeError(
+      reportLovableError(
         event.error instanceof Error ? event.error : new Error(event.message),
-        "window_error",
+        { boundary: "window_error" },
       );
     };
     const onRejection = (event: PromiseRejectionEvent) => {
-      reportRuntimeError(
+      reportLovableError(
         event.reason instanceof Error ? event.reason : new Error(String(event.reason)),
-        "unhandled_rejection",
+        { boundary: "unhandled_rejection" },
       );
     };
     window.addEventListener("error", onError);
@@ -376,7 +356,7 @@ function RootContent() {
       window.removeEventListener("error", onError);
       window.removeEventListener("unhandledrejection", onRejection);
     };
-  }, [settings.error_dialog_enabled]);
+  }, []);
 
   return (
     <>
@@ -384,22 +364,6 @@ function RootContent() {
       <Outlet />
       <Toaster richColors position="top-center" />
       <SiteTextEditor />
-
-      <Dialog open={Boolean(runtimeError)} onOpenChange={(open) => !open && setRuntimeError(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Something went wrong</DialogTitle>
-            <DialogDescription>{runtimeError}</DialogDescription>
-          </DialogHeader>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="mt-3 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-          >
-            Reload page
-          </button>
-        </DialogContent>
-      </Dialog>
 
       {!isPublishedApp && !isAiWorkspace &&
         (aiChatOpen ? (
