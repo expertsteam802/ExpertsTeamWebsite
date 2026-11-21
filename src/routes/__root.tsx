@@ -255,7 +255,8 @@ function RootShell({ children }: { children: ReactNode }) {
     const previousPageAllowsAds =
       MONETAG_VIGNETTE_PATHS.has(previousPath) ||
       MONETAG_IN_PAGE_PUSH_PATHS.has(previousPath) ||
-      ADSENSE_PUBLIC_CONTENT_PATHS.has(previousPath) ||\n      previousPath.startsWith("/learn/video/");
+      ADSENSE_PUBLIC_CONTENT_PATHS.has(previousPath) ||
+      previousPath.startsWith("/learn/video/");
     const currentPageAllowsAds = shouldLoadMonetag || shouldLoadAdsense;
 
     if (previousPath !== pathname && previousPageAllowsAds !== currentPageAllowsAds) {
