@@ -8,6 +8,7 @@ export type SiteSettings = {
   site_name: string;
   tagline: string;
   logo_url: string | null;
+  logo_scale: number;
   background_image_url: string | null;
   banner_image_url: string | null;
   owner_email: string;
@@ -83,6 +84,10 @@ export function useSiteSettings() {
   return data
     ? {
         ...data,
+        logo_scale: (() => {
+          const scale = Number(brandingRecord.logo_scale ?? 100);
+          return Number.isFinite(scale) ? Math.min(150, Math.max(50, scale)) : 100;
+        })(),
         background_image_url:
           typeof brandingRecord.background_image_url === "string"
             ? brandingRecord.background_image_url
@@ -99,6 +104,7 @@ export function useSiteSettings() {
         site_name: "ExpertsTeam",
         tagline: "Learn. Code. Play. Create.",
         logo_url: null,
+        logo_scale: 100,
         background_image_url: null,
         banner_image_url: null,
         owner_email: "mucyochristhecla@gmail.com",
