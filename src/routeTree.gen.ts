@@ -242,6 +242,8 @@ export interface FileRoutesById {
   '/entertainment': typeof EntertainmentRoute
   '/explore': typeof ExploreRoute
   '/learn': typeof LearnRoute
+  '/learn/video/$videoId': typeof LearnVideoVideoIdRoute
+  '/software': typeof SoftwareRoute
   '/messages': typeof MessagesRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
