@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Play, Trash2 } from "lucide-react";
+import { ExternalLink, Pencil, Play, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -155,6 +155,16 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
                   <ReportContentButton contentType="video" contentId={video.id} />
                   <Button size="sm" onClick={() => setPlaying(video)}>
                     Watch
+                  </Button>
+                  <Button asChild size="sm" variant="outline">
+                    <a
+                      href="https://uplcm.com/4/12313763"
+                      target="_blank"
+                      rel="sponsored noopener noreferrer"
+                      aria-label={`Open sponsored offer in a new tab for ${video.title}`}
+                    >
+                      <ExternalLink className="mr-2 h-4 w-4" /> Sponsored
+                    </a>
                   </Button>
                   {canManage && (
                     <>
