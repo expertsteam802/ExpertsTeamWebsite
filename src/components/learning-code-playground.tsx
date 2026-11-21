@@ -64,7 +64,7 @@ export function LearningCodePlayground({ floating = true }: { floating?: boolean
       <Button
         type="button"
         onClick={() => setOpen(true)}
-        className={floating ? "fixed bottom-5 right-5 z-[100] h-12 rounded-full px-5 shadow-xl" : "h-10 shrink-0 rounded-full px-4"}
+        className={floating ? "fixed bottom-24 right-5 z-[110] h-12 rounded-full px-5 shadow-xl" : "h-10 shrink-0 rounded-full px-4"}
       >
         <Code2 className="mr-2 h-4 w-4" /> Open code editor
       </Button>
