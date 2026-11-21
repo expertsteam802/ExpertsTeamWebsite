@@ -187,64 +187,71 @@ function RootShell({ children }: { children: ReactNode }) {
   const shouldLoadInPagePush = MONETAG_IN_PAGE_PUSH_PATHS.has(pathname);
   const shouldLoadMonetag = shouldLoadVignette || shouldLoadInPagePush;
 
-  // Monetag is intentionally limited to public content pages. If a visitor
-  // navigates from a public page into ExpertAI, Community or Messages, remove
-  // any Monetag loader/creative that may have been added before the route change.
+  // Monetag and AdSense are permitted only on the explicitly approved public
+  // content routes above. On every other tab, remove their loaders and creatives.
   useEffect(() => {
-    if (shouldLoadMonetag) return;
+    if (shouldLoadMonetag && shouldLoadAdsense) return;
 
-    const removeMonetagElements = () => {
+    const removeAdElements = () => {
       document
         .querySelectorAll(
           [
             'script[src*="n6wxm.com"]',
             'script[src*="nap5k.com"]',
+            'script[src*="5gvci.com"]',
             'script[data-zone="12296060"]',
             'script[data-zone="12296064"]',
             'iframe[src*="n6wxm.com"]',
             'iframe[src*="nap5k.com"]',
             'iframe[src*="5gvci.com"]',
             'iframe[src*="monetag"]',
+            'iframe[src*="googlesyndication.com"]',
+            'iframe[src*="doubleclick.net"]',
+            'iframe[id^="google_ads_iframe"]',
+            'ins.adsbygoogle',
+            '.google-auto-placed',
+            '[id*="monetag"]',
+            '[class*="monetag"]',
           ].join(", "),
         )
         .forEach((element) => element.remove());
     };
 
-    removeMonetagElements();
-    const observer = new MutationObserver(removeMonetagElements);
+    removeAdElements();
+    const observer = new MutationObserver(removeAdElements);
     observer.observe(document.documentElement, { childList: true, subtree: true });
+
+    // The Monetag service worker can keep showing push creatives after its
+    // page script is removed. Unregister this site's Monetag worker on ad-free tabs.
+    if ("serviceWorker" in navigator) {
+      void navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          const scriptUrl = registration.active?.scriptURL ?? registration.waiting?.scriptURL ?? registration.installing?.scriptURL ?? "";
+          if (new URL(scriptUrl, window.location.origin).pathname === "/sw.js") {
+            void registration.unregister();
+          }
+        }
+      }).catch(() => undefined);
+    }
+
     return () => observer.disconnect();
-  }, [pathname, shouldLoadMonetag]);
+  }, [pathname, shouldLoadMonetag, shouldLoadAdsense]);
 
-  const shouldLoadAdsense = ADSENSE_PUBLIC_CONTENT_PATHS.has(pathname);
-
-  // Auto-ad scripts can attach document-level listeners that survive removing
-  // their script element during client-side navigation. Reload once when entering
-  // ExpertAI from an ad-enabled page so the AI workspace starts in a clean document.
+  // Third-party ad scripts can keep document-level listeners alive after a
+  // client-side route change. Do a clean document navigation when leaving an
+  // ad-enabled page for any tab where ads are not permitted.
   useEffect(() => {
     const previousPath = previousPathRef.current;
     previousPathRef.current = pathname;
-    const enteredExpertAi =
-      pathname === "/ai" || pathname.startsWith("/ai/") || pathname === "/chat";
     const previousPageHadAds =
       MONETAG_VIGNETTE_PATHS.has(previousPath) ||
       MONETAG_IN_PAGE_PUSH_PATHS.has(previousPath) ||
       ADSENSE_PUBLIC_CONTENT_PATHS.has(previousPath);
-    if (enteredExpertAi && previousPageHadAds) {
+    const currentPageAllowsAds = shouldLoadMonetag || shouldLoadAdsense;
+    if (previousPath !== pathname && previousPageHadAds && !currentPageAllowsAds) {
       window.location.replace(window.location.pathname + window.location.search + window.location.hash);
     }
-  }, [pathname]);
-
-  useEffect(() => {
-    if (shouldLoadAdsense) return;
-    // Do not leave auto-ad placements visible on private tools, forms, messaging,
-    // video unlock screens or account pages after client-side navigation.
-    document
-      .querySelectorAll(
-        'script[src*="pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"], ins.adsbygoogle, .google-auto-placed, iframe[id^="google_ads_iframe"], iframe[src*="googlesyndication.com"]',
-      )
-      .forEach((element) => element.remove());
-  }, [shouldLoadAdsense]);
+  }, [pathname, shouldLoadMonetag, shouldLoadAdsense]);
 
   return (
     <html lang="en" className="theme-dark dark">
