@@ -16,7 +16,8 @@ export async function toCircularLogoDataUrl(file: File, size = 256): Promise<str
   ctx.clearRect(0, 0, size, size);
   ctx.save();
   ctx.beginPath();
-  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+  // Keep a small transparent margin so the circular crop fits inside logo artwork.
+  ctx.arc(size / 2, size / 2, (size / 2) * 0.95, 0, Math.PI * 2);
   ctx.closePath();
   ctx.clip();
 
