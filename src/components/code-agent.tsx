@@ -62,10 +62,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import { extractZipTextFiles } from "@/lib/zip-text-import";
+import { openMonetagPopup } from "@/lib/monetag";
 import type { Json } from "@/integrations/supabase/types";
 import {
   pushProjectToGithub,
   importGitHubProject,
+  claimFreeAiCredits,
   publishAgentProject,
   runAgentTerminalPrompt,
   startAgentTerminal,
@@ -263,6 +265,7 @@ export function CodeAgent() {
     .slice(0, 39) || "user";
   const queryClient = useQueryClient();
   const runCliPrompt = useServerFn(runAgentTerminalPrompt);
+  const claimFreeCredits = useServerFn(claimFreeAiCredits);
   const push = useServerFn(pushProjectToGithub);
   const importGithub = useServerFn(importGitHubProject);
   const publish = useServerFn(publishAgentProject);
@@ -308,6 +311,8 @@ export function CodeAgent() {
   const agentChatEndRef = useRef<HTMLDivElement>(null);
   const [agentPanelMode, setAgentPanelMode] = useState<"chat" | "terminal">("chat");
   const [prompt, setPrompt] = useState("");
+  const [claimAdOpened, setClaimAdOpened] = useState(false);
+  const [claimingCredits, setClaimingCredits] = useState(false);
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
   const referenceInputRef = useRef<HTMLInputElement>(null);
   const projectFileInputRef = useRef<HTMLInputElement>(null);
@@ -1726,6 +1731,34 @@ export function CodeAgent() {
     }
   }
 
+  async function handleClaimFreeCredits() {
+    if ((profile?.ai_credits ?? 0) > 0) {
+      toast.info("You still have AI credits available.");
+      return;
+    }
+    if (!claimAdOpened) {
+      if (!openMonetagPopup()) {
+        toast.error("Your browser blocked the ad popup. Allow popups for ExpertsTeam, then try again.");
+        return;
+      }
+      setClaimAdOpened(true);
+      toast.info("The popup opened. Click Claim free credits again to restore your free allowance.");
+      return;
+    }
+    setClaimingCredits(true);
+    try {
+      const result = await claimFreeCredits({ data: {} });
+      setClaimAdOpened(false);
+      await queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
+      toast.success(result.credits + " free AI credits restored.");
+    } catch (error) {
+      setClaimAdOpened(false);
+      toast.error(error instanceof Error ? error.message : "Could not restore free AI credits.");
+    } finally {
+      setClaimingCredits(false);
+    }
+  }
+
   async function sendPrompt() {
     if (CODING_AGENT_UNDER_DEVELOPMENT) return;
     const text = prompt.trim();
@@ -2717,6 +2750,16 @@ export function CodeAgent() {
                   <span className="max-w-[150px] truncate">{name}</span>
                   <span className="text-slate-600">·</span>
                   <span className="text-cyan-200">{profile?.ai_credits ?? 0} credits remaining</span>
+                  {(profile?.ai_credits ?? 0) < 1 && !profile?.ai_subscribed && (
+                    <button
+                      type="button"
+                      onClick={() => void handleClaimFreeCredits()}
+                      disabled={claimingCredits}
+                      className="rounded-md border border-cyan-400/25 bg-cyan-400/10 px-2 py-1 text-[10px] font-semibold text-cyan-200 hover:bg-cyan-400/20 disabled:opacity-50"
+                    >
+                      {claimingCredits ? "Restoring…" : claimAdOpened ? "Claim credits again" : "Claim free credits"}
+                    </button>
+                  )}
                 </div>
                 <div className="flex items-center gap-1">
                   <button type="button" onClick={() => setMessages([])} disabled={!messages.length || busy} className="rounded-md px-2 py-1.5 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white disabled:opacity-40">New chat</button>
