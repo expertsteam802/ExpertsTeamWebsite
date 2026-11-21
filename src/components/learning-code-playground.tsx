@@ -42,7 +42,7 @@ const STARTER_JS = `document.querySelector("#try").addEventListener("click", () 
   document.querySelector("#result").textContent = "Great work — your JavaScript runs!";
 });`;
 
-export function LearningCodePlayground() {
+export function LearningCodePlayground({ floating = true }: { floating?: boolean }) {
   const [open, setOpen] = useState(false);
   const [htmlCode, setHtmlCode] = useState(STARTER_HTML);
   const [cssCode, setCssCode] = useState(STARTER_CSS);
@@ -64,7 +64,7 @@ export function LearningCodePlayground() {
       <Button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-40 h-12 rounded-full px-5 shadow-xl"
+        className={floating ? "fixed bottom-5 right-5 z-[100] h-12 rounded-full px-5 shadow-xl" : "h-10 shrink-0 rounded-full px-4"}
       >
         <Code2 className="mr-2 h-4 w-4" /> Open code editor
       </Button>
