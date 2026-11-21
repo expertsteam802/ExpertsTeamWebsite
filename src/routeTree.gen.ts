@@ -21,6 +21,7 @@ import { Route as CookiesRouteImport } from './routes/cookies'
 import { Route as EntertainmentRouteImport } from './routes/entertainment'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as LearnRouteImport } from './routes/learn'
+import { Route as LearnVideoVideoIdRouteImport } from './routes/learn.video.$videoId'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -91,6 +92,11 @@ const ExploreRoute = ExploreRouteImport.update({
 const LearnRoute = LearnRouteImport.update({
   id: '/learn',
   path: '/learn',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LearnVideoVideoIdRoute = LearnVideoVideoIdRouteImport.update({
+  id: '/learn/video/$videoId',
+  path: '/learn/video/$videoId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MessagesRoute = MessagesRouteImport.update({
@@ -166,6 +172,9 @@ export interface FileRoutesByFullPath {
   '/entertainment': typeof EntertainmentRoute
   '/explore': typeof ExploreRoute
   '/learn': typeof LearnRoute
+  '/learn/video/$videoId': typeof LearnVideoVideoIdRoute
+  '/learn/video/$videoId': typeof LearnVideoVideoIdRoute
+  '/learn/video/$videoId': typeof LearnVideoVideoIdRoute
   '/messages': typeof MessagesRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -245,6 +254,9 @@ export interface FileRouteTypes {
     | '/entertainment'
     | '/explore'
     | '/learn'
+    | '/learn/video/$videoId'
+    | '/learn/video/$videoId'
+    | '/learn/video/$videoId'
     | '/messages'
     | '/pricing'
     | '/privacy'
@@ -323,6 +335,7 @@ export interface RootRouteChildren {
   EntertainmentRoute: typeof EntertainmentRoute
   ExploreRoute: typeof ExploreRoute
   LearnRoute: typeof LearnRoute
+  LearnVideoVideoIdRoute: typeof LearnVideoVideoIdRoute
   MessagesRoute: typeof MessagesRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -419,6 +432,13 @@ declare module '@tanstack/react-router' {
       path: '/learn'
       fullPath: '/learn'
       preLoaderRoute: typeof LearnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/learn/video/$videoId': {
+      id: '/learn/video/$videoId'
+      path: '/learn/video/$videoId'
+      fullPath: '/learn/video/$videoId'
+      preLoaderRoute: typeof LearnVideoVideoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/messages': {
@@ -534,6 +554,7 @@ const rootRouteChildren: RootRouteChildren = {
   EntertainmentRoute: EntertainmentRoute,
   ExploreRoute: ExploreRoute,
   LearnRoute: LearnRoute,
+  LearnVideoVideoIdRoute: LearnVideoVideoIdRoute,
   MessagesRoute: MessagesRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
