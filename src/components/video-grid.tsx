@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { Pencil, Play, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -150,7 +151,7 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
                 </span>
               </button>
               <div className="space-y-2 p-4">
-                <h3 className="line-clamp-2 font-display font-semibold">{video.title}</h3>
+                <h3 className="line-clamp-2 font-display font-semibold"><a href={`/learn/video/${encodeURIComponent(video.id)}`} className="transition hover:text-primary">{video.title}</a></h3>
                 {video.description && (
                   <p className="line-clamp-2 text-sm text-muted-foreground">{video.description}</p>
                 )}
