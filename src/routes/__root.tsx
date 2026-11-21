@@ -9,7 +9,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Bot } from "lucide-react";
 
 import { ChrisAiChat } from "@/components/chris-ai";
@@ -182,6 +182,7 @@ const ADSENSE_PUBLIC_CONTENT_PATHS = new Set([
 
 function RootShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const previousPathRef = useRef(pathname);
   const shouldLoadVignette = MONETAG_VIGNETTE_PATHS.has(pathname);
   const shouldLoadInPagePush = MONETAG_IN_PAGE_PUSH_PATHS.has(pathname);
   const shouldLoadMonetag = shouldLoadVignette || shouldLoadInPagePush;
@@ -216,6 +217,22 @@ function RootShell({ children }: { children: ReactNode }) {
   }, [pathname, shouldLoadMonetag]);
 
   const shouldLoadAdsense = ADSENSE_PUBLIC_CONTENT_PATHS.has(pathname);
+
+  // Auto-ad scripts can attach document-level listeners that survive removing
+  // their script element during client-side navigation. Reload once when entering
+  // ExpertAI from an ad-enabled page so the AI workspace starts in a clean document.
+  useEffect(() => {
+    const previousPath = previousPathRef.current;
+    previousPathRef.current = pathname;
+    const enteredExpertAi = pathname === "/ai" || pathname.startsWith("/ai/");
+    const previousPageHadAds =
+      MONETAG_VIGNETTE_PATHS.has(previousPath) ||
+      MONETAG_IN_PAGE_PUSH_PATHS.has(previousPath) ||
+      ADSENSE_PUBLIC_CONTENT_PATHS.has(previousPath);
+    if (enteredExpertAi && previousPageHadAds) {
+      window.location.replace(window.location.pathname + window.location.search + window.location.hash);
+    }
+  }, [pathname]);
 
   useEffect(() => {
     if (shouldLoadAdsense) return;
