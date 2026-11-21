@@ -115,7 +115,9 @@ async function copyTextToSystemClipboard(value: string) {
       await navigator.clipboard.writeText(value);
       return;
     }
-  } catch {}
+  } catch {
+    // Clipboard API unavailable; use the textarea fallback below.
+  }
   const temporary = document.createElement("textarea");
   temporary.value = value;
   temporary.setAttribute("readonly", "");
