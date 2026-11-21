@@ -17,7 +17,6 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { openMonetagPopup } from "@/lib/monetag";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -57,7 +56,6 @@ function AuthPage() {
   const [username, setUsername] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
-  const [signupAdOpened, setSignupAdOpened] = useState(false);
   const [authTab, setAuthTab] = useState<"signin" | "signup">("signin");
   const signupFlow = useRef(false);
   const [signupResult, setSignupResult] = useState<{
@@ -70,25 +68,6 @@ function AuthPage() {
     if (!signupFlow.current) window.location.replace(getPostAuthPath());
   }, [user, navigate, getPostAuthPath]);
 
-  function gateFirstAccountAction(): boolean {
-    try {
-      if (window.localStorage.getItem("experts-team:first-account-ad-gate") === "1") return false;
-    } catch {
-      // The in-memory two-click gate still works when browser storage is unavailable.
-    }
-    if (!signupAdOpened) {
-      if (!openMonetagPopup()) {
-        toast.error("Your browser blocked the ad popup. Allow popups for ExpertsTeam, then try again.");
-        return true;
-      }
-      setSignupAdOpened(true);
-      toast.info("The popup opened. Click again to continue creating your account.");
-      return true;
-    }
-    try { window.localStorage.setItem("experts-team:first-account-ad-gate", "1"); } catch { /* Continue for this session. */ }
-    setSignupAdOpened(false);
-    return false;
-  }
   async function signIn(): Promise<void> {
     setBusy(true);
 
@@ -113,7 +92,6 @@ function AuthPage() {
       toast.error("Pick a username with at least 3 characters.");
       return;
     }
-    if (gateFirstAccountAction()) return;
     setBusy(true);
 
     signupFlow.current = true;
@@ -176,7 +154,6 @@ function AuthPage() {
   }
 
   async function google(): Promise<void> {
-    if (authTab === "signup" && gateFirstAccountAction()) return;
     setBusy(true);
 
     try {
@@ -320,7 +297,7 @@ function AuthPage() {
                 </p>
               </div>
               <Button className="w-full" onClick={() => void signUp()} disabled={busy}>
-                {signupAdOpened ? "Continue creating account" : "Create account"}
+                Create account
               </Button>
             </TabsContent>
           </Tabs>
