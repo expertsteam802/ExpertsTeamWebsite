@@ -69,7 +69,7 @@ export function LearningCodePlayground({ floating = true }: { floating?: boolean
         <Code2 className="mr-2 h-4 w-4" /> Open code editor
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="flex h-[min(90dvh,900px)] w-[min(96vw,1440px)] max-w-none flex-col gap-3 overflow-hidden border-border bg-background p-3 sm:p-5">
+        <DialogContent className="flex h-[min(88dvh,850px)] w-[min(96vw,1440px)] max-w-[96vw] flex-col gap-3 overflow-hidden border-border bg-background p-3 sm:p-5">
           <DialogHeader className="shrink-0">
             <div className="flex items-center justify-between gap-3 pr-8">
               <div>
@@ -87,7 +87,7 @@ export function LearningCodePlayground({ floating = true }: { floating?: boolean
                 ))}
                 <span className="ml-auto text-[11px] text-slate-500">Code editor</span>
               </div>
-              <div className="min-h-0 flex-1 overflow-auto text-sm">
+              <div className="min-h-[260px] flex-1 overflow-auto text-sm">
                 <CodeMirror value={currentCode} height="100%" minHeight="260px" theme={oneDark} extensions={extensions} onChange={setCurrentCode} basicSetup={{ lineNumbers: true, foldGutter: true, autocompletion: true }} />
               </div>
             </section>
@@ -97,7 +97,7 @@ export function LearningCodePlayground({ floating = true }: { floating?: boolean
                 <span className="text-xs font-semibold">Live preview</span>
                 <span className="ml-auto text-[11px] text-muted-foreground">Sandboxed</span>
               </div>
-              <iframe key={previewVersion} title="Learning code live preview" srcDoc={previewDocument} sandbox="allow-scripts" className="min-h-0 flex-1 bg-white" />
+              <iframe key={previewVersion} title="Learning code live preview" srcDoc={previewDocument} sandbox="allow-scripts" className="min-h-[260px] flex-1 bg-white" />
             </section>
           </div>
           <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border pt-2">
