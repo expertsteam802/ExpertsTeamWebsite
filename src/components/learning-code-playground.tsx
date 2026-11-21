@@ -51,8 +51,8 @@ export function LearningCodePlayground() {
   const [previewVersion, setPreviewVersion] = useState(0);
 
   const previewDocument = useMemo(() => {
-    const safeJs = jsCode.replace(/<\\/script/gi, "<\\\\/script");
-    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${cssCode.replace(/<\\/style/gi, "")}</style></head><body>${htmlCode}<script>try { ${safeJs} } catch (error) { document.body.insertAdjacentHTML("beforeend", '<pre style="color:#b91c1c"></pre>'); document.querySelector('body > pre:last-child').textContent = error.message; }</script></body></html>`;
+    const safeJs = jsCode.replace(/<\/script/gi, "<\\/script");
+    return \`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>\${cssCode.replace(/<\/style/gi, "")}</style></head><body>\${htmlCode}<script>try { \${safeJs} } catch (error) { document.body.insertAdjacentHTML("beforeend", '<pre style="color:#b91c1c"></pre>'); document.querySelector('body > pre:last-child').textContent = error.message; }</script></body></html>\`;
   }, [htmlCode, cssCode, jsCode, previewVersion]);
 
   const currentCode = activeTab === "html" ? htmlCode : activeTab === "css" ? cssCode : jsCode;
