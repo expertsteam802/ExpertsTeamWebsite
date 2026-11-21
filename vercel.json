@@ -3,15 +3,6 @@
   "framework": "tanstack-start",
   "headers": [
     {
-      "source": "/sw.js",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
-        }
-      ]
-    },
-    {
       "source": "/experts-team-brand.svg",
       "headers": [
         {
@@ -82,12 +73,12 @@
   "redirects": [
     {
       "source": "/favicon.png",
-      "destination": "/favicon.svg?v=20261121-2",
+      "destination": "/favicon.svg?v=20261121-3",
       "permanent": true
     },
     {
       "source": "/logo.png",
-      "destination": "/logo.svg?v=20261121-2",
+      "destination": "/logo.svg?v=20261121-3",
       "permanent": true
     }
   ]
