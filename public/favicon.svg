@@ -1,1 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><image width="32" height="32" href="data:image/png;base64,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"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">ExpertsTeam ET logo</title>
+  <desc id="desc">A clean circular ExpertsTeam monogram with electric blue E and warm gold T lettering.</desc>
+  <defs>
+    <linearGradient id="ring" x1="70" y1="70" x2="440" y2="440" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#28D9FF"/>
+      <stop offset=".52" stop-color="#347BFF"/>
+      <stop offset="1" stop-color="#FFC247"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="100" y1="130" x2="300" y2="390" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#74F2FF"/>
+      <stop offset=".5" stop-color="#16B9F4"/>
+      <stop offset="1" stop-color="#3974FF"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="280" y1="130" x2="420" y2="390" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF0A6"/>
+      <stop offset=".5" stop-color="#FFC247"/>
+      <stop offset="1" stop-color="#E58A18"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="256" cy="256" r="226" fill="#061426" stroke="url(#ring)" stroke-width="13"/>
+  <circle cx="256" cy="256" r="207" fill="none" stroke="#B9E9FF" stroke-opacity=".13" stroke-width="2"/>
+  <path d="M101 137h192v53H160v48h119v51H160v49h133v53H101z" fill="url(#blue)" filter="url(#glow)"/>
+  <path d="M273 137h139v53h-43v201h-57V190h-39z" fill="url(#gold)" filter="url(#glow)"/>
+  <circle cx="256" cy="30" r="5" fill="#28D9FF"/>
+  <circle cx="482" cy="256" r="5" fill="#FFC247"/>
+</svg>
