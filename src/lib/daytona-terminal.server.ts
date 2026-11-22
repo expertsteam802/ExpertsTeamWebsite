@@ -11,13 +11,39 @@ const TERMINAL_PORT = 4175;
 const WORKSPACE_IDLE_MINUTES = 30;
 
 type CliName = "kilo" | "opencode" | "aider";
-type DaytonaSandbox = any;
+type CommandResponse = { result?: string; artifacts?: { stdout?: string }; exitCode?: number };
+type DaytonaSandbox = {
+  name?: string;
+  state?: string;
+  start: (timeout?: number) => Promise<void>;
+  stop: () => Promise<void>;
+  setAutostopInterval?: (interval: number) => Promise<void>;
+  setAutoDeleteInterval?: (interval: number) => Promise<void>;
+  setPublic?: (isPublic: boolean) => Promise<void>;
+  refreshActivity?: () => Promise<void>;
+  getWorkDir?: () => Promise<string>;
+  getPreviewLink: (port: number) => Promise<{ url: string }>;
+  fs: {
+    downloadFile: (filePath: string) => Promise<Buffer>;
+    uploadFile: (file: Buffer, filePath: string) => Promise<void>;
+    uploadFiles: (files: Array<{ destination: string; source: Buffer }>) => Promise<void>;
+  };
+  process: {
+    executeCommand: (script: string, cwd?: string, env?: Record<string, string>, timeout?: number) => Promise<CommandResponse>;
+  };
+};
+type DaytonaApi = {
+  get: (name: string) => Promise<DaytonaSandbox>;
+  list: () => AsyncIterable<DaytonaSandbox>;
+  create: (options: Record<string, unknown>) => Promise<DaytonaSandbox>;
+};
 
+/* eslint-disable no-control-regex */
 function client() {
   const apiKey = process.env.DAYTONA_API_KEY?.trim();
   if (!apiKey) throw new Error("Daytona is not configured. Add DAYTONA_API_KEY to the Vercel server environment.");
   const daytona = new Daytona({ apiKey });
-  return { daytona, api: daytona.v0 as any };
+  return { daytona, api: daytona.v0 as unknown as DaytonaApi };
 }
 
 function shellQuote(value: string) {
@@ -32,14 +58,14 @@ function cleanOutput(value: string) {
     .slice(-30_000);
 }
 
-async function findSandboxByName(api: any, name: string): Promise<DaytonaSandbox | undefined> {
+async function findSandboxByName(api: DaytonaApi, name: string): Promise<DaytonaSandbox | undefined> {
   for await (const sandbox of api.list()) {
     if (sandbox?.name === name) return sandbox;
   }
   return undefined;
 }
 
-async function getOrCreateSandbox(api: any, name: string): Promise<DaytonaSandbox> {
+async function getOrCreateSandbox(api: DaytonaApi, name: string): Promise<DaytonaSandbox> {
   let sandbox = await findSandboxByName(api, name);
 
   if (!sandbox) {

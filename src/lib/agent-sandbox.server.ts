@@ -842,12 +842,13 @@ export async function readCloudProjectFiles(userId: string, sessionName: string)
 export async function runCloudProjectCommand(userId: string, sessionName: string, command: string) {
   if (!command.trim() || command.length > 48_000)
     throw new Error("The agent command is too long.");
+  const safeSessionName = assertTerminalSandboxName(userId, sessionName);
   if (process.env.DAYTONA_API_KEY) {
     const { runDaytonaProjectCommand } = await import("./daytona-terminal.server");
-    return runDaytonaProjectCommand(sessionName, command);
+    return runDaytonaProjectCommand(safeSessionName, command);
   }
 
-  const sandbox = await Sandbox.get({ name: assertTerminalSandboxName(userId, sessionName) });
+  const sandbox = await Sandbox.get({ name: safeSessionName });
   const cwdPath = `${WORKDIR}/.experts-terminal-cwd`;
   const envPath = `${WORKDIR}/.experts-terminal-env`;
   const commandPath = `${WORKDIR}/.experts-terminal-command.sh`;
