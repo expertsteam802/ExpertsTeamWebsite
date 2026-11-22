@@ -409,6 +409,13 @@ export const publishAgentProject = createServerFn({ method: "POST" })
           published: true,
           slug: data.slug,
           deployment_url: result.url,
+          thumbnail_url: (await context.supabase
+            .from("agent_projects")
+            .select("thumbnail_url")
+            .eq("id", data.projectId)
+            .eq("user_id", context.userId)
+            .maybeSingle()).data?.thumbnail_url ??
+            `https://image.thum.io/get/width/1200/crop/675/noanimate/maxAge/24/https://expertsteam.giize.com/apps/${encodeURIComponent(data.slug)}`,
           last_build_status: "success",
           last_build_at: new Date().toISOString(),
         })

@@ -570,16 +570,15 @@ export function ChrisAiChat({
         });
         setRevealingMessageId(savedRow.id);
       } else {
-        setGuestMessages((current) => [
-          ...current,
-          {
-            id: crypto.randomUUID(),
-            role: "ai",
-            content: reply,
-            created_at: new Date().toISOString(),
-            thread_id: activeThreadId,
-          },
-        ]);
+        const guestReply: ChatRow = {
+          id: crypto.randomUUID(),
+          role: "ai",
+          content: reply,
+          created_at: new Date().toISOString(),
+          thread_id: activeThreadId,
+        };
+        setGuestMessages((current) => [...current, guestReply]);
+        setRevealingMessageId(guestReply.id);
         setGuestCredits((current) => {
           const next = Math.max(0, current - 1);
           try {
@@ -731,7 +730,7 @@ export function ChrisAiChat({
 
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden bg-background">
-      <style>{`@keyframes expertai-response-fade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } } .expertai-response-fade { animation: expertai-response-fade 420ms ease-out both; } @media (prefers-reduced-motion: reduce) { .expertai-response-fade { animation: none; } }`}</style>
+      <style>{`@keyframes expertai-response-fade { from { opacity: 0; } to { opacity: 1; } } .expertai-response-fade { animation: expertai-response-fade 1.3s ease-out both; } @media (prefers-reduced-motion: reduce) { .expertai-response-fade { animation: none; } }`}</style>
       {user && !compact && (
         <aside className="hidden w-60 shrink-0 flex-col border-r border-border/70 bg-card/70 md:flex">
           <div className="flex items-center justify-between border-b border-border/70 p-3">

@@ -96,13 +96,12 @@ function ShowcasePage() {
                 className="group flex min-h-52 flex-col justify-between overflow-hidden p-5 transition-colors hover:border-primary/40"
               >
                 <div>
-                  {project.thumbnail_url ? (
-                    <img src={project.thumbnail_url} alt={project.name + " project thumbnail"} loading="lazy" className="mb-4 aspect-video w-full rounded-xl border border-border/60 bg-secondary object-cover" />
-                  ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                      <Code2 className="h-5 w-5" />
-                    </div>
-                  )}
+                  <img
+                    src={project.thumbnail_url || `https://image.thum.io/get/width/1200/crop/675/noanimate/maxAge/24/https://expertsteam.giize.com/apps/${encodeURIComponent(project.slug ?? "")}`}
+                    alt={project.name + " live app preview"}
+                    loading="lazy"
+                    className="mb-4 aspect-video w-full rounded-xl border border-border/60 bg-secondary object-cover"
+                  />
                   <h2 className="mt-5 font-display text-xl font-semibold">{project.name}</h2>
                   <p className="mt-2 text-xs text-muted-foreground">
                     Updated {formatDateOnly(project.updated_at)}
