@@ -309,8 +309,9 @@ export function CodeAgent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [typingMessageIndex, setTypingMessageIndex] = useState<number | null>(null);
   const agentChatEndRef = useRef<HTMLDivElement>(null);
-  const [agentPanelMode, setAgentPanelMode] = useState<"chat" | "terminal">("terminal");
+  const [agentPanelMode, setAgentPanelMode] = useState<"chat" | "terminal">(isAdmin ? "terminal" : "chat");
   const [prompt, setPrompt] = useState("");
+  useEffect(() => { if (!isAdmin) setAgentPanelMode("chat"); }, [isAdmin]);
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
   const referenceInputRef = useRef<HTMLInputElement>(null);
   const projectFileInputRef = useRef<HTMLInputElement>(null);
@@ -495,7 +496,7 @@ export function CodeAgent() {
       setTerminalReady(true);
       setShowConnectionCinematic(false);
       terminal.focus();
-      terminal.writeln("\r\n[Project files restored. Starting a fresh Kilo process.]");
+      terminal.writeln("\r\n[ExpertsTeam Agent workspace restored.]");
       terminal.write("\r\nConnected to your project workspace.\r\n");
       socket.send(
         "\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }),
@@ -1065,6 +1066,7 @@ export function CodeAgent() {
         data: { projectId: activeProjectId, files: nextFiles, username: terminalUsername, cli: selectedCli },
       });
       setTerminalConnection({ ...connection, projectId: activeProjectId, cli: selectedCli });
+      if (!isAdmin) setAgentPanelMode("chat");
       setConnectionProgress(100);
       setShowConnectionCinematic(false);
       setRuntimeStatus("CLI connected");
@@ -2786,8 +2788,8 @@ export function CodeAgent() {
                     <Sparkles className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-white">Agent Builder CLI</p>
-                    <p className="text-[10px] text-slate-500">CLI workspace · project builder</p>
+                    <p className="text-sm font-semibold text-white">{isAdmin ? "ExpertsTeam Agent Console" : "ExpertsTeam Agent"}</p>
+                    <p className="text-[10px] text-slate-500">{isAdmin ? "Private engine console · project builder" : "AI-powered project builder"}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -2798,7 +2800,7 @@ export function CodeAgent() {
                 <div className="flex min-w-0 items-center gap-2 text-[10px] text-slate-400">
                   <span className="max-w-[150px] truncate">{name}</span>
                   <span className="text-slate-600">·</span>
-                  <span className="text-cyan-200">Agent terminal</span>
+                  <span className="text-cyan-200">{isAdmin ? "Private engine terminal" : "ExpertsTeam workspace"}</span>
                 </div>
                 <span className={`rounded-full border px-2 py-1 text-[9px] font-semibold ${CLOUD_SANDBOX_ENABLED ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200" : "border-amber-400/20 bg-amber-400/10 text-amber-200"}`}>
                   {CLOUD_SANDBOX_ENABLED ? (terminalReady ? "Connected" : "Not connected") : "Temporarily unavailable"}
@@ -2811,7 +2813,7 @@ export function CodeAgent() {
                       <div className="flex h-full min-h-[220px] flex-col items-center justify-center px-5 text-center">
                         <div className="mb-4 grid h-12 w-12 place-items-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10 text-cyan-200"><Sparkles className="h-6 w-6" /></div>
                         <p className="text-sm font-semibold text-white">What should we build?</p>
-                        <p className="mt-2 max-w-xs text-xs leading-5 text-slate-500">Describe a feature, fix, or complete app. ExpertsAI Agent will work directly with your project files.</p>
+                        <p className="mt-2 max-w-xs text-xs leading-5 text-slate-500">Describe a feature, fix, or complete app. ExpertsTeam Agent will work directly with your project files.</p>
                         <div className="mt-4 flex flex-wrap justify-center gap-2">
                           {suggestions.map((item) => <button key={item} type="button" onClick={() => setPrompt(item)} className="rounded-full border border-white/10 px-3 py-2 text-[10px] text-slate-300 transition hover:border-cyan-300/30 hover:bg-cyan-300/10">{item}</button>)}
                         </div>
@@ -2824,7 +2826,7 @@ export function CodeAgent() {
                           }}
                           className={`max-w-[94%] rounded-2xl px-3.5 py-3 text-xs leading-6 ${message.role === "user" ? "rounded-br-md bg-cyan-400/15 text-cyan-50" : "rounded-bl-md border border-white/[0.07] bg-white/[0.035] text-slate-200"} ${message.role === "assistant" && typingMessageIndex === index ? "et-agent-answer-reveal" : ""}`}
                         >
-                          <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-slate-500">{message.role === "user" ? "You" : "ExpertsAI Agent"}</div>
+                          <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-slate-500">{message.role === "user" ? "You" : "ExpertsTeam Agent"}</div>
                           <p className="whitespace-pre-wrap break-words">{message.content}</p>
                         </div>
                       </div>
@@ -2835,7 +2837,7 @@ export function CodeAgent() {
                   {referenceImages.length > 0 && <div className="flex shrink-0 flex-wrap gap-2 border-t border-white/[0.06] px-3 pt-2">{referenceImages.map((image) => <span key={image.name} className="rounded-md bg-white/5 px-2 py-1 text-[10px] text-slate-300">{image.name}</span>)}</div>}
                   <div className="shrink-0 border-t border-white/[0.08] bg-[#0a1422] p-3">
                     <div className="rounded-2xl border border-white/10 bg-[#0c1727] p-2 focus-within:border-cyan-400/40">
-                      <Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendPrompt(); } }} placeholder="Ask ExpertsAI Agent to build or change something…" className="min-h-[76px] resize-none border-0 bg-transparent text-xs text-white shadow-none focus-visible:ring-0" disabled={busy} />
+                      <Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendPrompt(); } }} placeholder="Ask ExpertsTeam Agent to build or change something…" className="min-h-[76px] resize-none border-0 bg-transparent text-xs text-white shadow-none focus-visible:ring-0" disabled={busy} />
                       <div className="flex items-center justify-between gap-2 px-1 pt-2">
                         <div className="flex items-center gap-1">
                           <input ref={referenceInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={(event) => { void attachReferenceImages(event.target.files); event.currentTarget.value = ""; }} />
