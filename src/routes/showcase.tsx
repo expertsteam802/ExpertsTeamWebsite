@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowUpRight, Code2, Rocket } from "lucide-react";
+import { ArrowUpRight, Rocket } from "lucide-react";
 
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
