@@ -309,9 +309,8 @@ export function CodeAgent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [typingMessageIndex, setTypingMessageIndex] = useState<number | null>(null);
   const agentChatEndRef = useRef<HTMLDivElement>(null);
-  const [agentPanelMode, setAgentPanelMode] = useState<"chat" | "terminal">(isAdmin ? "terminal" : "chat");
+  const [agentPanelMode, setAgentPanelMode] = useState<"chat" | "terminal">("terminal");
   const [prompt, setPrompt] = useState("");
-  useEffect(() => { if (!isAdmin) setAgentPanelMode("chat"); }, [isAdmin]);
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
   const referenceInputRef = useRef<HTMLInputElement>(null);
   const projectFileInputRef = useRef<HTMLInputElement>(null);
@@ -1066,7 +1065,6 @@ export function CodeAgent() {
         data: { projectId: activeProjectId, files: nextFiles, username: terminalUsername, cli: selectedCli },
       });
       setTerminalConnection({ ...connection, projectId: activeProjectId, cli: selectedCli });
-      if (!isAdmin) setAgentPanelMode("chat");
       setConnectionProgress(100);
       setShowConnectionCinematic(false);
       setRuntimeStatus("CLI connected");
