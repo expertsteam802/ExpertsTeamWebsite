@@ -2786,8 +2786,8 @@ export function CodeAgent() {
                     <Sparkles className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-white">{isAdmin ? "ExpertsTeam Agent Console" : "ExpertsTeam Agent"}</p>
-                    <p className="text-[10px] text-slate-500">{isAdmin ? "Private engine console · project builder" : "AI-powered project builder"}</p>
+                    <p className="text-sm font-semibold text-white">{isAdmin ? "ExpertsTeam Agent Studio" : "ExpertsTeam Agent"}</p>
+                    <p className="text-[10px] text-slate-500">{isAdmin ? "Workspace controls · project builder" : "AI-powered project builder"}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -2798,7 +2798,7 @@ export function CodeAgent() {
                 <div className="flex min-w-0 items-center gap-2 text-[10px] text-slate-400">
                   <span className="max-w-[150px] truncate">{name}</span>
                   <span className="text-slate-600">·</span>
-                  <span className="text-cyan-200">{isAdmin ? "Private engine terminal" : "ExpertsTeam workspace"}</span>
+                  <span className="text-cyan-200">{"ExpertsTeam workspace terminal"}</span>
                 </div>
                 <span className={`rounded-full border px-2 py-1 text-[9px] font-semibold ${CLOUD_SANDBOX_ENABLED ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200" : "border-amber-400/20 bg-amber-400/10 text-amber-200"}`}>
                   {CLOUD_SANDBOX_ENABLED ? (terminalReady ? "Connected" : "Not connected") : "Temporarily unavailable"}
