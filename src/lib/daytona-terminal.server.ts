@@ -63,6 +63,20 @@ function cleanOutput(value: string) {
     .slice(-30_000);
 }
 
+export function daytonaTerminalSandboxName(userId: string) {
+  const owner = createHash("sha256").update(userId).digest("hex").slice(0, 12);
+  return "experts-terminal-" + owner;
+}
+export function assertDaytonaTerminalSandboxName(userId: string, name: string) {
+  const stable = daytonaTerminalSandboxName(userId);
+  const owner = createHash("sha256").update(userId).digest("hex").slice(0, 12);
+  const legacyPrefix = "experts-terminal-" + owner + "-";
+  const legacyId = name.startsWith(legacyPrefix) ? name.slice(legacyPrefix.length) : "";
+  const isLegacy = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(legacyId);
+  if (name !== stable && !isLegacy) throw new Error("This terminal session does not belong to the signed-in account.");
+  return name;
+}
+
 async function findSandboxByName(api: DaytonaApi, name: string): Promise<DaytonaSandbox | undefined> {
   for await (const sandbox of api.list()) {
     if (sandbox?.name === name) return sandbox;

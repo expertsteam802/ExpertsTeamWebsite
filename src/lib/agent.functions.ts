@@ -334,8 +334,8 @@ export const startAgentTerminal = createServerFn({ method: "POST" })
       ? terminal.defaultCli : enabledClis[0];
     const cli = data.cli ?? defaultCli;
     if (!enabledClis.includes(cli)) throw new Error("This coding CLI is not enabled by the administrator.");
-    const { startCloudProjectTerminal } = await import("./agent-sandbox.server");
-    return startCloudProjectTerminal(context.userId, data.files, data.username ?? "ExpertsTeam", cli as "kilo" | "opencode" | "aider");
+    const { daytonaTerminalSandboxName, startDaytonaProjectTerminal } = await import("./daytona-terminal.server");
+    return startDaytonaProjectTerminal(daytonaTerminalSandboxName(context.userId), data.files, data.username ?? "ExpertsTeam", cli as "kilo" | "opencode" | "aider");
   });
 
 const publishRequest = z
@@ -355,8 +355,8 @@ export const stopAgentTerminal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => z.object({ sandboxName: z.string().min(20).max(80) }).parse(input))
   .handler(async ({ data, context }) => {
-    const { stopCloudProjectTerminal } = await import("./agent-sandbox.server");
-    return stopCloudProjectTerminal(context.userId, data.sandboxName);
+    const { assertDaytonaTerminalSandboxName, stopDaytonaProjectTerminal } = await import("./daytona-terminal.server");
+    return stopDaytonaProjectTerminal(assertDaytonaTerminalSandboxName(context.userId, data.sandboxName));
   });
 
 export const syncAgentTerminalFiles = createServerFn({ method: "POST" })
@@ -366,8 +366,8 @@ export const syncAgentTerminalFiles = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
-    const { readCloudProjectFiles } = await import("./agent-sandbox.server");
-    return readCloudProjectFiles(context.userId, data.sandboxName);
+    const { assertDaytonaTerminalSandboxName, readDaytonaProjectFiles } = await import("./daytona-terminal.server");
+    return readDaytonaProjectFiles(assertDaytonaTerminalSandboxName(context.userId, data.sandboxName));
   });
 
 export const refreshAgentTerminal = createServerFn({ method: "POST" })
@@ -377,8 +377,8 @@ export const refreshAgentTerminal = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
-    const { refreshCloudProjectTerminal } = await import("./agent-sandbox.server");
-    return refreshCloudProjectTerminal(context.userId, data.sandboxName);
+    const { assertDaytonaTerminalSandboxName, refreshDaytonaProjectTerminal } = await import("./daytona-terminal.server");
+    return refreshDaytonaProjectTerminal(assertDaytonaTerminalSandboxName(context.userId, data.sandboxName));
   });
 
 export const publishAgentProject = createServerFn({ method: "POST" })
@@ -454,8 +454,8 @@ export const runAgentTerminalCommand = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
-    const { runCloudProjectCommand } = await import("./agent-sandbox.server");
-    return runCloudProjectCommand(context.userId, data.sandboxName, data.command);
+    const { assertDaytonaTerminalSandboxName, runDaytonaProjectCommand } = await import("./daytona-terminal.server");
+    return runDaytonaProjectCommand(assertDaytonaTerminalSandboxName(context.userId, data.sandboxName), data.command);
   });
 
 export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
@@ -490,13 +490,14 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
       "runuser -u experts-shell -- env HOME=/home/experts-shell USER=experts-shell LOGNAME=experts-shell " +
       "PATH=/home/experts-shell/.local/bin:/home/experts-shell/.cargo/bin:/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin " +
       cliCommand;
-    const { runCloudProjectCommand, readCloudProjectFiles } = await import("./agent-sandbox.server");
-    const result = await runCloudProjectCommand(context.userId, data.sandboxName, command);
+    const { assertDaytonaTerminalSandboxName, runDaytonaProjectCommand, readDaytonaProjectFiles } = await import("./daytona-terminal.server");
+    const terminalName = assertDaytonaTerminalSandboxName(context.userId, data.sandboxName);
+    const result = await runDaytonaProjectCommand(terminalName, command);
     if (result.exitCode !== 0) {
       const detail = result.stderr || result.stdout || "The coding CLI exited without an error message.";
       throw new Error(detail.slice(-6000));
     }
-    const files = await readCloudProjectFiles(context.userId, data.sandboxName);
+    const files = await readDaytonaProjectFiles(terminalName);
     if (!isAdmin) {
       const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
       if (creditError) throw new Error(creditError.message);
