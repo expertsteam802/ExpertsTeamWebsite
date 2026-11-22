@@ -598,7 +598,12 @@ export async function startDaytonaProjectTerminal(
         read: { "*": "allow", "*.env": "deny", "*.env.*": "deny", "**/.env": "deny", "**/.env.*": "deny" },
         edit: { "*": "allow", "*.env": "deny", "*.env.*": "deny", "**/.env": "deny", "**/.env.*": "deny" },
         glob: "allow", grep: "allow", list: "allow", task: "allow", skill: "allow", lsp: "allow",
-        todoread: "allow", todowrite: "allow", external_directory: "deny", bash: "ask", doom_loop: "ask",
+        todoread: "allow", todowrite: "allow",
+        // Let the coding agent fetch user-provided URLs and run project setup/build commands
+        // directly inside its isolated Daytona workspace without asking for every command.
+        webfetch: "allow", websearch: "allow", bash: "allow",
+        // Keep access outside the project workspace blocked; project files remain writable.
+        external_directory: "deny", doom_loop: "ask",
       },
     };
     await command(sandbox, "mkdir -p " + shellQuote(path.join(install.home, ".config", "kilo")), workdir, undefined, 15);
