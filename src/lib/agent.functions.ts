@@ -395,8 +395,8 @@ export const publishAgentProject = createServerFn({ method: "POST" })
     if (startError) throw new Error("Could not start the app publishing job.");
 
     try {
-      const { publishCloudProject } = await import("./agent-sandbox.server");
-      const result = await publishCloudProject(
+      const { publishDaytonaProject } = await import("./daytona-terminal.server");
+      const result = await publishDaytonaProject(
         data.projectId,
         data.files,
         data.slug,

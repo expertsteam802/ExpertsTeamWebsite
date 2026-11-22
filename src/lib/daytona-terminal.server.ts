@@ -1,6 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 import { posix as path } from "node:path";
 import { Daytona } from "@daytona/sdk";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
 export type AgentProjectFiles = Record<string, string>;
 
@@ -349,6 +351,166 @@ export async function stopDaytonaProjectPreview(projectId: string) {
   if (!sandbox) return { stopped: true };
   if (!["stopped", "archived"].includes(String(sandbox.state ?? "").toLowerCase())) await sandbox.stop();
   return { stopped: true };
+}
+
+
+function publishableFile(filePath: string) {
+  const parts = filePath.replace(/\\\\/g, "/").split("/");
+  const filename = parts.at(-1) ?? "";
+  return !parts.some((part) => ["node_modules", ".git", ".vercel"].includes(part)) &&
+    !/^\\.env(?:\\.|$)/i.test(filename) &&
+    !/^(?:id_rsa|id_ed25519|credentials?|secrets?)(?:\\.|$)/i.test(filename) &&
+    !/\\.(?:pem|key|p12|pfx)$/i.test(filename);
+}
+function publishMime(filePath: string) {
+  const ext = filePath.split(".").pop()?.toLowerCase();
+  const types: Record<string, string> = {
+    html:"text/html; charset=utf-8", css:"text/css; charset=utf-8", js:"text/javascript; charset=utf-8",
+    mjs:"text/javascript; charset=utf-8", cjs:"text/javascript; charset=utf-8", json:"application/json; charset=utf-8",
+    map:"application/json; charset=utf-8", svg:"image/svg+xml", png:"image/png", jpg:"image/jpeg", jpeg:"image/jpeg",
+    webp:"image/webp", gif:"image/gif", ico:"image/x-icon", woff:"font/woff", woff2:"font/woff2",
+    ttf:"font/ttf", otf:"font/otf", wasm:"application/wasm", txt:"text/plain; charset=utf-8", xml:"application/xml",
+  };
+  return types[ext ?? ""] ?? "application/octet-stream";
+}
+export async function publishDaytonaProject(
+  projectId: string,
+  sourceFiles: AgentProjectFiles,
+  slug: string,
+  userId: string,
+  storageClient: SupabaseClient<Database>,
+) {
+  if (!/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(slug)) throw new Error("The public app address is invalid.");
+  const entries = Object.entries(sourceFiles);
+  if (!entries.length || entries.length > 2_000 || entries.some(([filePath]) => !safePreviewPath(filePath)))
+    throw new Error("The project contains invalid or oversized files.");
+  const { api } = client();
+  const name = previewSandboxName(projectId);
+  let stage = "connecting to Daytona";
+  try {
+    const sandbox = await getOrCreateSandbox(api, name);
+    const workdir = await workspacePath(sandbox);
+    stage = "syncing project files";
+    await command(sandbox, "mkdir -p " + shellQuote(workdir), workdir, undefined, 20);
+    const oldText = await readText(sandbox, path.join(workdir, PREVIEW_META_FILE));
+    let oldManifest: Record<string, string> = {};
+    try { oldManifest = oldText ? JSON.parse(oldText) as Record<string, string> : {}; } catch { oldManifest = {}; }
+    const nextManifest = Object.fromEntries(entries.map(([filePath, content]) => [filePath, createHash("sha256").update(content).digest("hex")]));
+    const removed = Object.keys(oldManifest).filter((filePath) => !(filePath in sourceFiles));
+    if (removed.length) await command(sandbox, "rm -rf -- " + removed.map((filePath) => shellQuote(path.join(workdir, filePath))).join(" "), workdir, undefined, 45);
+    const changed = entries.filter(([filePath]) => oldManifest[filePath] !== nextManifest[filePath]);
+    if (changed.length) {
+      const dirs = [...new Set(changed.map(([filePath]) => path.dirname(path.join(workdir, filePath))))];
+      await command(sandbox, "mkdir -p " + dirs.map(shellQuote).join(" "), workdir, undefined, 30);
+      await uploadFiles(sandbox, changed.map(([filePath, content]) => ({ destination: path.join(workdir, filePath), source: Buffer.from(content, "utf8") })));
+    }
+    await sandbox.fs.uploadFile(Buffer.from(JSON.stringify(nextManifest), "utf8"), path.join(workdir, PREVIEW_META_FILE));
+
+    let pkg: Record<string, unknown> = {};
+    try { pkg = JSON.parse(sourceFiles["package.json"] ?? "{}") as Record<string, unknown>; }
+    catch { throw new Error("package.json contains invalid JSON. Fix it before publishing."); }
+    const scripts = pkg.scripts && typeof pkg.scripts === "object" ? pkg.scripts as Record<string, string> : {};
+    const buildScript = typeof scripts.build === "string" ? scripts.build : "";
+    let outputFiles: Array<{ path: string; content: Buffer }> = [];
+
+    if (buildScript) {
+      stage = "installing production dependencies";
+      const install = sourceFiles["pnpm-lock.yaml"] ? "pnpm install --no-frozen-lockfile"
+        : sourceFiles["yarn.lock"] ? "corepack yarn install --non-interactive"
+        : sourceFiles["bun.lock"] || sourceFiles["bun.lockb"] ? "bun install"
+        : "npm install --no-audit --no-fund";
+      await command(sandbox, install, workdir, undefined, 300);
+      stage = "building the production app";
+      const buildEnv = /vite/i.test(buildScript) ? { BASE_URL: "./" } : {};
+      await command(sandbox, "npm run build", workdir, buildEnv, 600);
+
+      stage = "collecting build output";
+      const candidates = [".output/public", "dist", "build", "out", "dist/client", "build/client", ".svelte-kit/output/client", "public", "www"];
+      let outputDirectory = "";
+      for (const candidate of candidates) {
+        const found = await command(sandbox, "test -f " + shellQuote(path.join(workdir, candidate, "index.html")) + " && echo yes || true", workdir, undefined, 10);
+        if (found.trim() === "yes") { outputDirectory = candidate; break; }
+      }
+      if (!outputDirectory) {
+        const nested = await command(sandbox, "find dist -type f -name index.html -print -quit 2>/dev/null || true", workdir, undefined, 15);
+        if (nested.trim()) outputDirectory = path.dirname(nested.trim().replace(/^\\.\\//, ""));
+      }
+      if (!outputDirectory) {
+        throw new Error("The build finished, but no static index.html was found. Configure a static/export build adapter before publishing. Server-rendered apps need a server-hosting target.");
+      }
+      const listing = await command(sandbox, "find " + shellQuote(path.join(workdir, outputDirectory)) + " -type f -print", workdir, undefined, 30);
+      const outputPaths = listing.split("\\n").map((value) => value.trim())
+        .filter((value) => value.startsWith(path.join(workdir, outputDirectory) + "/"))
+        .map((value) => value.slice(path.join(workdir, outputDirectory).length + 1))
+        .filter(publishableFile);
+      if (!outputPaths.length || outputPaths.length > 500) throw new Error("The build must contain between 1 and 500 publishable files.");
+      let totalBytes = 0;
+      for (const relativePath of outputPaths) {
+        const buffer = await sandbox.fs.downloadFile(path.join(workdir, outputDirectory, relativePath));
+        totalBytes += buffer.byteLength;
+        if (buffer.byteLength > 10_000_000 || totalBytes > 40_000_000)
+          throw new Error("The published build is too large (maximum 40 MB total, 10 MB per file).");
+        outputFiles.push({ path: relativePath, content: buffer });
+      }
+    } else {
+      if (!sourceFiles["index.html"]) throw new Error("Add an index.html file or a package.json build script before publishing.");
+      outputFiles = entries.filter(([filePath]) => publishableFile(filePath))
+        .map(([filePath, content]) => ({ path: filePath, content: Buffer.from(content, "utf8") }));
+    }
+
+    if (!outputFiles.some((file) => file.path === "index.html")) throw new Error("The production build does not contain index.html.");
+    const entry = outputFiles.find((file) => file.path === "index.html");
+    if (entry) {
+      let html = entry.content.toString("utf8");
+      if (!/<link\\b[^>]*rel=["'][^"']*icon/i.test(html)) {
+        const icon = '<link rel="icon" type="image/png" href="https://expertsteam.giize.com/logo.svg?v=20261121-3">';
+        html = /<\\/head>/i.test(html) ? html.replace(/<\\/head>/i, icon + "</head>") : html;
+      }
+      if (!/<meta\\b[^>]*name=["']application-name["']/i.test(html))
+        html = html.replace(/<\\/head>/i, '<meta name="application-name" content="ExpertsTeam"></head>');
+      entry.content = Buffer.from(html, "utf8");
+    }
+
+    stage = "uploading the published app to Supabase";
+    const releaseId = crypto.randomUUID();
+    const prefix = userId + "/" + slug + "/" + releaseId;
+    for (let offset = 0; offset < outputFiles.length; offset += 8) {
+      await Promise.all(outputFiles.slice(offset, offset + 8).map(async (file) => {
+        const { error } = await storageClient.storage.from("published-apps").upload(
+          prefix + "/" + file.path, file.content,
+          { contentType: publishMime(file.path), cacheControl: "31536000", upsert: false },
+        );
+        if (error) throw new Error("Could not publish " + file.path + ": " + error.message);
+      }));
+    }
+    const { data } = storageClient.storage.from("published-apps").getPublicUrl(prefix + "/index.html");
+    const publicUrl = data.publicUrl;
+    if (!publicUrl) throw new Error("The publishing service did not return a public app URL.");
+    stage = "verifying the published entry page";
+    let html = "";
+    let lastError = "No response from Supabase Storage.";
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const response = await fetch(publicUrl, { cache: "no-store", signal: AbortSignal.timeout(8000) });
+        if (response.ok) {
+          const contentType = response.headers.get("content-type") ?? "";
+          if (!/^(?:text\\/html|text\\/plain)(?:;|$)/i.test(contentType)) lastError = "The entry point did not return an HTML-compatible content type.";
+          else {
+            const body = await response.text();
+            const normalized = body.replace(/^\\uFEFF/, "").trimStart().toLowerCase();
+            if (normalized.startsWith("<!doctype html") || normalized.startsWith("<html")) { html = body; break; }
+            lastError = "The published entry point is not a valid HTML document.";
+          }
+        } else lastError = "Supabase returned HTTP " + response.status + ".";
+      } catch (error) { lastError = error instanceof Error ? error.message : lastError; }
+      if (attempt < 4) await new Promise((resolve) => setTimeout(resolve, (attempt + 1) * 1000));
+    }
+    if (!html) throw new Error("The files uploaded, but the public entry point failed verification: " + lastError);
+    return { url: publicUrl, slug, releaseId, fileCount: outputFiles.length };
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error("Daytona publishing failed while " + stage + ": " + detail);
+  }
 }
 
 export async function startDaytonaProjectTerminal(
