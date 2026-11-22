@@ -181,6 +181,14 @@ async function ensureCliInstalled(sandbox: DaytonaSandbox, cli: CliName, workdir
   const globalBin = path.join(home, ".npm-global", "bin");
   const localBin = path.join(home, ".local", "bin");
   const pathValue = globalBin + ":" + localBin + ":/usr/local/bin:/usr/bin:/bin";
+  const existing = await command(
+    sandbox,
+    "bash -lc " + shellQuote("export PATH=" + shellQuote(pathValue) + ":$PATH; command -v " + cli + " || true"),
+    workdir,
+    { PATH: pathValue },
+    20,
+  );
+  if (existing.trim()) return { home, globalBin, localBin, pathValue };
 
   if (cli === "aider") {
     const install = [
@@ -282,7 +290,10 @@ export async function startDaytonaProjectTerminal(
     ]);
 
     stage = "installing the terminal WebSocket runtime";
-    await command(sandbox, "npm install --no-audit --no-fund", bridgeDir, { PATH: install.pathValue }, 180);
+    const wsInstalled = await command(sandbox, "test -d node_modules/ws && echo ready || true", bridgeDir, { PATH: install.pathValue }, 15);
+    if (!wsInstalled.trim()) {
+      await command(sandbox, "npm install --no-audit --no-fund", bridgeDir, { PATH: install.pathValue }, 180);
+    }
 
     stage = "starting the interactive terminal bridge";
     const healthScript = "node -e " + shellQuote('fetch("http://127.0.0.1:4175/health").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))');
@@ -336,7 +347,7 @@ export async function startDaytonaProjectTerminal(
     url.pathname = "/terminal";
     url.search = "";
     url.hash = "";
-    return { sandboxName: name, url: url.toString(), token, toolkitStatus: "skipped" as const, cli };
+    return { sandboxName: name, url: url.toString(), token, toolkitStatus: "skipped" as const, cli, provider: "daytona" as const };
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     if (/401|unauthorized|invalid.*api.?key/i.test(detail)) {
@@ -426,4 +437,15 @@ export async function runDaytonaProjectCommand(name: string, commandText: string
     stderr: "",
     cwd: (await readText(sandbox, cwdPath))?.trim() || workdir,
   };
+}
+
+export async function refreshDaytonaProjectTerminal(name: string) {
+  const { api } = client();
+  const sandbox = await findSandboxByName(api, name);
+  if (!sandbox) throw new Error("Your Daytona terminal workspace could not be found.");
+  if (["stopped", "archived"].includes(String(sandbox.state ?? "").toLowerCase())) {
+    await sandbox.start(120);
+  }
+  if (typeof sandbox.refreshActivity === "function") await sandbox.refreshActivity();
+  return { refreshed: true };
 }

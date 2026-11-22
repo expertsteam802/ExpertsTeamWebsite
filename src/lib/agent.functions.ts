@@ -360,6 +360,18 @@ export const stopAgentTerminal = createServerFn({ method: "POST" })
   });
 
 export const syncAgentTerminalFiles = createServerFn({ method: "POST" })
+export const refreshAgentTerminal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z.object({ projectId: z.string().uuid(), sandboxName: z.string().min(20).max(80) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const { refreshCloudProjectTerminal } = await import("./agent-sandbox.server");
+    return refreshCloudProjectTerminal(context.userId, data.sandboxName);
+  });
+
+
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
     z.object({ projectId: z.string().uuid(), sandboxName: z.string().min(20).max(80) }).parse(input),

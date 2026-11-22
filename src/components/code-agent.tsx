@@ -71,6 +71,7 @@ import {
   startAgentTerminal,
   stopAgentTerminal,
   syncAgentTerminalFiles,
+  refreshAgentTerminal,
   startAgentPreview,
   stopAgentPreview,
 } from "@/lib/agent.functions";
@@ -271,6 +272,7 @@ export function CodeAgent() {
   const connectTerminal = useServerFn(startAgentTerminal);
   const stopTerminal = useServerFn(stopAgentTerminal);
   const syncTerminalFiles = useServerFn(syncAgentTerminalFiles);
+  const refreshTerminal = useServerFn(refreshAgentTerminal);
   const stopPreview = useServerFn(stopAgentPreview);
   const { data: terminalIdleTimeoutMinutes = 0 } = useQuery({
     queryKey: ["site-settings", "terminal-idle-timeout"],
@@ -385,6 +387,7 @@ export function CodeAgent() {
     sandboxName: string;
     projectId: string;
     cli: "kilo" | "opencode" | "aider";
+    provider?: "daytona";
   } | null>(null);
   const [fileLanguage, setFileLanguage] = useState<Extension[]>([]);
   const runtimeFilesRef = useRef<ProjectFiles>({});
@@ -684,13 +687,27 @@ export function CodeAgent() {
     };
   }, [stopTerminal, syncTerminalFiles, terminalConnection?.sandboxName, terminalConnection?.projectId, user?.id]);
 
+
+  // Keep the Daytona sandbox's idle timer refreshed while its terminal is open.
+  // If the browser disappears unexpectedly, Daytona still auto-stops the workspace.
+  useEffect(() => {
+    const session = terminalConnection;
+    if (!session || session.provider !== "daytona" || session.projectId !== projectId) return;
+    const heartbeat = window.setInterval(() => {
+      void refreshTerminal({
+        data: { projectId: session.projectId, sandboxName: session.sandboxName },
+      }).catch(() => undefined);
+    }, 5 * 60 * 1000);
+    return () => window.clearInterval(heartbeat);
+  }, [terminalConnection?.sandboxName, terminalConnection?.projectId, terminalConnection?.provider, projectId, refreshTerminal]);
+
   // Rotate the disposable Linux VM before Vercel's 45-minute Hobby limit.
   // Project files are synced first; Kilo starts fresh in the replacement VM.
   // An active CLI process cannot survive a provider VM replacement.
   useEffect(() => {
     const session = terminalConnection;
     const userId = user?.id;
-    if (!session || session.projectId !== projectId || !userId) return;
+    if (!session || session.projectId !== projectId || !userId || session.provider === "daytona") return;
     let cancelled = false;
     let retryTimer: number | undefined;
 

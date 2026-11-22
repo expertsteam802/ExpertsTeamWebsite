@@ -726,6 +726,14 @@ export async function startCloudProjectTerminal(
 }
 
 export async function stopCloudProjectTerminal(userId: string, sessionName: string) {
+export async function refreshCloudProjectTerminal(userId: string, sessionName: string) {
+  const name = assertTerminalSandboxName(userId, sessionName);
+  if (!process.env.DAYTONA_API_KEY) return { refreshed: false };
+  const { refreshDaytonaProjectTerminal } = await import("./daytona-terminal.server");
+  return refreshDaytonaProjectTerminal(name);
+}
+
+
   const name = assertTerminalSandboxName(userId, sessionName);
   if (process.env.DAYTONA_API_KEY) {
     const { stopDaytonaProjectTerminal } = await import("./daytona-terminal.server");
