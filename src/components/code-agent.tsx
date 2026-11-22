@@ -950,7 +950,7 @@ export function CodeAgent() {
     if (!CLOUD_SANDBOX_ENABLED) {
       setAgentPanelMode("terminal");
       setRuntimeStatus("Cloud terminal temporarily unavailable");
-      toast.info("The cloud terminal is temporarily paused because the free Vercel Sandbox quota is exhausted. Your project files and AI chat are still available.");
+      toast.info("The CLI terminal is temporarily paused because the free Vercel Sandbox quota is exhausted. Your Agent Builder files remain saved.");
       return;
     }
     // Reuse the already-running CLI sandbox when the user returns from Agent Chat.
@@ -2706,8 +2706,8 @@ export function CodeAgent() {
                     <Sparkles className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-white">ExpertsAI Agent</p>
-                    <p className="text-[10px] text-slate-500">Expert 1.0 · Coding workspace</p>
+                    <p className="text-sm font-semibold text-white">Agent Builder CLI</p>
+                    <p className="text-[10px] text-slate-500">CLI workspace · project builder</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
