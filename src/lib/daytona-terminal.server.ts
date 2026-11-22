@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { posix as path } from "node:path";
 import { Daytona } from "@daytona/sdk";
 
-import type { AgentProjectFiles } from "./agent-sandbox.server";
+export type AgentProjectFiles = Record<string, string>;
 
 const META_FILE = ".experts-agent-files.json";
 const BRIDGE_DIR = ".experts-terminal-bridge";
@@ -41,7 +41,7 @@ type DaytonaApi = {
 /* eslint-disable no-control-regex */
 function client() {
   const apiKey = process.env.DAYTONA_API_KEY?.trim();
-  if (!apiKey) throw new Error("Daytona is not configured. Add DAYTONA_API_KEY to the Vercel server environment.");
+  if (!apiKey) throw new Error("Daytona is not configured. Add DAYTONA_API_KEY to the server environment.");
   // Pin the stable pre-namespace SDK API used by this adapter. SDK 2.1.x
   // lazily imports its bundled v0 compatibility layer, which currently fails
   // in this server bundle before any sandbox request can be made.
@@ -227,6 +227,121 @@ async function ensureCliInstalled(sandbox: DaytonaSandbox, cli: CliName, workdir
   );
   if (!check.trim()) throw new Error(cli + " installed but its command is not available in the workspace.");
   return { home, globalBin, localBin, pathValue };
+}
+
+
+const PREVIEW_PORT = 5173;
+const PREVIEW_META_FILE = ".experts-preview-files.json";
+function previewSandboxName(projectId: string) {
+  return "experts-preview-" + projectId.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 36);
+}
+function safePreviewPath(filePath: string) {
+  return Boolean(filePath && !filePath.startsWith("/") && !filePath.includes("\\\\") &&
+    !filePath.split("/").some((part) => !part || part === "." || part === "..") &&
+    /^[a-zA-Z0-9_@./-]+$/.test(filePath));
+}
+export async function startDaytonaProjectPreview(projectId: string, sourceFiles: AgentProjectFiles) {
+  const entries = Object.entries(sourceFiles);
+  if (!entries.length) throw new Error("Add project files before starting the preview.");
+  if (entries.length > 2_000 || entries.some(([filePath, content]) => !safePreviewPath(filePath) || content.length > 10_000_000))
+    throw new Error("The project contains invalid or oversized files.");
+  if (entries.reduce((sum, [, content]) => sum + Buffer.byteLength(content), 0) > 25_000_000)
+    throw new Error("The project exceeds the 25 MB preview workspace limit.");
+  const { api } = client();
+  const name = previewSandboxName(projectId);
+  let stage = "connecting to Daytona";
+  try {
+    const sandbox = await getOrCreateSandbox(api, name);
+    const workdir = await workspacePath(sandbox);
+    stage = "syncing project files";
+    await command(sandbox, "mkdir -p " + shellQuote(workdir), workdir, undefined, 20);
+    const oldText = await readText(sandbox, path.join(workdir, PREVIEW_META_FILE));
+    let oldManifest: Record<string, string> = {};
+    try { oldManifest = oldText ? JSON.parse(oldText) as Record<string, string> : {}; } catch { oldManifest = {}; }
+    const nextManifest = Object.fromEntries(entries.map(([filePath, content]) => [filePath, createHash("sha256").update(content).digest("hex")]));
+    const removed = Object.keys(oldManifest).filter((filePath) => !(filePath in sourceFiles));
+    if (removed.length) await command(sandbox, "rm -rf -- " + removed.map((filePath) => shellQuote(path.join(workdir, filePath))).join(" "), workdir, undefined, 45);
+    const changed = entries.filter(([filePath]) => oldManifest[filePath] !== nextManifest[filePath]);
+    if (changed.length) {
+      const dirs = [...new Set(changed.map(([filePath]) => path.dirname(path.join(workdir, filePath))))];
+      await command(sandbox, "mkdir -p " + dirs.map(shellQuote).join(" "), workdir, undefined, 30);
+      await uploadFiles(sandbox, changed.map(([filePath, content]) => ({ destination: path.join(workdir, filePath), source: Buffer.from(content, "utf8") })));
+    }
+    await sandbox.fs.uploadFile(Buffer.from(JSON.stringify(nextManifest), "utf8"), path.join(workdir, PREVIEW_META_FILE));
+    let pkg: Record<string, unknown> = {};
+    try { pkg = JSON.parse(sourceFiles["package.json"] ?? "{}") as Record<string, unknown>; }
+    catch { throw new Error("package.json contains invalid JSON. Fix it before previewing."); }
+    const scripts = pkg.scripts && typeof pkg.scripts === "object" ? pkg.scripts as Record<string, string> : {};
+    const scriptName = scripts.dev ? "dev" : scripts.start ? "start" : "";
+    if (!scriptName) throw new Error("This project has no dev or start script. Add one to package.json.");
+    const script = String(scripts[scriptName] ?? "");
+    const isVite = /vite/i.test(script);
+    const isNext = /next\\s+(dev|start)/i.test(script);
+    const scriptPort = script.match(/--port(?:=|\\s+)(\\d{2,5})/i)?.[1];
+    const sourceText = entries.map(([, content]) => content).join("\\n");
+    const envPort = sourceText.match(/process\\.env\\.PORT\\s*(?:\\|\\||\\?\\?)\\s*(\\d{2,5})/i)?.[1];
+    const port = Number(scriptPort ?? envPort ?? (isVite ? PREVIEW_PORT : 3000));
+    if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("The app's preview port is invalid.");
+    stage = "installing project dependencies";
+    const nodeModules = await command(sandbox, "test -d node_modules && echo yes || echo no", workdir, undefined, 10);
+    if (nodeModules.trim() !== "yes" || changed.some(([filePath]) => filePath === "package.json" || /lock/.test(filePath))) {
+      const install = sourceFiles["pnpm-lock.yaml"] ? "pnpm install --no-frozen-lockfile"
+        : sourceFiles["yarn.lock"] ? "corepack yarn install --non-interactive"
+        : sourceFiles["bun.lock"] || sourceFiles["bun.lockb"] ? "bun install"
+        : "npm install --no-audit --no-fund";
+      await command(sandbox, install, workdir, undefined, 300);
+    }
+    stage = "starting the development server";
+    const link = await sandbox.getPreviewLink(port);
+    const previewUrl = link.url;
+    const host = new URL(previewUrl).hostname;
+    if (isVite) {
+      const configNames = ["vite.config.ts", "vite.config.js", "vite.config.mts", "vite.config.mjs", "vite.config.cts", "vite.config.cjs"];
+      const userConfigName = configNames.find((candidate) => Boolean(sourceFiles[candidate]));
+      const configImport = userConfigName ? 'import userConfig from "./' + userConfigName + '";' : "const userConfig = {};";
+      const config = [
+        'import { mergeConfig } from "vite";', configImport,
+        "const previewHost = " + JSON.stringify(host) + ";",
+        "export default async (environment) => {",
+        ' const base = typeof userConfig === "function" ? await userConfig(environment) : await userConfig;',
+        " const hostConfig = { server: { allowedHosts: [previewHost] }, preview: { allowedHosts: [previewHost] } };",
+        " return Array.isArray(base) ? base.map((entry) => mergeConfig(entry, hostConfig)) : mergeConfig(base ?? {}, hostConfig);",
+        "};",
+      ].join("\\n");
+      await sandbox.fs.uploadFile(Buffer.from(config, "utf8"), path.join(workdir, ".experts-vite-preview.config.ts"));
+    }
+    const extraArgs = isNext ? " -- --hostname 0.0.0.0 --port " + port
+      : isVite ? " -- --host 0.0.0.0 --port " + port + " --strictPort --config .experts-vite-preview.config.ts" : "";
+    const start = "nohup npm run " + scriptName + extraArgs + " > .experts-preview.log 2>&1 < /dev/null & echo $! > .experts-preview.pid";
+    await command(sandbox, "pkill -f " + shellQuote("npm run " + scriptName) + " || true; " + start, workdir,
+      { HOST: "0.0.0.0", PORT: String(port), ...(isVite ? { __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: host } : {}) }, 30);
+    stage = "checking the live preview";
+    let ready = false;
+    let lastError = "The preview server did not respond.";
+    for (let attempt = 0; attempt < 40; attempt++) {
+      try {
+        const response = await fetch(previewUrl, { cache: "no-store", signal: AbortSignal.timeout(2500) });
+        if (response.ok || (response.status >= 300 && response.status < 400)) { ready = true; break; }
+        lastError = "Preview returned HTTP " + response.status + ".";
+      } catch (error) { lastError = error instanceof Error ? error.message : lastError; }
+      await new Promise((resolve) => setTimeout(resolve, 750));
+    }
+    if (!ready) {
+      const logs = await readText(sandbox, path.join(workdir, ".experts-preview.log"));
+      throw new Error(lastError + (logs ? "\\n" + logs.slice(-3500) : ""));
+    }
+    return { url: previewUrl, port, sandboxName: name, installOutput: "", recovered: false, provider: "daytona" as const };
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error("Daytona preview failed while " + stage + ": " + detail);
+  }
+}
+export async function stopDaytonaProjectPreview(projectId: string) {
+  const { api } = client();
+  const sandbox = await findSandboxByName(api, previewSandboxName(projectId));
+  if (!sandbox) return { stopped: true };
+  if (!["stopped", "archived"].includes(String(sandbox.state ?? "").toLowerCase())) await sandbox.stop();
+  return { stopped: true };
 }
 
 export async function startDaytonaProjectTerminal(

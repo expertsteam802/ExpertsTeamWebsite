@@ -292,8 +292,8 @@ export const startAgentPreview = createServerFn({ method: "POST" })
   .validator((input: unknown) => previewRequest.parse(input))
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
-    const { startCloudProjectPreview } = await import("./agent-sandbox.server");
-    return startCloudProjectPreview(data.projectId, data.files);
+    const { startDaytonaProjectPreview } = await import("./daytona-terminal.server");
+    return startDaytonaProjectPreview(data.projectId, data.files);
   });
 
 const terminalStartRequest = z
@@ -509,6 +509,6 @@ export const stopAgentPreview = createServerFn({ method: "POST" })
   .validator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
-    const { stopCloudProjectPreview } = await import("./agent-sandbox.server");
-    return stopCloudProjectPreview(data.projectId);
+    const { stopDaytonaProjectPreview } = await import("./daytona-terminal.server");
+    return stopDaytonaProjectPreview(data.projectId);
   });

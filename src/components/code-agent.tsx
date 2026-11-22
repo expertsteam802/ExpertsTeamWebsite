@@ -783,7 +783,7 @@ export function CodeAgent() {
     };
   }, [terminalConnection?.sandboxName, terminalConnection?.projectId, projectId, user?.id, connectTerminal, syncTerminalFiles, stopTerminal, terminalUsername]);
 
-  // Keep the preview session warm and recover it after Vercel stops an idle sandbox.
+  // Keep the Daytona preview session warm and recover it after an idle stop.
   // The server checks whether the dev server is already healthy, so this does not
   // restart a working preview on every heartbeat.
   useEffect(() => {
@@ -814,7 +814,7 @@ export function CodeAgent() {
             throw lastError instanceof Error
               ? lastError
               : new Error("Preview health check failed.");
-          setRuntimeStatus("Running · Linux sandbox");
+          setRuntimeStatus("Running · Daytona");
           if (result.recovered) {
             setRuntimeUrl(result.url);
             setPreviewKey((value) => value + 1);
@@ -822,7 +822,7 @@ export function CodeAgent() {
               ...current.slice(-199),
               {
                 type: "runtime",
-                message: "Preview automatically recovered after the sandbox stopped.",
+                message: "Preview automatically recovered after Daytona stopped the workspace.",
               },
             ]);
           }
@@ -1143,34 +1143,28 @@ export function CodeAgent() {
   }
 
   async function runProject() {
-    if (!CLOUD_SANDBOX_ENABLED) {
+    const packageManifest = (() => {
+      try { return JSON.parse(files["package.json"] ?? "{}") as { scripts?: Record<string, string> }; }
+      catch { return {}; }
+    })();
+    const hasRuntimeScript = Boolean(packageManifest.scripts?.dev || packageManifest.scripts?.start);
+    const hasHtmlEntry = Boolean(files["index.html"] || Object.keys(files).some((filePath) => filePath.toLowerCase().endsWith(".html")));
+
+    // Plain HTML/CSS/JS runs from srcDoc with no cloud VM or sandbox allocation.
+    if (hasHtmlEntry && !hasRuntimeScript) {
       switchPanel("preview");
       setRuntimeUrl(null);
       setPreviewAddress("");
-      setLogs([]);
+      setRuntimeStatus("Running · browser preview (no cloud VM)");
+      setLogs([{ type: "runtime", message: "HTML, CSS and JavaScript are running directly in your browser. No cloud VM or sandbox quota is used." }]);
       setPreviewKey((current) => current + 1);
-      const hasHtmlEntry = Boolean(
-        files["index.html"] || Object.keys(files).some((path) => path.toLowerCase().endsWith(".html")),
-      );
-      const packageManifest = (() => {
-        try { return JSON.parse(files["package.json"] ?? "{}") as { scripts?: Record<string, string> }; }
-        catch { return {}; }
-      })();
-      const hasNodeApp = Boolean(packageManifest.scripts?.dev || packageManifest.scripts?.start);
-      if (hasHtmlEntry && !hasNodeApp) {
-        setRuntimeStatus("Running · browser preview (no cloud VM)");
-        setLogs([{ type: "runtime", message: "Running HTML, CSS and JavaScript directly in your browser. No cloud sandbox or snapshots are used." }]);
-        toast.success("Browser preview refreshed");
-      } else {
-        setRuntimeStatus("Browser preview · static HTML/CSS/JS only");
-        setLogs([{ type: "info", message: "This project requires a Node.js build/runtime. Cloud execution is temporarily paused; static HTML/CSS/JavaScript projects can run directly in the browser." }]);
-        toast.info("This project needs a Node.js runtime. Static HTML/CSS/JavaScript preview remains available without cloud compute.");
-      }
+      toast.success("Browser preview is running");
       return;
     }
+
     if (runtimeBusy) return;
     setRuntimeBusy(true);
-    setRuntimeStatus("Preparing cloud sandbox…");
+    setRuntimeStatus("Preparing Daytona runtime…");
     switchPanel("preview");
     setLogs([]);
     try {
@@ -1179,14 +1173,12 @@ export function CodeAgent() {
       const result = await startPreview({ data: { projectId: activeProjectId, files } });
       setRuntimeUrl(result.url);
       setPreviewAddress(result.url);
-      setRuntimeStatus("Running · Linux sandbox");
+      setRuntimeStatus("Running · Daytona");
       runtimeFilesRef.current = { ...files };
-      // Preview is independent from the advanced CLI. Opening or running a project
-      // must never start Kilo/OpenCode in a terminal behind the graphical agent.
       if (result.installOutput) setLogs([{ type: "runtime", message: result.installOutput }]);
-      toast.success("Cloud preview is running");
+      toast.success("Daytona preview is running");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "The cloud preview could not start.";
+      const message = error instanceof Error ? error.message : "The Daytona preview could not start.";
       setRuntimeStatus("Could not start");
       setRuntimeUrl(null);
       setLogs((current) => [...current, { type: "error", message }]);
@@ -1219,9 +1211,9 @@ export function CodeAgent() {
       await stopPreview({ data: { projectId } });
       setRuntimeUrl(null);
       setPreviewAddress("");
-      setRuntimeStatus("Stopped · project saved to cloud");
+      setRuntimeStatus("Stopped · project files preserved");
       setTerminalReady(false);
-      toast.success("Cloud preview stopped");
+      toast.success("Preview stopped");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not stop the preview.");
     } finally {
@@ -2531,7 +2523,7 @@ export function CodeAgent() {
                     <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.07] bg-[#0a111d] px-3 py-2">
                       <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Preview URL</span>
                       <input
-                        aria-label="Cloud preview address"
+                        aria-label="Preview address"
                         value={previewAddress || runtimeUrl}
                         onChange={(event) => setPreviewAddress(event.target.value)}
                         onKeyDown={(event) => { if (event.key === "Enter") navigatePreview(); }}
