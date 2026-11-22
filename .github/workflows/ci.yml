@@ -25,7 +25,7 @@ jobs:
           node-version: 22
           cache: npm
       - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
       - name: Format source files
         run: npx prettier --write "src/**/*.{ts,tsx,js,jsx,json,css}" "package.json" "docs/**/*.md" ".github/workflows/*.yml"
       - name: Run tests

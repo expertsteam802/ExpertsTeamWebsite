@@ -80,7 +80,8 @@
     "@codemirror/theme-one-dark": "^6.1.2",
     "@codemirror/language-data": "^6.5.2",
     "@xterm/xterm": "^5.5.0",
-    "@xterm/addon-fit": "^0.10.0"
+    "@xterm/addon-fit": "^0.10.0",
+    "@daytona/sdk": "^2.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",

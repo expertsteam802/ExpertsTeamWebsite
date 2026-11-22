@@ -363,6 +363,11 @@ export async function startCloudProjectTerminal(
   username = "ExpertsTeam",
   cli: "kilo" | "opencode" | "aider" = "kilo",
 ) {
+  if (process.env.DAYTONA_API_KEY) {
+    const { startDaytonaProjectTerminal } = await import("./daytona-terminal.server");
+    return startDaytonaProjectTerminal(terminalSandboxName(userId), sourceFiles, username, cli);
+  }
+
   const files = repairMissingStylesheetImports({ ...sourceFiles });
   validateFiles(files);
   if (Object.keys(files).length === 0) {
@@ -723,6 +728,11 @@ export async function startCloudProjectTerminal(
 
 export async function stopCloudProjectTerminal(userId: string, sessionName: string) {
   const name = assertTerminalSandboxName(userId, sessionName);
+  if (process.env.DAYTONA_API_KEY) {
+    const { stopDaytonaProjectTerminal } = await import("./daytona-terminal.server");
+    return stopDaytonaProjectTerminal(name);
+  }
+
   try {
     await deleteDisposableSandbox(name);
     return { stopped: true, preserved: false };
@@ -735,6 +745,11 @@ export async function stopCloudProjectTerminal(userId: string, sessionName: stri
 
 export async function readCloudProjectFiles(userId: string, sessionName: string) {
   const sandbox = await Sandbox.get({ name: assertTerminalSandboxName(userId, sessionName) });
+  if (process.env.DAYTONA_API_KEY) {
+    const { readDaytonaProjectFiles } = await import("./daytona-terminal.server");
+    return readDaytonaProjectFiles(sessionName);
+  }
+
   const listing = await sandbox.runCommand({
     cmd: "find",
     args: [
@@ -827,6 +842,11 @@ export async function readCloudProjectFiles(userId: string, sessionName: string)
 export async function runCloudProjectCommand(userId: string, sessionName: string, command: string) {
   if (!command.trim() || command.length > 48_000)
     throw new Error("The agent command is too long.");
+  if (process.env.DAYTONA_API_KEY) {
+    const { runDaytonaProjectCommand } = await import("./daytona-terminal.server");
+    return runDaytonaProjectCommand(sessionName, command);
+  }
+
   const sandbox = await Sandbox.get({ name: assertTerminalSandboxName(userId, sessionName) });
   const cwdPath = `${WORKDIR}/.experts-terminal-cwd`;
   const envPath = `${WORKDIR}/.experts-terminal-env`;
