@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { posix as path } from "node:path";
 import { Daytona } from "@daytona/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -421,8 +421,11 @@ export async function publishDaytonaProject(
         : "npm install --no-audit --no-fund";
       await command(sandbox, install, workdir, undefined, 300);
       stage = "building the production app";
-      const buildEnv = /vite/i.test(buildScript) ? { BASE_URL: "./" } : {};
-      await command(sandbox, "npm run build", workdir, buildEnv, 600);
+      const buildCommand = sourceFiles["pnpm-lock.yaml"] ? "pnpm run build -- --base ./"
+        : sourceFiles["yarn.lock"] ? "corepack yarn build --base ./"
+        : sourceFiles["bun.lock"] || sourceFiles["bun.lockb"] ? "bun run build -- --base ./"
+        : /vite/i.test(buildScript) ? "npm run build -- --base ./" : "npm run build";
+      await command(sandbox, buildCommand, workdir, undefined, 600);
 
       stage = "collecting build output";
       const candidates = [".output/public", "dist", "build", "out", "dist/client", "build/client", ".svelte-kit/output/client", "public", "www"];
@@ -472,7 +475,7 @@ export async function publishDaytonaProject(
     }
 
     stage = "uploading the published app to Supabase";
-    const releaseId = crypto.randomUUID();
+    const releaseId = randomUUID();
     const prefix = userId + "/" + slug + "/" + releaseId;
     for (let offset = 0; offset < outputFiles.length; offset += 8) {
       await Promise.all(outputFiles.slice(offset, offset + 8).map(async (file) => {
