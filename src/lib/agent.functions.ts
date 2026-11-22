@@ -458,10 +458,6 @@ export const runAgentTerminalCommand = createServerFn({ method: "POST" })
     return runDaytonaProjectCommand(assertDaytonaTerminalSandboxName(context.userId, data.sandboxName), data.command);
   });
 
-function maskAgentEngineDetails(value: string) {
-  return value.split("Kilo Code").join("ExpertsTeam Agent").split("Kilo").join("ExpertsTeam Agent").split("OpenCode").join("ExpertsTeam Agent").split("Aider").join("ExpertsTeam Agent");
-}
-
 export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
@@ -499,14 +495,14 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
     const result = await runDaytonaProjectCommand(terminalName, command);
     if (result.exitCode !== 0) {
       const detail = result.stderr || result.stdout || "The agent could not complete the request.";
-      throw new Error(maskAgentEngineDetails(detail).slice(-6000));
+      throw new Error(detail.slice(-6000));
     }
     const files = await readDaytonaProjectFiles(terminalName);
     if (!isAdmin) {
       const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
       if (creditError) throw new Error(creditError.message);
     }
-    return { message: maskAgentEngineDetails(result.stdout || "Your project update is complete.").slice(-12000), files: files.files };
+    return { message: (result.stdout || "Your project update is complete.").slice(-12000), files: files.files };
   });
 
 export const stopAgentPreview = createServerFn({ method: "POST" })
