@@ -42,8 +42,11 @@ type DaytonaApi = {
 function client() {
   const apiKey = process.env.DAYTONA_API_KEY?.trim();
   if (!apiKey) throw new Error("Daytona is not configured. Add DAYTONA_API_KEY to the Vercel server environment.");
-  const daytona = new Daytona({ apiKey });
-  return { daytona, api: daytona.v0 as unknown as DaytonaApi };
+  // Pin the stable pre-namespace SDK API used by this adapter. SDK 2.1.x
+  // lazily imports its bundled v0 compatibility layer, which currently fails
+  // in this server bundle before any sandbox request can be made.
+  const api = new Daytona({ apiKey }) as unknown as DaytonaApi;
+  return { api };
 }
 
 function shellQuote(value: string) {
