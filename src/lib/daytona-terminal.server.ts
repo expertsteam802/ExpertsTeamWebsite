@@ -626,6 +626,8 @@ export async function startDaytonaProjectTerminal(
     }
 
     stage = "starting the interactive terminal bridge";
+    // Replace a stale bridge process so newly uploaded bridge code and diagnostics are active.
+    await command(sandbox, "pkill -f '[n]ode server.cjs' 2>/dev/null || true", bridgeDir, undefined, 10);
     const healthScript = "node -e " + shellQuote('fetch("http://127.0.0.1:4175/health").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))');
     let healthy = false;
     try { await command(sandbox, healthScript, bridgeDir, undefined, 10); healthy = true; } catch { healthy = false; }
