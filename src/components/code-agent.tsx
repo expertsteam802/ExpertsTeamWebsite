@@ -101,10 +101,9 @@ type ProjectRow = {
 type Panel = "preview" | "code" | "console" | "terminal";
 
 const CODING_AGENT_UNDER_DEVELOPMENT = false;
-// Vercel Hobby Sandbox has exhausted its included quota. Keep the editor,
-// AI file agent, saved projects and browser HTML preview available without
-// repeatedly starting cloud VMs. Re-enable only after a tested runner is configured.
-const CLOUD_SANDBOX_ENABLED = false;
+// Keep the Agent Builder CLI terminal available. If the configured cloud
+// sandbox provider rejects a new session, surface its real error to the user.
+const CLOUD_SANDBOX_ENABLED = true;
 
 
 async function copyTextToSystemClipboard(value: string) {
