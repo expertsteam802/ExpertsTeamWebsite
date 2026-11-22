@@ -263,14 +263,13 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
 const previewRequest = z
   .object({
     projectId: z.string().uuid(),
-    files: z.record(z.string().max(512), z.string().max(50_000_000)),
+    files: z.record(z.string().max(512), z.string().max(500000)),
   })
   .refine(
     ({ files }) =>
-      Object.keys(files).length <= 2_000 &&
-      Object.values(files).every((value) => value.length <= 50_000_000) &&
-      Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 100_000_000,
-    "The project exceeds the 100 MB preview workspace limit (50 MB per file).",
+      Object.keys(files).length <= 400 &&
+      Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 3_000_000,
+    "The project is too large to preview.",
   );
 
 async function assertProjectOwnership(
@@ -302,14 +301,14 @@ const terminalStartRequest = z
     projectId: z.string().uuid(),
     username: z.string().trim().min(1).max(39).regex(/^[a-zA-Z0-9_-]+$/).optional(),
     cli: z.enum(["kilo", "opencode", "aider"]).optional(),
-    files: z.record(z.string().max(512), z.string().max(50_000_000)),
+    files: z.record(z.string().max(10_000_000)),
   })
   .refine(
     ({ files }) =>
       Object.keys(files).length <= 2_000 &&
-      Object.values(files).every((value) => value.length <= 50_000_000) &&
-      Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 100_000_000,
-    "The project exceeds the 100 MB Linux workspace limit (50 MB per file).",
+      Object.values(files).every((value) => value.length <= 10_000_000) &&
+      Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 25_000_000,
+    "The project exceeds the 25 MB Linux workspace limit.",
   );
 
 export const startAgentTerminal = createServerFn({ method: "POST" })

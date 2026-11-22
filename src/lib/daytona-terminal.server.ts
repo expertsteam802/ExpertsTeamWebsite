@@ -268,10 +268,10 @@ function safePreviewPath(filePath: string) {
 export async function startDaytonaProjectPreview(projectId: string, sourceFiles: AgentProjectFiles) {
   const entries = Object.entries(sourceFiles);
   if (!entries.length) throw new Error("Add project files before starting the preview.");
-  if (entries.length > 2_000 || entries.some(([filePath, content]) => !safePreviewPath(filePath) || content.length > 50_000_000))
+  if (entries.length > 2_000 || entries.some(([filePath, content]) => !safePreviewPath(filePath) || content.length > 10_000_000))
     throw new Error("The project contains invalid or oversized files.");
-  if (entries.reduce((sum, [, content]) => sum + Buffer.byteLength(content), 0) > 100_000_000)
-    throw new Error("The project exceeds the 100 MB preview workspace limit.");
+  if (entries.reduce((sum, [, content]) => sum + Buffer.byteLength(content), 0) > 25_000_000)
+    throw new Error("The project exceeds the 25 MB preview workspace limit.");
   const { api } = client();
   const name = previewSandboxName(projectId);
   let stage = "connecting to Daytona";
@@ -717,8 +717,8 @@ export async function readDaytonaProjectFiles(name: string) {
   for (const filePath of paths) {
     const buffer = await sandbox.fs.downloadFile(path.join(workdir, filePath));
     totalBytes += buffer.byteLength;
-    if (buffer.byteLength > 50_000_000 || totalBytes > 100_000_000) {
-      throw new Error("The project files exceed the 100 MB workspace limit (50 MB per file).");
+    if (buffer.byteLength > 10_000_000 || totalBytes > 25_000_000) {
+      throw new Error("The project files exceed the 25 MB workspace limit.");
     }
     files[filePath] = buffer.toString("utf8");
   }

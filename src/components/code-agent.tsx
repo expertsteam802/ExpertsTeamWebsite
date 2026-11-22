@@ -685,8 +685,9 @@ export function CodeAgent() {
   }, [syncTerminalFiles, terminalConnection?.sandboxName, terminalConnection?.projectId, user?.id]);
 
 
-  // Save generated files incrementally while the coding CLI is still running.
-  // Each snapshot is persisted to the project row as soon as files appear/change.
+  // Persist each generated file separately as soon as it appears or changes
+  // in the Daytona project directory. This is intentionally file-by-file,
+  // not one large upload after the CLI has finished its entire task.
   useEffect(() => {
     const session = terminalConnection;
     if (!busy || !session || session.projectId !== projectId || !user?.id) return;
@@ -700,26 +701,58 @@ export function CodeAgent() {
           data: { projectId: session.projectId, sandboxName: session.sandboxName },
         });
         if (!active) return;
-        if (JSON.stringify(snapshot.files) !== JSON.stringify(terminalRecoveryFilesRef.current)) {
+
+        const persisted: ProjectFiles = { ...terminalRecoveryFilesRef.current };
+        const changedPaths = Object.keys(snapshot.files).filter(
+          (filePath) => persisted[filePath] !== snapshot.files[filePath],
+        );
+        const deletedPaths = Object.keys(persisted).filter(
+          (filePath) => !(filePath in snapshot.files),
+        );
+
+        // Commit each newly written/updated file individually. If a later
+        // write fails, earlier files are already safely stored in the project.
+        for (const filePath of changedPaths) {
+          if (!active) return;
+          const nextFiles: ProjectFiles = {
+            ...persisted,
+            [filePath]: String(snapshot.files[filePath]),
+          };
           const { error } = await supabase
             .from("agent_projects")
-            .update({ files: snapshot.files as unknown as Json, updated_at: new Date().toISOString() })
+            .update({ files: nextFiles as unknown as Json, updated_at: new Date().toISOString() })
             .eq("id", session.projectId)
             .eq("user_id", user.id);
           if (error) throw error;
-          terminalRecoveryFilesRef.current = snapshot.files;
-          if (projectId === session.projectId) {
-            setFiles(snapshot.files);
-            setDirty(false);
-          }
+          Object.assign(persisted, { [filePath]: String(snapshot.files[filePath]) });
+          terminalRecoveryFilesRef.current = { ...persisted };
+        }
+
+        // Mirror deletions one at a time so removed files do not reappear
+        // when the project is reopened.
+        for (const filePath of deletedPaths) {
+          if (!active) return;
+          delete persisted[filePath];
+          const { error } = await supabase
+            .from("agent_projects")
+            .update({ files: { ...persisted } as unknown as Json, updated_at: new Date().toISOString() })
+            .eq("id", session.projectId)
+            .eq("user_id", user.id);
+          if (error) throw error;
+          terminalRecoveryFilesRef.current = { ...persisted };
+        }
+
+        if (active && (changedPaths.length || deletedPaths.length) && projectId === session.projectId) {
+          setFiles({ ...snapshot.files });
+          setDirty(false);
         }
       } catch {
-        // Retry on the next poll if a file is being written or the VM is busy.
+        // Retry on the next poll. Files already committed remain saved.
       } finally {
         saving = false;
       }
     };
-    const timer = window.setInterval(() => void saveSnapshot(), 2200);
+    const timer = window.setInterval(() => void saveSnapshot(), 1200);
     void saveSnapshot();
     return () => {
       active = false;
