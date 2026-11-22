@@ -183,7 +183,14 @@ async function ensureCliInstalled(sandbox: DaytonaSandbox, cli: CliName, workdir
   const home = await command(sandbox, 'printf %s "$HOME"', workdir, undefined, 10);
   const globalBin = path.join(home, ".npm-global", "bin");
   const localBin = path.join(home, ".local", "bin");
-  const pathValue = globalBin + ":" + localBin + ":/usr/local/bin:/usr/bin:/bin";
+  // Keep the image's original PATH: Daytona images may expose npm from a
+  // version-manager directory that is not one of the standard system paths.
+  // Replacing PATH with only the CLI install directories makes later direct
+  // process commands fail with "zsh: command not found: npm".
+  const systemPath = (await command(sandbox, 'printf %s "$PATH"', workdir, undefined, 10)).trim();
+  const pathValue = [globalBin, localBin, systemPath, "/usr/local/bin", "/usr/bin", "/bin"]
+    .filter(Boolean)
+    .join(":");
   const existing = await command(
     sandbox,
     "bash -lc " + shellQuote("export PATH=" + shellQuote(pathValue) + ":$PATH; command -v " + cli + " || true"),
@@ -295,7 +302,8 @@ export async function startDaytonaProjectTerminal(
     stage = "installing the terminal WebSocket runtime";
     const wsInstalled = await command(sandbox, "test -d node_modules/ws && echo ready || true", bridgeDir, { PATH: install.pathValue }, 15);
     if (!wsInstalled.trim()) {
-      await command(sandbox, "npm install --no-audit --no-fund", bridgeDir, { PATH: install.pathValue }, 180);
+      const bridgeInstall = "export PATH=" + shellQuote(install.pathValue) + ":$PATH; npm install --no-audit --no-fund";
+      await command(sandbox, "bash -lc " + shellQuote(bridgeInstall), bridgeDir, { PATH: install.pathValue }, 180);
     }
 
     stage = "starting the interactive terminal bridge";
