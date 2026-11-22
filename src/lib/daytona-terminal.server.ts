@@ -195,10 +195,10 @@ function terminalBridgeSource(workdir: string, bridgeDir: string) {
 function cliPrompt(username: string, cli: CliName) {
   const safeUsername = username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam";
   const launch = cli === "kilo"
-    ? 'command -v kilo >/dev/null 2>&1 && exec kilo || printf "\\nKilo Code is not installed. Reconnect the workspace to repair it.\\n"'
+    ? 'command -v kilo >/dev/null 2>&1 && exec kilo || printf "\\nThe agent runtime is unavailable. Reconnect the workspace to repair it.\\n"'
     : cli === "opencode"
-      ? 'command -v opencode >/dev/null 2>&1 && exec opencode || printf "\\nOpenCode is not installed. Reconnect the workspace to repair it.\\n"'
-      : 'command -v aider >/dev/null 2>&1 && exec aider || printf "\\nAider is not installed. Reconnect the workspace to repair it.\\n"';
+      ? 'command -v opencode >/dev/null 2>&1 && exec opencode || printf "\\nThe agent runtime is unavailable. Reconnect the workspace to repair it.\\n"'
+      : 'command -v aider >/dev/null 2>&1 && exec aider || printf "\\nThe agent runtime is unavailable. Reconnect the workspace to repair it.\\n"';
   const skipEnv = "$" + "{EXPERTS_SKIP_KILO:-0}";
   return "export PS1=" + shellQuote(safeUsername + "@expertsteam:\\w$ ") +
     "\nPROMPT_COMMAND=\nif [ \"" + skipEnv + "\" != \"1\" ]; then\n  " + launch + "\nfi\n";
