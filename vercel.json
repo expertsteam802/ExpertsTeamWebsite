@@ -90,5 +90,6 @@
       "destination": "/logo.svg?v=20261121-3",
       "permanent": true
     }
-  ]
+  ],
+  "installCommand": "npm install --no-audit --no-fund"
 }
