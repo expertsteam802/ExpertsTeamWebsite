@@ -278,10 +278,10 @@ export async function startDaytonaProjectPreview(projectId: string, sourceFiles:
     if (!scriptName) throw new Error("This project has no dev or start script. Add one to package.json.");
     const script = String(scripts[scriptName] ?? "");
     const isVite = /vite/i.test(script);
-    const isNext = /next\\s+(dev|start)/i.test(script);
-    const scriptPort = script.match(/--port(?:=|\\s+)(\\d{2,5})/i)?.[1];
-    const sourceText = entries.map(([, content]) => content).join("\\n");
-    const envPort = sourceText.match(/process\\.env\\.PORT\\s*(?:\\|\\||\\?\\?)\\s*(\\d{2,5})/i)?.[1];
+    const isNext = /next\s+(dev|start)/i.test(script);
+    const scriptPort = script.match(/--port(?:=|\s+)(\d{2,5})/i)?.[1];
+    const sourceText = entries.map(([, content]) => content).join("\n");
+    const envPort = sourceText.match(/process\.env\.PORT\s*(?:\|\||\?\?)\s*(\d{2,5})/i)?.[1];
     const port = Number(scriptPort ?? envPort ?? (isVite ? PREVIEW_PORT : 3000));
     if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("The app's preview port is invalid.");
     stage = "installing project dependencies";
@@ -309,7 +309,7 @@ export async function startDaytonaProjectPreview(projectId: string, sourceFiles:
         " const hostConfig = { server: { allowedHosts: [previewHost] }, preview: { allowedHosts: [previewHost] } };",
         " return Array.isArray(base) ? base.map((entry) => mergeConfig(entry, hostConfig)) : mergeConfig(base ?? {}, hostConfig);",
         "};",
-      ].join("\\n");
+      ].join("\n");
       await sandbox.fs.uploadFile(Buffer.from(config, "utf8"), path.join(workdir, ".experts-vite-preview.config.ts"));
     }
     const extraArgs = isNext ? " -- --hostname 0.0.0.0 --port " + port
@@ -337,7 +337,7 @@ export async function startDaytonaProjectPreview(projectId: string, sourceFiles:
     }
     if (!ready) {
       const logs = await readText(sandbox, path.join(workdir, ".experts-preview.log"));
-      throw new Error(lastError + (logs ? "\\n" + logs.slice(-3500) : ""));
+      throw new Error(lastError + (logs ? "\n" + logs.slice(-3500) : ""));
     }
     return { url: previewUrl, port, sandboxName: name, installOutput: "", recovered: false, provider: "daytona" as const };
   } catch (error) {
@@ -358,9 +358,9 @@ function publishableFile(filePath: string) {
   const parts = filePath.replace(/\\\\/g, "/").split("/");
   const filename = parts.at(-1) ?? "";
   return !parts.some((part) => ["node_modules", ".git", ".vercel"].includes(part)) &&
-    !/^\\.env(?:\\.|$)/i.test(filename) &&
-    !/^(?:id_rsa|id_ed25519|credentials?|secrets?)(?:\\.|$)/i.test(filename) &&
-    !/\\.(?:pem|key|p12|pfx)$/i.test(filename);
+    !/^\.env(?:\.|$)/i.test(filename) &&
+    !/^(?:id_rsa|id_ed25519|credentials?|secrets?)(?:\.|$)/i.test(filename) &&
+    /\.(?:pem|key|p12|pfx)$/i.test(filename);
 }
 function publishMime(filePath: string) {
   const ext = filePath.split(".").pop()?.toLowerCase();
@@ -436,13 +436,13 @@ export async function publishDaytonaProject(
       }
       if (!outputDirectory) {
         const nested = await command(sandbox, "find dist -type f -name index.html -print -quit 2>/dev/null || true", workdir, undefined, 15);
-        if (nested.trim()) outputDirectory = path.dirname(nested.trim().replace(/^\\.\\//, ""));
+        if (nested.trim()) outputDirectory = path.dirname(nested.trim().replace(/^\.\//, ""));
       }
       if (!outputDirectory) {
         throw new Error("The build finished, but no static index.html was found. Configure a static/export build adapter before publishing. Server-rendered apps need a server-hosting target.");
       }
       const listing = await command(sandbox, "find " + shellQuote(path.join(workdir, outputDirectory)) + " -type f -print", workdir, undefined, 30);
-      const outputPaths = listing.split("\\n").map((value) => value.trim())
+      const outputPaths = listing.split("\n").map((value) => value.trim())
         .filter((value) => value.startsWith(path.join(workdir, outputDirectory) + "/"))
         .map((value) => value.slice(path.join(workdir, outputDirectory).length + 1))
         .filter(publishableFile);
@@ -465,12 +465,12 @@ export async function publishDaytonaProject(
     const entry = outputFiles.find((file) => file.path === "index.html");
     if (entry) {
       let html = entry.content.toString("utf8");
-      if (!/<link\\b[^>]*rel=["'][^"']*icon/i.test(html)) {
+      if (!/<link\b[^>]*rel=["'][^"']*icon/i.test(html)) {
         const icon = '<link rel="icon" type="image/png" href="https://expertsteam.giize.com/logo.svg?v=20261121-3">';
-        html = /<\\/head>/i.test(html) ? html.replace(/<\\/head>/i, icon + "</head>") : html;
+        html = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, icon + "</head>") : html;
       }
-      if (!/<meta\\b[^>]*name=["']application-name["']/i.test(html))
-        html = html.replace(/<\\/head>/i, '<meta name="application-name" content="ExpertsTeam"></head>');
+      if (!/<meta\b[^>]*name=["']application-name["']/i.test(html))
+        html = html.replace(/<\/head>/i, '<meta name="application-name" content="ExpertsTeam"></head>');
       entry.content = Buffer.from(html, "utf8");
     }
 
@@ -497,10 +497,10 @@ export async function publishDaytonaProject(
         const response = await fetch(publicUrl, { cache: "no-store", signal: AbortSignal.timeout(8000) });
         if (response.ok) {
           const contentType = response.headers.get("content-type") ?? "";
-          if (!/^(?:text\\/html|text\\/plain)(?:;|$)/i.test(contentType)) lastError = "The entry point did not return an HTML-compatible content type.";
+          if (!/^(?:text\/html|text\/plain)(?:;|$)/i.test(contentType)) lastError = "The entry point did not return an HTML-compatible content type.";
           else {
             const body = await response.text();
-            const normalized = body.replace(/^\\uFEFF/, "").trimStart().toLowerCase();
+            const normalized = body.replace(/^\uFEFF/, "").trimStart().toLowerCase();
             if (normalized.startsWith("<!doctype html") || normalized.startsWith("<html")) { html = body; break; }
             lastError = "The published entry point is not a valid HTML document.";
           }
