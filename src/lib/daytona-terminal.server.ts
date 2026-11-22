@@ -237,7 +237,7 @@ async function ensureCliInstalled(sandbox: DaytonaSandbox, cli: CliName, workdir
       { PATH: pathValue },
       20,
     );
-    const versionMatch = versionOutput.match(/(\\d+)\\.(\\d+)\\.(\\d+)/);
+    const versionMatch = versionOutput.match(/(\d+)\.(\d+)\.(\d+)/);
     const installedVersion = versionMatch
       ? versionMatch.slice(1).map(Number)
       : null;
