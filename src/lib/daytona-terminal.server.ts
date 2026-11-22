@@ -235,7 +235,7 @@ async function ensureCliInstalled(sandbox: DaytonaSandbox, cli: CliName, workdir
       { PATH: pathValue },
       20,
     );
-    if (/\\b7\\.8\\.10\\b/.test(versionOutput)) {
+    if (/\b7\.8\.10\b/.test(versionOutput)) {
       return { home, globalBin, localBin, pathValue };
     }
   }
