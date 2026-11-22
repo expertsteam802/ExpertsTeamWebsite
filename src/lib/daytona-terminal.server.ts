@@ -312,19 +312,26 @@ export async function startDaytonaProjectPreview(projectId: string, sourceFiles:
     }
     const extraArgs = isNext ? " -- --hostname 0.0.0.0 --port " + port
       : isVite ? " -- --host 0.0.0.0 --port " + port + " --strictPort --config .experts-vite-preview.config.ts" : "";
-    const start = "nohup npm run " + scriptName + extraArgs + " > .experts-preview.log 2>&1 < /dev/null & echo $! > .experts-preview.pid";
-    await command(sandbox, "pkill -f " + shellQuote("npm run " + scriptName) + " || true; " + start, workdir,
-      { HOST: "0.0.0.0", PORT: String(port), ...(isVite ? { __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: host } : {}) }, 30);
     stage = "checking the live preview";
     let ready = false;
     let lastError = "The preview server did not respond.";
-    for (let attempt = 0; attempt < 40; attempt++) {
-      try {
-        const response = await fetch(previewUrl, { cache: "no-store", signal: AbortSignal.timeout(2500) });
-        if (response.ok || (response.status >= 300 && response.status < 400)) { ready = true; break; }
-        lastError = "Preview returned HTTP " + response.status + ".";
-      } catch (error) { lastError = error instanceof Error ? error.message : lastError; }
-      await new Promise((resolve) => setTimeout(resolve, 750));
+    try {
+      const existing = await fetch(previewUrl, { cache: "no-store", signal: AbortSignal.timeout(1500) });
+      ready = existing.ok || (existing.status >= 300 && existing.status < 400);
+      if (!ready) lastError = "Preview returned HTTP " + existing.status + ".";
+    } catch { ready = false; }
+    if (!ready) {
+      const start = "nohup npm run " + scriptName + extraArgs + " > .experts-preview.log 2>&1 < /dev/null & echo $! > .experts-preview.pid";
+      await command(sandbox, start, workdir,
+        { HOST: "0.0.0.0", PORT: String(port), ...(isVite ? { __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: host } : {}) }, 30);
+      for (let attempt = 0; attempt < 40; attempt++) {
+        try {
+          const response = await fetch(previewUrl, { cache: "no-store", signal: AbortSignal.timeout(2500) });
+          if (response.ok || (response.status >= 300 && response.status < 400)) { ready = true; break; }
+          lastError = "Preview returned HTTP " + response.status + ".";
+        } catch (error) { lastError = error instanceof Error ? error.message : lastError; }
+        await new Promise((resolve) => setTimeout(resolve, 750));
+      }
     }
     if (!ready) {
       const logs = await readText(sandbox, path.join(workdir, ".experts-preview.log"));
