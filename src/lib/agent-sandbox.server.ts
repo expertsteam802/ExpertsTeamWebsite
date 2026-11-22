@@ -363,15 +363,14 @@ export async function startCloudProjectTerminal(
   username = "ExpertsTeam",
   cli: "kilo" | "opencode" | "aider" = "kilo",
 ) {
-  if (process.env.DAYTONA_API_KEY) {
-    const { startDaytonaProjectTerminal } = await import("./daytona-terminal.server");
-    return startDaytonaProjectTerminal(terminalSandboxName(userId), sourceFiles, username, cli);
-  }
-
   const files = repairMissingStylesheetImports({ ...sourceFiles });
   validateFiles(files);
   if (Object.keys(files).length === 0) {
     throw new Error("Cannot start Kilo with an empty workspace. Reload the saved project files and reconnect.");
+  }
+  if (process.env.DAYTONA_API_KEY) {
+    const { startDaytonaProjectTerminal } = await import("./daytona-terminal.server");
+    return startDaytonaProjectTerminal(terminalSandboxName(userId), files, username, cli);
   }
   const name = terminalSandboxName(userId);
   let stage = "creating the disposable Linux sandbox";
@@ -744,11 +743,12 @@ export async function stopCloudProjectTerminal(userId: string, sessionName: stri
 }
 
 export async function readCloudProjectFiles(userId: string, sessionName: string) {
-  const sandbox = await Sandbox.get({ name: assertTerminalSandboxName(userId, sessionName) });
+  const name = assertTerminalSandboxName(userId, sessionName);
   if (process.env.DAYTONA_API_KEY) {
     const { readDaytonaProjectFiles } = await import("./daytona-terminal.server");
-    return readDaytonaProjectFiles(sessionName);
+    return readDaytonaProjectFiles(name);
   }
+  const sandbox = await Sandbox.get({ name });
 
   const listing = await sandbox.runCommand({
     cmd: "find",

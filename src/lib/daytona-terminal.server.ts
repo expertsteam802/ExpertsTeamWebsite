@@ -32,14 +32,15 @@ function cleanOutput(value: string) {
     .slice(-30_000);
 }
 
-async function getOrCreateSandbox(api: any, name: string): Promise<DaytonaSandbox> {
-  let sandbox: DaytonaSandbox | undefined;
-  try {
-    sandbox = await api.get(name);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (!/not found|404|does not exist/i.test(message)) throw error;
+async function findSandboxByName(api: any, name: string): Promise<DaytonaSandbox | undefined> {
+  for await (const sandbox of api.list()) {
+    if (sandbox?.name === name) return sandbox;
   }
+  return undefined;
+}
+
+async function getOrCreateSandbox(api: any, name: string): Promise<DaytonaSandbox> {
+  let sandbox = await findSandboxByName(api, name);
 
   if (!sandbox) {
     sandbox = await api.create({
@@ -49,10 +50,8 @@ async function getOrCreateSandbox(api: any, name: string): Promise<DaytonaSandbo
       autoStopInterval: WORKSPACE_IDLE_MINUTES,
       autoDeleteInterval: -1,
     });
-  } else if (String(sandbox.state ?? "").toLowerCase() === "stopped") {
+  } else if (["stopped", "archived"].includes(String(sandbox.state ?? "").toLowerCase())) {
     await sandbox.start(120);
-  } else if (String(sandbox.state ?? "").toLowerCase() === "archived") {
-    throw new Error("Your Daytona workspace is archived. Restore it from the Daytona dashboard before reconnecting.");
   }
 
   if (typeof sandbox.setAutostopInterval === "function") await sandbox.setAutostopInterval(WORKSPACE_IDLE_MINUTES);
@@ -247,6 +246,7 @@ export async function startDaytonaProjectTerminal(
         todoread: "allow", todowrite: "allow", external_directory: "deny", bash: "ask", doom_loop: "ask",
       },
     };
+    await command(sandbox, "mkdir -p " + shellQuote(path.join(install.home, ".config", "kilo")), workdir, undefined, 15);
     await uploadFiles(sandbox, [
       { destination: path.join(bridgeDir, "package.json"), source: Buffer.from(JSON.stringify({ private: true, type: "commonjs", dependencies: { ws: "^8.18.3" } }), "utf8") },
       { destination: path.join(bridgeDir, "server.cjs"), source: Buffer.from(terminalBridgeSource(workdir, bridgeDir), "utf8") },
@@ -322,21 +322,17 @@ export async function startDaytonaProjectTerminal(
 
 export async function stopDaytonaProjectTerminal(name: string) {
   const { api } = client();
-  let sandbox: DaytonaSandbox;
-  try { sandbox = await api.get(name); }
-  catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (/not found|404|does not exist/i.test(message)) return { stopped: true, preserved: true };
-    throw error;
-  }
+  const sandbox = await findSandboxByName(api, name);
+  if (!sandbox) return { stopped: true, preserved: true };
   if (String(sandbox.state ?? "").toLowerCase() !== "stopped") await sandbox.stop();
   return { stopped: true, preserved: true };
 }
 
 export async function readDaytonaProjectFiles(name: string) {
   const { api } = client();
-  const sandbox = await api.get(name) as DaytonaSandbox;
-  if (String(sandbox.state ?? "").toLowerCase() === "stopped") await sandbox.start(120);
+  const sandbox = await findSandboxByName(api, name) as DaytonaSandbox | undefined;
+  if (!sandbox) throw new Error("Your saved Daytona workspace could not be found.");
+  if (["stopped", "archived"].includes(String(sandbox.state ?? "").toLowerCase())) await sandbox.start(120);
   const workdir = await workspacePath(sandbox);
   const listing = await command(
     sandbox,
@@ -376,8 +372,9 @@ export async function readDaytonaProjectFiles(name: string) {
 export async function runDaytonaProjectCommand(name: string, commandText: string) {
   if (!commandText.trim() || commandText.length > 48_000) throw new Error("The agent command is too long.");
   const { api } = client();
-  const sandbox = await api.get(name) as DaytonaSandbox;
-  if (String(sandbox.state ?? "").toLowerCase() === "stopped") await sandbox.start(120);
+  const sandbox = await findSandboxByName(api, name) as DaytonaSandbox | undefined;
+  if (!sandbox) throw new Error("Your saved Daytona workspace could not be found.");
+  if (["stopped", "archived"].includes(String(sandbox.state ?? "").toLowerCase())) await sandbox.start(120);
   const workdir = await workspacePath(sandbox);
   const cwdPath = path.join(workdir, ".experts-terminal-cwd");
   const envPath = path.join(workdir, ".experts-terminal-env");
