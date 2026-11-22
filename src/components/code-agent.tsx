@@ -667,8 +667,8 @@ export function CodeAgent() {
         terminalSessionClosingRef.current.delete(session.sandboxName);
         return;
       }
-      // Flush Kilo's workspace into the persistent project record before the
-      // disposable VM is removed (including when Studio itself is closed).
+      // Flush the live workspace when Studio is left, but keep the Daytona
+      // sandbox alive so returning to Studio reconnects to the same files.
       void syncTerminalFiles({
         data: { projectId: session.projectId, sandboxName: session.sandboxName },
       })
@@ -680,13 +680,52 @@ export function CodeAgent() {
             .eq("user_id", user?.id ?? "");
           if (error) throw error;
         })
-        .catch(() => undefined)
-        .finally(() => {
-          void stopTerminal({ data: { sandboxName: session.sandboxName } }).catch(() => undefined);
-        });
+        .catch(() => undefined);
     };
-  }, [stopTerminal, syncTerminalFiles, terminalConnection?.sandboxName, terminalConnection?.projectId, user?.id]);
+  }, [syncTerminalFiles, terminalConnection?.sandboxName, terminalConnection?.projectId, user?.id]);
 
+
+  // Save generated files incrementally while the coding CLI is still running.
+  // Each snapshot is persisted to the project row as soon as files appear/change.
+  useEffect(() => {
+    const session = terminalConnection;
+    if (!busy || !session || session.projectId !== projectId || !user?.id) return;
+    let active = true;
+    let saving = false;
+    const saveSnapshot = async () => {
+      if (!active || saving) return;
+      saving = true;
+      try {
+        const snapshot = await syncTerminalFiles({
+          data: { projectId: session.projectId, sandboxName: session.sandboxName },
+        });
+        if (!active) return;
+        if (JSON.stringify(snapshot.files) !== JSON.stringify(terminalRecoveryFilesRef.current)) {
+          const { error } = await supabase
+            .from("agent_projects")
+            .update({ files: snapshot.files as unknown as Json, updated_at: new Date().toISOString() })
+            .eq("id", session.projectId)
+            .eq("user_id", user.id);
+          if (error) throw error;
+          terminalRecoveryFilesRef.current = snapshot.files;
+          if (projectId === session.projectId) {
+            setFiles(snapshot.files);
+            setDirty(false);
+          }
+        }
+      } catch {
+        // Retry on the next poll if a file is being written or the VM is busy.
+      } finally {
+        saving = false;
+      }
+    };
+    const timer = window.setInterval(() => void saveSnapshot(), 2200);
+    void saveSnapshot();
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [busy, terminalConnection?.sandboxName, terminalConnection?.projectId, projectId, user?.id, syncTerminalFiles]);
 
   // Keep the Daytona sandbox's idle timer refreshed while its terminal is open.
   // If the browser disappears unexpectedly, Daytona still auto-stops the workspace.

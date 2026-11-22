@@ -40,7 +40,10 @@ type UploadedFile = {
   size?: number;
 };
 
-function renderInline(text: string) {
+function renderInline(text: string, animateCharacters = false) {
+  const characterText = (value: string, prefix: string) => animateCharacters
+    ? Array.from(value).map((character, index) => <span key={prefix + "-" + index} className="expertai-character-reveal">{character}</span>)
+    : value;
   const tokenPattern = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g;
   const nodes: React.ReactNode[] = [];
   let cursor = 0;
@@ -50,12 +53,12 @@ function renderInline(text: string) {
   while ((match = tokenPattern.exec(text)) !== null) {
     if (match.index > cursor) {
       const plain = text.slice(cursor, match.index);
-      nodes.push(plain);
+      nodes.push(...characterText(plain, "plain-" + key++));
     }
     const token = match[0];
-    if (token.startsWith("**")) nodes.push(<strong key={key++} className="font-semibold">{token.slice(2, -2)}</strong>);
-    else if (token.startsWith("`")) nodes.push(<code key={key++} className="rounded bg-background/70 px-1 py-0.5 text-[0.9em]">{token.slice(1, -1)}</code>);
-    else if (token.startsWith("*")) nodes.push(<em key={key++}>{token.slice(1, -1)}</em>);
+    if (token.startsWith("**")) nodes.push(<strong key={key++} className="font-semibold">{characterText(token.slice(2, -2), "bold-" + key)}</strong>);
+    else if (token.startsWith("`")) nodes.push(<code key={key++} className="rounded bg-background/70 px-1 py-0.5 text-[0.9em]">{characterText(token.slice(1, -1), "code-" + key)}</code>);
+    else if (token.startsWith("*")) nodes.push(<em key={key++}>{characterText(token.slice(1, -1), "italic-" + key)}</em>);
     else {
       const link = token.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
       nodes.push(link
@@ -66,12 +69,12 @@ function renderInline(text: string) {
   }
   if (cursor < text.length) {
     const plain = text.slice(cursor);
-    nodes.push(plain);
+    nodes.push(...characterText(plain, "plain-" + key++));
   }
   return nodes;
 }
 
-function MessageBody({ content }: { content: string }) {
+function MessageBody({ content, animateCharacters = false }: { content: string; animateCharacters?: boolean }) {
   const parts = content.split(/```/);
   return (
     <div className="space-y-2 text-sm leading-relaxed">
@@ -91,7 +94,7 @@ function MessageBody({ content }: { content: string }) {
         let listType: "ul" | "ol" | null = null;
         const flushParagraph = () => {
           if (paragraph.length) {
-            blocks.push(<p key={`p-${blocks.length}`} className="whitespace-pre-wrap">{renderInline(paragraph.join("\n"))}</p>);
+            blocks.push(<p key={`p-${blocks.length}`} className="whitespace-pre-wrap">{renderInline(paragraph.join("\n"), animateCharacters)}</p>);
             paragraph = [];
           }
         };
@@ -99,7 +102,7 @@ function MessageBody({ content }: { content: string }) {
           if (!listItems.length || !listType) return;
           const List = listType;
           blocks.push(<List key={`l-${blocks.length}`} className={listType === "ul" ? "list-disc" : "list-decimal"} style={{ paddingLeft: "1.35rem" }}>
-            {listItems.map((item, itemIndex) => <li key={itemIndex} className="pl-1">{renderInline(item)}</li>)}
+            {listItems.map((item, itemIndex) => <li key={itemIndex} className="pl-1">{renderInline(item, animateCharacters)}</li>)}
           </List>);
           listItems = [];
           listType = null;
@@ -265,7 +268,6 @@ export function ChrisAiChat({
   );
   const [streamingReply, setStreamingReply] = useState("");
   const [chatLimitUnlocked, setChatLimitUnlocked] = useState(false);
-  const [revealingMessageId, setRevealingMessageId] = useState<string | null>(null);
   const [optimisticMessages, setOptimisticMessages] = useState<ChatRow[]>([]);
   const [guestMessages, setGuestMessages] = useState<ChatRow[]>([]);
   const [guestSessionId] = useState(() => {
@@ -502,6 +504,13 @@ export function ChrisAiChat({
       const decoder = new TextDecoder();
       let buffer = "";
       let streamedText = "";
+      let visibleCharacters = 0;
+      streamUpdateTimerRef.current = window.setInterval(() => {
+        if (visibleCharacters < streamedText.length) {
+          visibleCharacters = Math.min(streamedText.length, visibleCharacters + 1);
+          setStreamingReply(streamedText.slice(0, visibleCharacters));
+        }
+      }, 12);
       const consumeEvent = async (event: string) => {
         const payload = event
           .split(/\r?\n/)
@@ -520,16 +529,7 @@ export function ChrisAiChat({
             ?.filter((part) => !part.thought)
             .map((part) => part.text ?? "")
             .join("") ?? "";
-        if (text) {
-          streamedText += text;
-          // Batch incoming tokens so long replies are not re-rendered for every SSE chunk.
-          if (streamUpdateTimerRef.current === null) {
-            streamUpdateTimerRef.current = setTimeout(() => {
-              streamUpdateTimerRef.current = null;
-              setStreamingReply(streamedText);
-            }, 50);
-          }
-        }
+        if (text) streamedText += text;
       };
       while (true) {
         const { value, done } = await reader.read();
@@ -542,7 +542,7 @@ export function ChrisAiChat({
       buffer += decoder.decode();
       if (buffer.trim()) await consumeEvent(buffer);
       if (streamUpdateTimerRef.current !== null) {
-        clearTimeout(streamUpdateTimerRef.current);
+        window.clearInterval(streamUpdateTimerRef.current);
         streamUpdateTimerRef.current = null;
       }
       setStreamingReply(streamedText);
@@ -568,7 +568,6 @@ export function ChrisAiChat({
           if (existing.some((message) => message.id === savedRow.id)) return existing;
           return [...existing, savedRow].sort((a, b) => a.created_at.localeCompare(b.created_at));
         });
-        setRevealingMessageId(savedRow.id);
       } else {
         const guestReply: ChatRow = {
           id: crypto.randomUUID(),
@@ -578,7 +577,6 @@ export function ChrisAiChat({
           thread_id: activeThreadId,
         };
         setGuestMessages((current) => [...current, guestReply]);
-        setRevealingMessageId(guestReply.id);
         setGuestCredits((current) => {
           const next = Math.max(0, current - 1);
           try {
@@ -603,7 +601,7 @@ export function ChrisAiChat({
     },
     onError: (error: Error) => {
       if (streamUpdateTimerRef.current !== null) {
-        clearTimeout(streamUpdateTimerRef.current);
+        window.clearInterval(streamUpdateTimerRef.current);
         streamUpdateTimerRef.current = null;
       }
       setStreamingReply("");
@@ -730,7 +728,7 @@ export function ChrisAiChat({
 
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden bg-background">
-      <style>{`@keyframes expertai-response-fade { from { opacity: 0; } to { opacity: 1; } } .expertai-response-fade { animation: expertai-response-fade 1.3s ease-out both; } @media (prefers-reduced-motion: reduce) { .expertai-response-fade { animation: none; } }`}</style>
+      <style>{`@keyframes expertai-character-fade { from { opacity: 0; } to { opacity: 1; } } .expertai-character-reveal { animation: expertai-character-fade 180ms ease-out both; } @media (prefers-reduced-motion: reduce) { .expertai-character-reveal { animation: none; } }`}</style>
       {user && !compact && (
         <aside className="hidden w-60 shrink-0 flex-col border-r border-border/70 bg-card/70 md:flex">
           <div className="flex items-center justify-between border-b border-border/70 p-3">
@@ -887,14 +885,11 @@ export function ChrisAiChat({
                 </span>
               )}
               <div
-                onAnimationEnd={() => {
-                  if (revealingMessageId === message.id) setRevealingMessageId(null);
-                }}
                 className={`max-w-[80%] rounded-2xl px-4 py-2 ${
                   message.role === "user"
                     ? "bg-primary text-primary-foreground"
                     : "border border-border bg-secondary"
-                } ${message.role === "ai" && revealingMessageId === message.id ? "expertai-response-fade" : ""}`}
+                }`}
               >
                 <MessageBody content={message.content} />
               </div>
@@ -912,7 +907,7 @@ export function ChrisAiChat({
               </span>
               <div className="max-w-[80%] rounded-2xl border border-border bg-secondary px-4 py-2">
                 {streamingReply ? (
-                  <MessageBody content={streamingReply} />
+                  <MessageBody content={streamingReply} animateCharacters />
                 ) : (
                   <p className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Loader2 className="h-3 w-3 animate-spin" /> ExpertAI is thinking…
