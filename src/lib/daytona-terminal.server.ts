@@ -223,7 +223,34 @@ async function ensureCliInstalled(sandbox: DaytonaSandbox, cli: CliName, workdir
     { PATH: pathValue },
     20,
   );
-  if (existing.trim()) return { home, globalBin, localBin, pathValue };
+  if (existing.trim()) {
+    if (cli !== "kilo") return { home, globalBin, localBin, pathValue };
+
+    // Kilo CLI versions before 7.8.12 could stop a task on retryable
+    // "Connection reset by server" stream errors instead of retrying.
+    // Refresh only outdated/unknown Kilo installs; preserve ~/.config/kilo
+    // so the user's existing Gateway sign-in and settings remain in place.
+    const versionOutput = await command(
+      sandbox,
+      "bash -lc " + shellQuote("export PATH=" + shellQuote(pathValue) + ":$PATH; kilo --version 2>/dev/null || true"),
+      workdir,
+      { PATH: pathValue },
+      20,
+    );
+    const versionMatch = versionOutput.match(/(\\d+)\\.(\\d+)\\.(\\d+)/);
+    const installedVersion = versionMatch
+      ? versionMatch.slice(1).map(Number)
+      : null;
+    const minimumVersion = [7, 8, 12];
+    const isSupported = Boolean(
+      installedVersion &&
+      (installedVersion[0] > minimumVersion[0] ||
+        (installedVersion[0] === minimumVersion[0] &&
+          (installedVersion[1] > minimumVersion[1] ||
+            (installedVersion[1] === minimumVersion[1] && installedVersion[2] >= minimumVersion[2])))),
+    );
+    if (isSupported) return { home, globalBin, localBin, pathValue };
+  }
 
   if (cli === "aider") {
     const install = [
