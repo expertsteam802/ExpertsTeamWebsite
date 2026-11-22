@@ -223,22 +223,10 @@ async function ensureCliInstalled(sandbox: DaytonaSandbox, cli: CliName, workdir
     { PATH: pathValue },
     20,
   );
-  if (existing.trim()) {
-    if (cli !== "kilo") return { home, globalBin, localBin, pathValue };
-
-    // Keep the known pre-retry-release Kilo CLI version pinned while
-    // investigating Gateway connection resets in the newer releases.
-    const versionOutput = await command(
-      sandbox,
-      "bash -lc " + shellQuote("export PATH=" + shellQuote(pathValue) + ":$PATH; kilo --version 2>/dev/null || true"),
-      workdir,
-      { PATH: pathValue },
-      20,
-    );
-    if (/\b7\.8\.10\b/.test(versionOutput)) {
-      return { home, globalBin, localBin, pathValue };
-    }
-  }
+  // Reuse the CLI already present in this Daytona workspace. In particular,
+  // do not downgrade a working Kilo installation: the interactive terminal
+  // and the embedded terminal must run the same workspace-installed binary.
+  if (existing.trim()) return { home, globalBin, localBin, pathValue };
 
   if (cli === "aider") {
     const install = [
@@ -249,7 +237,7 @@ async function ensureCliInstalled(sandbox: DaytonaSandbox, cli: CliName, workdir
     ].join(" && ");
     await command(sandbox, "bash -lc " + shellQuote(install), workdir, { PATH: pathValue }, 300);
   } else {
-    const packageName = cli === "kilo" ? "@kilocode/cli@7.8.10" : "@opencode/cli";
+    const packageName = cli === "kilo" ? "@kilocode/cli" : "@opencode/cli";
     const install = [
       "mkdir -p " + shellQuote(globalBin),
       "npm config set prefix " + shellQuote(path.join(home, ".npm-global")),
