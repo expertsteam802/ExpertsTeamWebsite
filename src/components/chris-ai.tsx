@@ -541,6 +541,11 @@ export function ChrisAiChat({
       }
       buffer += decoder.decode();
       if (buffer.trim()) await consumeEvent(buffer);
+      // Let the typewriter finish revealing every received character before
+      // the final saved message replaces the temporary streaming bubble.
+      while (visibleCharacters < streamedText.length) {
+        await new Promise((resolve) => window.setTimeout(resolve, 12));
+      }
       if (streamUpdateTimerRef.current !== null) {
         window.clearInterval(streamUpdateTimerRef.current);
         streamUpdateTimerRef.current = null;
