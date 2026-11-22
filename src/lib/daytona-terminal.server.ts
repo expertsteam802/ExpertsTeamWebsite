@@ -421,10 +421,11 @@ export async function publishDaytonaProject(
         : "npm install --no-audit --no-fund";
       await command(sandbox, install, workdir, undefined, 300);
       stage = "building the production app";
-      const buildCommand = sourceFiles["pnpm-lock.yaml"] ? "pnpm run build -- --base ./"
-        : sourceFiles["yarn.lock"] ? "corepack yarn build --base ./"
-        : sourceFiles["bun.lock"] || sourceFiles["bun.lockb"] ? "bun run build -- --base ./"
-        : /vite/i.test(buildScript) ? "npm run build -- --base ./" : "npm run build";
+      const baseArgs = /vite/i.test(buildScript) ? " --base ./" : "";
+      const buildCommand = sourceFiles["pnpm-lock.yaml"] ? "pnpm run build" + (baseArgs ? " --" + baseArgs : "")
+        : sourceFiles["yarn.lock"] ? "corepack yarn build" + baseArgs
+        : sourceFiles["bun.lock"] || sourceFiles["bun.lockb"] ? "bun run build" + (baseArgs ? " --" + baseArgs : "")
+        : "npm run build" + (baseArgs ? " --" + baseArgs : "");
       await command(sandbox, buildCommand, workdir, undefined, 600);
 
       stage = "collecting build output";
