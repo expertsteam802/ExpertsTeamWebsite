@@ -621,10 +621,11 @@ export async function startDaytonaProjectTerminal(
     const tokenPath = path.join(workdir, TOKEN_FILE);
     const token = (await readText(sandbox, tokenPath))?.trim() || randomBytes(32).toString("hex");
     const kiloPermissions = {
+      "$schema": "https://app.kilo.ai/config.json",
       permission: {
         read: { "*": "allow", "*.env": "deny", "*.env.*": "deny", "**/.env": "deny", "**/.env.*": "deny" },
         edit: { "*": "allow", "*.env": "deny", "*.env.*": "deny", "**/.env": "deny", "**/.env.*": "deny" },
-        glob: "allow", grep: "allow", list: "allow", task: "allow", skill: "allow", lsp: "allow",
+        glob: "allow", grep: "allow", task: "allow", skill: "allow", lsp: "allow",
         todoread: "allow", todowrite: "allow",
         // Let the coding agent fetch user-provided URLs and run project setup/build commands
         // directly inside its isolated Daytona workspace without asking for every command.
