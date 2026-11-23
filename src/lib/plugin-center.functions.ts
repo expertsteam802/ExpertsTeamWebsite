@@ -4,8 +4,8 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const PROVIDER_ACTIONS: Record<string, string[]> = {
-  github: ["repositories.read", "files.read", "files.write", "branches.create", "commits.create", "pull_requests.read", "pull_requests.create", "issues.read", "issues.create", "repositories.delete", "webhooks.manage"],
-  supabase: ["organizations.read", "projects.read", "schemas.read", "sql.read", "sql.write", "tables.create", "tables.alter", "tables.drop", "auth.read", "auth.manage", "storage.read", "storage.write", "functions.deploy", "projects.delete"],
+  github: ["repositories.read", "files.read", "files.write", "branches.create", "pull_requests.read", "pull_requests.create", "issues.read", "issues.create", "repositories.delete"],
+  supabase: ["organizations.read", "projects.read", "schemas.read", "sql.read", "sql.write", "tables.create", "tables.alter", "tables.drop", "projects.delete"],
   vercel: ["projects.read", "deployments.read", "deployments.create", "domains.manage", "environment.read", "environment.write", "projects.delete"],
   netlify: ["sites.read", "deploys.read", "deploys.create", "environment.read", "environment.write", "sites.delete"],
   stripe: ["products.read", "customers.read", "payments.read", "webhooks.read"],
