@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getPluginCenterData, revokePluginConnection, updatePluginPermissions } from "@/lib/plugin-center.functions";
+import { beginGitHubPluginOAuth, beginSupabasePluginOAuth } from "@/lib/plugin-oauth.functions";
 
 type PluginConnection = {
   id: string;
@@ -85,8 +86,20 @@ export function PluginCenterPanel() {
   const getData = useServerFn(getPluginCenterData);
   const updatePermissions = useServerFn(updatePluginPermissions);
   const revoke = useServerFn(revokePluginConnection);
+  const beginGithub = useServerFn(beginGitHubPluginOAuth);
+  const beginSupabase = useServerFn(beginSupabasePluginOAuth);
   const [expanded, setExpanded] = useState<string | null>(null);
   const query = useQuery({ queryKey: ["plugin-center"], queryFn: () => getData({ data: {} }) });
+  const githubOAuth = useMutation({
+    mutationFn: () => beginGithub({ data: {} }),
+    onSuccess: (result) => window.location.assign(result.url),
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const supabaseOAuth = useMutation({
+    mutationFn: () => beginSupabase({ data: {} }),
+    onSuccess: (result) => window.location.assign(result.url),
+    onError: (error: Error) => toast.error(error.message),
+  });
   const saveMutation = useMutation({
     mutationFn: ({ connectionId, actions }: { connectionId: string; actions: string[] }) => updatePermissions({ data: { connectionId, actions } }),
     onSuccess: () => { toast.success("Plugin permissions updated"); void queryClient.invalidateQueries({ queryKey: ["plugin-center"] }); },
@@ -117,12 +130,12 @@ export function PluginCenterPanel() {
         <Card className="gap-3 p-5">
           <div className="flex items-center gap-3"><Github className="h-6 w-6" /><div><h3 className="font-semibold">GitHub</h3><p className="text-xs text-muted-foreground">Repositories, branches, commits and pull requests</p></div></div>
           <p className="text-xs text-muted-foreground">OAuth authorization, encrypted token storage and repository-level permissions are the required connection flow.</p>
-          <div className="flex items-center justify-between gap-2 border-t border-border pt-3"><span className="text-xs text-amber-600">OAuth app credentials required</span><Button size="sm" variant="outline" disabled>Connect GitHub</Button></div>
+          <div className="flex items-center justify-between gap-2 border-t border-border pt-3"><span className="text-xs text-muted-foreground">OAuth authorization</span><Button size="sm" variant="outline" disabled={githubOAuth.isPending} onClick={() => githubOAuth.mutate()}>{githubOAuth.isPending ? "Redirecting…" : "Connect GitHub"}</Button></div>
         </Card>
         <Card className="gap-3 p-5">
           <div className="flex items-center gap-3"><ShieldCheck className="h-6 w-6 text-emerald-500" /><div><h3 className="font-semibold">Supabase Management</h3><p className="text-xs text-muted-foreground">Organizations, projects, database and Edge Functions</p></div></div>
           <p className="text-xs text-muted-foreground">Use Supabase's official OAuth integration to authorize management actions without asking users to paste personal access tokens.</p>
-          <div className="flex items-center justify-between gap-2 border-t border-border pt-3"><span className="text-xs text-amber-600">Supabase OAuth app required</span><Button size="sm" variant="outline" disabled>Connect Supabase</Button></div>
+          <div className="flex items-center justify-between gap-2 border-t border-border pt-3"><span className="text-xs text-muted-foreground">OAuth authorization</span><Button size="sm" variant="outline" disabled={supabaseOAuth.isPending} onClick={() => supabaseOAuth.mutate()}>{supabaseOAuth.isPending ? "Redirecting…" : "Connect Supabase"}</Button></div>
         </Card>
       </div>
 
