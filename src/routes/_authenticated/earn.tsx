@@ -83,8 +83,14 @@ function EarnCreditsPage() {
       if (destination.protocol !== "https:") throw new Error("This partner offer has an invalid destination.");
       const parameter = started.tracking_parameter || "subid";
       const macro = "{" + parameter + "}";
-      if (destination.href.includes(macro)) {
-        destination.href = destination.href.replaceAll(macro, started.tracking_id);
+      const encodedMacro = encodeURIComponent(macro);
+      const href = destination.href;
+      if (href.includes(macro)) {
+        destination.href = href.replaceAll(macro, started.tracking_id);
+      } else if (href.toLowerCase().includes(encodedMacro.toLowerCase())) {
+        destination.href = href.replace(new RegExp(encodedMacro, "ig"), encodeURIComponent(started.tracking_id));
+      } else if (destination.searchParams.get(parameter) === macro) {
+        destination.searchParams.set(parameter, started.tracking_id);
       } else {
         destination.searchParams.set(parameter, started.tracking_id);
       }
