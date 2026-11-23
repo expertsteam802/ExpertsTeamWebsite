@@ -16,7 +16,7 @@ export const beginGitHubPluginOAuth = createServerFn({ method: "POST" })
     const url = new URL("https://github.com/login/oauth/authorize");
     url.searchParams.set("client_id", clientId);
     url.searchParams.set("redirect_uri", pluginOAuthRedirect("github"));
-    url.searchParams.set("scope", "repo read:user user:email");
+    url.searchParams.set("scope", "repo delete_repo read:user user:email");
     url.searchParams.set("state", state);
     return { url: url.toString() };
   });
