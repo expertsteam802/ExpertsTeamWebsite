@@ -204,7 +204,7 @@ function publishedProjectUrl(slug: string) {
 }
 
 
-function TypewriterText({ text, animate }: { text: string; animate: boolean }) {
+function TypewriterText({ text, animate, onComplete }: { text: string; animate: boolean; onComplete?: () => void }) {
   const [visibleLength, setVisibleLength] = useState(animate ? 0 : text.length);
 
   useEffect(() => {
@@ -218,11 +218,16 @@ function TypewriterText({ text, animate }: { text: string; animate: boolean }) {
       index += 1;
       setVisibleLength(Math.min(index, text.length));
       if (index >= text.length) window.clearInterval(timer);
-    }, 5);
+    }, 12);
     return () => window.clearInterval(timer);
   }, [text, animate]);
 
-  return <>{text.slice(0, visibleLength)}</>;
+  if (!animate) return <>{text}</>;
+  return <>{Array.from(text.slice(0, visibleLength)).map((character, index) => (
+    <span key={index} className="et-agent-character" onAnimationEnd={index === visibleLength - 1 ? onComplete : undefined}>
+      {character === "\n" ? <br /> : character}
+    </span>
+  ))}</>;
 }
 
 async function compressReferenceImage(file: File): Promise<ReferenceImage> {
@@ -2183,6 +2188,7 @@ export function CodeAgent() {
 
   return (
     <div className={`expert-agent-shell not-prose relative flex h-full min-h-0 w-full flex-col overflow-hidden ${lightMode ? "expert-agent-light" : "bg-[#080e19] text-slate-100"}`}>
+      <style>{`@keyframes et-agent-character-fade { from { opacity: 0; filter: blur(1px); } to { opacity: 1; filter: blur(0); } } .et-agent-character { display: inline; animation: et-agent-character-fade 180ms ease-out both; }`}</style>
       {showConnectionCinematic && (
         <div className="et-ai-link-cinematic absolute inset-0 z-[100] flex items-center justify-center overflow-hidden" role="status" aria-live="polite">
           <div className="et-ai-link-backdrop absolute inset-0" />
@@ -2258,6 +2264,9 @@ export function CodeAgent() {
           }}
         />
         <div className="flex items-center gap-2">
+          <a href="/" className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-slate-300 transition hover:border-cyan-300/30 hover:bg-cyan-300/10 hover:text-cyan-100" title="Return to the ExpertsTeam website">
+            <ExternalLink className="h-3.5 w-3.5" /> Back to website
+          </a>
           <span className="hidden text-xs text-slate-500 sm:inline">Workspace</span>
           <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] text-slate-400">
             {dirty ? "Changes not saved" : "All changes saved"}
@@ -2647,7 +2656,7 @@ export function CodeAgent() {
                         aria-label={previewExpanded ? "Restore preview height" : "Expand preview to full height"}
                         title={previewExpanded ? "Exit extended preview and return to Studio" : "Expand preview vertically"}
                       >
-                        <Maximize2 className="h-3.5 w-3.5" />
+                        {previewExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
                         {previewExpanded ? "Exit extended preview" : "Expand preview"}
                       </button>
                     </div>
@@ -2890,13 +2899,10 @@ export function CodeAgent() {
                     ) : messages.map((message, index) => (
                       <div key={`${message.role}-${index}-${message.content}`} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                         <div
-                          onAnimationEnd={() => {
-                            if (typingMessageIndex === index) setTypingMessageIndex(null);
-                          }}
-                          className={`max-w-[94%] rounded-2xl px-3.5 py-3 text-xs leading-6 ${message.role === "user" ? "rounded-br-md bg-cyan-400/15 text-cyan-50" : "rounded-bl-md border border-white/[0.07] bg-white/[0.035] text-slate-200"} ${message.role === "assistant" && typingMessageIndex === index ? "et-agent-answer-reveal" : ""}`}
+                          className={`max-w-[94%] rounded-2xl px-3.5 py-3 text-xs leading-6 ${message.role === "user" ? "rounded-br-md bg-cyan-400/15 text-cyan-50" : "rounded-bl-md border border-white/[0.07] bg-white/[0.035] text-slate-200"}`}
                         >
                           <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-slate-500">{message.role === "user" ? "You" : "ExpertsTeam Agent"}</div>
-                          <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                          <p className="whitespace-pre-wrap break-words"><TypewriterText text={message.content} animate={message.role === "assistant" && typingMessageIndex === index} onComplete={() => setTypingMessageIndex((current) => current === index ? null : current)} /></p>
                         </div>
                       </div>
                     ))}
