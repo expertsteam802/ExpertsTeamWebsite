@@ -533,7 +533,7 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
     });
     if (roleError) throw new Error(roleError.message);
     if (!isAdmin && profile.ai_credits < 1)
-      throw new Error("You have no AI credits remaining on this account. Ask an administrator about your usage allowance.");
+      throw new Error("You have no AI credits remaining. Visit Earn AI Credits to complete a partner offer.");
 
     const quote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
     const {
