@@ -9,7 +9,7 @@ Set these variables in Vercel for **Production** (and Preview/Development if you
 | Variable | Value | Required |
 | --- | --- | --- |
 | `GROQ_API_KEY` | Server-side Groq API key | Recommended primary route |
-| `GROQ_MODEL` | `llama-3.3-70b-versatile` | No |
+| `GROQ_MODEL` | `openai/gpt-oss-120b` | No |
 | `OPENROUTER_API_KEY` | Server-side OpenRouter API key | Recommended fallback |
 | `OPENROUTER_MODEL` | `openrouter/free` | No |
 
