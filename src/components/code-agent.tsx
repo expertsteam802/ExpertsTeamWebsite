@@ -2555,21 +2555,6 @@ export function CodeAgent() {
                 {dirty ? (autoSaveStatus === "saving" ? "• Saving…" : autoSaveStatus === "error" ? "• Auto-save failed" : "• Unsaved changes") : "• Saved"}
               </span>
               <select
-                aria-label="Switch project"
-                title="Switch between your saved projects"
-                value={projectId ?? ""}
-                onChange={(event) => {
-                  const selected = projects.find((project) => project.id === event.target.value);
-                  if (selected) openProject(selected);
-                }}
-                className="h-7 max-w-[180px] rounded-lg border border-cyan-400/20 bg-[#0b1320] px-2 text-[11px] font-medium text-cyan-100"
-              >
-                <option value="" disabled>Select project…</option>
-                {projects.filter((project) => project.name.toLowerCase().includes(projectFilter.trim().toLowerCase())).map((project) => (
-                  <option key={project.id} value={project.id}>{project.name}</option>
-                ))}
-              </select>
-              <select
                 aria-label="Project Supabase backend"
                 title="Use your own Supabase project for this app's browser data and storage."
                 value={cloudConnectionId ?? ""}
@@ -2668,102 +2653,11 @@ export function CodeAgent() {
               </button>
             </div>
 
-            <div className="expert-agent-projects-section shrink-0 px-3">
-              <div className="mb-2 flex items-center justify-between px-1">
-                <span className="flex items-center gap-2 text-xs font-semibold text-slate-300">
-                  <Folder className="h-3.5 w-3.5 text-cyan-300" />
-                  Project Explorer
-                </span>
-                <div className="flex items-center gap-1">
-                  {(isAdmin || isDeveloper) && (
-                    <button
-                      onClick={() => setVaultImportOpen(true)}
-                      className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-semibold text-slate-400 hover:bg-white/10 hover:text-cyan-200"
-                      aria-label="Import from Developer Vault"
-                      title="Import a project or file from Developer Vault"
-                    >
-                      <FolderInput className="h-3.5 w-3.5" />
-                      <span>Vault</span>
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setImportOpen(true)}
-                    className="rounded p-1 text-slate-500 hover:bg-white/10 hover:text-white"
-                    aria-label="Clone from GitHub"
-                    title="Clone from GitHub"
-                  >
-                    <Github className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    onClick={createProject}
-                    className="rounded p-1 text-slate-500 hover:bg-white/10 hover:text-cyan-300"
-                    aria-label="Create project"
-                    title="New project folder"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              <input
-                type="search"
-                value={projectFilter}
-                onChange={(event) => setProjectFilter(event.target.value)}
-                placeholder="Search projects…"
-                aria-label="Search projects"
-                className="mb-2 h-8 w-full rounded-lg border border-white/10 bg-[#08111e] px-2.5 text-xs text-slate-200 placeholder:text-slate-600 outline-none transition focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10"
-              />
-              <div className="expert-agent-project-list max-h-64 space-y-1 overflow-y-auto">
-                {projectsLoading && (
-                  <p className="px-2 py-2 text-xs text-slate-500">Loading projects…</p>
-                )}
-                {!projectsLoading && projects.length === 0 && (
-                  <p className="px-2 py-2 text-xs leading-5 text-slate-500">
-                    Your saved projects will appear here.
-                  </p>
-                )}
-                {!projectsLoading && projects.length > 0 && !projects.some((project) => project.name.toLowerCase().includes(projectFilter.trim().toLowerCase())) && (
-                  <p className="px-2 py-2 text-xs leading-5 text-slate-500">No projects match “{projectFilter}”.</p>
-                )}
-                {projects.filter((project) => project.name.toLowerCase().includes(projectFilter.trim().toLowerCase())).map((project) => (
-                  <div
-                    key={project.id}
-                    className={`group flex items-center gap-1 rounded-lg pr-1 transition ${
-                      project.id === projectId ? "bg-cyan-400/10" : "hover:bg-white/[0.05]"
-                    }`}
-                  >
-                    <button
-                      onClick={() => openProject(project)}
-                      className={`flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs ${
-                        project.id === projectId
-                          ? "text-cyan-200"
-                          : "text-slate-400 hover:text-white"
-                      }`}
-                    >
-                      {project.thumbnail_url ? <img src={project.thumbnail_url} alt="" className="h-6 w-6 shrink-0 rounded-md border border-white/10 object-cover" /> : <Folder className="h-3.5 w-3.5 shrink-0 text-amber-300" />}
-                      <span className="min-w-0 flex-1 truncate">{project.name}</span>
-                      {project.github_repo && (
-                        <Github
-                          className="h-3 w-3 shrink-0 text-slate-500"
-                          aria-label="GitHub repository"
-                        />
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void deleteProject(project)}
-                      className="rounded p-1.5 text-slate-600 opacity-100 transition hover:bg-red-500/10 hover:text-red-300 sm:opacity-0 sm:group-hover:opacity-100"
-                      aria-label={`Delete project ${project.name}`}
-                      title="Delete project"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
+            <div className="mb-3 flex items-center gap-2 px-1">
+              <Folder className="h-3.5 w-3.5 text-amber-300" />
+              <span className="min-w-0 truncate text-xs font-semibold text-slate-200" title={name}>{name || "Current project"}</span>
+              <span className="ml-auto text-[10px] text-slate-500">Files</span>
             </div>
-
-            <div className="mx-3 my-4 border-t border-white/[0.07]" />
 
             <div className="expert-agent-files-section flex min-h-0 flex-1 flex-col overflow-hidden px-3">
               <div className="mb-2 flex shrink-0 items-center justify-between px-1">
@@ -2797,7 +2691,6 @@ export function CodeAgent() {
 
             <div className="mx-3 my-3 border-t border-white/[0.07]" />
             <div className="grid grid-cols-5 gap-1 px-3">
-              <Button size="sm" variant="outline" onClick={createProject} className="h-8 border-white/10 bg-white/[0.03] px-2 text-[10px] text-slate-300" title="New project"><Plus className="h-3.5 w-3.5" /></Button>
               <Button size="sm" variant="outline" onClick={() => projectFileInputRef.current?.click()} className="h-8 border-white/10 bg-white/[0.03] px-2 text-[10px] text-slate-300" title="Add files"><FolderInput className="h-3.5 w-3.5" /></Button>
               <Button size="sm" variant="outline" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="h-8 border-cyan-400/20 bg-cyan-400/[0.06] px-2 text-[10px] text-cyan-100" title="Save project">{saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}</Button>
               <Button size="sm" variant="outline" onClick={() => setVersionHistoryOpen(true)} disabled={!projectId} className="h-8 border-white/10 bg-white/[0.03] px-2 text-[10px] text-slate-300" title="Version history"><History className="h-3.5 w-3.5" /></Button>
