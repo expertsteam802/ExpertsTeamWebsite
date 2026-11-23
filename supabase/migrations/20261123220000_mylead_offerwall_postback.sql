@@ -67,6 +67,7 @@ as $$
 declare
   v_status text := lower(btrim(p_status));
   v_event public.mylead_postback_events%rowtype;
+  v_previous_status text;
   v_conversion_id uuid;
   v_balance integer;
   v_awarded integer := 0;
@@ -111,6 +112,7 @@ begin
   if v_event.player_id <> p_player_id then
     raise exception 'MyLead transaction ID is already associated with another player.';
   end if;
+  v_previous_status := v_event.status;
 
   -- Keep the latest state and metadata for this unique transaction.
   update public.mylead_postback_events
@@ -158,7 +160,7 @@ begin
    where transaction_id = btrim(p_transaction_id)
    for update;
 
-  if v_status = 'approved' and v_event.status <> 'approved' then
+  if v_status = 'approved' and v_previous_status <> 'approved' then
     -- The previous status is already updated above; the ledger's unique reference
     -- is the final idempotency guard. A transaction can only be awarded once.
     if not exists (
