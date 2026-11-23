@@ -53,3 +53,21 @@ export async function loadProjectEnvironment(
   if (error) throw new Error("Could not load project environment variables: " + error.message);
   return Object.fromEntries((data ?? []).map((row: any) => [row.key, decryptProjectSecret(row)]));
 }
+
+const PUBLIC_BUILD_KEYS = new Set([
+  "VITE_SUPABASE_URL",
+  "VITE_SUPABASE_PUBLISHABLE_KEY",
+  "VITE_SUPABASE_ANON_KEY",
+]);
+
+/** Only explicitly approved public configuration is passed to browser builds. */
+export async function loadProjectPublicEnvironment(
+  supabase: { from: (table: string) => any },
+  userId: string,
+  projectId: string,
+): Promise<Record<string, string>> {
+  const all = await loadProjectEnvironment(supabase, userId, projectId);
+  return Object.fromEntries(
+    Object.entries(all).filter(([key]) => PUBLIC_BUILD_KEYS.has(key)),
+  );
+}
