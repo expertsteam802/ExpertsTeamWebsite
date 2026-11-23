@@ -59,6 +59,7 @@ import { toast } from "sonner";
 
 import { ChrisAiChat } from "@/components/chris-ai";
 import { AgentPromptLibrary } from "@/components/agent-prompt-library";
+import { ProjectEnvironmentPanel } from "@/components/project-environment-panel";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -402,6 +403,7 @@ export function CodeAgent() {
   const [enabledEditorPacks, setEnabledEditorPacks] = useState<string[]>(["react", "html", "css"]);
   const [projectNameEditing, setProjectNameEditing] = useState(false);
   const [cloudConnectionId, setCloudConnectionId] = useState<string | null>(null);
+  const [environmentPanelOpen, setEnvironmentPanelOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [runtimeBusy, setRuntimeBusy] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -2396,6 +2398,7 @@ export function CodeAgent() {
           </div>
         </div>
       )}
+      <ProjectEnvironmentPanel projectId={projectId} open={environmentPanelOpen} onOpenChange={setEnvironmentPanelOpen} />
       {/* Workspace top bar */}
       <header className="expert-agent-topbar flex min-h-[62px] flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#0d1523] px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -2442,31 +2445,47 @@ export function CodeAgent() {
                 {dirty ? "• Unsaved changes" : "• Saved"}
               </span>
               <select
-                aria-label="Assigned Supabase backend"
-                title="Save the intended Supabase backend for this app. Runtime data and file operations are not switched yet."
+                aria-label="Project Supabase backend"
+                title="Use your own Supabase project for this app's browser data and storage."
                 value={cloudConnectionId ?? ""}
                 onChange={async (event) => {
                   const nextConnectionId = event.target.value || null;
-                  if (projectId) {
+                  try {
+                    const activeProjectId = projectId ?? await persist();
                     const { error } = await supabase.from("agent_projects")
                       .update({ cloud_connection_id: nextConnectionId })
-                      .eq("id", projectId).eq("user_id", user.id);
-                    if (error) {
-                      toast.error("Could not update this project's backend: " + error.message);
-                      return;
-                    }
+                      .eq("id", activeProjectId).eq("user_id", user.id);
+                    if (error) throw error;
+                    setCloudConnectionId(nextConnectionId);
                     await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
+                    toast.success(nextConnectionId ? "This app will use your connected Supabase project in preview and builds." : "External Supabase connection removed from this app.");
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Could not update this project's backend.");
                   }
-                  setCloudConnectionId(nextConnectionId);
-                  toast.success(nextConnectionId ? "Project backend selected" : "Project backend disconnected");
                 }}
                 className="h-7 max-w-[190px] rounded-lg border border-white/10 bg-[#0b1320] px-2 text-[11px] text-slate-300"
               >
-                <option value="">No external backend assigned</option>
+                <option value="">Use no connected Supabase project</option>
                 {cloudConnections.map((connection) => (
-                  <option key={connection.id} value={connection.id}>{connection.display_name}</option>
+                  <option key={connection.id} value={connection.id}>{connection.display_name} · {connection.project_ref}</option>
                 ))}
               </select>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 border-white/10 bg-[#0b1320] px-2 text-[11px] text-slate-300 hover:bg-white/10"
+                onClick={async () => {
+                  try {
+                    if (!projectId) await persist();
+                    setEnvironmentPanelOpen(true);
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Could not save this project.");
+                  }
+                }}
+              >
+                <Settings2 className="mr-1 h-3 w-3" /> Environment
+              </Button>
             </div>
           </div>
         </div>
