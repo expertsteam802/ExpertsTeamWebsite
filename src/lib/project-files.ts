@@ -84,7 +84,6 @@ export async function deleteProjectFile(projectId: string, filePath: string) {
  */
 export async function saveProjectFiles(projectId: string, userId: string, files: ProjectFiles) {
   const entries = Object.entries(files);
-  if (!entries.length) throw new Error("Cannot save an empty project file tree.");
 
   const importId = crypto.randomUUID();
   let batch: {
