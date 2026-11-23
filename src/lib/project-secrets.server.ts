@@ -41,7 +41,7 @@ export function decryptProjectSecret(row: {
 
 /** Server-only helper. Never return its result from a browser-callable server function. */
 export async function loadProjectEnvironment(
-  supabase: { from: (table: string) => any },
+  supabase: { from: (table: string) => any }, // eslint-disable-line @typescript-eslint/no-explicit-any
   userId: string,
   projectId: string,
 ): Promise<Record<string, string>> {
@@ -51,7 +51,7 @@ export async function loadProjectEnvironment(
     .eq("project_id", projectId)
     .eq("user_id", userId);
   if (error) throw new Error("Could not load project environment variables: " + error.message);
-  return Object.fromEntries((data ?? []).map((row: any) => [row.key, decryptProjectSecret(row)]));
+  return Object.fromEntries((data ?? []).map((row: any) => [row.key, decryptProjectSecret(row)])); // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 const PUBLIC_BUILD_KEYS = new Set([
@@ -65,7 +65,7 @@ const PUBLIC_BUILD_KEYS = new Set([
 
 /** Only explicitly approved public configuration is passed to browser builds. */
 export async function loadProjectPublicEnvironment(
-  supabase: { from: (table: string) => any },
+  supabase: { from: (table: string) => any }, // eslint-disable-line @typescript-eslint/no-explicit-any
   userId: string,
   projectId: string,
 ): Promise<Record<string, string>> {
