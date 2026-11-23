@@ -3,15 +3,6 @@
   "framework": "tanstack-start",
   "headers": [
     {
-      "source": "/sw.js",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
-        }
-      ]
-    },
-    {
       "source": "/experts-team-brand.svg",
       "headers": [
         {
