@@ -546,12 +546,12 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
     const terminalName = assertDaytonaTerminalSandboxName(context.userId, data.sandboxName);
     const referencePaths = await writeDaytonaProjectReferenceImages(terminalName, data.referenceImages);
     const modePrompt = data.mode === "plan"
-      ? "PLANNING ONLY. Inspect the project and produce a concrete implementation plan with affected files, dependencies, risks, test steps, and ordered tasks. Do not create, edit, delete, rename, or format any project files. Do not run commands that change project state. Return the plan as readable text only.\\n\\nREQUEST:\\n" + data.prompt
+      ? "PLANNING ONLY. Inspect the project and produce a concrete implementation plan with affected files, dependencies, risks, test steps, and ordered tasks. Do not create, edit, delete, rename, or format any project files. Do not run commands that change project state. Return the plan as readable text only.\n\nREQUEST:\n" + data.prompt
       : data.prompt;
     const promptWithReferences = referencePaths.length
       ? modePrompt + "\n\nVISUAL REFERENCES (read these image files before planning or changing the UI):\n" +
         referencePaths.map((filePath) => "- " + filePath).join("\n") +
-        "\nUse the attached images as visual requirements. Recreate their layout and details in actual editable source code."
+        "\nUse the attached images as visual requirements for the implementation plan; do not edit project files in plan mode."
       : data.prompt;
     const commandWithReferences = data.cli === "kilo"
       ? "kilo run --auto " + quote(promptWithReferences)
