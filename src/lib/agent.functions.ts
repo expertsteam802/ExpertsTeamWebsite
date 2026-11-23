@@ -195,7 +195,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
     const binaryExtensions =
       /\.(?:png|jpe?g|gif|webp|ico|pdf|zip|gz|tar|woff2?|ttf|otf|mp4|mp3|wav|mov|avi|exe|dll|so|dylib|class|jar|wasm|lockb)$/i;
     const secretName =
-      /^(?:\.env(?:\..*)?|\.npmrc|\.netrc|\.pypirc|id_rsa|id_ed25519|credentials?(?:\..*)?|secrets?(?:\..*)?)$/i;
+      /^(?:\.env(?:$|\.(?!.*(?:example|sample|template)$).*)|\.npmrc|\.netrc|\.pypirc|id_rsa|id_ed25519|credentials?(?:\..*)?|secrets?(?:\..*)?)$/i;
     const candidates = (repositoryTree)
       .filter((entry) => entry.type === "blob" && typeof entry.path === "string")
       .filter((entry) => {
