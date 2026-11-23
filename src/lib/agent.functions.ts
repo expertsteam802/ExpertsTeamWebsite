@@ -552,7 +552,7 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
       ? modePrompt + "\n\nVISUAL REFERENCES (read these image files before planning or changing the UI):\n" +
         referencePaths.map((filePath) => "- " + filePath).join("\n") +
         "\nUse the attached images as visual requirements for the implementation plan; do not edit project files in plan mode."
-      : data.prompt;
+      : modePrompt;
     const commandWithReferences = data.cli === "kilo"
       ? "kilo run --auto " + quote(promptWithReferences)
       : data.cli === "opencode"
