@@ -19,6 +19,7 @@ export type Database = {
           created_at: string
           files: Json
           id: string
+          is_bookmarked: boolean
           name: string
           project_id: string
           user_id: string
@@ -27,6 +28,7 @@ export type Database = {
           created_at?: string
           files: Json
           id?: string
+          is_bookmarked?: boolean
           name?: string
           project_id: string
           user_id: string
@@ -35,6 +37,7 @@ export type Database = {
           created_at?: string
           files?: Json
           id?: string
+          is_bookmarked?: boolean
           name?: string
           project_id?: string
           user_id?: string
