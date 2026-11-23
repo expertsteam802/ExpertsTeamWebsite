@@ -1,53 +1,55 @@
-# ExpertAI — Kilo Gateway only
+# ExpertAI provider configuration
 
-ExpertAI chat and the coding agent use the Kilo AI Gateway as their sole model provider. Gemini, Groq, and OpenRouter are not configured as fallback providers. The application is designed to keep working within the changing limits of anonymous free models; it cannot make upstream model limits disappear.
+## Guest chat — OpenRouter
 
-## Default free configuration
+Guest ExpertAI requests are sent from the server to OpenRouter. Visitors do not need a Supabase account or an OpenRouter key. Supabase still enforces the server-side guest allowance (15 prompts per IP/session hash per rolling 24-hour window).
 
-No API key is required for Kilo's anonymous free models.
+Set these variables in Vercel for **Production, Preview, and Development** as needed:
 
 | Variable | Value | Required |
 | --- | --- | --- |
-| `KILO_API_BASE_URL` | `https://ai-gateway.kilo.ai/api/v1` | No (default is used) |
-| `KILO_MODEL` | `kilo-auto/free` | No (default is used) |
-| `KILO_API_KEY` | Your Kilo Gateway key, if using authenticated/paid Kilo access | No |
+| `OPENROUTER_API_KEY` | Secret from https://openrouter.ai/settings/keys | Yes for guest AI |
+| `OPENROUTER_MODEL` | `openrouter/free` | No |
 
-Do not add Kilo keys to `VITE_*` variables or browser code. If a key is configured, the backend sends it server-side. Without a key, the backend uses Kilo's anonymous free-model access.
+Keep `OPENROUTER_API_KEY` server-only. Never prefix it with `VITE_`, expose it in browser code, or commit it to Git.
 
-## Anonymous free limits and IP behavior
+OpenRouter's free-model router selects an available free model. Free model availability and provider quotas can change. OpenRouter currently documents a 20 requests/minute limit and 50 requests/day for free variants on an unfunded account; failed attempts may count toward the limit. Check current limits before advertising guest availability.
 
-Kilo documents a limit of **200 free-model requests per hour per IP address**. Kilo's free-model availability and upstream provider limits can change.
+## Signed-in chat and coding agent
 
-Important: the current ExpertsTeam implementation calls Kilo from the server. On serverless hosting, Kilo may see a shared hosting egress IP rather than each visitor's IP. Therefore, visitors may share the gateway's IP-based allowance. Do not advertise 200 requests per visitor.
+Signed-in ExpertAI and the coding agent currently use the Kilo Gateway adapter:
 
-We must not spoof forwarded-IP headers to bypass Kilo's rate limits. A future direct-browser integration would require confirming Kilo's browser CORS support and designing safe user/session credit enforcement first.
+| Variable | Value | Required |
+| --- | --- | --- |
+| `KILO_API_BASE_URL` | `https://ai-gateway.kilo.ai/api/v1` | No |
+| `KILO_MODEL` | `kilo-auto/free` | No |
+| `KILO_API_KEY` | Kilo Gateway key | No for anonymous free access |
 
-## Model and attachment behavior
+The Kilo adapter is separate from the Builder's interactive Kilo CLI terminal.
 
-- `kilo-auto/free` dynamically selects from currently available free models.
-- ExpertAI requests up to 8,192 output tokens where the selected model supports it. If a model rejects the request because of context/output capacity, the adapter retries with smaller context and output budgets; unsupported JSON response mode is retried without that optional API parameter.
-- The coding agent uses resumable file batches and stops immediately on a quota/authentication error instead of repeatedly hitting the same exhausted quota.
-- Image attachments are forwarded in the OpenAI-compatible image format. Actual vision support still depends on the free model selected for that request.
-- Not every free model supports images or every file modality. Image requests are sent using OpenAI-compatible image content; a selected model without vision support may reject them.
-- Text attachments are extracted/compacted by ExpertsTeam before being sent to Kilo.
-- Kilo Auto Free may route prompts and outputs to upstream providers that log or use data to improve their services. Users should not submit confidential or sensitive information through the free tier.
+## Supabase server configuration
 
-## Removed providers
+Guest requests require the following server-only variables in Vercel:
 
-The application no longer routes to Gemini, Groq, or OpenRouter. Old environment variables for those providers are not used by ExpertAI and can be removed from Vercel after the Kilo-only deployment is verified.
+- `SUPABASE_URL` (or the existing `VITE_SUPABASE_URL` fallback)
+- `SUPABASE_PUBLISHABLE_KEY` (or the existing `VITE_SUPABASE_PUBLISHABLE_KEY` fallback)
+- `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY`
 
-## Deployment checks
+Never expose a Supabase secret/service-role key through a `VITE_*` variable. The secret key is used only by the server to check and consume guest credits in the private schema.
+
+## Verification after deployment
 
 1. Deploy the `main` branch.
-2. Confirm ExpertAI chat works without `KILO_API_KEY`.
-3. Test signed-in and guest chat separately.
-4. Test the coding agent separately.
-5. Verify rate-limit errors are presented clearly.
-6. Test image attachments with the live free model; image capability depends on the model selected by Kilo.
-7. Check Vercel logs for Kilo Gateway errors without logging prompts, files, or credentials.
-8. Test a short chat, a long answer, a multi-file coding task, and an image attachment. Confirm that a capacity error retries once with smaller limits and that a 429 stops without repeated requests.
+2. Open a private/incognito browser window and send a text-only guest message without signing in.
+3. Confirm the response streams and the guest counter decreases.
+4. Send another message and confirm the server-side counter changes in Supabase.
+5. Exhaust the allowance in a test environment and confirm the API returns HTTP 402.
+6. Confirm an invalid/missing guest session returns HTTP 400.
+7. Confirm a missing OpenRouter key returns a clear HTTP 503 rather than a generic error.
+8. Sign in and verify signed-in chat still uses Kilo and decrements the authenticated user's AI credits.
+9. Check Vercel logs for provider status codes; never log API keys, prompts, or uploaded content.
 
-Official documentation:
-- https://kilo.ai/docs/gateway/authentication
-- https://kilo.ai/docs/gateway/usage-and-billing
-- https://kilo.ai/docs/gateway/models-and-providers
+Official references:
+- https://openrouter.ai/openrouter/free
+- https://openrouter.ai/collections/free-models/
+- https://supabase.com/docs/guides/database/postgres/row-level-security
