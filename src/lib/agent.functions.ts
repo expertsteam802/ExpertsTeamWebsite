@@ -65,7 +65,7 @@ export const runCodingAgent = createServerFn({ method: "POST" })
       throw new Error(
         "You have no AI credits remaining on this account. Ask an administrator about your usage allowance.",
       );
-    const { runAgent } = await import("./agent.server");
+    await assertBuilderResourcePolicy(context.supabase, context.userId, data.files, data.prompt);\n    const { runAgent } = await import("./agent.server");
     const result = await runAgent(data);
     if (!isAdmin) {
       const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
@@ -271,6 +271,48 @@ const previewRequest = z
       Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 25_000_000,
     "The project exceeds the 25 MB preview request safety envelope.",
   );
+
+async function assertBuilderResourcePolicy(
+  supabase: typeof import("@/integrations/supabase/client").supabase,
+  userId: string,
+  files: Record<string, string>,
+  prompt?: string,
+) {
+  const { data: isAdmin, error: roleError } = await supabase.rpc("has_role", {
+    _user_id: userId,
+    _role: "admin",
+  });
+  if (roleError) throw new Error("Could not verify Builder resource permissions.");
+  if (isAdmin) return;
+
+  const { data: settings, error } = await supabase
+    .from("site_settings")
+    .select("site_branding_settings")
+    .eq("id", 1)
+    .single();
+  if (error) throw new Error("Could not load the administrator's Builder resource policy.");
+
+  const root = settings.site_branding_settings && typeof settings.site_branding_settings === "object" && !Array.isArray(settings.site_branding_settings)
+    ? settings.site_branding_settings as Record<string, unknown> : {};
+  const limits = root.builderLimits && typeof root.builderLimits === "object" && !Array.isArray(root.builderLimits)
+    ? root.builderLimits as Record<string, unknown> : {};
+  const numberLimit = (key: string) => {
+    const value = Number(limits[key] ?? 0);
+    return Number.isSafeInteger(value) && value > 0 ? value : 0;
+  };
+
+  const entries = Object.entries(files);
+  const totalBytes = entries.reduce((sum, [, content]) => sum + Buffer.byteLength(content, "utf8"), 0);
+  const maxProjectMb = numberLimit("maxProjectMb");
+  const maxFileMb = numberLimit("maxFileMb");
+  const maxFiles = numberLimit("maxFiles");
+  const maxPromptChars = numberLimit("maxPromptChars");
+
+  if (maxFiles && entries.length > maxFiles) throw new Error("This project exceeds the administrator-configured file-count allowance.");
+  if (maxProjectMb && totalBytes > maxProjectMb * 1_000_000) throw new Error("This project exceeds the administrator-configured project-size allowance.");
+  if (maxFileMb && entries.some(([, content]) => Buffer.byteLength(content, "utf8") > maxFileMb * 1_000_000)) throw new Error("A project file exceeds the administrator-configured per-file allowance.");
+  if (maxPromptChars && prompt && prompt.length > maxPromptChars) throw new Error("This request exceeds the administrator-configured prompt length.");
+}
 
 async function assertProjectOwnership(
   supabase: typeof import("@/integrations/supabase/client").supabase,
