@@ -328,8 +328,22 @@ async function loadProjectSourceFiles(
       .maybeSingle();
     if (legacyError) throw new Error("Could not load the legacy project snapshot.");
     const legacy = legacyProject?.files;
-    if (!legacy || typeof legacy !== "object" || Array.isArray(legacy)) return {};
-    return Object.fromEntries(Object.entries(legacy).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+    const recoveredSnapshot =
+      legacy && typeof legacy === "object" && !Array.isArray(legacy)
+        ? Object.fromEntries(Object.entries(legacy).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
+        : {};
+    if (Object.keys(recoveredSnapshot).length) return recoveredSnapshot;
+
+    // A cleared legacy snapshot is expected after successful per-file migration.
+    // If the readiness marker is missing, still recover any intact file rows.
+    const { data: recoveredRows, error: recoveredRowsError } = await supabase
+      .from("agent_project_files")
+      .select("file_path,content")
+      .eq("project_id", projectId)
+      .eq("user_id", userId)
+      .order("file_path", { ascending: true });
+    if (recoveredRowsError) throw new Error("Could not recover the saved project files.");
+    return Object.fromEntries((recoveredRows ?? []).map((row) => [row.file_path, row.content]));
   }
 
   const { data: rows, error: fileError } = await supabase
@@ -535,11 +549,7 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
-    const { data: project, error: projectError } = await context.supabase
-      .from("agent_projects").select("files").eq("id", data.projectId).eq("user_id", context.userId).single();
-    if (projectError) throw new Error("Could not load the project resource information.");
-    const projectFiles = project.files && typeof project.files === "object" && !Array.isArray(project.files)
-      ? project.files as Record<string, string> : {};
+    const projectFiles = await loadProjectSourceFiles(context.supabase, data.projectId, context.userId);
     await assertBuilderResourcePolicy(context.supabase, context.userId, projectFiles, data.prompt);
     const { data: profile, error: profileError } = await context.supabase
       .from("profiles").select("ai_credits").eq("id", context.userId).single();
