@@ -47,14 +47,11 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [alignment, setAlignment] = useState<"left" | "center" | "right">("center");
   function handleWatchClick(video: VideoItem) {
+    // Ads must never block access to the actual learning content. Attempt the
+    // optional popup synchronously from the click, then navigate regardless.
     if (!adOpenedFor.has(video.id)) {
-      if (!openMonetagPopup()) {
-        toast.error("Allow pop-ups, then click Watch again.");
-        return;
-      }
+      openMonetagPopup();
       setAdOpenedFor((current) => new Set(current).add(video.id));
-      toast.info("Your ad opened in a separate window. Click again to watch the lesson.");
-      return;
     }
     void navigate({ to: "/learn/video/$videoId", params: { videoId: video.id } });
   }
