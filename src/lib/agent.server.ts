@@ -220,10 +220,11 @@ export async function runAgent(
     );
   if (cleanPrompt.length > 16000) throw new Error("That request is too long.");
   const entries = Object.entries(files);
-  if (entries.length > 80)
-    throw new Error("This project has too many files to send to the agent at once.");
-  if (entries.some(([path, content]) => !isSafeProjectPath(path) || content.length > 100000)) {
-    throw new Error("One or more project files are too large or have an invalid path.");
+  if (entries.length > 2_000 || entries.some(([path, content]) => !isSafeProjectPath(path) || Buffer.byteLength(content, "utf8") > 10_000_000)) {
+    throw new Error("One or more project files exceed the 10 MB per-file safety envelope or have an invalid path.");
+  }
+  if (entries.reduce((total, [, content]) => total + Buffer.byteLength(content, "utf8"), 0) > 25_000_000) {
+    throw new Error("The project exceeds the 25 MB agent request safety envelope.");
   }
 
   const promptTerms = new Set(cleanPrompt.toLowerCase().match(/[a-z0-9_./-]{3,}/g) ?? []);
