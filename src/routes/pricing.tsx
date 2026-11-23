@@ -123,7 +123,7 @@ function PricingPage() {
         </div>
         <p className="mt-8 text-center text-xs leading-5 text-muted-foreground">
           External services, hosting providers and third-party products may have their own terms,
-          availability and charges. Those are separate from an ExpertsTeam subscription.
+          availability and charges. Those are separate from ExpertsTeam\’s free platform and CPA-based AI credit rewards.
         </p>
       </main>
     </PageShell>
