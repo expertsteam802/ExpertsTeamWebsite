@@ -77,6 +77,10 @@ type SettingsForm = {
   terminal_idle_timeout_minutes: string;
   terminal_cli_enabled: string[];
   terminal_cli_default: string;
+  builder_max_project_mb: string;
+  builder_max_file_mb: string;
+  builder_max_files: string;
+  builder_max_prompt_chars: string;
   navigation_labels_json: string;
 };
 
@@ -421,6 +425,34 @@ function AdminPage() {
           const preferred = typeof terminal.defaultCli === "string" ? terminal.defaultCli : "kilo";
           return ["kilo", "opencode", "aider"].includes(preferred) ? preferred : "kilo";
         })(),
+        builder_max_project_mb: (() => {
+          const root = settings.site_branding_settings && typeof settings.site_branding_settings === "object" && !Array.isArray(settings.site_branding_settings)
+            ? settings.site_branding_settings as Record<string, unknown> : {};
+          const limits = root.builderLimits && typeof root.builderLimits === "object" && !Array.isArray(root.builderLimits)
+            ? root.builderLimits as Record<string, unknown> : {};
+          return String(Number(limits.maxProjectMb ?? 0) || 0);
+        })(),
+        builder_max_file_mb: (() => {
+          const root = settings.site_branding_settings && typeof settings.site_branding_settings === "object" && !Array.isArray(settings.site_branding_settings)
+            ? settings.site_branding_settings as Record<string, unknown> : {};
+          const limits = root.builderLimits && typeof root.builderLimits === "object" && !Array.isArray(root.builderLimits)
+            ? root.builderLimits as Record<string, unknown> : {};
+          return String(Number(limits.maxFileMb ?? 0) || 0);
+        })(),
+        builder_max_files: (() => {
+          const root = settings.site_branding_settings && typeof settings.site_branding_settings === "object" && !Array.isArray(settings.site_branding_settings)
+            ? settings.site_branding_settings as Record<string, unknown> : {};
+          const limits = root.builderLimits && typeof root.builderLimits === "object" && !Array.isArray(root.builderLimits)
+            ? root.builderLimits as Record<string, unknown> : {};
+          return String(Number(limits.maxFiles ?? 0) || 0);
+        })(),
+        builder_max_prompt_chars: (() => {
+          const root = settings.site_branding_settings && typeof settings.site_branding_settings === "object" && !Array.isArray(settings.site_branding_settings)
+            ? settings.site_branding_settings as Record<string, unknown> : {};
+          const limits = root.builderLimits && typeof root.builderLimits === "object" && !Array.isArray(root.builderLimits)
+            ? root.builderLimits as Record<string, unknown> : {};
+          return String(Number(limits.maxPromptChars ?? 0) || 0);
+        })(),
         terminal_idle_timeout_minutes: (() => {
           const root =
             settings.site_branding_settings &&
@@ -522,6 +554,14 @@ function AdminPage() {
           ? (existingBranding.terminalSettings as Record<string, unknown>)
           : {};
       const terminalIdleTimeout = Number(form.terminal_idle_timeout_minutes);
+      const builderLimits = {
+        maxProjectMb: Number(form.builder_max_project_mb),
+        maxFileMb: Number(form.builder_max_file_mb),
+        maxFiles: Number(form.builder_max_files),
+        maxPromptChars: Number(form.builder_max_prompt_chars),
+      };
+      if (Object.values(builderLimits).some((value) => !Number.isSafeInteger(value) || value < 0))
+        throw new Error("Builder resource limits must be whole numbers greater than or equal to zero. Use 0 for unlimited.");
       const supportedClis = ["kilo", "opencode", "aider"];
       const enabledClis = form.terminal_cli_enabled.filter((cli) => supportedClis.includes(cli));
       if (!enabledClis.length) throw new Error("Enable at least one terminal CLI.");
@@ -553,6 +593,7 @@ function AdminPage() {
               enabledClis,
               defaultCli: form.terminal_cli_default,
             },
+            builderLimits,
             siteNavigation: navigationLabels,
           } as Json,
           youtube_url: form.youtube_url.trim(),
