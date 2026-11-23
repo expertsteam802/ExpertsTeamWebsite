@@ -124,8 +124,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "ExpertsTeam is a software and technology company building AI systems, websites, applications and digital solutions for people and businesses.",
       },
 
-      {
       { name: "mylead-verification", content: "3caa065fae9d8150922e3825899ce88f" },
+      {
         name: "google-site-verification",
         content: "YdY2ygzprZLok7-Cvwg_j29cI4ycK480HDQmh0d-JIg",
       },
