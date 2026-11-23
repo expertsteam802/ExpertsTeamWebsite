@@ -185,7 +185,7 @@ function AuthPage() {
         >
           <h1 className="font-display text-2xl font-semibold">Welcome to ExpertsTeam</h1>
           <p className="text-sm text-muted-foreground">
-            The very first account created becomes the creator/admin of this site.
+            Create an account to join ExpertsTeam. Admin and creator access are assigned separately.
           </p>
 
           <Button
