@@ -135,6 +135,7 @@ type ProjectRow = {
   deployment_url: string | null;
   thumbnail_url: string | null;
   github_repo: string | null;
+  cloud_connection_id: string | null;
   updated_at: string;
 };
 
@@ -400,6 +401,7 @@ export function CodeAgent() {
   const [completionsOpen, setCompletionsOpen] = useState(false);
   const [enabledEditorPacks, setEnabledEditorPacks] = useState<string[]>(["react", "html", "css"]);
   const [projectNameEditing, setProjectNameEditing] = useState(false);
+  const [cloudConnectionId, setCloudConnectionId] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [runtimeBusy, setRuntimeBusy] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -705,11 +707,24 @@ export function CodeAgent() {
       if (!user) return [];
       const { data, error } = await supabase
         .from("agent_projects")
-        .select("id,name,messages,published,slug,deployment_url,thumbnail_url,github_repo,updated_at")
+        .select("id,name,messages,published,slug,deployment_url,thumbnail_url,github_repo,cloud_connection_id,updated_at")
         .eq("user_id", user.id)
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as ProjectRow[];
+    },
+  });
+
+  const { data: cloudConnections = [] } = useQuery({
+    queryKey: ["cloud-connections", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_cloud_connections")
+        .select("id,display_name,project_ref")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
@@ -1619,6 +1634,7 @@ export function CodeAgent() {
       name: name.trim() || "Untitled project",
       files: filesToSave as unknown as Json,
       messages: (next.messages ?? messages).slice(-40) as unknown as Json,
+      cloud_connection_id: cloudConnectionId,
       ...next.extra,
     };
 
@@ -2140,6 +2156,7 @@ export function CodeAgent() {
   function createProject() {
     resetRuntimeForProjectChange();
     setProjectId(null);
+    setCloudConnectionId(null);
     setPublishedUrl(null);
     setThumbnailUrl(null);
     setName("Untitled project");
@@ -2190,6 +2207,7 @@ export function CodeAgent() {
     }
     resetRuntimeForProjectChange();
     setProjectId(project.id);
+    setCloudConnectionId(project.cloud_connection_id ?? null);
     setPublishedUrl(project.published && project.slug ? publishedProjectUrl(project.slug) : null);
     setThumbnailUrl(project.thumbnail_url);
     setName(project.name);
@@ -2423,6 +2441,32 @@ export function CodeAgent() {
               <span className="text-xs text-slate-500">
                 {dirty ? "• Unsaved changes" : "• Saved"}
               </span>
+              <select
+                aria-label="Project Supabase backend"
+                title="Choose the Supabase project this app will use as its backend"
+                value={cloudConnectionId ?? ""}
+                onChange={async (event) => {
+                  const nextConnectionId = event.target.value || null;
+                  if (projectId) {
+                    const { error } = await supabase.from("agent_projects")
+                      .update({ cloud_connection_id: nextConnectionId })
+                      .eq("id", projectId).eq("user_id", user.id);
+                    if (error) {
+                      toast.error("Could not update this project's backend: " + error.message);
+                      return;
+                    }
+                    await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
+                  }
+                  setCloudConnectionId(nextConnectionId);
+                  toast.success(nextConnectionId ? "Project backend selected" : "Project backend disconnected");
+                }}
+                className="h-7 max-w-[190px] rounded-lg border border-white/10 bg-[#0b1320] px-2 text-[11px] text-slate-300"
+              >
+                <option value="">ExpertsTeam default / none</option>
+                {cloudConnections.map((connection) => (
+                  <option key={connection.id} value={connection.id}>{connection.display_name}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
