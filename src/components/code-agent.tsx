@@ -1013,7 +1013,8 @@ export function CodeAgent() {
     const timer = window.setTimeout(() => {
       runtimeSyncQueueRef.current = runtimeSyncQueueRef.current
         .then(async () => {
-          await startPreview({ data: { projectId, files: nextFiles } });
+          await persist({ files: nextFiles });
+          await startPreview({ data: { projectId } });
           runtimeFilesRef.current = { ...nextFiles };
           setRuntimeStatus("Running · files synced");
         })
@@ -1369,7 +1370,7 @@ export function CodeAgent() {
     switchPanel("preview");
     setLogs([]);
     try {
-      const activeProjectId = projectId ?? (await persist());
+      const activeProjectId = await persist({ files });
       autoStartedProjectRef.current = activeProjectId;
       const result = await startPreview({ data: { projectId: activeProjectId } });
       setRuntimeUrl(result.url);
