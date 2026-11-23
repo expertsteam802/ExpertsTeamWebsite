@@ -1284,3 +1284,83 @@ html, body, .et-shell, .et-topbar, .et-secondary-sidebar, .et-main,
     max-width: 128px !important;
   }
 }
+
+
+/* Builder workbench polish: align the four toolbar zones like a desktop IDE. */
+@media (min-width: 1280px) {
+  .expert-agent-toolbar {
+    display: grid !important;
+    grid-template-columns: minmax(90px, 1fr) auto auto auto !important;
+    align-items: center !important;
+    justify-content: initial !important;
+    gap: 10px !important;
+    min-height: 54px !important;
+    padding-inline: 14px !important;
+  }
+  .expert-agent-toolbar > div {
+    min-width: 0;
+    flex-wrap: nowrap;
+  }
+  .expert-agent-toolbar > div:nth-child(2) {
+    justify-self: center;
+    padding: 3px;
+    border: 1px solid rgba(148,163,184,.12);
+    border-radius: 10px;
+    background: rgba(3,10,20,.34);
+  }
+  .expert-agent-toolbar > div:nth-child(3) {
+    justify-self: center;
+    padding-inline: 2px;
+  }
+  .expert-agent-toolbar > div:nth-child(4) {
+    justify-self: end;
+    padding-left: 8px;
+    border-left: 1px solid var(--et-builder-line, rgba(148,163,184,.16));
+  }
+}
+@media (min-width: 1280px) and (max-width: 1480px) {
+  .expert-agent-toolbar {
+    grid-template-columns: minmax(52px, .7fr) auto auto auto !important;
+    gap: 6px !important;
+    padding-inline: 8px !important;
+  }
+  .expert-agent-toolbar > div:nth-child(3) a,
+  .expert-agent-toolbar > div:nth-child(3) button {
+    padding-inline: 8px !important;
+  }
+}
+@media (min-width: 1024px) {
+  .expert-agent-stage > .grid {
+    grid-template-columns: minmax(0, 1fr) 5px minmax(320px, 390px) !important;
+  }
+}
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .expert-agent-stage > .grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+.expert-agent-sidebar .expert-agent-projects-section {
+  border-bottom: 1px solid rgba(148,163,184,.12);
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+}
+.expert-agent-sidebar .expert-agent-files-section {
+  min-height: 0;
+}
+.expert-agent-sidebar .expert-agent-file-tree {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.expert-agent-workspace-tab:focus-visible,
+.expert-agent-toolbar button:focus-visible,
+.expert-agent-toolbar a:focus-visible {
+  outline: 2px solid rgba(103,232,249,.85);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .expert-agent-sidebar button,
+  .expert-agent-toolbar button,
+  .expert-agent-toolbar a {
+    transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
+  }
+}
