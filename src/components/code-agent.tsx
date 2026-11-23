@@ -2808,6 +2808,7 @@ export function CodeAgent() {
                       ref={iframeRef}
                       key={previewKey}
                       title="ExpertsTeam project preview"
+                      onLoad={() => { if (!runtimeUrl) iframeRef.current?.contentWindow?.postMessage({ __agentVisualSelect: true, enabled: visualSelectMode }, "*"); }}
                       src={runtimeUrl ? previewAddress || runtimeUrl : undefined}
                       srcDoc={runtimeUrl ? undefined : srcDoc}
                       sandbox={
