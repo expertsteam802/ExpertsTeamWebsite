@@ -730,7 +730,7 @@ export function ChrisAiChat({
 
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden bg-background">
-      <style>{`@keyframes expertai-character-fade { from { opacity: 0; } to { opacity: 1; } } .expertai-character-reveal { animation: expertai-character-fade 520ms ease-out both; } @media (prefers-reduced-motion: reduce) { .expertai-character-reveal { animation: none; } }`}</style>
+      <style>{`@keyframes expertai-character-fade { from { opacity: 0; } to { opacity: 1; } } .expertai-character-reveal { animation: expertai-character-fade 360ms ease-out both; }`}</style>
       {user && !compact && (
         <aside className="hidden w-60 shrink-0 flex-col border-r border-border/70 bg-card/70 md:flex">
           <div className="flex items-center justify-between border-b border-border/70 p-3">
