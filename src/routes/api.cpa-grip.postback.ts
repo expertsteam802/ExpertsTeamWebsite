@@ -44,8 +44,7 @@ async function readBoundedBody(request: Request): Promise<Record<string, unknown
 
   const contentType = (request.headers.get("content-type") ?? "").toLowerCase();
   const isJson = contentType.includes("application/json");
-  const isForm = contentType.includes("application/x-www-form-urlencoded") ||
-    contentType.includes("multipart/form-data");
+  const isForm = contentType.includes("application/x-www-form-urlencoded");
   if (!isJson && !isForm) throw new Error("UNSUPPORTED_MEDIA_TYPE");
   if (!request.body) return {};
 
