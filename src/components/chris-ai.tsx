@@ -267,6 +267,7 @@ export function ChrisAiChat({
     null,
   );
   const [streamingReply, setStreamingReply] = useState("");
+  const [chatNotice, setChatNotice] = useState("");
   const [chatLimitUnlocked, setChatLimitUnlocked] = useState(false);
   const [optimisticMessages, setOptimisticMessages] = useState<ChatRow[]>([]);
   const [guestMessages, setGuestMessages] = useState<ChatRow[]>([]);
@@ -472,6 +473,7 @@ export function ChrisAiChat({
       }
 
       setStreamingReply("");
+      setChatNotice("");
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (user) {
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -510,7 +512,7 @@ export function ChrisAiChat({
           visibleCharacters = Math.min(streamedText.length, visibleCharacters + 1);
           setStreamingReply(streamedText.slice(0, visibleCharacters));
         }
-      }, 12);
+      }, 38);
       const consumeEvent = async (event: string) => {
         const payload = event
           .split(/\r?\n/)
@@ -605,7 +607,7 @@ export function ChrisAiChat({
         streamUpdateTimerRef.current = null;
       }
       setStreamingReply("");
-      toast.error(error.message);
+      setChatNotice(error.message);
       void queryClient.invalidateQueries({ queryKey: ["ai-chats", user?.id] });
     },
   });
@@ -685,18 +687,16 @@ export function ChrisAiChat({
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const chatIsFull = messages.length >= 50 && !chatLimitUnlocked;
+  const chatIsFull = !user && messages.length >= 50 && !chatLimitUnlocked;
   const guestCreditsExhausted = !user && guestCredits <= 0;
 
   function submit() {
     if (guestCreditsExhausted) {
-      toast.error("No free credits left. Sign in to continue.");
+      setChatNotice("You've reached the guest message limit. Sign in to use unlimited ExpertAI chat.");
       return;
     }
     if (chatIsFull) {
-      toast.error(
-        "This chat is full. Start a new chat to continue; this conversation remains saved.",
-      );
+      setChatNotice("This guest conversation is full. Sign in to continue with unlimited ExpertAI chat.");
       return;
     }
     const prompt = input.trim();
@@ -728,7 +728,7 @@ export function ChrisAiChat({
 
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden bg-background">
-      <style>{`@keyframes expertai-character-fade { from { opacity: 0; } to { opacity: 1; } } .expertai-character-reveal { animation: expertai-character-fade 180ms ease-out both; } @media (prefers-reduced-motion: reduce) { .expertai-character-reveal { animation: none; } }`}</style>
+      <style>{`@keyframes expertai-character-fade { from { opacity: 0; } to { opacity: 1; } } .expertai-character-reveal { animation: expertai-character-fade 520ms ease-out both; } @media (prefers-reduced-motion: reduce) { .expertai-character-reveal { animation: none; } }`}</style>
       {user && !compact && (
         <aside className="hidden w-60 shrink-0 flex-col border-r border-border/70 bg-card/70 md:flex">
           <div className="flex items-center justify-between border-b border-border/70 p-3">
@@ -800,9 +800,9 @@ export function ChrisAiChat({
             <div>
               <p className="text-sm font-semibold">ExpertAI</p>
               <p className="text-[11px] text-muted-foreground">Created by M.Chris.T</p>
-              <p className="text-xs font-medium text-blue-300">
-                {user ? `${profile?.ai_credits ?? 0} credits` : `${guestCredits} free credits`}
-              </p>
+              {!user && (
+                <p className="text-xs font-medium text-blue-300">{guestCredits} free messages</p>
+              )}
             </div>
           </div>
 
@@ -843,6 +843,16 @@ export function ChrisAiChat({
         </div>
 
         <div ref={messagesContainerRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+          {chatNotice && (
+            <div role="status" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+              {chatNotice}
+              {!user && /limit|full/i.test(chatNotice) && (
+                <button type="button" className="ml-2 font-semibold text-primary underline" onClick={() => window.location.assign("/auth?next=%2Fchat")}>
+                  Sign in for unlimited chat
+                </button>
+              )}
+            </div>
+          )}
           {messagesError && (
             <div
               role="alert"
@@ -947,13 +957,13 @@ export function ChrisAiChat({
               role="status"
               className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm"
             >
-              No free credits left. Sign in to continue.{" "}
+              You've reached your guest message limit. Sign in to use unlimited chat.{" "}
               <button
                 type="button"
                 className="ml-2 font-semibold text-primary underline"
                 onClick={() => window.location.assign("/auth?next=%2Fchat")}
               >
-                Create account
+                Sign in / Create account
               </button>
             </div>
           )}
