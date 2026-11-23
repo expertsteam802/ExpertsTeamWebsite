@@ -56,6 +56,7 @@ import "@xterm/xterm/css/xterm.css";
 import { toast } from "sonner";
 
 import { ChrisAiChat } from "@/components/chris-ai";
+import { AgentPromptLibrary } from "@/components/agent-prompt-library";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -2997,6 +2998,7 @@ export function CodeAgent() {
                       <Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendPrompt(); } }} placeholder="Ask ExpertsTeam Agent to plan or build something…" className="min-h-[76px] resize-none border-0 bg-transparent text-xs text-white shadow-none focus-visible:ring-0" disabled={busy} />
                       <div className="flex items-center justify-between gap-2 px-1 pt-2">
                         <div className="flex items-center gap-1">
+                          <AgentPromptLibrary currentPrompt={prompt} onUse={setPrompt} />
                           <button type="button" onClick={() => setAgentMode((mode) => mode === "plan" ? "build" : "plan")} disabled={busy} className={agentMode === "plan" ? "rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-2.5 py-2 text-[10px] font-semibold text-emerald-200" : "rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}>{agentMode === "plan" ? "Plan mode on" : "Plan first"}</button>
                           <input ref={referenceInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={(event) => { void attachReferenceImages(event.target.files); event.currentTarget.value = ""; }} />
                           <button type="button" onClick={() => referenceInputRef.current?.click()} disabled={busy} className="rounded-lg p-2 text-slate-400 hover:bg-white/5 hover:text-cyan-200 disabled:opacity-40" title="Attach visual references"><ImagePlus className="h-4 w-4" /></button>
