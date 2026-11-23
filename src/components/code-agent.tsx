@@ -3266,9 +3266,9 @@ export function CodeAgent() {
           .expert-agent-workspace-grid { display:flex; min-height:0; flex:1 1 auto; overflow:hidden; padding-bottom:108px; }
           .expert-agent-stage { min-height:0; width:100%; flex:1 1 auto; }
           .expert-agent-toolbar,.expert-agent-statusbar { display:none !important; }
-          .expert-agent-sidebar-drawer { position:fixed; top:118px; bottom:108px; left:0; z-index:91; width:min(86vw,340px); max-width:calc(100vw - 36px); border:1px solid rgba(148,163,184,.2); border-left:0; border-radius:0 18px 18px 0; box-shadow:24px 0 70px rgba(0,0,0,.55); }
-          .expert-agent-mobile-backdrop { display:block; position:fixed; inset:118px 0 108px; z-index:90; border:0; background:rgba(2,6,15,.62); backdrop-filter:blur(3px); }
-          .expert-agent-assistant-drawer { position:fixed; top:118px; right:8px; bottom:108px; left:8px; z-index:92; width:auto; border:1px solid rgba(34,211,238,.22); border-radius:18px; box-shadow:0 24px 80px rgba(0,0,0,.65); }
+          .expert-agent-sidebar-drawer { position:fixed; top:56px; bottom:108px; left:0; z-index:91; width:min(86vw,340px); max-width:calc(100vw - 36px); border:1px solid rgba(148,163,184,.2); border-left:0; border-radius:0 18px 18px 0; box-shadow:24px 0 70px rgba(0,0,0,.55); }
+          .expert-agent-mobile-backdrop { display:block; position:fixed; inset:56px 0 108px; z-index:90; border:0; background:rgba(2,6,15,.62); backdrop-filter:blur(3px); }
+          .expert-agent-assistant-drawer { position:fixed; top:56px; right:8px; bottom:108px; left:8px; z-index:92; width:auto; border:1px solid rgba(34,211,238,.22); border-radius:18px; box-shadow:0 24px 80px rgba(0,0,0,.65); }
           .expert-agent-mobile-close { display:inline-flex; align-items:center; justify-content:center; }
           .expert-agent-mobile-dock { position:fixed; z-index:95; right:0; bottom:0; left:0; display:flex; flex-direction:column; gap:7px; padding:8px 10px calc(7px + env(safe-area-inset-bottom)); border-top:1px solid rgba(148,163,184,.18); background:rgba(7,14,26,.97); backdrop-filter:blur(18px); box-shadow:0 -12px 40px rgba(0,0,0,.28); }
           .expert-agent-mobile-actions { display:flex; gap:8px; }
@@ -3282,12 +3282,12 @@ export function CodeAgent() {
           .expert-agent-kilo-surface { min-height:0; }
         }
         @media (min-width: 768px) and (max-width: 1279px) {
-          .expert-agent-assistant-drawer { position:fixed; top:118px; right:12px; bottom:12px; left:auto; z-index:92; width:min(460px,calc(100vw - 24px)); border:1px solid rgba(34,211,238,.22); border-radius:18px; box-shadow:0 24px 80px rgba(0,0,0,.55); }
+          .expert-agent-assistant-drawer { position:fixed; top:56px; right:12px; bottom:12px; left:auto; z-index:92; width:min(460px,calc(100vw - 24px)); border:1px solid rgba(34,211,238,.22); border-radius:18px; box-shadow:0 24px 80px rgba(0,0,0,.55); }
         }
         @media (min-width: 768px) and (max-width: 1023px) {
           .expert-agent-workspace-grid { display:flex; min-height:0; flex:1 1 auto; overflow:hidden; }
-          .expert-agent-sidebar-drawer { position:fixed; top:118px; bottom:12px; left:0; z-index:91; width:min(340px,86vw); border:1px solid rgba(148,163,184,.2); border-left:0; border-radius:0 18px 18px 0; box-shadow:24px 0 70px rgba(0,0,0,.55); }
-          .expert-agent-mobile-backdrop { display:block; position:fixed; inset:118px 0 0; z-index:90; border:0; background:rgba(2,6,15,.62); backdrop-filter:blur(3px); }
+          .expert-agent-sidebar-drawer { position:fixed; top:56px; bottom:12px; left:0; z-index:91; width:min(340px,86vw); border:1px solid rgba(148,163,184,.2); border-left:0; border-radius:0 18px 18px 0; box-shadow:24px 0 70px rgba(0,0,0,.55); }
+          .expert-agent-mobile-backdrop { display:block; position:fixed; inset:56px 0 0; z-index:90; border:0; background:rgba(2,6,15,.62); backdrop-filter:blur(3px); }
         }
         @media (max-width: 380px) {
           .expert-agent-mobile-tabs button { font-size:9px; }
