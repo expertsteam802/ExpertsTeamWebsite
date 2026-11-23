@@ -210,14 +210,18 @@ function LearnPage() {
                 </p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                {LESSONS.map((lesson) => (
-                  <Card
+                {LESSONS.map((lesson, index) => (
+                  <a
                     key={lesson.title}
-                    className="animate-rise gap-2 p-5 transition-transform duration-300 hover:-translate-y-1 hover:glow-panel"
+                    href={`/learn/lesson/${index + 1}`}
+                    className="block rounded-2xl transition-transform duration-300 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
-                    <h3 className="font-display text-lg font-semibold">{lesson.title}</h3>
-                    <p className="text-sm leading-6 text-muted-foreground">{lesson.body}</p>
-                  </Card>
+                    <Card className="h-full gap-2 p-5 transition-shadow hover:glow-panel">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-primary">Lesson {index + 1} · Open lesson</p>
+                      <h3 className="font-display text-lg font-semibold">{lesson.title}</h3>
+                      <p className="text-sm leading-6 text-muted-foreground">{lesson.body}</p>
+                    </Card>
+                  </a>
                 ))}
               </div>
             </div>
