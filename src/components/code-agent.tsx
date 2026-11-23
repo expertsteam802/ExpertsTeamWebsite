@@ -3322,7 +3322,7 @@ export function CodeAgent() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-white">{isAdmin ? "ExpertsTeam Agent Studio" : "ExpertsTeam Agent"}</p>
-                    <p className="text-[10px] text-slate-500">{isAdmin ? "Full-stack workspace · project controls" : "AI-powered project builder"}</p>
+                    <p className="text-[10px] text-slate-500">{isAdmin ? "Workspace controls · project builder" : "AI-powered project builder"}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
