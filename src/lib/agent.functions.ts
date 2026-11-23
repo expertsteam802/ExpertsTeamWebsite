@@ -386,6 +386,32 @@ export const importGitHubProject = createServerFn({ method: "POST" })
     };
   });
 
+export const listGitHubRepositories = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ token: z.string().trim().min(1).max(500) }).parse(input))
+  .handler(async ({ data }) => {
+    const response = await fetch("https://api.github.com/user/repos?sort=updated&per_page=100&affiliation=owner,collaborator,organization_member", {
+      headers: {
+        Authorization: "Bearer " + data.token,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "ExpertsTeam-Builder",
+      },
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) throw new Error("GitHub authorization expired or lacks repository access. Reconnect GitHub.");
+      throw new Error("GitHub repository list failed (" + response.status + ").");
+    }
+    const rows = await response.json() as Array<{ full_name?: string; private?: boolean; html_url?: string; default_branch?: string; permissions?: { push?: boolean } }>;
+    return rows.filter((row) => row.full_name && row.permissions?.push !== false).map((row) => ({
+      fullName: row.full_name!,
+      private: Boolean(row.private),
+      url: row.html_url ?? "",
+      defaultBranch: row.default_branch ?? "main",
+    }));
+  });
+
 export const pushProjectToGithub = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => z.object({
