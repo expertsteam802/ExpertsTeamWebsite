@@ -98,7 +98,7 @@ begin
     lead_ip, goal_id, goal_name, processed_at
   ) values (
     btrim(p_transaction_id), p_player_id, p_program_id, p_program_name,
-    p_destination_program_id, p_destination_program_name, v_status,
+    p_destination_program_id, p_destination_program_name, 'pending',
     coalesce(p_virtual_amount, 0), p_payout, p_payout_decimal,
     p_currency, p_country_code, p_lead_ip, p_goal_id, p_goal_name, now()
   )
