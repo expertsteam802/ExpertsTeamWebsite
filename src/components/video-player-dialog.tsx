@@ -41,9 +41,6 @@ function loadYouTubeApi(): Promise<YouTubeApi> {
     const scriptUrl = "https://www.youtube.com/iframe_api";
     let settled = false;
     const previousCallback = window.onYouTubeIframeAPIReady;
-    let pollId: number | undefined;
-    let timeoutId: number | undefined;
-
     const cleanup = () => {
       if (pollId !== undefined) window.clearInterval(pollId);
       if (timeoutId !== undefined) window.clearTimeout(timeoutId);
@@ -75,6 +72,12 @@ function loadYouTubeApi(): Promise<YouTubeApi> {
       }
     };
 
+    const pollId = window.setInterval(checkReady, 100);
+    const timeoutId = window.setTimeout(
+      () => finish(new Error("YouTube's player API took too long to load.")),
+      PLAYER_TIMEOUT_MS,
+    );
+
     window.onYouTubeIframeAPIReady = handleApiReady;
     let script = document.querySelector<HTMLScriptElement>(`script[src="${scriptUrl}"]`);
     if (!script) {
@@ -87,11 +90,6 @@ function loadYouTubeApi(): Promise<YouTubeApi> {
       script.addEventListener("error", () => finish(new Error("Could not load YouTube's player API.")), { once: true });
     }
 
-    pollId = window.setInterval(checkReady, 100);
-    timeoutId = window.setTimeout(
-      () => finish(new Error("YouTube's player API took too long to load.")),
-      PLAYER_TIMEOUT_MS,
-    );
     checkReady();
   }).catch((error: unknown) => {
     youtubeApiPromise = null;
