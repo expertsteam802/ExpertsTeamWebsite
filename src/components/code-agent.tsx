@@ -401,6 +401,7 @@ export function CodeAgent() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [assistantOpen, setAssistantOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(248);
+  const [projectFilter, setProjectFilter] = useState("");
   const [assistantWidth, setAssistantWidth] = useState(360);
   useEffect(() => {
     if (window.matchMedia("(max-width: 767px)").matches) {
@@ -2496,7 +2497,7 @@ export function CodeAgent() {
                 className="h-7 max-w-[180px] rounded-lg border border-cyan-400/20 bg-[#0b1320] px-2 text-[11px] font-medium text-cyan-100"
               >
                 <option value="" disabled>Select project…</option>
-                {projects.map((project) => (
+                {projects.filter((project) => project.name.toLowerCase().includes(projectFilter.trim().toLowerCase())).map((project) => (
                   <option key={project.id} value={project.id}>{project.name}</option>
                 ))}
               </select>
@@ -2636,6 +2637,14 @@ export function CodeAgent() {
                 </div>
               </div>
 
+              <input
+                type="search"
+                value={projectFilter}
+                onChange={(event) => setProjectFilter(event.target.value)}
+                placeholder="Search projects…"
+                aria-label="Search projects"
+                className="mb-2 h-8 w-full rounded-lg border border-white/10 bg-[#08111e] px-2.5 text-xs text-slate-200 placeholder:text-slate-600 outline-none transition focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10"
+              />
               <div className="expert-agent-project-list max-h-64 space-y-1 overflow-y-auto">
                 {projectsLoading && (
                   <p className="px-2 py-2 text-xs text-slate-500">Loading projects…</p>
@@ -2644,6 +2653,9 @@ export function CodeAgent() {
                   <p className="px-2 py-2 text-xs leading-5 text-slate-500">
                     Your saved projects will appear here.
                   </p>
+                )}
+                {!projectsLoading && projects.length > 0 && !projects.some((project) => project.name.toLowerCase().includes(projectFilter.trim().toLowerCase())) && (
+                  <p className="px-2 py-2 text-xs leading-5 text-slate-500">No projects match “{projectFilter}”.</p>
                 )}
                 {projects.map((project) => (
                   <div
