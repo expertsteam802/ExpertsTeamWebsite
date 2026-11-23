@@ -374,10 +374,10 @@ export const Route = createFileRoute("/api/ai/stream")({
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           console.error("[ExpertAI stream]", message);
-          if (/Kilo.*(quota is exhausted|HTTP 429)|free-model rate limit|upstream model provider returned HTTP 429/i.test(message)) {
+          if (/(Kilo|OpenRouter).*(quota is exhausted|HTTP 429|rate limit)|free-model rate limit|upstream model provider returned HTTP 429/i.test(message)) {
             return Response.json({ error: message }, { status: 429 });
           }
-          if (/Kilo free access is unavailable/i.test(message)) {
+          if (/Kilo free access is unavailable|OpenRouter rejected/i.test(message)) {
             return Response.json({ error: message }, { status: 503 });
           }
           if (/cannot fit the current request/i.test(message)) {
@@ -387,7 +387,7 @@ export const Route = createFileRoute("/api/ai/stream")({
             return Response.json({ error: message }, { status: 400 });
           }
           return Response.json(
-            { error: "ExpertAI is temporarily unavailable through Kilo. Please try again shortly." },
+            { error: "ExpertAI is temporarily unavailable through the configured AI provider. Please try again shortly." },
             { status: 503 },
           );
         }
