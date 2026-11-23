@@ -1880,6 +1880,26 @@ export function CodeAgent() {
     onSuccess: () => toast.success("Project saved successfully"),
     onError: (error: Error) => toast.error(error.message),
   });
+  useEffect(() => {
+    const handleWorkspaceShortcut = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      const modifier = event.ctrlKey || event.metaKey;
+      if (!modifier || event.altKey) return;
+      if (key === "s") {
+        event.preventDefault();
+        if (!saveMutation.isPending) saveMutation.mutate();
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      const typing = !!target?.closest("input, textarea, select, [contenteditable='true'], .cm-content, .xterm");
+      if (key === "enter" && !typing && !runtimeBusy) {
+        event.preventDefault();
+        void runProject();
+      }
+    };
+    window.addEventListener("keydown", handleWorkspaceShortcut);
+    return () => window.removeEventListener("keydown", handleWorkspaceShortcut);
+  }, [saveMutation.isPending, runtimeBusy]);
 
   const githubMutation = useMutation({
     mutationFn: async () => {
