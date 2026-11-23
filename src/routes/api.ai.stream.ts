@@ -14,8 +14,8 @@ function assistantMessageResponse(message: string): Response {
   const event = { candidates: [{ content: { parts: [{ text: message }] } }] };
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
-      controller.enqueue(encoder.encode("data: " + JSON.stringify(event) + "\\n\\n"));
-      controller.enqueue(encoder.encode("data: [DONE]\\n\\n"));
+      controller.enqueue(encoder.encode("data: " + JSON.stringify(event) + "\n\n"));
+      controller.enqueue(encoder.encode("data: [DONE]\n\n"));
       controller.close();
     },
   });
