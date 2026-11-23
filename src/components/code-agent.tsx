@@ -827,6 +827,13 @@ export function CodeAgent() {
           terminalRecoveryFilesRef.current = { ...persisted };
         }
 
+        if (changedPaths.length || deletedPaths.length) {
+          const { error: touchError } = await supabase.from("agent_projects")
+            .update({ updated_at: new Date().toISOString() })
+            .eq("id", session.projectId).eq("user_id", user.id);
+          if (touchError) throw touchError;
+        }
+
         lastSaveError = "";
         if (active && (changedPaths.length || deletedPaths.length) && projectId === session.projectId) {
           setFiles({ ...snapshot.files });
