@@ -21,7 +21,7 @@ const referenceImageSchema = z.object({
 const codingRequest = z
   .object({
     prompt: z.string().trim().min(1).max(16000),
-    files: z.record(z.string().max(512), z.string().max(100000)),
+    files: z.record(z.string().max(512), z.string().max(10_000_000)),
     history: z
       .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(3000) }))
       .max(8),
@@ -263,7 +263,7 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
 const previewRequest = z
   .object({
     projectId: z.string().uuid(),
-    files: z.record(z.string().max(512), z.string().max(500000)),
+    files: z.record(z.string().max(512), z.string().max(10_000_000)),
   })
   .refine(
     ({ files }) =>
@@ -342,7 +342,7 @@ const publishRequest = z
   .object({
     projectId: z.string().uuid(),
     slug: z.string().regex(/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/),
-    files: z.record(z.string().max(512), z.string().max(150000)),
+    files: z.record(z.string().max(512), z.string().max(10_000_000)),
   })
   .refine(
     ({ files }) =>
