@@ -466,6 +466,7 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
       sandboxName: z.string().min(20).max(80),
       cli: z.enum(["kilo", "opencode", "aider"]),
       prompt: z.string().trim().min(1).max(40000),
+      referenceImages: z.array(referenceImageSchema).max(3).optional().default([]),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -481,18 +482,30 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
       throw new Error("You have no AI credits remaining on this account. Ask an administrator about your usage allowance.");
 
     const quote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
-    const cliCommand = data.cli === "kilo"
-      ? "kilo run --auto " + quote(data.prompt)
-      : data.cli === "opencode"
-        ? "opencode run " + quote(data.prompt)
-        : "aider --yes --message " + quote(data.prompt);
-    const command =
-      "runuser -u experts-shell -- env HOME=/home/experts-shell USER=experts-shell LOGNAME=experts-shell " +
-      "PATH=/home/experts-shell/.local/bin:/home/experts-shell/.cargo/bin:/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin " +
-      cliCommand;
-    const { assertDaytonaTerminalSandboxName, runDaytonaProjectCommand, readDaytonaProjectFiles } = await import("./daytona-terminal.server");
+    const {
+      assertDaytonaTerminalSandboxName,
+      runDaytonaProjectCommand,
+      readDaytonaProjectFiles,
+      writeDaytonaProjectReferenceImages,
+    } = await import("./daytona-terminal.server");
     const terminalName = assertDaytonaTerminalSandboxName(context.userId, data.sandboxName);
-    const result = await runDaytonaProjectCommand(terminalName, command);
+    const referencePaths = await writeDaytonaProjectReferenceImages(terminalName, data.referenceImages);
+    const promptWithReferences = referencePaths.length
+      ? data.prompt + "\\n\\nVISUAL REFERENCES (read these image files before changing the UI):\\n" +
+        referencePaths.map((filePath) => "- " + filePath).join("\\n") +
+        "\\nUse the attached images as visual requirements. Recreate their layout and details in actual editable source code."
+      : data.prompt;
+    const commandWithReferences = data.cli === "kilo"
+      ? "kilo run --auto " + quote(promptWithReferences)
+      : data.cli === "opencode"
+        ? "opencode run " + quote(promptWithReferences)
+        : "aider --yes --message " + quote(promptWithReferences);
+    const result = await runDaytonaProjectCommand(
+      terminalName,
+      "runuser -u experts-shell -- env HOME=/home/experts-shell USER=experts-shell LOGNAME=experts-shell " +
+        "PATH=/home/experts-shell/.local/bin:/home/experts-shell/.cargo/bin:/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin " +
+        commandWithReferences,
+    );
     if (result.exitCode !== 0) {
       const detail = result.stderr || result.stdout || "The agent could not complete the request.";
       throw new Error(detail.slice(-6000));
