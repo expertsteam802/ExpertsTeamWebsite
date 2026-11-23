@@ -218,7 +218,7 @@ export async function runAgent(
     throw new Error(
       "Use up to three PNG, JPG or WebP references, with a combined size under 8 MB.",
     );
-  if (cleanPrompt.length > 16000) throw new Error("That request is too long.");
+  if (cleanPrompt.length > 200_000) throw new Error("That request exceeds the 200,000-character transport safety envelope.");
   const entries = Object.entries(files);
   if (entries.length > 2_000 || entries.some(([path, content]) => !isSafeProjectPath(path) || Buffer.byteLength(content, "utf8") > 10_000_000)) {
     throw new Error("One or more project files exceed the 10 MB per-file safety envelope or have an invalid path.");
