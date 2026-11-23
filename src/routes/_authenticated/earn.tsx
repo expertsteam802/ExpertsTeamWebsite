@@ -23,6 +23,7 @@ export const Route = createFileRoute("/_authenticated/earn")({
 
 type Offer = Tables<"cpa_offers">;
 type Conversion = Tables<"cpa_conversions">;
+type CreditTransaction = Tables<"ai_credit_transactions">;
 
 function EarnCreditsPage() {
   const { user, profile } = useAuth();
@@ -53,6 +54,20 @@ function EarnCreditsPage() {
         .limit(30);
       if (error) throw error;
       return (data ?? []) as Conversion[];
+    },
+  });
+
+  const ledgerQuery = useQuery({
+    queryKey: ["ai-credit-ledger", user?.id],
+    enabled: Boolean(user),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ai_credit_transactions")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      return (data ?? []) as CreditTransaction[];
     },
   });
 
