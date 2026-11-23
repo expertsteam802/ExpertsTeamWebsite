@@ -1113,8 +1113,12 @@ export function CodeAgent() {
           setFiles(result.files);
           setDirty(false);
         }
-      } catch {
-        // A timed-out sandbox may already be gone; the last successful sync is in Supabase.
+      } catch (error) {
+        // Do not stop or detach a workspace when its final file sync failed.
+        // Keeping the session connected gives the user a chance to retry rather
+        // than silently throwing away edits that may not have reached storage.
+        const detail = error instanceof Error ? error.message : "Unknown sync error";
+        throw new Error("Could not safely save the current workspace. The terminal session was kept open. " + detail);
       }
     }
     const sessionName = session?.sandboxName;
