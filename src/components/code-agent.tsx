@@ -2880,6 +2880,24 @@ export function CodeAgent() {
                   {label}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(true)}
+                className={`expert-agent-workspace-tab flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${sidebarOpen ? "bg-blue-400/10 text-blue-200" : "text-slate-500 hover:bg-white/[0.05] hover:text-slate-200"}`}
+                title="Open project explorer"
+              >
+                <Folder className="h-3.5 w-3.5" />
+                Explorer
+              </button>
+              <button
+                type="button"
+                onClick={() => setAssistantOpen(true)}
+                className={`expert-agent-workspace-tab flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${assistantOpen ? "bg-cyan-400/10 text-cyan-200" : "text-slate-500 hover:bg-white/[0.05] hover:text-slate-200"}`}
+                title="Open Infinity Expert agent"
+              >
+                <Bot className="h-3.5 w-3.5" />
+                Agent
+              </button>
             </div>
 
             <div className="flex items-center gap-1">
