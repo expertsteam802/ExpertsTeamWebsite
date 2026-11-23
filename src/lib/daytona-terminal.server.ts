@@ -269,7 +269,11 @@ function safePreviewPath(filePath: string) {
     !filePath.split("/").some((part) => !part || part === "." || part === "..") &&
     /^[a-zA-Z0-9_@./-]+$/.test(filePath));
 }
-export async function startDaytonaProjectPreview(projectId: string, sourceFiles: AgentProjectFiles) {
+export async function startDaytonaProjectPreview(
+  projectId: string,
+  sourceFiles: AgentProjectFiles,
+  projectEnvironment: Record<string, string> = {},
+) {
   const entries = Object.entries(sourceFiles);
   if (!entries.length) throw new Error("Add project files before starting the preview.");
   if (entries.some(([filePath]) => !safePreviewPath(filePath))) {
@@ -319,7 +323,7 @@ export async function startDaytonaProjectPreview(projectId: string, sourceFiles:
         : sourceFiles["yarn.lock"] ? "corepack yarn install --non-interactive"
         : sourceFiles["bun.lock"] || sourceFiles["bun.lockb"] ? "bun install"
         : "npm install --no-audit --no-fund";
-      await command(sandbox, install, workdir, undefined, 300);
+      await command(sandbox, install, workdir, projectEnvironment, 300);
     }
     stage = "starting the development server";
     const link = await sandbox.getPreviewLink(port);
@@ -355,7 +359,7 @@ export async function startDaytonaProjectPreview(projectId: string, sourceFiles:
     if (!ready) {
       const start = "nohup npm run " + scriptName + extraArgs + " > .experts-preview.log 2>&1 < /dev/null & echo $! > .experts-preview.pid";
       await command(sandbox, start, workdir,
-        { HOST: "0.0.0.0", PORT: String(port), ...(isVite ? { __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: host } : {}) }, 30);
+        { ...projectEnvironment, HOST: "0.0.0.0", PORT: String(port), ...(isVite ? { __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: host } : {}) }, 30);
       for (let attempt = 0; attempt < 40; attempt++) {
         try {
           const response = await fetch(previewUrl, { cache: "no-store", signal: AbortSignal.timeout(2500) });
@@ -409,6 +413,7 @@ export async function publishDaytonaProject(
   slug: string,
   userId: string,
   storageClient: SupabaseClient<Database>,
+  projectEnvironment: Record<string, string> = {},
 ) {
   if (!/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(slug)) throw new Error("The public app address is invalid.");
   const entries = Object.entries(sourceFiles);
@@ -459,7 +464,7 @@ export async function publishDaytonaProject(
         : sourceFiles["yarn.lock"] ? "corepack yarn build" + baseArgs
         : sourceFiles["bun.lock"] || sourceFiles["bun.lockb"] ? "bun run build" + (baseArgs ? " --" + baseArgs : "")
         : "npm run build" + (baseArgs ? " --" + baseArgs : "");
-      await command(sandbox, buildCommand, workdir, undefined, 600);
+      await command(sandbox, buildCommand, workdir, projectEnvironment, 600);
 
       stage = "collecting build output";
       const candidates = [".output/public", "dist", "build", "out", "dist/client", "build/client", ".svelte-kit/output/client", "public", "www"];
