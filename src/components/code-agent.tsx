@@ -402,6 +402,7 @@ export function CodeAgent() {
   const [assistantOpen, setAssistantOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(248);
   const [projectFilter, setProjectFilter] = useState("");
+  const [fileFilter, setFileFilter] = useState("");
   const [assistantWidth, setAssistantWidth] = useState(360);
   useEffect(() => {
     if (window.matchMedia("(max-width: 767px)").matches) {
@@ -483,6 +484,22 @@ export function CodeAgent() {
   const xtermRef = useRef<XTerm | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const editorRef = useRef<EditorView | null>(null);
+  const filterProjectTree = (nodes: ProjectTreeNode[], query: string): ProjectTreeNode[] => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return nodes;
+    return nodes.flatMap((node) => {
+      if (node.folder) {
+        const children = filterProjectTree(node.children, normalized);
+        return node.name.toLowerCase().includes(normalized) || children.length
+          ? [{ ...node, children: node.name.toLowerCase().includes(normalized) ? node.children : children }]
+          : [];
+      }
+      return node.name.toLowerCase().includes(normalized) || node.path.toLowerCase().includes(normalized)
+        ? [node]
+        : [];
+    });
+  };
+  const visibleProjectFileTree = filterProjectTree(projectFileTree, fileFilter);
   const renderProjectTree = (nodes: ProjectTreeNode[], depth = 0): ReactNode[] =>
     nodes.map((node) => {
       if (node.folder) {
@@ -2657,7 +2674,7 @@ export function CodeAgent() {
                 {!projectsLoading && projects.length > 0 && !projects.some((project) => project.name.toLowerCase().includes(projectFilter.trim().toLowerCase())) && (
                   <p className="px-2 py-2 text-xs leading-5 text-slate-500">No projects match “{projectFilter}”.</p>
                 )}
-                {projects.map((project) => (
+                {projects.filter((project) => project.name.toLowerCase().includes(projectFilter.trim().toLowerCase())).map((project) => (
                   <div
                     key={project.id}
                     className={`group flex items-center gap-1 rounded-lg pr-1 transition ${
@@ -2712,9 +2729,17 @@ export function CodeAgent() {
                 </button>
               </div>
 
+              <input
+                type="search"
+                value={fileFilter}
+                onChange={(event) => setFileFilter(event.target.value)}
+                placeholder="Find a file or folder…"
+                aria-label="Search project files"
+                className="mb-2 h-8 w-full shrink-0 rounded-lg border border-white/10 bg-[#08111e] px-2.5 text-xs text-slate-200 placeholder:text-slate-600 outline-none transition focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10"
+              />
               <div className="expert-agent-file-tree min-h-0 flex-1 space-y-0.5 overflow-y-auto overscroll-contain pr-1">
-                {projectFileTree.length ? renderProjectTree(projectFileTree) : (
-                  <p className="px-2 py-3 text-[11px] text-slate-500">No project files yet.</p>
+                {visibleProjectFileTree.length ? renderProjectTree(visibleProjectFileTree) : (
+                  <p className="px-2 py-3 text-[11px] text-slate-500">{fileFilter.trim() ? "No files or folders match your search." : "No project files yet."}</p>
                 )}
               </div>
             </div>
