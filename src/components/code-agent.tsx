@@ -1820,8 +1820,9 @@ export function CodeAgent() {
 
   const githubMutation = useMutation({
     mutationFn: async () => {
+      const activeProjectId = await persist({ files });
       const result = await push({
-        data: { token: githubAccessToken || githubToken, repo: githubRepo, files },
+        data: { projectId: activeProjectId, token: githubAccessToken || githubToken, repo: githubRepo },
       });
       if (!result.ok) throw new Error(result.error || "GitHub push failed");
       await persist({ extra: { github_repo: result.url } });
