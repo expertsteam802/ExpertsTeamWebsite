@@ -765,20 +765,24 @@ export function CodeAgent() {
         terminalSessionClosingRef.current.delete(session.sandboxName);
         return;
       }
-      // Flush the live workspace when Studio is left, but keep the Daytona
-      // sandbox alive so returning to Studio reconnects to the same files.
+      // Leaving Studio persists the authored project files before stopping
+      // the disposable VM. If persistence fails, keep the VM alive so the
+      // latest edits can still be recovered on the next visit.
       void syncTerminalFiles({
         data: { projectId: session.projectId, sandboxName: session.sandboxName },
       })
         .then(async ({ files: savedFiles }) => {
-          if (!user?.id) return;
+          if (!user?.id) throw new Error("The signed-in account is no longer available.");
           await saveProjectFiles(session.projectId, user.id, savedFiles);
-          await supabase.from("agent_projects").update({ updated_at: new Date().toISOString() })
+          const { error } = await supabase.from("agent_projects")
+            .update({ updated_at: new Date().toISOString() })
             .eq("id", session.projectId).eq("user_id", user.id);
+          if (error) throw error;
+          await stopTerminal({ data: { sandboxName: session.sandboxName } });
         })
         .catch(() => undefined);
     };
-  }, [syncTerminalFiles, terminalConnection?.sandboxName, terminalConnection?.projectId, user?.id]);
+  }, [syncTerminalFiles, stopTerminal, terminalConnection?.sandboxName, terminalConnection?.projectId, user?.id]);
 
 
   // Persist each generated file separately as soon as it appears or changes
