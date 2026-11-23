@@ -2101,6 +2101,8 @@ export function CodeAgent() {
     setName("Untitled project");
     setFiles(STARTER_FILES);
     setMessages([]);
+    setPlanDraft(null);
+    setAgentMode("build");
     setActiveFile("index.html");
     setLogs([]);
     switchPanel("preview");
@@ -2126,6 +2128,10 @@ export function CodeAgent() {
     setName(project.name);
     setFiles(savedFiles);
     const savedMessages = Array.isArray(project.messages) ? (project.messages as Message[]) : [];
+    const planPrefix = "Plan ready for your review. No project files were changed.\n\n";
+    const latestPlan = [...savedMessages].reverse().find((message) => message.role === "assistant" && message.content.startsWith(planPrefix));
+    setPlanDraft(latestPlan ? latestPlan.content.slice(planPrefix.length) : null);
+    setAgentMode("build");
     setMessages(savedMessages);
     setActiveFile(Object.keys(savedFiles)[0] ?? "index.html");
     setGithubRepo(project.github_repo?.split("/").pop() ?? "");
