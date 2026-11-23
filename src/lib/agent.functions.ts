@@ -211,7 +211,10 @@ export const importGitHubProject = createServerFn({ method: "POST" })
               part === "." ||
               part === ".." ||
               part.includes("\\") ||
-              /[\u0000-\u001f\u007f]/.test(part) ||
+              part.split("").some((character) => {
+                const code = character.charCodeAt(0);
+                return code <= 31 || code === 127;
+              }) ||
               ignoredDirectories.has(part),
           ) &&
           !segments.some((part) => part.startsWith(".experts-")) &&
