@@ -123,7 +123,15 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
         price: Math.max(0, Number(price) || 0),
         payout_account: payoutAccount.trim() || null,
       });
-      if (error) throw error;
+      if (error) {
+        if (path) {
+          const { error: cleanupError } = await supabase.storage.from("uploads").remove([path]);
+          if (cleanupError) {
+            console.error("[Upload cleanup] Could not remove an unlinked upload:", cleanupError.message);
+          }
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       toast.success("Upload complete");
