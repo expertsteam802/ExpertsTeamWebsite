@@ -82,6 +82,7 @@ import {
   stopAgentPreview,
 } from "@/lib/agent.functions";
 import { buildSrcDocWithConsole, STARTER_FILES, type ProjectFiles } from "@/lib/sandbox";
+import { deleteProjectFile, loadProjectFiles, saveProjectFile, saveProjectFiles } from "@/lib/project-files";
 type Message = { role: "user" | "assistant"; content: string };
 type ProjectTreeNode = { name: string; path: string; folder: boolean; children: ProjectTreeNode[] };
 
@@ -814,12 +815,7 @@ export function CodeAgent() {
             ...persisted,
             [filePath]: String(snapshot.files[filePath]),
           };
-          const { error } = await supabase
-            .from("agent_projects")
-            .update({ files: nextFiles as unknown as Json, updated_at: new Date().toISOString() })
-            .eq("id", session.projectId)
-            .eq("user_id", user.id);
-          if (error) throw error;
+          await saveProjectFile(session.projectId, user.id, filePath, String(snapshot.files[filePath]));
           Object.assign(persisted, { [filePath]: String(snapshot.files[filePath]) });
           terminalRecoveryFilesRef.current = { ...persisted };
         }
@@ -829,12 +825,7 @@ export function CodeAgent() {
         for (const filePath of deletedPaths) {
           if (!active) return;
           delete persisted[filePath];
-          const { error } = await supabase
-            .from("agent_projects")
-            .update({ files: { ...persisted } as unknown as Json, updated_at: new Date().toISOString() })
-            .eq("id", session.projectId)
-            .eq("user_id", user.id);
-          if (error) throw error;
+          await deleteProjectFile(session.projectId, filePath);
           terminalRecoveryFilesRef.current = { ...persisted };
         }
 
@@ -1617,12 +1608,14 @@ export function CodeAgent() {
     };
 
     if (projectId) {
+      const { files: _legacyFiles, ...metadataPayload } = payload;
       const { error } = await supabase
         .from("agent_projects")
-        .update(payload)
+        .update(metadataPayload)
         .eq("id", projectId)
         .eq("user_id", user.id);
       if (error) throw error;
+      await saveProjectFiles(projectId, user.id, filesToSave);
       await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
       if (JSON.stringify(terminalRecoveryFilesRef.current) === JSON.stringify(filesToSave)) {
         setDirty(false);
@@ -1637,6 +1630,7 @@ export function CodeAgent() {
       .single();
 
     if (error) throw error;
+    await saveProjectFiles(data.id, user.id, filesToSave);
     setProjectId(data.id);
     if (JSON.stringify(terminalRecoveryFilesRef.current) === JSON.stringify(filesToSave)) {
       setDirty(false);
@@ -2142,11 +2136,22 @@ export function CodeAgent() {
     toast.success("New workspace created");
   }
 
-  function openProject(project: ProjectRow) {
+  async function openProject(project: ProjectRow) {
+    // Prefer independently persisted file rows. Fall back to the legacy JSONB
+    // snapshot for projects created before the per-file migration.
+    let sourceFiles: ProjectFiles = {};
+    try {
+      sourceFiles = await loadProjectFiles(project.id);
+    } catch {
+      sourceFiles = {};
+    }
+    if (!Object.keys(sourceFiles).length && project.files && typeof project.files === "object") {
+      sourceFiles = project.files as ProjectFiles;
+    }
     // Older workspaces may already contain terminal bookkeeping from before
     // the server-side filter was added. Hide those entries when restoring too.
     const cleanedFiles = Object.fromEntries(
-      Object.entries(project.files ?? {}).filter(([filePath]) => !isInternalAgentWorkspaceFile(filePath)),
+      Object.entries(sourceFiles).filter(([filePath]) => !isInternalAgentWorkspaceFile(filePath)),
     ) as ProjectFiles;
     const savedFiles = Object.keys(cleanedFiles).length ? cleanedFiles : null;
     if (!savedFiles) {
