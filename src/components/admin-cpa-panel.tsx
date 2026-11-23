@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Check, ExternalLink, Gift, Pause, Plus, Trash2, X } from "lucide-react";
+import { Check, Gift, Pause, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -30,9 +30,9 @@ export function AdminCpaPanel() {
   const conversions = useQuery({
     queryKey: ["admin-cpa-conversions"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("cpa_conversions").select("*, profiles(username, display_name)").order("created_at", { ascending: false }).limit(200);
+      const { data, error } = await supabase.from("cpa_conversions").select("*").order("created_at", { ascending: false }).limit(200);
       if (error) throw error;
-      return (data ?? []) as Array<Conversion & { profiles: { username: string; display_name: string | null } | null }>;
+      return (data ?? []) as Conversion[];
     },
   });
   const refresh = () => {
@@ -116,7 +116,7 @@ export function AdminCpaPanel() {
         <div><h3 className="font-semibold">Conversion verification</h3><p className="text-sm text-muted-foreground">Review pending completions. Credits are awarded atomically and cannot be awarded twice.</p></div>
         {conversions.data?.filter(item => item.status === "pending").length ? conversions.data.filter(item => item.status === "pending").map(item => (
           <Card key={item.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
-            <div><p className="font-medium">{item.profiles?.display_name || item.profiles?.username || "Member"} · +{item.reward_credits} credits</p><p className="mt-1 text-xs text-muted-foreground">{item.provider} · tracking {item.tracking_id} · {new Date(item.created_at).toLocaleString()}</p></div>
+            <div><p className="font-medium">Member {item.user_id.slice(0, 8)} · +{item.reward_credits} credits</p><p className="mt-1 text-xs text-muted-foreground">{item.provider} · tracking {item.tracking_id} · {new Date(item.created_at).toLocaleString()}</p></div>
             <div className="flex gap-2"><Button size="sm" disabled={review.isPending} onClick={() => review.mutate({ item, approve: true })}><Check className="h-4 w-4" /> Approve</Button><Button size="sm" variant="outline" disabled={review.isPending} onClick={() => review.mutate({ item, approve: false })}><X className="h-4 w-4" /> Reject</Button></div>
           </Card>
         )) : <Card className="p-5 text-sm text-muted-foreground">No pending conversions.</Card>}
