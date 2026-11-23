@@ -90,7 +90,10 @@ type ProjectTreeNode = { name: string; path: string; folder: boolean; children: 
 
 function isInternalAgentWorkspaceFile(filePath: string) {
   const parts = filePath.split("/");
-  return parts.some((part) => part.startsWith(".experts-") || [".kilo", ".kilocode", ".opencode"].includes(part)) ||
+  return parts.some((part) =>
+    part.startsWith(".experts-") ||
+    [".kilo", ".kilocode", ".opencode", ".git", ".vercel", ".lovable", "node_modules", ".next", ".nuxt", ".turbo", ".cache", ".npm", ".vite", "dist", "build"].includes(part)
+  ) || parts.some((part) => /^\.env($|\.)/i.test(part)) ||
     filePath === ".config/kilo/kilo.jsonc";
 }
 
@@ -367,7 +370,7 @@ export function CodeAgent() {
         : next;
     });
   }, [activeFile, files]);
-  const projectFileTree = useMemo(() => buildProjectFileTree(Object.keys(files)), [files]);
+  const projectFileTree = useMemo(() => buildProjectFileTree(Object.keys(files).filter((filePath) => !isInternalAgentWorkspaceFile(filePath))), [files]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [typingMessageIndex, setTypingMessageIndex] = useState<number | null>(null);
   const agentChatEndRef = useRef<HTMLDivElement>(null);
