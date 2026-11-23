@@ -30,6 +30,7 @@ create index if not exists mylead_postback_events_status_idx
   on public.mylead_postback_events(status, created_at desc);
 
 alter table public.mylead_postback_events enable row level security;
+grant select on public.mylead_postback_events to authenticated;
 revoke all on public.mylead_postback_events from anon, authenticated;
 grant select on public.mylead_postback_events to authenticated;
 create policy "Users and admins view MyLead events"
