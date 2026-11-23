@@ -39,7 +39,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { EditorView, keymap } from "@codemirror/view";
 import { LanguageDescription } from "@codemirror/language";
@@ -53,6 +53,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { toast } from "sonner";
 
+import { ChrisAiChat } from "@/components/chris-ai";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -77,6 +78,32 @@ import {
 } from "@/lib/agent.functions";
 import { buildSrcDocWithConsole, STARTER_FILES, type ProjectFiles } from "@/lib/sandbox";
 type Message = { role: "user" | "assistant"; content: string };
+type ProjectTreeNode = { name: string; path: string; folder: boolean; children: ProjectTreeNode[] };
+
+function buildProjectFileTree(filePaths: string[]): ProjectTreeNode[] {
+  const root: ProjectTreeNode[] = [];
+  for (const filePath of filePaths) {
+    const parts = filePath.split("/").filter(Boolean);
+    let level = root;
+    let currentPath = "";
+    parts.forEach((part, index) => {
+      currentPath = currentPath ? currentPath + "/" + part : part;
+      const isFolder = index < parts.length - 1;
+      let node = level.find((item) => item.name === part);
+      if (!node) {
+        node = { name: part, path: currentPath, folder: isFolder, children: [] };
+        level.push(node);
+      }
+      if (isFolder) level = node.children;
+    });
+  }
+  const sort = (nodes: ProjectTreeNode[]) => {
+    nodes.sort((left, right) => Number(right.folder) - Number(left.folder) || left.name.localeCompare(right.name));
+    nodes.forEach((node) => sort(node.children));
+  };
+  sort(root);
+  return root;
+}
 type ReferenceImage = {
   name: string;
   mimeType: "image/png" | "image/jpeg" | "image/webp";
@@ -306,10 +333,12 @@ export function CodeAgent() {
   const [name, setName] = useState("Untitled project");
   const [files, setFiles] = useState<ProjectFiles>(STARTER_FILES);
   const [activeFile, setActiveFile] = useState("index.html");
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
+  const projectFileTree = useMemo(() => buildProjectFileTree(Object.keys(files)), [files]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [typingMessageIndex, setTypingMessageIndex] = useState<number | null>(null);
   const agentChatEndRef = useRef<HTMLDivElement>(null);
-  const [agentPanelMode, setAgentPanelMode] = useState<"chat" | "terminal">("terminal");
+  const [agentPanelMode, setAgentPanelMode] = useState<"chat" | "terminal" | "chats">("terminal");
   const [prompt, setPrompt] = useState("");
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
   const referenceInputRef = useRef<HTMLInputElement>(null);
@@ -409,6 +438,49 @@ export function CodeAgent() {
   const xtermRef = useRef<XTerm | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const editorRef = useRef<EditorView | null>(null);
+  const renderProjectTree = (nodes: ProjectTreeNode[], depth = 0): ReactNode[] =>
+    nodes.map((node) => {
+      if (node.folder) {
+        const isOpen = expandedFolders[node.path] ?? depth === 0;
+        return (
+          <div key={node.path}>
+            <button
+              type="button"
+              onClick={() => setExpandedFolders((current) => ({ ...current, [node.path]: !(current[node.path] ?? depth === 0) }))}
+              className="flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-[11px] font-medium text-slate-300 hover:bg-white/[0.05] hover:text-white"
+              style={{ paddingLeft: 8 + depth * 14 }}
+              aria-expanded={isOpen}
+            >
+              {isOpen ? <ChevronDown className="h-3 w-3 shrink-0 text-slate-500" /> : <ChevronRight className="h-3 w-3 shrink-0 text-slate-500" />}
+              <Folder className="h-3.5 w-3.5 shrink-0 text-amber-300" />
+              <span className="truncate">{node.name}</span>
+            </button>
+            {isOpen && <div>{renderProjectTree(node.children, depth + 1)}</div>}
+          </div>
+        );
+      }
+      const path = node.path;
+      return (
+        <div key={path} className={`group flex items-center rounded-lg ${path === activeFile ? "bg-white/[0.07]" : "hover:bg-white/[0.04]"}`}>
+          <button
+            type="button"
+            onClick={() => { setActiveFile(path); switchPanel("code"); }}
+            className={`flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-1 text-left text-xs ${path === activeFile ? "text-white" : "text-slate-400"}`}
+            style={{ paddingLeft: 26 + depth * 14 }}
+          >
+            <FileCode2 className={`h-3.5 w-3.5 shrink-0 ${fileIcon(path)}`} />
+            <span className="truncate">{node.name}</span>
+          </button>
+          <button type="button" onClick={() => { setRenameFileFrom(path); setRenameFileName(path); setRenameFileOpen(true); }} className="rounded p-1 text-slate-600 opacity-100 transition hover:bg-cyan-400/10 hover:text-cyan-200 sm:opacity-0 sm:group-hover:opacity-100" aria-label={`Rename ${path}`} title="Rename file">
+            <Pencil className="h-3 w-3" />
+          </button>
+          <button type="button" onClick={() => deleteFile(path)} className="mr-1 rounded p-1 text-slate-600 opacity-100 transition hover:bg-red-500/10 hover:text-red-300 sm:opacity-0 sm:group-hover:opacity-100" aria-label={`Delete ${path}`}>
+            <Trash2 className="h-3 w-3" />
+          </button>
+        </div>
+      );
+    });
+
   const srcDoc = useMemo(() => buildSrcDocWithConsole(files), [files]);
   useEffect(() => {
     agentChatEndRef.current?.scrollIntoView({ behavior: busy ? "auto" : "smooth", block: "end" });
@@ -2326,49 +2398,9 @@ export function CodeAgent() {
               </div>
 
               <div className="space-y-0.5">
-                {Object.keys(files)
-                  .sort()
-                  .map((path) => (
-                    <div
-                      key={path}
-                      className={`group flex items-center rounded-lg ${
-                        path === activeFile ? "bg-white/[0.07]" : "hover:bg-white/[0.04]"
-                      }`}
-                    >
-                      <button
-                        onClick={() => {
-                          setActiveFile(path);
-                          switchPanel("code");
-                        }}
-                        className={`flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-xs ${
-                          path === activeFile ? "text-white" : "text-slate-400"
-                        }`}
-                      >
-                        <FileCode2 className={`h-3.5 w-3.5 shrink-0 ${fileIcon(path)}`} />
-                        <span className="truncate">{path}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRenameFileFrom(path);
-                          setRenameFileName(path);
-                          setRenameFileOpen(true);
-                        }}
-                        className="rounded p-1 text-slate-600 opacity-100 transition hover:bg-cyan-400/10 hover:text-cyan-200 sm:opacity-0 sm:group-hover:opacity-100"
-                        aria-label={`Rename ${path}`}
-                        title="Rename file"
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </button>
-                      <button
-                        onClick={() => deleteFile(path)}
-                        className="mr-1 rounded p-1 text-slate-600 opacity-100 transition hover:bg-red-500/10 hover:text-red-300 sm:opacity-0 sm:group-hover:opacity-100"
-                        aria-label={`Delete ${path}`}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
+                {projectFileTree.length ? renderProjectTree(projectFileTree) : (
+                  <p className="px-2 py-3 text-[11px] text-slate-500">No project files yet.</p>
+                )}
               </div>
             </div>
 
@@ -2824,6 +2856,11 @@ export function CodeAgent() {
                   <button type="button" onClick={() => setAssistantOpen(false)} className="expert-agent-mobile-close rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Close builder panel"><X className="h-4 w-4" /></button>
                 </div>
               </div>
+              <div className="flex shrink-0 items-center gap-1 border-b border-white/[0.07] bg-[#091321] px-3 py-2">
+                <button type="button" onClick={() => setAgentPanelMode("chat")} className={`rounded-md px-3 py-1.5 text-[10px] font-semibold transition ${agentPanelMode === "chat" ? "bg-cyan-400/15 text-cyan-100" : "text-slate-500 hover:bg-white/5 hover:text-slate-200"}`}>Agent</button>
+                <button type="button" onClick={() => setAgentPanelMode("chats")} className={`rounded-md px-3 py-1.5 text-[10px] font-semibold transition ${agentPanelMode === "chats" ? "bg-cyan-400/15 text-cyan-100" : "text-slate-500 hover:bg-white/5 hover:text-slate-200"}`}>AI Chats</button>
+                <button type="button" onClick={() => { setAgentPanelMode("terminal"); if (!terminalReady) void openTerminal(); }} className={`rounded-md px-3 py-1.5 text-[10px] font-semibold transition ${agentPanelMode === "terminal" ? "bg-cyan-400/15 text-cyan-100" : "text-slate-500 hover:bg-white/5 hover:text-slate-200"}`}>Terminal</button>
+              </div>
               <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/[0.07] bg-[#0a1422] px-3 py-2">
                 <div className="flex min-w-0 items-center gap-2 text-[10px] text-slate-400">
                   <span className="max-w-[150px] truncate">{name}</span>
@@ -2834,7 +2871,11 @@ export function CodeAgent() {
                   {CLOUD_SANDBOX_ENABLED ? (terminalReady ? "Connected" : "Not connected") : "Temporarily unavailable"}
                 </span>
               </div>
-              {agentPanelMode === "chat" ? (
+              {agentPanelMode === "chats" ? (
+                <div className="min-h-0 flex-1 overflow-hidden">
+                  <ChrisAiChat compact />
+                </div>
+              ) : agentPanelMode === "chat" ? (
                 <>
                   <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-live="polite">
                     {messages.length === 0 ? (
