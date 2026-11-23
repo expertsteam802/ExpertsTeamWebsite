@@ -28,7 +28,7 @@ export const listProjectEnvironmentKeys = createServerFn({ method: "GET" })
   .validator((input: unknown) => z.object({ projectId: projectIdSchema }).parse(input))
   .handler(async ({ data, context }) => {
     await assertOwnedProject(context.supabase, context.userId, data.projectId);
-    const { data: rows, error } = await (context.supabase as any).from("agent_project_env_vars")
+    const { data: rows, error } = await (context.supabase as any).from("agent_project_env_vars") // eslint-disable-line @typescript-eslint/no-explicit-any
       .select("key, updated_at").eq("project_id", data.projectId).eq("user_id", context.userId)
       .order("key", { ascending: true });
     if (error) throw new Error("Could not list environment variable names: " + error.message);
@@ -48,7 +48,7 @@ export const saveProjectEnvironmentVariable = createServerFn({ method: "POST" })
     await assertOwnedProject(context.supabase, context.userId, data.projectId);
     const { encryptProjectSecret } = await import("./project-secrets.server");
     const encrypted = encryptProjectSecret(data.value);
-    const { error } = await (context.supabase as any).from("agent_project_env_vars").upsert({
+    const { error } = await (context.supabase as any).from("agent_project_env_vars").upsert({ // eslint-disable-line @typescript-eslint/no-explicit-any
       project_id: data.projectId, user_id: context.userId, key: data.key, ...encrypted,
       updated_at: new Date().toISOString(),
     }, { onConflict: "project_id,user_id,key" });
@@ -63,7 +63,7 @@ export const deleteProjectEnvironmentVariable = createServerFn({ method: "POST" 
   }).parse(input))
   .handler(async ({ data, context }) => {
     await assertOwnedProject(context.supabase, context.userId, data.projectId);
-    const { error } = await (context.supabase as any).from("agent_project_env_vars")
+    const { error } = await (context.supabase as any).from("agent_project_env_vars") // eslint-disable-line @typescript-eslint/no-explicit-any
       .delete().eq("project_id", data.projectId).eq("user_id", context.userId).eq("key", data.key);
     if (error) throw new Error("Could not delete the environment variable: " + error.message);
     return { ok: true, key: data.key };
