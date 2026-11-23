@@ -33,7 +33,7 @@ const request = {
 
 test("guest adapter uses Groq first and normalizes its completion", async () => {
   process.env["GROQ_API_KEY"] = "groq-test-secret";
-  process.env["GROQ_MODEL"] = "llama-3.3-70b-versatile";
+  process.env["GROQ_MODEL"] = "openai/gpt-oss-120b";
   delete process.env["OPENROUTER_API_KEY"];
   let sentAuthorization = "";
   let sentModel = "";
@@ -51,7 +51,7 @@ test("guest adapter uses Groq first and normalizes its completion", async () => 
 
   const response = await generateOpenRouterContent(request);
   assert.equal(sentAuthorization, "Bearer groq-test-secret");
-  assert.equal(sentModel, "llama-3.3-70b-versatile");
+  assert.equal(sentModel, "openai/gpt-oss-120b");
   assert.equal(response.candidates?.[0]?.content?.parts?.[0]?.text, "Hello from Groq.");
 });
 
