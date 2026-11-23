@@ -560,7 +560,7 @@ export const startAgentTerminal = createServerFn({ method: "POST" })
       .eq("project_id", data.projectId)
       .eq("user_id", context.userId);
     if (assetQueryError) throw new Error("Could not load the project's saved binary assets: " + assetQueryError.message);
-    const binaryAssets = [];
+    const binaryAssets: { filePath: string; buffer: Buffer; mimeType: string; sha256: string }[] = [];
     for (const asset of savedAssets ?? []) {
       const { data: blob, error: downloadError } = await context.supabase.storage
         .from("builder-project-assets")
@@ -663,7 +663,7 @@ export const syncAgentTerminalFiles = createServerFn({ method: "POST" })
         const { error: cleanupError } = await context.supabase.storage.from("builder-project-assets").remove(oldPaths);
         if (cleanupError) console.warn("Old Builder asset cleanup is pending:", cleanupError.message);
       }
-      return { fileCount: totalFiles, textFileCount: Object.keys(snapshot.files).length, binaryAssetCount: snapshot.binaryAssets.length };
+      return { files: snapshot.files, fileCount: totalFiles, textFileCount: Object.keys(snapshot.files).length, binaryAssetCount: snapshot.binaryAssets.length };
     } catch (error) {
       await context.supabase.from("agent_project_file_staging").delete().eq("import_id", importId).eq("project_id", data.projectId).eq("user_id", context.userId);
       await context.supabase.from("agent_project_asset_staging").delete().eq("import_id", importId).eq("project_id", data.projectId).eq("user_id", context.userId);
