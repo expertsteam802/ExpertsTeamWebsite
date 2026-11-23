@@ -257,7 +257,7 @@ export function ChrisAiChat({
   /** Compact floating assistant hides the saved-conversations sidebar. */
   compact?: boolean;
 } = {}) {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const generateImage = useServerFn(generateExpertImage);
   const [input, setInput] = useState("");
