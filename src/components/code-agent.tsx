@@ -22,6 +22,7 @@ import {
   Loader2,
   Maximize2,
   Minimize2,
+  MousePointer2,
   Monitor,
   MoreHorizontal,
   Play,
@@ -400,6 +401,8 @@ export function CodeAgent() {
   const [runtimeBusy, setRuntimeBusy] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [previewExpanded, setPreviewExpanded] = useState(false);
+  const [visualSelectMode, setVisualSelectMode] = useState(false);
+  const [selectedPreviewElement, setSelectedPreviewElement] = useState<{ tag: string; selector: string; id: string; classes: string; text: string; outerHTML: string; styles: Record<string, string> } | null>(null);
   useEffect(() => {
     if (!previewExpanded) return;
     const restorePreview = (event: KeyboardEvent) => {
@@ -1038,9 +1041,16 @@ export function CodeAgent() {
       if (event.source !== iframeRef.current?.contentWindow) return;
       const data = event.data as {
         __agentConsole?: boolean;
+        __agentSelection?: boolean;
+        element?: { tag: string; selector: string; id: string; classes: string; text: string; outerHTML: string; styles: Record<string, string> };
         type?: string;
         message?: string;
       };
+      if (data?.__agentSelection && data.element) {
+        setSelectedPreviewElement(data.element);
+        setVisualSelectMode(false);
+        return;
+      }
       if (!data?.__agentConsole) return;
       setLogs((current) => [
         ...current.slice(-199),
@@ -1050,6 +1060,18 @@ export function CodeAgent() {
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, []);
+
+  useEffect(() => {
+    if (runtimeUrl) {
+      setVisualSelectMode(false);
+      setSelectedPreviewElement(null);
+      return;
+    }
+    iframeRef.current?.contentWindow?.postMessage(
+      { __agentVisualSelect: true, enabled: visualSelectMode },
+      "*",
+    );
+  }, [visualSelectMode, previewKey, runtimeUrl]);
 
   async function importTerminalChanges() {
     if (!projectId) return;
@@ -2731,6 +2753,16 @@ export function CodeAgent() {
                             ? runtimeStatus
                             : "HTML quick preview · press Run for React/Vite"}
                       </span>
+                      {!runtimeUrl && (
+                        <button
+                          type="button"
+                          onClick={() => { setSelectedPreviewElement(null); setVisualSelectMode((enabled) => !enabled); }}
+                          className={visualSelectMode ? "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-cyan-300/40 bg-cyan-300/15 px-2 text-[10px] font-semibold text-cyan-100" : "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 text-[10px] font-semibold text-slate-300 hover:border-cyan-300/30 hover:text-cyan-100"}
+                          title="Select an element in the local preview"
+                        >
+                          <MousePointer2 className="h-3.5 w-3.5" /> {visualSelectMode ? "Selecting…" : "Select element"}
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => setPreviewExpanded((expanded) => !expanded)}
@@ -2743,6 +2775,15 @@ export function CodeAgent() {
                       </button>
                     </div>
                   </div>
+                  {selectedPreviewElement && !runtimeUrl && (
+                    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-cyan-300/15 bg-cyan-300/[0.06] px-3 py-2">
+                      <div className="min-w-0"><p className="text-[10px] font-semibold text-cyan-100">Selected {selectedPreviewElement.tag}</p><p className="max-w-[420px] truncate text-[10px] text-slate-400">{selectedPreviewElement.selector}{selectedPreviewElement.text ? " · " + selectedPreviewElement.text : ""}</p></div>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => { const item = selectedPreviewElement; setPrompt("Edit this selected element in my project.\nSelector: " + item.selector + "\nTag: " + item.tag + "\nCurrent text: " + item.text + "\nCurrent HTML: " + item.outerHTML + "\nCurrent styles: " + JSON.stringify(item.styles) + "\nMake the requested changes only to this element and preserve the rest of the page."); setSelectedPreviewElement(null); switchPanel("chat"); }} className="rounded-lg bg-cyan-400 px-3 py-1.5 text-[10px] font-semibold text-slate-950">Ask AI to edit</button>
+                        <button type="button" onClick={() => setSelectedPreviewElement(null)} className="rounded-lg px-2 py-1.5 text-[10px] text-slate-400 hover:bg-white/5">Dismiss</button>
+                      </div>
+                    </div>
+                  )}
                   {runtimeUrl && (
                     <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.07] bg-[#0a111d] px-3 py-2">
                       <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Preview URL</span>
