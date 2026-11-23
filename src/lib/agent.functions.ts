@@ -354,18 +354,23 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
 
 const previewRequest = z.object({ projectId: z.string().uuid() });
 
-async function assertBuilderResourcePolicy(
+type BuilderResourceLimits = {
+  maxFiles: number;
+  maxProjectMb: number;
+  maxFileMb: number;
+  maxPromptChars: number;
+};
+
+async function getBuilderResourceLimits(
   supabase: typeof import("@/integrations/supabase/client").supabase,
   userId: string,
-  files: Record<string, string>,
-  prompt?: string,
-) {
+): Promise<BuilderResourceLimits> {
   const { data: isAdmin, error: roleError } = await supabase.rpc("has_role", {
     _user_id: userId,
     _role: "admin",
   });
   if (roleError) throw new Error("Could not verify Builder resource permissions.");
-  if (isAdmin) return;
+  if (isAdmin) return { maxFiles: 0, maxProjectMb: 0, maxFileMb: 0, maxPromptChars: 0 };
 
   const { data: settings, error } = await supabase
     .from("site_settings")
@@ -383,17 +388,28 @@ async function assertBuilderResourcePolicy(
     return Number.isSafeInteger(value) && value > 0 ? value : 0;
   };
 
+  return {
+    maxFiles: numberLimit("maxFiles"),
+    maxProjectMb: numberLimit("maxProjectMb"),
+    maxFileMb: numberLimit("maxFileMb"),
+    maxPromptChars: numberLimit("maxPromptChars"),
+  };
+}
+
+async function assertBuilderResourcePolicy(
+  supabase: typeof import("@/integrations/supabase/client").supabase,
+  userId: string,
+  files: Record<string, string>,
+  prompt?: string,
+) {
+  const limits = await getBuilderResourceLimits(supabase, userId);
   const entries = Object.entries(files);
   const totalBytes = entries.reduce((sum, [, content]) => sum + Buffer.byteLength(content, "utf8"), 0);
-  const maxProjectMb = numberLimit("maxProjectMb");
-  const maxFileMb = numberLimit("maxFileMb");
-  const maxFiles = numberLimit("maxFiles");
-  const maxPromptChars = numberLimit("maxPromptChars");
 
-  if (maxFiles && entries.length > maxFiles) throw new Error("This project exceeds the administrator-configured file-count allowance.");
-  if (maxProjectMb && totalBytes > maxProjectMb * 1_000_000) throw new Error("This project exceeds the administrator-configured project-size allowance.");
-  if (maxFileMb && entries.some(([, content]) => Buffer.byteLength(content, "utf8") > maxFileMb * 1_000_000)) throw new Error("A project file exceeds the administrator-configured per-file allowance.");
-  if (maxPromptChars && prompt && prompt.length > maxPromptChars) throw new Error("This request exceeds the administrator-configured prompt length.");
+  if (limits.maxFiles && entries.length > limits.maxFiles) throw new Error("This project exceeds the administrator-configured file-count allowance.");
+  if (limits.maxProjectMb && totalBytes > limits.maxProjectMb * 1_000_000) throw new Error("This project exceeds the administrator-configured project-size allowance.");
+  if (limits.maxFileMb && entries.some(([, content]) => Buffer.byteLength(content, "utf8") > limits.maxFileMb * 1_000_000)) throw new Error("A project file exceeds the administrator-configured per-file allowance.");
+  if (limits.maxPromptChars && prompt && prompt.length > limits.maxPromptChars) throw new Error("This request exceeds the administrator-configured prompt length.");
 }
 
 async function loadProjectSourceFiles(
