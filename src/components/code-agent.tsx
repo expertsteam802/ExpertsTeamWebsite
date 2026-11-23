@@ -769,12 +769,10 @@ export function CodeAgent() {
         data: { projectId: session.projectId, sandboxName: session.sandboxName },
       })
         .then(async ({ files: savedFiles }) => {
-          const { error } = await supabase
-            .from("agent_projects")
-            .update({ files: savedFiles as unknown as Json, updated_at: new Date().toISOString() })
-            .eq("id", session.projectId)
-            .eq("user_id", user?.id ?? "");
-          if (error) throw error;
+          if (!user?.id) return;
+          await saveProjectFiles(session.projectId, user.id, savedFiles);
+          await supabase.from("agent_projects").update({ updated_at: new Date().toISOString() })
+            .eq("id", session.projectId).eq("user_id", user.id);
         })
         .catch(() => undefined);
     };
@@ -887,11 +885,10 @@ export function CodeAgent() {
             data: { projectId: session.projectId, sandboxName: session.sandboxName },
           });
           recoveryFiles = synced.files;
-          const { error } = await supabase
-            .from("agent_projects")
-            .update({ files: recoveryFiles as unknown as Json, updated_at: new Date().toISOString() })
-            .eq("id", session.projectId)
-            .eq("user_id", userId);
+          await saveProjectFiles(session.projectId, userId, recoveryFiles);
+          const { error } = await supabase.from("agent_projects")
+            .update({ updated_at: new Date().toISOString() })
+            .eq("id", session.projectId).eq("user_id", userId);
           if (error) throw error;
         } catch {
           if (cancelled) return;
@@ -904,10 +901,11 @@ export function CodeAgent() {
             .eq("user_id", userId)
             .maybeSingle();
           if (error) throw error;
-          if (!data || !data.files || typeof data.files !== "object" || Array.isArray(data.files)) {
-            throw new Error("The saved project files could not be recovered.");
+          recoveryFiles = await loadProjectFiles(session.projectId);
+          if (!Object.keys(recoveryFiles).length && data?.files && typeof data.files === "object" && !Array.isArray(data.files)) {
+            recoveryFiles = data.files as unknown as ProjectFiles;
           }
-          recoveryFiles = data.files as unknown as ProjectFiles;
+          if (!Object.keys(recoveryFiles).length) throw new Error("The saved project files could not be recovered.");
         }
         if (cancelled) return;
         if (projectId === session.projectId) {
@@ -1094,11 +1092,10 @@ export function CodeAgent() {
         const result = await syncTerminalFiles({
           data: { projectId: session.projectId, sandboxName: session.sandboxName },
         });
-        const { error } = await supabase
-          .from("agent_projects")
-          .update({ files: result.files as unknown as Json, updated_at: new Date().toISOString() })
-          .eq("id", session.projectId)
-          .eq("user_id", user.id);
+        await saveProjectFiles(session.projectId, user.id, result.files);
+        const { error } = await supabase.from("agent_projects")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", session.projectId).eq("user_id", user.id);
         if (error) throw error;
         syncedFiles = result.files;
         if (session.projectId === projectId) {
@@ -1661,14 +1658,10 @@ export function CodeAgent() {
           Object.keys(importedFiles).length !== Object.keys(files).length ||
           Object.entries(importedFiles).some(([path, content]) => files[path] !== content);
         if (!changed) return;
-        const { error } = await supabase
-          .from("agent_projects")
-          .update({
-            files: importedFiles as unknown as Json,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", projectId)
-          .eq("user_id", user.id);
+        await saveProjectFiles(projectId, user.id, importedFiles);
+        const { error } = await supabase.from("agent_projects")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", projectId).eq("user_id", user.id);
         if (error) throw error;
         setFiles(importedFiles);
         setActiveFile((current) => Object.prototype.hasOwnProperty.call(importedFiles, current)
@@ -1752,15 +1745,17 @@ export function CodeAgent() {
       return;
     }
     try {
-      const { error } = await supabase
+      const { data: duplicate, error } = await supabase
         .from("agent_projects")
         .insert({
           user_id: user.id,
           name: (name.trim() || "Untitled project") + " copy",
           files: files as unknown as Json,
           messages: messages.slice(-40) as unknown as Json,
-        });
+        })
+        .select("id").single();
       if (error) throw error;
+      await saveProjectFiles(duplicate.id, user.id, files);
       await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
       toast.success("Project duplicated and saved. Refresh your project list to open the copy.");
     } catch (error) {
@@ -1917,6 +1912,7 @@ export function CodeAgent() {
         .select("id")
         .single();
       if (saveError) throw saveError;
+      await saveProjectFiles(saved.id, user.id, importedFiles);
       resetRuntimeForProjectChange();
       setProjectId(saved.id);
       setPublishedUrl(null);
@@ -1969,6 +1965,7 @@ export function CodeAgent() {
         .select("id")
         .single();
       if (error) throw error;
+      await saveProjectFiles(data.id, user.id, imported.files);
       resetRuntimeForProjectChange();
       setProjectId(data.id);
       setPublishedUrl(null);
