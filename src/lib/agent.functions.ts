@@ -215,7 +215,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
             path.split("/").map(encodeURIComponent).join("/");
           const response = await request(rawUrl, "text/plain");
           const buffer = Buffer.from(await response.arrayBuffer());
-          if (buffer.byteLength > 500000 || buffer.includes(0)) return null;
+          if (buffer.byteLength > 10_000_000 || buffer.includes(0)) return null;
           return { path, content: buffer.toString("utf8"), size: buffer.byteLength };
         }),
       );
