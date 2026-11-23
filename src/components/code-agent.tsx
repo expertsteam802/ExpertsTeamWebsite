@@ -717,6 +717,19 @@ export function CodeAgent() {
     },
   });
 
+  const { data: cloudConnections = [] } = useQuery({
+    queryKey: ["cloud-connections", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_cloud_connections")
+        .select("id,display_name,project_ref")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const { data: developerVaultRows = [], isLoading: developerVaultLoading } = useQuery({
     queryKey: ["developer-vault-import-list", user?.id],
     enabled: Boolean(user && (isAdmin || isDeveloper)),
@@ -2431,6 +2444,32 @@ export function CodeAgent() {
               <span className="text-xs text-slate-500">
                 {dirty ? "• Unsaved changes" : "• Saved"}
               </span>
+              <select
+                aria-label="Project Supabase backend"
+                title="Use your own Supabase project for this app's browser data and storage."
+                value={cloudConnectionId ?? ""}
+                onChange={async (event) => {
+                  const nextConnectionId = event.target.value || null;
+                  try {
+                    const activeProjectId = projectId ?? await persist();
+                    const { error } = await supabase.from("agent_projects")
+                      .update({ cloud_connection_id: nextConnectionId })
+                      .eq("id", activeProjectId).eq("user_id", user.id);
+                    if (error) throw error;
+                    setCloudConnectionId(nextConnectionId);
+                    await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
+                    toast.success(nextConnectionId ? "This app will use your connected Supabase project in preview and builds." : "External Supabase connection removed from this app.");
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Could not update this project's backend.");
+                  }
+                }}
+                className="h-7 max-w-[190px] rounded-lg border border-white/10 bg-[#0b1320] px-2 text-[11px] text-slate-300"
+              >
+                <option value="">Use no connected Supabase project</option>
+                {cloudConnections.map((connection) => (
+                  <option key={connection.id} value={connection.id}>{connection.display_name} · {connection.project_ref}</option>
+                ))}
+              </select>
               <Button
                 type="button"
                 size="sm"
