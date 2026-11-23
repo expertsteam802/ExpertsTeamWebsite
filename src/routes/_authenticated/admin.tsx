@@ -1292,29 +1292,29 @@ function AdminPage() {
                         <div>
                           <h3 className="font-semibold">Builder resource policy</h3>
                           <p className="mt-1 text-sm text-muted-foreground">
-                            Control application-level project and agent limits for all members. Set any value to 0 to remove that application-level cap. Hosting, database, provider and sandbox quotas still apply.
+                            Control member quotas. Set a value to 0 to remove your admin-defined cap. A temporary transport safety ceiling still applies while project files are stored in a single JSON document: 25 MB total, 10 MB per file and 2,000 files. Moving to per-file storage is required before those technical ceilings can be lifted safely.
                           </p>
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2">
                           <div className="space-y-2">
                             <Label htmlFor="builder_max_project_mb">Maximum project size (MB)</Label>
                             <Input id="builder_max_project_mb" type="number" min="0" step="1" value={form.builder_max_project_mb} onChange={(event) => setForm({ ...form, builder_max_project_mb: event.target.value })} />
-                            <p className="text-xs text-muted-foreground">0 = unlimited application-level size</p>
+                            <p className="text-xs text-muted-foreground">0 = no admin-defined cap; temporary 10 MB file / 25 MB project ceiling still applies</p>
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="builder_max_file_mb">Maximum individual file (MB)</Label>
                             <Input id="builder_max_file_mb" type="number" min="0" step="1" value={form.builder_max_file_mb} onChange={(event) => setForm({ ...form, builder_max_file_mb: event.target.value })} />
-                            <p className="text-xs text-muted-foreground">0 = unlimited application-level size</p>
+                            <p className="text-xs text-muted-foreground">0 = no admin-defined cap; temporary 10 MB per-file ceiling still applies</p>
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="builder_max_files">Maximum project files</Label>
                             <Input id="builder_max_files" type="number" min="0" step="1" value={form.builder_max_files} onChange={(event) => setForm({ ...form, builder_max_files: event.target.value })} />
-                            <p className="text-xs text-muted-foreground">0 = unlimited application-level count</p>
+                            <p className="text-xs text-muted-foreground">0 = no admin-defined cap; temporary 2,000-file ceiling still applies</p>
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="builder_max_prompt_chars">Maximum agent prompt characters</Label>
                             <Input id="builder_max_prompt_chars" type="number" min="0" step="1000" value={form.builder_max_prompt_chars} onChange={(event) => setForm({ ...form, builder_max_prompt_chars: event.target.value })} />
-                            <p className="text-xs text-muted-foreground">0 = unlimited application-level prompt length</p>
+                            <p className="text-xs text-muted-foreground">0 = no admin-defined prompt cap; agent transport safety limit still applies</p>
                           </div>
                         </div>
                         <Button onClick={() => saveSettings.mutate()} disabled={saveSettings.isPending}>
