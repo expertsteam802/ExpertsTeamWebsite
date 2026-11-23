@@ -353,7 +353,15 @@ export function CodeAgent() {
   const [name, setName] = useState("Untitled project");
   const [files, setFiles] = useState<ProjectFiles>(STARTER_FILES);
   const [activeFile, setActiveFile] = useState("index.html");
+  const [openFileTabs, setOpenFileTabs] = useState<string[]>(["index.html"]);
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    setOpenFileTabs((current) => {
+      const existing = current.filter((filePath) => files[filePath] !== undefined);
+      if (files[activeFile] !== undefined && !existing.includes(activeFile)) existing.push(activeFile);
+      return existing.slice(-8);
+    });
+  }, [activeFile, files]);
   const projectFileTree = useMemo(() => buildProjectFileTree(Object.keys(files)), [files]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [typingMessageIndex, setTypingMessageIndex] = useState<number | null>(null);
@@ -2309,6 +2317,15 @@ export function CodeAgent() {
     window.addEventListener("pointercancel", onUp);
   }
 
+  function closeEditorTab(filePath: string) {
+    if (openFileTabs.length <= 1) return;
+    const remaining = openFileTabs.filter((item) => item !== filePath);
+    setOpenFileTabs(remaining);
+    if (activeFile === filePath) {
+      setActiveFile(remaining.at(-1) ?? Object.keys(files).find((item) => item !== filePath) ?? filePath);
+    }
+  }
+
   function createFile() {
     const path = newFileName.trim().replace(/^\/+/, "");
     if (!path || path.includes("..") || path.startsWith(".")) {
@@ -2988,6 +3005,19 @@ export function CodeAgent() {
                       </Button>
                     </div>
                   </div>
+                  <div className="expert-agent-editor-tabs flex h-10 shrink-0 items-end gap-1 overflow-x-auto border-b border-white/[0.07] bg-[#0d1520] px-2" role="tablist" aria-label="Open project files">
+                    {openFileTabs.map((filePath) => (
+                      <div key={filePath} className={`group flex h-8 max-w-56 shrink-0 items-center gap-1 rounded-t-md border border-b-0 px-2 ${activeFile === filePath ? "border-white/10 bg-[#182538] text-slate-100" : "border-transparent text-slate-500 hover:bg-white/[0.04] hover:text-slate-200"}`}>
+                        <button type="button" role="tab" aria-selected={activeFile === filePath} onClick={() => setActiveFile(filePath)} className="flex min-w-0 items-center gap-2 text-[11px]">
+                          <File className={`h-3 w-3 shrink-0 ${fileIcon(filePath)}`} />
+                          <span className="truncate">{filePath.split("/").at(-1)}</span>
+                        </button>
+                        <button type="button" onClick={() => closeEditorTab(filePath)} disabled={openFileTabs.length <= 1} className="rounded p-0.5 text-slate-500 opacity-0 transition hover:bg-white/10 hover:text-white group-hover:opacity-100 disabled:pointer-events-none" aria-label={`Close ${filePath}`}>
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                   <div className="relative flex min-h-0 flex-1 overflow-hidden bg-[#080e19]">
                     <div className="select-none border-r border-white/[0.06] px-3 py-3 text-right font-mono text-xs leading-6 text-slate-600">
                       {Array.from(
@@ -3343,6 +3373,10 @@ export function CodeAgent() {
         .expert-agent-canvas iframe { border-color: #2b3748 !important; border-radius: 8px !important; }
         .expert-agent-statusbar { min-height: 30px; padding: 5px 12px !important; background: #111a27 !important; border-color: var(--et-builder-line) !important; }
         .expert-agent-kilo-surface { background: #080e17 !important; }
+        .expert-agent-editor-tabs { scrollbar-width: thin; scrollbar-color: #34445a transparent; }
+        .expert-agent-editor-tabs > div { transition: background-color .12s ease, color .12s ease; }
+        .expert-agent-light .expert-agent-editor-tabs { background: #f0f3f8 !important; border-color: #dce3ed !important; }
+        .expert-agent-light .expert-agent-editor-tabs > div[class*="bg-[#182538]"] { background: #ffffff !important; border-color: #dce3ed !important; color: #1e293b !important; }
         .expert-agent-mobile-dock { background: rgba(14,22,34,.98) !important; border-color: var(--et-builder-line) !important; }
         @media (min-width: 1280px) {
           .expert-agent-topbar { flex-wrap: wrap !important; }
