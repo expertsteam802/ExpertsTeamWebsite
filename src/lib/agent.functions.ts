@@ -491,9 +491,9 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
     const terminalName = assertDaytonaTerminalSandboxName(context.userId, data.sandboxName);
     const referencePaths = await writeDaytonaProjectReferenceImages(terminalName, data.referenceImages);
     const promptWithReferences = referencePaths.length
-      ? data.prompt + "\\n\\nVISUAL REFERENCES (read these image files before changing the UI):\\n" +
-        referencePaths.map((filePath) => "- " + filePath).join("\\n") +
-        "\\nUse the attached images as visual requirements. Recreate their layout and details in actual editable source code."
+      ? data.prompt + "\n\nVISUAL REFERENCES (read these image files before changing the UI):\n" +
+        referencePaths.map((filePath) => "- " + filePath).join("\n") +
+        "\nUse the attached images as visual requirements. Recreate their layout and details in actual editable source code."
       : data.prompt;
     const commandWithReferences = data.cli === "kilo"
       ? "kilo run --auto " + quote(promptWithReferences)
