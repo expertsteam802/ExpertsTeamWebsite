@@ -6,11 +6,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const PROVIDER_ACTIONS: Record<string, string[]> = {
   github: ["repositories.read", "files.read", "files.write", "branches.create", "pull_requests.read", "pull_requests.create", "issues.read", "issues.create", "repositories.delete"],
   supabase: ["organizations.read", "projects.read", "schemas.read", "sql.read", "sql.write", "tables.create", "tables.alter", "tables.drop", "projects.delete"],
-  vercel: ["projects.read", "deployments.read", "deployments.create", "domains.manage", "environment.read", "environment.write", "projects.delete"],
-  netlify: ["sites.read", "deploys.read", "deploys.create", "environment.read", "environment.write", "sites.delete"],
-  stripe: ["products.read", "customers.read", "payments.read", "webhooks.read"],
-  figma: ["files.read", "comments.read", "comments.write"],
-  google_drive: ["files.read", "files.create", "files.update", "files.delete"],
 };
 
 const DESTRUCTIVE_ACTIONS = new Set([
@@ -249,7 +244,13 @@ export const executePluginAction = createServerFn({ method: "POST" })
           ? "select table_schema, table_name, column_name, data_type from information_schema.columns where table_schema not in ('pg_catalog','information_schema') order by table_schema,table_name,ordinal_position limit 500"
           : readString(payload, "sql", 50000);
         const first = sql.trim().replace(/^(?:--[^\n]*\n|\/\*[\s\S]*?\*\/\s*)*/, "").split(/\s+/)[0]?.toLowerCase();
+        const normalizedSql = sql.trim().replace(/;\s*$/, "");
+        if (normalizedSql.includes(";")) throw new Error("Run one SQL statement per action.");
         const readOnly = data.action === "schemas.read" || data.action === "sql.read";
+        if (data.action === "sql.write" && /^drop\s+table\b/i.test(normalizedSql)) throw new Error("Use the separately permissioned Drop tables action and confirm it explicitly.");
+        if (data.action === "sql.write" && /^alter\s+table\b/i.test(normalizedSql)) throw new Error("Use the separately permissioned Alter tables action.");
+        if (data.action === "sql.write" && /^create\s+table\b/i.test(normalizedSql)) throw new Error("Use the separately permissioned Create tables action.");
+        if (data.action === "sql.write" && /^(delete|truncate)\b/i.test(normalizedSql) && !data.approved) throw new Error("DELETE and TRUNCATE statements require explicit confirmation.");
         if (readOnly && !["select", "with", "show", "explain"].includes(first ?? "")) throw new Error("Read-only SQL permission accepts SELECT, WITH, SHOW or EXPLAIN statements only.");
         if (!readOnly && data.action === "tables.create" && !/^create\s+table\b/i.test(sql.trim())) throw new Error("The Create tables permission only accepts CREATE TABLE statements.");
         if (!readOnly && data.action === "tables.alter" && !/^alter\s+table\b/i.test(sql.trim())) throw new Error("The Alter tables permission only accepts ALTER TABLE statements.");
