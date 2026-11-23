@@ -312,6 +312,26 @@ async function loadProjectSourceFiles(
   projectId: string,
   userId: string,
 ): Promise<Record<string, string>> {
+  const { data: projectMeta, error: metaError } = await supabase
+    .from("agent_projects")
+    .select("file_storage_ready_at")
+    .eq("id", projectId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (metaError) throw new Error("Could not verify the saved project file snapshot.");
+  if (!projectMeta?.file_storage_ready_at) {
+    const { data: legacyProject, error: legacyError } = await supabase
+      .from("agent_projects")
+      .select("files")
+      .eq("id", projectId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (legacyError) throw new Error("Could not load the legacy project snapshot.");
+    const legacy = legacyProject?.files;
+    if (!legacy || typeof legacy !== "object" || Array.isArray(legacy)) return {};
+    return Object.fromEntries(Object.entries(legacy).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+  }
+
   const { data: rows, error: fileError } = await supabase
     .from("agent_project_files")
     .select("file_path,content")
@@ -319,18 +339,7 @@ async function loadProjectSourceFiles(
     .eq("user_id", userId)
     .order("file_path", { ascending: true });
   if (fileError) throw new Error("Could not load the saved project files.");
-  if (rows?.length) return Object.fromEntries(rows.map((row) => [row.file_path, row.content]));
-
-  const { data: project, error } = await supabase
-    .from("agent_projects")
-    .select("files")
-    .eq("id", projectId)
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (error) throw new Error("Could not load the legacy project snapshot.");
-  const legacy = project?.files;
-  if (!legacy || typeof legacy !== "object" || Array.isArray(legacy)) return {};
-  return Object.fromEntries(Object.entries(legacy).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+  return Object.fromEntries((rows ?? []).map((row) => [row.file_path, row.content]));
 }
 
 async function assertProjectOwnership(
