@@ -782,14 +782,13 @@ export async function writeDaytonaProjectReferenceImages(
   const uploaded: string[] = [];
   const files = images.map((image, index) => {
     const extension = allowedExtensions.get(image.mimeType);
-    if (!extension || !/^[A-Za-z0-9._-]{1,140}$/.test(image.name)) {
-      throw new Error("A visual reference has an invalid filename or image type.");
-    }
+    if (!extension) throw new Error("A visual reference has an unsupported image type.");
     const data = Buffer.from(image.data, "base64");
     if (!data.length || data.length > 700_000) throw new Error("Each visual reference must be 700 KB or smaller after compression.");
     totalBytes += data.byteLength;
     if (totalBytes > 2_000_000) throw new Error("Visual references must total 2 MB or less.");
-    const filename = String(index + 1).padStart(2, "0") + "-" + image.name.replace(/\.[^.]+$/, "") + "." + extension;
+    const safeName = image.name.replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 100) || "reference";
+    const filename = String(index + 1).padStart(2, "0") + "-" + safeName + "." + extension;
     const destination = path.join(directory, filename);
     uploaded.push(path.relative(workdir, destination));
     return { destination, source: data };
