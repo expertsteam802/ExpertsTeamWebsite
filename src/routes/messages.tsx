@@ -408,10 +408,9 @@ function MessagesPage() {
     }
     if (callState !== "calling") return;
     callTimeoutRef.current = window.setTimeout(() => {
-      toast.error("The call did not connect within 45 seconds. The call has been ended for both people. If both accepted, the network may require a TURN relay.");
-      // Notify the other participant too; otherwise their incoming/calling UI can
-      // remain open after this side times out.
-      void endCall(true);
+      // Keep the call alive: slow networks and TURN negotiation can take longer
+      // than a fixed ringing window. The user decides when to end the call.
+      toast.info("Your call is still trying to connect. It will not be ended automatically; keep waiting or end it when you choose.");
     }, 45_000);
     return () => {
       if (callTimeoutRef.current !== null) {
