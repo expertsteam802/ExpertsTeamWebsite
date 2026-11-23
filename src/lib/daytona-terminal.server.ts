@@ -717,7 +717,7 @@ export async function stopDaytonaProjectTerminal(name: string) {
   return { stopped: true, preserved: true };
 }
 
-export async function readDaytonaProjectFiles(name: string) {
+export async function readDaytonaProjectFiles(name: string, maxFileBytes = 0) {
   const { api } = client();
   const sandbox = await findSandboxByName(api, name) as DaytonaSandbox | undefined;
   if (!sandbox) throw new Error("Your saved Daytona workspace could not be found.");
@@ -763,8 +763,8 @@ export async function readDaytonaProjectFiles(name: string) {
     // Binary assets are not text source. Keep them out of the text-file sync
     // rather than decoding them as UTF-8 and charging their bytes to this limit.
     if (buffer.includes(0)) continue;
-    if (buffer.byteLength > 10_000_000) {
-      throw new Error("Could not save " + filePath + " (" + (buffer.byteLength / 1_000_000).toFixed(2) + " MB): one text file exceeds the 10 MB per-file safety limit. Other files were left unchanged.");
+    if (maxFileBytes > 0 && buffer.byteLength > maxFileBytes) {
+      throw new Error("Could not save " + filePath + ": it exceeds the administrator-configured per-file limit of " + (maxFileBytes / 1_000_000).toFixed(2) + " MB.");
     }
     files[filePath] = buffer.toString("utf8");
   }
