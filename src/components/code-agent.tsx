@@ -2369,14 +2369,12 @@ export function CodeAgent() {
   }
 
   function deleteFile(path: string) {
-    if (Object.keys(files).length <= 1) {
-      toast.error("A project must contain at least one file.");
-      return;
-    }
+    if (!Object.prototype.hasOwnProperty.call(files, path)) return;
     const updated = { ...files };
     delete updated[path];
     setFiles(updated);
-    if (activeFile === path) setActiveFile(Object.keys(updated)[0]);
+    if (activeFile === path) setActiveFile(Object.keys(updated)[0] ?? "");
+    setOpenFileTabs((current) => current.filter((filePath) => filePath !== path));
     setDirty(true);
   }
 
