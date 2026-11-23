@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -330,7 +331,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
               import_id: importId, project_id: project.id, user_id: context.userId,
               file_path: file.path, storage_path: storagePath,
               mime_type: assetMime[extension] ?? "application/octet-stream",
-              size_bytes: file.size, sha256: crypto.createHash("sha256").update(file.buffer).digest("hex"),
+              size_bytes: file.size, sha256: createHash("sha256").update(file.buffer).digest("hex"),
             });
             if (stageError) throw new Error("Could not stage binary asset metadata: " + stageError.message);
             continue;
