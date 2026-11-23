@@ -548,7 +548,9 @@ export const startAgentPreview = createServerFn({ method: "POST" })
     if (!Object.keys(files).length) throw new Error("This project has no saved source files to preview.");
     await assertBuilderResourcePolicy(context.supabase, context.userId, files);
     const { loadProjectPublicEnvironment } = await import("./project-secrets.server");
-    const projectEnvironment = await loadProjectPublicEnvironment(context.supabase as any, context.userId, data.projectId); // eslint-disable-line @typescript-eslint/no-explicit-any
+    // Supabase generated types do not yet include the project-secrets migration tables.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const projectEnvironment = await loadProjectPublicEnvironment(context.supabase as any, context.userId, data.projectId);
     const { startDaytonaProjectPreview } = await import("./daytona-terminal.server");
     return startDaytonaProjectPreview(data.projectId, files, projectEnvironment);
   });
@@ -607,8 +609,10 @@ export const startAgentTerminal = createServerFn({ method: "POST" })
     }
     const { loadProjectEnvironment, loadProjectPublicEnvironment } = await import("./project-secrets.server");
     const [privateEnvironment, publicEnvironment] = await Promise.all([
-      loadProjectEnvironment(context.supabase as any, context.userId, data.projectId), // eslint-disable-line @typescript-eslint/no-explicit-any
-      loadProjectPublicEnvironment(context.supabase as any, context.userId, data.projectId), // eslint-disable-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      loadProjectEnvironment(context.supabase as any, context.userId, data.projectId),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      loadProjectPublicEnvironment(context.supabase as any, context.userId, data.projectId),
     ]);
     const projectEnvironment = { ...publicEnvironment, ...privateEnvironment };
     const { daytonaTerminalSandboxName, startDaytonaProjectTerminal } = await import("./daytona-terminal.server");
@@ -755,7 +759,8 @@ export const publishAgentProject = createServerFn({ method: "POST" })
 
     try {
       const { loadProjectPublicEnvironment } = await import("./project-secrets.server");
-      const projectEnvironment = await loadProjectPublicEnvironment(context.supabase as any, context.userId, data.projectId); // eslint-disable-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const projectEnvironment = await loadProjectPublicEnvironment(context.supabase as any, context.userId, data.projectId);
       const { publishDaytonaProject } = await import("./daytona-terminal.server");
       const result = await publishDaytonaProject(
         data.projectId,
