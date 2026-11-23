@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, MessageSquare, Users } from "lucide-react";
 
 import { CodeAgent } from "@/components/code-agent";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/ai")({
   head: () => ({
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/ai")({
 });
 
 function AiPage() {
+  const { user } = useAuth();
   return (
     <main className="expert-ai-page fixed inset-0 z-40 flex h-[100dvh] w-full flex-col overflow-hidden bg-background text-foreground">
       <header className="relative z-20 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-background/90 px-3 backdrop-blur-xl sm:px-4">
@@ -42,6 +44,15 @@ function AiPage() {
           </div>
         </div>
         <nav aria-label="ExpertAI tools" className="flex items-center gap-1">
+          {!user && (
+            <Link
+              to="/auth"
+              search={{ next: "/ai" }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+            >
+              Sign in
+            </Link>
+          )}
           <Link
             to="/chat"
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted"
