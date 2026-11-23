@@ -272,10 +272,9 @@ function safePreviewPath(filePath: string) {
 export async function startDaytonaProjectPreview(projectId: string, sourceFiles: AgentProjectFiles) {
   const entries = Object.entries(sourceFiles);
   if (!entries.length) throw new Error("Add project files before starting the preview.");
-  if (entries.length > 2_000 || entries.some(([filePath, content]) => !safePreviewPath(filePath) || Buffer.byteLength(content, "utf8") > 10_000_000))
-    throw new Error("The project contains invalid paths or files larger than 10 MB.");
-  if (entries.reduce((sum, [, content]) => sum + Buffer.byteLength(content, "utf8"), 0) > 25_000_000)
-    throw new Error("The project exceeds the 25 MB preview request safety envelope.");
+  if (entries.some(([filePath]) => !safePreviewPath(filePath))) {
+    throw new Error("The project contains an invalid file path.");
+  }
   const { api } = client();
   const name = previewSandboxName(projectId);
   let stage = "connecting to Daytona";
@@ -294,7 +293,9 @@ export async function startDaytonaProjectPreview(projectId: string, sourceFiles:
     if (changed.length) {
       const dirs = [...new Set(changed.map(([filePath]) => path.dirname(path.join(workdir, filePath))))];
       await command(sandbox, "mkdir -p " + dirs.map(shellQuote).join(" "), workdir, undefined, 30);
-      await uploadFiles(sandbox, changed.map(([filePath, content]) => ({ destination: path.join(workdir, filePath), source: Buffer.from(content, "utf8") })));
+      for (const [filePath, content] of changed) {
+        await sandbox.fs.uploadFile(Buffer.from(content, "utf8"), path.join(workdir, filePath));
+      }
     }
     await sandbox.fs.uploadFile(Buffer.from(JSON.stringify(nextManifest), "utf8"), path.join(workdir, PREVIEW_META_FILE));
     let pkg: Record<string, unknown> = {};
