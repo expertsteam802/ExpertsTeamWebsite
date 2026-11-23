@@ -401,7 +401,7 @@ export function CodeAgent() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [assistantOpen, setAssistantOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(248);
-  const [assistantWidth, setAssistantWidth] = useState(400);
+  const [assistantWidth, setAssistantWidth] = useState(360);
   useEffect(() => {
     if (window.matchMedia("(max-width: 767px)").matches) {
       setSidebarOpen(false);
