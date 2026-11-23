@@ -2523,7 +2523,7 @@ export function CodeAgent() {
                 ExpertsTeam
               </span>
               <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[9px] font-semibold text-cyan-200">
-                INFINITY EXPERT MODE
+                EXPERTAI STUDIO
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -2889,15 +2889,6 @@ export function CodeAgent() {
                 <Folder className="h-3.5 w-3.5" />
                 Explorer
               </button>
-              <button
-                type="button"
-                onClick={() => setAssistantOpen(true)}
-                className={`expert-agent-workspace-tab flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${assistantOpen ? "bg-cyan-400/10 text-cyan-200" : "text-slate-500 hover:bg-white/[0.05] hover:text-slate-200"}`}
-                title="Open Infinity Expert agent"
-              >
-                <Bot className="h-3.5 w-3.5" />
-                Agent
-              </button>
             </div>
 
             <div className="flex items-center gap-1">
@@ -3040,7 +3031,7 @@ export function CodeAgent() {
                 className={`ml-1 rounded-lg p-2 ${
                   assistantOpen ? "bg-cyan-400/10 text-cyan-200" : "text-slate-500 hover:bg-white/5"
                 }`}
-                aria-label="Toggle Infinity Expert AI panel"
+                aria-label="Toggle ExpertAI builder"
               >
                 <Bot className="h-4 w-4" /><span className="hidden text-[10px] font-semibold lg:inline">Agent</span>
               </button>
@@ -3331,11 +3322,11 @@ export function CodeAgent() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-white">{isAdmin ? "ExpertsTeam Agent Studio" : "ExpertsTeam Agent"}</p>
-                    <p className="text-[10px] text-slate-500">{isAdmin ? "Full-stack workspace · project controls" : "Autonomous full-stack coding workspace"}</p>
+                    <p className="text-[10px] text-slate-500">{isAdmin ? "Full-stack workspace · project controls" : "AI-powered project builder"}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="rounded-full border border-blue-400/25 bg-gradient-to-r from-blue-400/15 to-cyan-300/10 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-cyan-100">INFINITY EXPERT</span>
+                  <span className="rounded-full border border-blue-400/25 bg-gradient-to-r from-blue-400/15 to-cyan-300/10 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-cyan-100">Expert 1.0</span>
                   <button type="button" onClick={() => setAssistantOpen(false)} className="expert-agent-mobile-close rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Close builder panel"><X className="h-4 w-4" /></button>
                 </div>
               </div>
@@ -3572,6 +3563,39 @@ export function CodeAgent() {
         @media (max-width: 767px) {
           .expert-agent-topbar { background: #111a27 !important; }
           .expert-agent-sidebar-drawer { background: #101925 !important; }
+        }
+
+        /* Bolt-style composition: AI agent on the left, live workspace on the right. */
+        @media (min-width: 768px) {
+          .expert-agent-workspace-grid { display:grid !important; grid-template-columns:minmax(0,1fr) !important; }
+          .expert-agent-sidebar-drawer {
+            position:fixed !important; top:64px !important; bottom:14px !important; left:12px !important;
+            z-index:130 !important; width:min(var(--sidebar-width),calc(100vw - 24px)) !important;
+            border:1px solid rgba(91,156,255,.25) !important; border-radius:12px !important;
+            box-shadow:0 24px 80px rgba(0,0,0,.58) !important;
+          }
+          .expert-agent-mobile-backdrop {
+            display:block !important; position:fixed !important; inset:56px 0 0 !important;
+            z-index:125 !important; border:0 !important; background:rgba(3,9,18,.52) !important;
+            backdrop-filter:blur(2px) !important;
+          }
+          .expert-agent-stage > .grid:has(> aside.expert-agent-assistant) {
+            grid-template-columns:var(--assistant-width) 5px minmax(0,1fr) !important;
+          }
+          .expert-agent-stage > .grid:has(> aside.expert-agent-assistant) > .expert-agent-canvas { grid-column:3 !important; grid-row:1 !important; }
+          .expert-agent-stage > .grid:has(> aside.expert-agent-assistant) > [aria-label="Resize ExpertAI panel"] { grid-column:2 !important; grid-row:1 !important; }
+          .expert-agent-stage > .grid > aside.expert-agent-assistant {
+            grid-column:1 !important; grid-row:1 !important; border-right:1px solid var(--et-builder-line) !important;
+            border-left:0 !important; border-top:0 !important;
+          }
+          .expert-agent-stage > .grid:not(:has(> aside.expert-agent-assistant)) { grid-template-columns:minmax(0,1fr) !important; }
+          .expert-agent-assistant { min-width:280px !important; }
+        }
+        @media (min-width:768px) and (max-width:1279px) {
+          .expert-agent-assistant-drawer {
+            position:relative !important; inset:auto !important; width:auto !important; max-width:none !important;
+            border-radius:0 !important; box-shadow:none !important;
+          }
         }
         .expert-agent-shell.expert-agent-light {
           --et-builder-line: #dce3ed;
