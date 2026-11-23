@@ -22,12 +22,14 @@ import {
   Eye,
   FileDown,
   Flag,
+  Gift,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
 import { AdminApiUsagePanel } from "@/components/admin-platform-panels";
+import { AdminCpaPanel } from "@/components/admin-cpa-panel";
 import { FileGrid, type CommunityFile } from "@/components/file-grid";
 import { UploadDialog } from "@/components/upload-dialog";
 import { Button } from "@/components/ui/button";
@@ -836,6 +838,12 @@ function AdminPage() {
                   className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
                 >
                   <CreditCard className="h-4 w-4" /> Payments
+                </TabsTrigger>
+                <TabsTrigger
+                  value="cpa-rewards"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
+                  <Gift className="h-4 w-4" /> CPA credits
                 </TabsTrigger>
                 <TabsTrigger
                   value="developers"
@@ -1754,6 +1762,10 @@ function AdminPage() {
                     </p>
                   )}
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="cpa-rewards" className="mt-0 space-y-4">
+                <AdminCpaPanel />
               </TabsContent>
 
               <TabsContent value="payments" className="mt-0 space-y-4">
