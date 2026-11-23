@@ -90,7 +90,7 @@ export function AdminCpaPanel() {
         <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
           <div className="min-w-0">
             <p className="font-medium">CPA Grip server postback endpoint</p>
-            <code className="mt-1 block break-all text-xs text-muted-foreground">{typeof window === "undefined" ? "https://expertsteam.giize.com/api/cpa-grip/postback" : window.location.origin + "/api/cpa-grip/postback"}</code>
+            <code className="mt-1 block break-all text-xs text-muted-foreground">/api/cpa-grip/postback</code>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">In CPA Grip, send its offer <code>tracking_id</code> macro back as the postback parameter <code>subid</code>. Add a unique <code>event_id</code> if your account exposes one, and send the shared <code>key</code>. Configure the same secret as the server-only Vercel variable <code>CPA_GRIP_POSTBACK_SECRET</code>. Do not put the secret in a public offer URL.</p>
           </div>
           <Button type="button" size="sm" variant="outline" onClick={() => {
