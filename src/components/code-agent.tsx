@@ -2180,7 +2180,7 @@ export function CodeAgent() {
         style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
       >
         {/* Left sidebar */}
-        {sidebarOpen && (
+        {sidebarOpen && <button type="button" className="expert-agent-mobile-backdrop" onClick={() => setSidebarOpen(false)} aria-label="Close project explorer" />}\n        {sidebarOpen && (
           <aside className="expert-agent-sidebar expert-agent-sidebar-drawer flex min-h-0 flex-col overflow-y-auto border-b border-white/[0.08] bg-[#0b1320] lg:border-b-0 lg:border-r">
             <div className="flex items-center justify-between px-4 pb-3 pt-4">
               <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
@@ -2525,7 +2525,7 @@ export function CodeAgent() {
               )}
 
               <button
-                onClick={() => setAssistantOpen((value) => !value)}
+                onClick={() => { if (window.matchMedia("(max-width: 767px)").matches) setAssistantOpen(true); else setAssistantOpen((value) => !value); }}
                 className={`ml-1 rounded-lg p-2 ${
                   assistantOpen ? "bg-cyan-400/10 text-cyan-200" : "text-slate-500 hover:bg-white/5"
                 }`}
@@ -2791,7 +2791,7 @@ export function CodeAgent() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-semibold text-cyan-200">Expert 1.0</span>
+                  <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-semibold text-cyan-200">Expert 1.0</span>\n                  <button type="button" onClick={() => setAssistantOpen(false)} className="expert-agent-mobile-close rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Close builder panel"><X className="h-4 w-4" /></button>
                 </div>
               </div>
               <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/[0.07] bg-[#0a1422] px-3 py-2">
@@ -2881,6 +2881,20 @@ export function CodeAgent() {
         </main>
       </div>
 
+      <nav className="expert-agent-mobile-dock" aria-label="Workspace navigation">
+        <div className="expert-agent-mobile-actions">
+          <Button size="sm" onClick={() => void runProject()} disabled={runtimeBusy} className="h-9 flex-1 bg-cyan-400 text-slate-950 hover:bg-cyan-300"><Play className="mr-1.5 h-4 w-4" />{runtimeBusy ? "Starting…" : "Run"}</Button>
+          <Button size="sm" onClick={() => void publishProject()} disabled={publishing} className="h-9 flex-1 bg-emerald-500 text-white hover:bg-emerald-400"><ExternalLink className="mr-1.5 h-4 w-4" />{publishing ? "Publishing…" : "Publish"}</Button>
+        </div>
+        <div className="expert-agent-mobile-tabs">
+          <button type="button" onClick={() => { setAssistantOpen(false); setPanelExpanded(false); switchPanel("preview"); }} className={panel === "preview" && !assistantOpen ? "active" : ""}><Eye /><span>Preview</span></button>
+          <button type="button" onClick={() => { setAssistantOpen(false); setSidebarOpen(true); }} className={sidebarOpen ? "active" : ""}><Folder /><span>Files</span></button>
+          <button type="button" onClick={() => { setAssistantOpen(false); switchPanel("console"); }} className={panel === "console" && !assistantOpen ? "active" : ""}><Terminal /><span>Console</span></button>
+          <button type="button" onClick={() => { setAssistantOpen(false); switchPanel("terminal"); }} className={panel === "terminal" && !assistantOpen ? "active" : ""}><TerminalSquare /><span>Terminal</span></button>
+          <button type="button" onClick={() => { setSidebarOpen(false); setAssistantOpen(true); }} className={assistantOpen ? "active" : ""}><Bot /><span>Agent</span></button>
+        </div>
+      </nav>
+
       <style>{`\n        @keyframes et-agent-answer-reveal { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }\n        .et-agent-answer-reveal { animation: et-agent-answer-reveal 360ms ease-out both; }\n        @media (prefers-reduced-motion: reduce) { .et-agent-answer-reveal { animation: none; } }\n        @keyframes expertStudioTabA { from { opacity: .35; transform: translate3d(0, 13px, 0) scale(.992); filter: blur(3px); } to { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); } }\n        @keyframes expertStudioTabB { from { opacity: .35; transform: translate3d(0, -10px, 0) scale(.992); filter: blur(3px); } to { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); } }\n        @keyframes expertTerminalRevealA { 0% { opacity: 0; transform: perspective(1200px) translateY(34px) scale(.965); filter: blur(12px) brightness(.45); box-shadow: inset 0 0 0 1px rgba(34,211,238,0); } 38% { opacity: 1; filter: blur(1px) brightness(1.45); box-shadow: inset 0 0 90px rgba(34,211,238,.18); } 100% { opacity: 1; transform: perspective(1200px) translateY(0) scale(1); filter: blur(0) brightness(1); box-shadow: inset 0 0 0 rgba(34,211,238,0); } }\n        @keyframes expertTerminalRevealB { 0% { opacity: 0; transform: perspective(1200px) translateY(-30px) scale(.965); filter: blur(12px) brightness(.45); box-shadow: inset 0 0 0 1px rgba(59,130,246,0); } 38% { opacity: 1; filter: blur(1px) brightness(1.5); box-shadow: inset 0 0 100px rgba(59,130,246,.2); } 100% { opacity: 1; transform: perspective(1200px) translateY(0) scale(1); filter: blur(0) brightness(1); box-shadow: inset 0 0 0 rgba(59,130,246,0); } }\n        .expert-agent-light { background:#f5f7fb!important; color:#172033!important; color-scheme:light; }
         .expert-agent-light .expert-agent-topbar { background:#ffffff!important; border-color:#dce3ed!important; color:#172033!important; }
         .expert-agent-light .expert-agent-sidebar { background:#f0f3f8!important; border-color:#dce3ed!important; }
@@ -2896,7 +2910,37 @@ export function CodeAgent() {
         .expert-agent-light .expert-agent-assistant button:hover, .expert-agent-light .expert-agent-sidebar button:hover { background-color:#e5ebf4!important; }
         .expert-agent-kilo-surface .xterm { height: 100%; }
         .expert-agent-kilo-surface .xterm-viewport { overflow-y: scroll !important; overscroll-behavior: contain; scrollbar-width: thin; touch-action: pan-y; }
-        @media (prefers-reduced-motion: reduce) { .expert-agent-canvas { animation: none !important; } }\n      `}</style>
+        @media (prefers-reduced-motion: reduce) { .expert-agent-canvas { animation: none !important; } }\n      `}
+        .expert-agent-mobile-dock,.expert-agent-mobile-close,.expert-agent-mobile-backdrop { display:none; }
+        @media (max-width: 767px) {
+          .expert-agent-shell { height:100%; min-height:0; overflow:hidden; }
+          .expert-agent-topbar { min-height:56px; padding:8px 12px; gap:8px; }
+          .expert-agent-brand-mark { width:32px; height:32px; }
+          .expert-agent-topbar .text-sm.font-semibold { max-width:48vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+          .expert-agent-workspace-grid { display:flex; min-height:0; flex:1 1 auto; overflow:hidden; padding-bottom:108px; }
+          .expert-agent-stage { min-height:0; width:100%; flex:1 1 auto; }
+          .expert-agent-toolbar,.expert-agent-statusbar { display:none !important; }
+          .expert-agent-sidebar-drawer { position:fixed; top:118px; bottom:108px; left:0; z-index:91; width:min(86vw,340px); max-width:calc(100vw - 36px); border:1px solid rgba(148,163,184,.2); border-left:0; border-radius:0 18px 18px 0; box-shadow:24px 0 70px rgba(0,0,0,.55); }
+          .expert-agent-mobile-backdrop { display:block; position:fixed; inset:118px 0 108px; z-index:90; border:0; background:rgba(2,6,15,.62); backdrop-filter:blur(3px); }
+          .expert-agent-assistant-drawer { position:fixed; top:118px; right:8px; bottom:108px; left:8px; z-index:92; width:auto; border:1px solid rgba(34,211,238,.22); border-radius:18px; box-shadow:0 24px 80px rgba(0,0,0,.65); }
+          .expert-agent-mobile-close { display:inline-flex; align-items:center; justify-content:center; }
+          .expert-agent-mobile-dock { position:fixed; z-index:95; right:0; bottom:0; left:0; display:flex; flex-direction:column; gap:7px; padding:8px 10px calc(7px + env(safe-area-inset-bottom)); border-top:1px solid rgba(148,163,184,.18); background:rgba(7,14,26,.97); backdrop-filter:blur(18px); box-shadow:0 -12px 40px rgba(0,0,0,.28); }
+          .expert-agent-mobile-actions { display:flex; gap:8px; }
+          .expert-agent-mobile-tabs { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:2px; }
+          .expert-agent-mobile-tabs button { display:flex; min-width:0; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:5px 2px; border-radius:9px; color:#94a3b8; font-size:10px; font-weight:600; }
+          .expert-agent-mobile-tabs button svg { width:17px; height:17px; }
+          .expert-agent-mobile-tabs button.active { color:#67e8f9; background:rgba(34,211,238,.12); }
+          .expert-agent-canvas { min-height:0; flex:1 1 auto; }
+          .expert-agent-canvas iframe { width:100% !important; max-width:100% !important; }
+          .expert-agent-assistant .min-h-0.flex-1 { overscroll-behavior:contain; }
+          .expert-agent-kilo-surface { min-height:0; }
+        }
+        @media (max-width: 380px) {
+          .expert-agent-mobile-tabs button { font-size:9px; }
+          .expert-agent-mobile-tabs button svg { width:16px; height:16px; }
+          .expert-agent-assistant-drawer { left:5px; right:5px; }
+        }
+</style>
 
       <Dialog open={thumbnailDialogOpen} onOpenChange={setThumbnailDialogOpen}>
         <DialogContent className="border-slate-700 bg-[#101a29] text-white sm:max-w-lg">
