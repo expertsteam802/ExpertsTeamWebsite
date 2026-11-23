@@ -493,7 +493,7 @@ export async function pushToGithub({
     const ref = (await refResponse.json()) as { object?: { sha?: string } };
     parentCommit = ref.object?.sha;
     if (parentCommit) {
-      const commit = (await (await request(api + "/repos/" + login + "/" + repo + "/git/commits/" + parentCommit)).json()) as {
+      const commit = (await (await request(repoApi + "/git/commits/" + parentCommit)).json()) as {
         tree?: { sha?: string };
       };
       baseTree = commit.tree?.sha;
@@ -508,7 +508,7 @@ export async function pushToGithub({
   for (let offset = 0; offset < entries.length; offset += 6) {
     const batch = entries.slice(offset, offset + 6);
     const blobs = await Promise.all(batch.map(async ([filePath, content]) => {
-      const response = await request(api + "/repos/" + login + "/" + repo + "/git/blobs", {
+      const response = await request(repoApi + "/git/blobs", {
         method: "POST",
         body: JSON.stringify({ content, encoding: "utf-8" }),
       });
@@ -521,14 +521,14 @@ export async function pushToGithub({
 
   const treePayload: { base_tree?: string; tree: typeof treeEntries } = { tree: treeEntries };
   if (baseTree) treePayload.base_tree = baseTree;
-  const treeResponse = await request(api + "/repos/" + login + "/" + repo + "/git/trees", {
+  const treeResponse = await request(repoApi + "/git/trees", {
     method: "POST",
     body: JSON.stringify(treePayload),
   });
   const tree = (await treeResponse.json()) as { sha?: string };
   if (!tree.sha) throw new Error("GitHub did not return the new project tree.");
 
-  const commitResponse = await request(api + "/repos/" + login + "/" + repo + "/git/commits", {
+  const commitResponse = await request(repoApi + "/git/commits", {
     method: "POST",
     body: JSON.stringify({
       message,
@@ -540,18 +540,18 @@ export async function pushToGithub({
   if (!commit.sha) throw new Error("GitHub did not return the new project commit.");
 
   if (parentCommit) {
-    await request(api + "/repos/" + login + "/" + repo + "/git/refs/heads/" + refPath, {
+    await request(repoApi + "/git/refs/heads/" + refPath, {
       method: "PATCH",
       body: JSON.stringify({ sha: commit.sha, force: false }),
     });
   } else {
-    await request(api + "/repos/" + login + "/" + repo + "/git/refs", {
+    await request(repoApi + "/git/refs", {
       method: "POST",
       body: JSON.stringify({ ref: "refs/heads/" + branch, sha: commit.sha }),
     });
   }
 
-  await fetch(api + "/repos/" + login + "/" + repo + "/pages", {
+  await fetch(repoApi + "/pages", {
     method: "POST",
     headers,
     body: JSON.stringify({ build_type: "workflow" }),
