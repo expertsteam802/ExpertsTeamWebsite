@@ -1364,3 +1364,35 @@ html, body, .et-shell, .et-topbar, .et-secondary-sidebar, .et-main,
     transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
   }
 }
+
+
+/* Final Builder proportions: preserve the live preview as the primary canvas.
+   Keep the Explorer and Agent useful without letting either consume the work area. */
+@media (min-width: 1024px) {
+  .expert-agent-workspace-grid {
+    grid-template-columns: minmax(210px, var(--sidebar-width, 248px)) 5px minmax(0, 1fr) !important;
+  }
+  .expert-agent-stage > .grid {
+    grid-template-columns: minmax(0, 1fr) 5px minmax(300px, var(--assistant-width, 360px)) !important;
+  }
+  .expert-agent-sidebar {
+    min-width: 0 !important;
+  }
+  .expert-agent-sidebar .expert-agent-project-list {
+    max-height: min(20vh, 176px) !important;
+  }
+  .expert-agent-sidebar .expert-agent-file-tree {
+    min-height: 0 !important;
+    flex: 1 1 0% !important;
+  }
+}
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .expert-agent-stage > .grid {
+    grid-template-columns: minmax(0, 1fr) 5px minmax(280px, 31vw) !important;
+  }
+}
+@media (min-width: 1280px) {
+  .expert-agent-stage > .grid {
+    grid-template-columns: minmax(0, 1fr) 5px minmax(320px, var(--assistant-width, 360px)) !important;
+  }
+}
