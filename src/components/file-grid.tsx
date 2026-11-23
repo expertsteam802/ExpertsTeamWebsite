@@ -50,8 +50,6 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
   const [editSourceUrl, setEditSourceUrl] = useState("");
   const [editThumbnailUrl, setEditThumbnailUrl] = useState("");
   function handleDownloadClick(file: CommunityFile) {
-    // Do not gate user downloads behind a direct-link popup. Monetag placements
-    // are loaded independently on approved public content pages.
     void requestDownload(file);
   }
 
@@ -191,7 +189,7 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
                 <ReportContentButton contentType="file" contentId={file.id} />
                 <Button size="sm" variant="secondary" onClick={() => handleDownloadClick(file)}>
                   <Download className="mr-2 h-4 w-4" />{" "}
-                  {adOpenedFor.has(file.id) ? (file.source_url ? "Continue to source" : "Continue download") : (file.source_url ? "Open source" : "Download")}
+                  {file.source_url ? "Open source" : "Download"}
                 </Button>
                 {canManage && (
                   <>
