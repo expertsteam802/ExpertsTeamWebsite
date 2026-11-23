@@ -11,7 +11,24 @@ export async function loadProjectFiles(projectId: string): Promise<ProjectFiles>
     .eq("id", projectId)
     .maybeSingle();
   if (projectError) throw projectError;
-  if (!project?.file_storage_ready_at) return {};
+
+  // A null readiness marker means a migration or multi-batch save has not
+  // finished. The JSON snapshot is deliberately retained until every file
+  // row is written, so use it as the recovery source instead of showing an
+  // empty project or a partially-written file tree.
+  if (!project?.file_storage_ready_at) {
+    const { data: legacy, error: legacyError } = await supabase
+      .from("agent_projects")
+      .select("files")
+      .eq("id", projectId)
+      .maybeSingle();
+    if (legacyError) throw legacyError;
+    const snapshot = legacy?.files;
+    if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) return {};
+    return Object.fromEntries(
+      Object.entries(snapshot).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+    );
+  }
 
   const { data, error } = await supabase
     .from("agent_project_files")
