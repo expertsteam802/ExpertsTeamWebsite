@@ -670,6 +670,7 @@ export type Database = {
           reward_credits: number
           sort_order: number
           title: string
+          tracking_parameter: string
           updated_at: string
         }
         Insert: {
@@ -685,6 +686,7 @@ export type Database = {
           reward_credits?: number
           sort_order?: number
           title: string
+          tracking_parameter?: string
           updated_at?: string
         }
         Update: {
@@ -700,6 +702,7 @@ export type Database = {
           reward_credits?: number
           sort_order?: number
           title?: string
+          tracking_parameter?: string
           updated_at?: string
         }
         Relationships: []
@@ -1654,6 +1657,7 @@ export type Database = {
         Returns: {
           destination_url: string
           tracking_id: string
+          tracking_parameter: string
         }[]
       }
     }
