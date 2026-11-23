@@ -554,8 +554,27 @@ export const startAgentTerminal = createServerFn({ method: "POST" })
       ? terminal.defaultCli : enabledClis[0];
     const cli = data.cli ?? defaultCli;
     if (!enabledClis.includes(cli)) throw new Error("This coding CLI is not enabled by the administrator.");
+    const { data: savedAssets, error: assetQueryError } = await context.supabase
+      .from("agent_project_assets")
+      .select("file_path, storage_path, mime_type, sha256")
+      .eq("project_id", data.projectId)
+      .eq("user_id", context.userId);
+    if (assetQueryError) throw new Error("Could not load the project's saved binary assets: " + assetQueryError.message);
+    const binaryAssets = [];
+    for (const asset of savedAssets ?? []) {
+      const { data: blob, error: downloadError } = await context.supabase.storage
+        .from("builder-project-assets")
+        .download(asset.storage_path);
+      if (downloadError || !blob) throw new Error("Could not restore " + asset.file_path + ": " + (downloadError?.message ?? "asset is missing"));
+      binaryAssets.push({
+        filePath: asset.file_path,
+        buffer: Buffer.from(await blob.arrayBuffer()),
+        mimeType: asset.mime_type,
+        sha256: asset.sha256,
+      });
+    }
     const { daytonaTerminalSandboxName, startDaytonaProjectTerminal } = await import("./daytona-terminal.server");
-    return startDaytonaProjectTerminal(daytonaTerminalSandboxName(context.userId), files, data.username ?? "ExpertsTeam", cli as "kilo" | "opencode" | "aider");
+    return startDaytonaProjectTerminal(daytonaTerminalSandboxName(context.userId), files, data.username ?? "ExpertsTeam", cli as "kilo" | "opencode" | "aider", binaryAssets);
   });
 
 const publishRequest = z.object({
@@ -585,7 +604,72 @@ export const syncAgentTerminalFiles = createServerFn({ method: "POST" })
       resourceLimits.maxFileMb * 1_000_000,
     );
     await assertBuilderResourcePolicy(context.supabase, context.userId, snapshot.files);
-    return snapshot;
+    const totalBinaryBytes = snapshot.binaryAssets.reduce((sum, asset) => sum + asset.buffer.byteLength, 0);
+    const totalTextBytes = Object.values(snapshot.files).reduce((sum, value) => sum + Buffer.byteLength(value, "utf8"), 0);
+    const totalFiles = Object.keys(snapshot.files).length + snapshot.binaryAssets.length;
+    if (resourceLimits.maxFiles > 0 && totalFiles > resourceLimits.maxFiles) {
+      throw new Error("The workspace exceeds the administrator-configured file-count limit of " + resourceLimits.maxFiles + ".");
+    }
+    if (resourceLimits.maxProjectMb > 0 && totalTextBytes + totalBinaryBytes > resourceLimits.maxProjectMb * 1_000_000) {
+      throw new Error("The workspace exceeds the administrator-configured project-size limit of " + resourceLimits.maxProjectMb + " MB.");
+    }
+
+    const importId = crypto.randomUUID();
+    const uploadedPaths: string[] = [];
+    const stagedAssetRows: {
+      import_id: string; project_id: string; user_id: string; file_path: string;
+      storage_path: string; mime_type: string; size_bytes: number; sha256: string;
+    }[] = [];
+    const oldAssetsResult = await context.supabase.from("agent_project_assets")
+      .select("storage_path").eq("project_id", data.projectId).eq("user_id", context.userId);
+    if (oldAssetsResult.error) throw new Error("Could not inspect previous binary assets: " + oldAssetsResult.error.message);
+    try {
+      for (const asset of snapshot.binaryAssets) {
+        const storagePath = context.userId + "/" + data.projectId + "/" + importId + "/" + asset.filePath;
+        const { error: uploadError } = await context.supabase.storage.from("builder-project-assets").upload(
+          storagePath, asset.buffer,
+          { contentType: asset.mimeType, cacheControl: "31536000", upsert: false },
+        );
+        if (uploadError) throw new Error("Could not save binary asset " + asset.filePath + ": " + uploadError.message);
+        uploadedPaths.push(storagePath);
+        stagedAssetRows.push({
+          import_id: importId, project_id: data.projectId, user_id: context.userId,
+          file_path: asset.filePath, storage_path: storagePath, mime_type: asset.mimeType,
+          size_bytes: asset.buffer.byteLength, sha256: asset.sha256,
+        });
+        if (stagedAssetRows.length >= 50) {
+          const { error } = await context.supabase.from("agent_project_asset_staging").insert(stagedAssetRows.splice(0));
+          if (error) throw new Error("Could not stage binary asset metadata: " + error.message);
+        }
+      }
+      if (stagedAssetRows.length) {
+        const { error } = await context.supabase.from("agent_project_asset_staging").insert(stagedAssetRows);
+        if (error) throw new Error("Could not stage binary asset metadata: " + error.message);
+      }
+
+      const textRows = Object.entries(snapshot.files).map(([filePath, content]) => ({
+        import_id: importId, project_id: data.projectId, user_id: context.userId, file_path: filePath, content,
+      }));
+      for (let offset = 0; offset < textRows.length; offset += 100) {
+        const { error } = await context.supabase.from("agent_project_file_staging").insert(textRows.slice(offset, offset + 100));
+        if (error) throw new Error("Could not stage workspace source files: " + error.message);
+      }
+      const { error: finalizeError } = await context.supabase.rpc("finalize_agent_project_workspace_staging", {
+        p_project_id: data.projectId, p_import_id: importId,
+      });
+      if (finalizeError) throw new Error("Could not finalize the saved workspace: " + finalizeError.message);
+      const oldPaths = (oldAssetsResult.data ?? []).map((asset) => asset.storage_path);
+      if (oldPaths.length) {
+        const { error: cleanupError } = await context.supabase.storage.from("builder-project-assets").remove(oldPaths);
+        if (cleanupError) console.warn("Old Builder asset cleanup is pending:", cleanupError.message);
+      }
+      return { fileCount: totalFiles, textFileCount: Object.keys(snapshot.files).length, binaryAssetCount: snapshot.binaryAssets.length };
+    } catch (error) {
+      await context.supabase.from("agent_project_file_staging").delete().eq("import_id", importId).eq("project_id", data.projectId).eq("user_id", context.userId);
+      await context.supabase.from("agent_project_asset_staging").delete().eq("import_id", importId).eq("project_id", data.projectId).eq("user_id", context.userId);
+      if (uploadedPaths.length) await context.supabase.storage.from("builder-project-assets").remove(uploadedPaths);
+      throw error;
+    }
   });
 
 export const refreshAgentTerminal = createServerFn({ method: "POST" })
