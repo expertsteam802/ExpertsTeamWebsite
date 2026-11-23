@@ -375,7 +375,7 @@ export const Route = createFileRoute("/api/ai/stream")({
           if (/(Kilo|OpenRouter).*(quota is exhausted|HTTP 429|rate limit)|free-model rate limit|upstream model provider returned HTTP 429/i.test(message)) {
             return Response.json({ error: message }, { status: 429 });
           }
-          if (/Kilo free access is unavailable|OpenRouter rejected|OPENROUTER_API_KEY/i.test(message)) {\n            return Response.json({ error: message }, { status: 503 });\n          }\n          if (/Guest access is temporarily unavailable|Guest chat credits could not be checked/i.test(message)) {
+          if (/Kilo free access is unavailable|OpenRouter rejected|OPENROUTER_API_KEY|Guest access is temporarily unavailable|Guest chat credits could not be checked/i.test(message)) {
             return Response.json({ error: message }, { status: 503 });
           }
           if (/cannot fit the current request/i.test(message)) {
