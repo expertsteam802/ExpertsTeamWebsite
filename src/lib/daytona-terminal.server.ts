@@ -195,12 +195,17 @@ function terminalBridgeSource(workdir: string, bridgeDir: string) {
 
 function cliPrompt(username: string, cli: CliName) {
   const safeUsername = username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam";
-  const launch = cli === "kilo"
-    ? 'if command -v kilo >/dev/null 2>&1; then kilo; cli_status=$?; printf "\\nKilo exited with code %s. The terminal is still available.\\n" "$cli_status"; else printf "\\nThe Kilo runtime is unavailable. Reconnect the workspace to repair it.\\n"; fi'
-    : cli === "opencode"
-      ? 'if command -v opencode >/dev/null 2>&1; then opencode; cli_status=$?; printf "\\nOpenCode exited with code %s. The terminal is still available.\\n" "$cli_status"; else printf "\\nThe OpenCode runtime is unavailable. Reconnect the workspace to repair it.\\n"; fi'
-      : 'if command -v aider >/dev/null 2>&1; then aider; cli_status=$?; printf "\\nAider exited with code %s. The terminal is still available.\\n" "$cli_status"; else printf "\\nThe Aider runtime is unavailable. Reconnect the workspace to repair it.\\n"; fi';
-  const skipEnv = "$" + "{EXPERTS_SKIP_KILO:-0}";
+  const cliLabel = cli === "opencode" ? "OpenCode" : cli === "kilo" ? "Kilo" : "Aider";
+  const diagnostics = [
+    'printf "\\n[Workspace resources before CLI launch]\\n"',
+    'if command -v free >/dev/null 2>&1; then free -h | head -n 2; fi',
+    'for f in /sys/fs/cgroup/memory.current /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory.events /sys/fs/cgroup/memory/memory.usage_in_bytes /sys/fs/cgroup/memory/memory.limit_in_bytes; do if [ -r "$f" ]; then printf "%s: " "$f"; tr "\\n" " " < "$f"; printf "\\n"; fi; done',
+  ].join("; ");
+  const launch = 'if command -v ' + cli + ' >/dev/null 2>&1; then ' + diagnostics +
+    '; ' + cli + '; cli_status=$?; printf "\\n' + cliLabel + ' exited with code %s. The terminal is still available.\\n" "$cli_status"; ' +
+    'if [ "$cli_status" -eq 137 ]; then printf "[Diagnostic] Exit 137 usually means the process received SIGKILL. Review memory.current, memory.max and oom_kill counters above.\\n"; fi; ' +
+    'else printf "\\nThe ' + cliLabel + ' runtime is unavailable. Reconnect the workspace to repair it.\\n"; fi';
+  const skipEnv = "$" + "${EXPERTS_SKIP_KILO:-0}";
   return "export PS1=" + shellQuote(safeUsername + "@expertsteam:\\w$ ") +
     "\nPROMPT_COMMAND=\nif [ \"" + skipEnv + "\" != \"1\" ]; then\n  " + launch + "\nfi\n";
 }
