@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Check, Gift, Pause, Plus, Trash2, X } from "lucide-react";
+import { Check, Copy, Gift, Pause, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import type { Tables } from "@/integrations/supabase/types";
 type Offer = Tables<"cpa_offers">;
 type Conversion = Tables<"cpa_conversions">;
 
-const emptyOffer = { title: "", description: "", provider: "custom", category: "general", tracking_parameter: "subid", destination_url: "", reward_credits: "10", instructions: "" };
+const emptyOffer = { title: "", description: "", provider: "CPA Grip", category: "general", tracking_parameter: "subid", destination_url: "", reward_credits: "10", instructions: "" };
 
 export function AdminCpaPanel() {
   const queryClient = useQueryClient();
@@ -54,7 +54,7 @@ export function AdminCpaPanel() {
       });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Offer saved as inactive. Activate it after configuring its partner tracking."); setForm(emptyOffer); refresh(); },
+    onSuccess: () => { toast.success("Offer saved as inactive. Activate it after testing the CPA Grip tracking and postback."); setForm(emptyOffer); refresh(); },
     onError: (error: Error) => toast.error(error.message),
   });
   const toggleOffer = useMutation({
@@ -86,14 +86,25 @@ export function AdminCpaPanel() {
     <div className="space-y-6">
       <section>
         <div className="mb-3 flex items-center gap-2"><Gift className="h-5 w-5 text-primary" /><h2 className="font-display text-xl font-semibold">CPA credit offers</h2></div>
-        <p className="mb-4 text-sm text-muted-foreground">Create partner offers and choose the credit reward. New offers are inactive until you verify the tracking URL and provider setup.</p>
+        <p className="mb-4 text-sm text-muted-foreground">Create CPA Grip offers and choose the AI-credit reward. New offers stay inactive until the destination and tracking setup are verified.</p>
+        <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
+          <div className="min-w-0">
+            <p className="font-medium">CPA Grip server postback endpoint</p>
+            <code className="mt-1 block break-all text-xs text-muted-foreground">{typeof window === "undefined" ? "https://expertsteam.giize.com/api/cpa-grip/postback" : window.location.origin + "/api/cpa-grip/postback"}</code>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">In CPA Grip, map its click/sub-ID macro to <code>subid</code>, its unique conversion ID to <code>event_id</code>, and send the shared <code>key</code>. Configure the same secret as the server-only Vercel variable <code>CPA_GRIP_POSTBACK_SECRET</code>. Do not put the secret in a public offer URL.</p>
+          </div>
+          <Button type="button" size="sm" variant="outline" onClick={() => {
+            const endpoint = window.location.origin + "/api/cpa-grip/postback";
+            void navigator.clipboard.writeText(endpoint).then(() => toast.success("Postback endpoint copied.")).catch(() => toast.error("Could not copy the endpoint."));
+          }}><Copy className="h-4 w-4" /> Copy endpoint</Button>
+        </Card>
         <Card className="grid gap-4 p-5 md:grid-cols-2">
           <div className="space-y-2"><Label htmlFor="cpa-title">Offer title</Label><Input id="cpa-title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Complete a partner survey" /></div>
-          <div className="space-y-2"><Label htmlFor="cpa-provider">CPA network / provider</Label><Input id="cpa-provider" value={form.provider} onChange={e => setForm({ ...form, provider: e.target.value })} placeholder="Your CPA network" /></div>
+          <div className="space-y-2"><Label htmlFor="cpa-provider">CPA network / provider</Label><Input id="cpa-provider" value={form.provider} onChange={e => setForm({ ...form, provider: e.target.value })} placeholder="CPA Grip" /></div>
           <div className="space-y-2"><Label htmlFor="cpa-category">Category</Label><Input id="cpa-category" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="Survey, app install, signup…" /></div>
           <div className="space-y-2"><Label htmlFor="cpa-tracking-parameter">Tracking parameter</Label><Input id="cpa-tracking-parameter" value={form.tracking_parameter} onChange={e => setForm({ ...form, tracking_parameter: e.target.value.replace(/[^A-Za-z0-9_]/g, "") })} placeholder="subid" /></div>
           <div className="space-y-2"><Label htmlFor="cpa-reward">Credits awarded</Label><Input id="cpa-reward" type="number" min="1" step="1" value={form.reward_credits} onChange={e => setForm({ ...form, reward_credits: e.target.value })} /></div>
-          <div className="space-y-2 md:col-span-2"><Label htmlFor="cpa-url">Partner offer URL (HTTPS)</Label><Input id="cpa-url" value={form.destination_url} onChange={e => setForm({ ...form, destination_url: e.target.value })} placeholder="https://partner.example/offer?subid={subid}" /></div>
+          <div className="space-y-2 md:col-span-2"><Label htmlFor="cpa-url">Partner offer URL (HTTPS)</Label><Input id="cpa-url" value={form.destination_url} onChange={e => setForm({ ...form, destination_url: e.target.value })} placeholder="Paste the CPA Grip offer URL; tracking is appended automatically" /></div>
           <div className="space-y-2 md:col-span-2"><Label htmlFor="cpa-description">Description</Label><Textarea id="cpa-description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} /></div>
           <div className="space-y-2 md:col-span-2"><Label htmlFor="cpa-instructions">Completion instructions</Label><Textarea id="cpa-instructions" value={form.instructions} onChange={e => setForm({ ...form, instructions: e.target.value })} rows={2} /></div>
           <div className="md:col-span-2"><Button onClick={() => saveOffer.mutate()} disabled={saveOffer.isPending}><Plus className="h-4 w-4" /> {saveOffer.isPending ? "Saving…" : "Save inactive offer"}</Button></div>
@@ -123,7 +134,7 @@ export function AdminCpaPanel() {
           </Card>
         )) : <Card className="p-5 text-sm text-muted-foreground">No pending conversions.</Card>}
       </section>
-      <p className="text-xs leading-5 text-muted-foreground">Provider postback verification is not connected yet. Until your CPA network credentials and callback format are configured, manually verify conversions in this panel. Do not activate offers until the partner accepts the subid tracking parameter.</p>
+      <p className="text-xs leading-5 text-muted-foreground">CPA Grip postbacks automatically approve matching conversions after the shared secret is verified. Manual review remains available for other providers and exceptional cases. Set CPA_GRIP_POSTBACK_SECRET in Vercel before activating CPA Grip offers.</p>
     </div>
   );
 }
