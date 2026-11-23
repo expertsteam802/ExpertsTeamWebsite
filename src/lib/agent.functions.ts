@@ -218,8 +218,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
               ignoredDirectories.has(part),
           ) &&
           !segments.some((part) => part.startsWith(".experts-")) &&
-          !secretName.test(filename) &&
-          !binaryExtensions.test(filename)
+          !secretName.test(filename)
         );
       })
       .sort((left, right) => {
@@ -232,7 +231,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
         );
       });
     if (!candidates.length)
-      throw new Error("No supported text source files were found in this repository.");
+      throw new Error("No supported source files were found in this repository.");
     const resourceLimits = await getBuilderResourceLimits(context.supabase, context.userId);
     const projectName = metadata.name || repo;
     const repoUrl = metadata.html_url || "https://github.com/" + owner + "/" + repo;
@@ -263,6 +262,13 @@ export const importGitHubProject = createServerFn({ method: "POST" })
       content: string;
     }[] = [];
     let batchBytes = 0;
+    const uploadedAssetPaths: string[] = [];
+    const assetMime: Record<string, string> = {
+      png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp",
+      ico: "image/x-icon", pdf: "application/pdf", zip: "application/zip", gz: "application/gzip",
+      woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf", otf: "font/otf", mp4: "video/mp4",
+      mp3: "audio/mpeg", wav: "audio/wav", mov: "video/quicktime", avi: "video/x-msvideo", wasm: "application/wasm",
+    };
 
     const flush = async () => {
       if (!batch.length) return;
@@ -291,8 +297,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
             if (resourceLimits.maxFileMb && buffer.byteLength > resourceLimits.maxFileMb * 1_000_000) {
               throw new Error(filePath + " exceeds the administrator-configured per-file limit of " + resourceLimits.maxFileMb + " MB.");
             }
-            if (buffer.includes(0)) return null;
-            return { path: filePath, content: buffer.toString("utf8"), size: buffer.byteLength };
+            return { path: filePath, buffer, size: buffer.byteLength };
           }),
         );
 
@@ -310,15 +315,32 @@ export const importGitHubProject = createServerFn({ method: "POST" })
             throw new Error("A repository file exceeds the administrator-configured per-file allowance: " + file.path);
           }
 
+          const decoded = file.buffer.toString("utf8");
+          const extension = file.path.split(".").at(-1)?.toLowerCase() ?? "";
+          const isBinary = binaryExtensions.test(file.path) || file.buffer.includes(0) || !Buffer.from(decoded, "utf8").equals(file.buffer);
+          if (isBinary) {
+            const storagePath = context.userId + "/" + project.id + "/" + importId + "/" + file.path;
+            const { error: uploadError } = await context.supabase.storage.from("builder-project-assets").upload(
+              storagePath, file.buffer,
+              { contentType: assetMime[extension] ?? "application/octet-stream", cacheControl: "31536000", upsert: false },
+            );
+            if (uploadError) throw new Error("Could not import binary asset " + file.path + ": " + uploadError.message);
+            uploadedAssetPaths.push(storagePath);
+            const { error: stageError } = await context.supabase.from("agent_project_asset_staging").insert({
+              import_id: importId, project_id: project.id, user_id: context.userId,
+              file_path: file.path, storage_path: storagePath,
+              mime_type: assetMime[extension] ?? "application/octet-stream",
+              size_bytes: file.size, sha256: crypto.createHash("sha256").update(file.buffer).digest("hex"),
+            });
+            if (stageError) throw new Error("Could not stage binary asset metadata: " + stageError.message);
+            continue;
+          }
           if (batch.length && (batch.length >= 100 || batchBytes + file.size > 4_000_000)) {
             await flush();
           }
           batch.push({
-            import_id: importId,
-            project_id: project.id,
-            user_id: context.userId,
-            file_path: file.path,
-            content: file.content,
+            import_id: importId, project_id: project.id, user_id: context.userId,
+            file_path: file.path, content: decoded,
           });
           batchBytes += file.size;
         }
@@ -327,12 +349,19 @@ export const importGitHubProject = createServerFn({ method: "POST" })
       if (!fileCount) throw new Error("No readable source files could be imported.");
       await flush();
 
-      const { error: finalizeError } = await context.supabase.rpc("finalize_agent_project_file_staging", {
+      const { error: finalizeError } = await context.supabase.rpc("finalize_agent_project_workspace_staging", {
         p_project_id: project.id,
         p_import_id: importId,
       });
       if (finalizeError) throw new Error("Could not finalize imported files: " + finalizeError.message);
     } catch (error) {
+      await context.supabase.storage.from("builder-project-assets").remove(uploadedAssetPaths);
+      await context.supabase
+        .from("agent_project_asset_staging")
+        .delete()
+        .eq("import_id", importId)
+        .eq("project_id", project.id)
+        .eq("user_id", context.userId);
       await context.supabase
         .from("agent_project_file_staging")
         .delete()
