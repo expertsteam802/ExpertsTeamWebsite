@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Clock, Copy, Sparkles } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Clock, Copy, HardDrive, Gift } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -29,7 +30,6 @@ export function UpgradeDialog() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [method, setMethod] = useState<PaymentMethod>("paypal");
-  const [planKind, setPlanKind] = useState<"ai" | "storage">("ai");
   const [reference, setReference] = useState("");
   const [note, setNote] = useState("");
 
@@ -50,23 +50,18 @@ export function UpgradeDialog() {
   });
 
   const pending = (requests ?? []).find(
-    (request) => request.status === "pending" && (request.kind ?? "storage") === planKind,
+    (request) => request.status === "pending" && (request.kind ?? "storage") === "storage",
   );
   const configuredPrice = Number(
-    planKind === "ai" ? settings.ai_subscription_price : settings.subscription_price,
+    settings.subscription_price,
   );
   const price = Number.isFinite(configuredPrice) && configuredPrice > 0 ? configuredPrice : 1;
   const payoutAccount = settings.payout_account?.trim();
-  const studioActive = Boolean(
-    profile?.ai_subscribed &&
-    (!profile.ai_subscription_expires_at ||
-      new Date(profile.ai_subscription_expires_at).getTime() > Date.now()),
-  );
   const activeMethod = PAYMENT_METHODS.find((item) => item.value === method)!;
 
   const submit = useMutation({
     mutationFn: async () => {
-      if (pending) throw new Error("You already have a payment awaiting review.");
+      if (pending) throw new Error("You already have a storage payment awaiting review.");
       if (!payoutAccount)
         throw new Error("The creator has not configured a payment destination yet.");
       if (!user) throw new Error("Sign in first.");
@@ -76,7 +71,7 @@ export function UpgradeDialog() {
       const { error } = await supabase.from("subscription_requests").insert({
         user_id: user.id,
         amount: price,
-        kind: planKind,
+        kind: "storage",
         method,
         reference: reference.trim().slice(0, 120),
         note: note.trim().slice(0, 400) || null,
@@ -85,7 +80,7 @@ export function UpgradeDialog() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Payment submitted — the creator will confirm it shortly.");
+      toast.success("Storage upgrade request submitted — the creator will confirm it shortly.");
       setReference("");
       setNote("");
       setOpen(false);
@@ -95,15 +90,6 @@ export function UpgradeDialog() {
   });
 
   if (!user) return null;
-
-  if (studioActive) {
-    return (
-      <Badge variant="secondary" className="w-fit gap-1">
-        <CheckCircle2 className="h-3.5 w-3.5" /> Subscriber · Studio access ·{" "}
-        {Number(profile.ai_credits ?? 0)} AI credits available
-      </Badge>
-    );
-  }
 
   return (
     <div className="space-y-2">
@@ -115,53 +101,20 @@ export function UpgradeDialog() {
       <Dialog open={open} onOpenChange={(next) => !submit.isPending && setOpen(next)}>
         <DialogTrigger asChild>
           <Button size="sm" className="w-fit">
-            <Sparkles className="mr-2 h-4 w-4" /> Upgrade for ${price.toFixed(2)}
+            <HardDrive className="mr-2 h-4 w-4" /> Upgrade storage · ${price.toFixed(2)}
           </Button>
         </DialogTrigger>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {planKind === "ai"
-                ? "Unlock ExpertsTeam Studio"
-                : `Unlock ${formatBytes(settings.subscription_quota_bytes)} of space`}
+              {`Unlock ${formatBytes(settings.subscription_quota_bytes)} of storage`}
             </DialogTitle>
             <DialogDescription>
-              {planKind === "ai"
-                ? `A 30-day Studio plan for $${price.toFixed(2)} unlocks the app builder and ${Number(settings.ai_subscription_credits) || 500} AI credits. Expert AI chat has a separate starter allowance.`
-                : `One payment of $${price.toFixed(2)} raises your upload limit from ${formatBytes(profile?.storage_quota_bytes ?? 209715200)} to ${formatBytes(settings.subscription_quota_bytes)}.`}
+              {`One payment of ${price.toFixed(2)} raises your upload limit from ${formatBytes(profile?.storage_quota_bytes ?? 209715200)} to ${formatBytes(settings.subscription_quota_bytes)}.`}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Choose plan</Label>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={planKind === "ai" ? "default" : "outline"}
-                  onClick={() => setPlanKind("ai")}
-                >
-                  Studio · $
-                  {Number(settings.ai_subscription_price) > 0
-                    ? Number(settings.ai_subscription_price).toFixed(2)
-                    : "1.00"}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={planKind === "storage" ? "default" : "outline"}
-                  onClick={() => setPlanKind("storage")}
-                >
-                  Extra storage · ${Number(settings.subscription_price).toFixed(2)}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {planKind === "ai"
-                  ? "Unlocks app creation for 30 days with a limited AI credit allowance. Free-model provider quotas still apply."
-                  : "One-time storage upgrade, confirmed manually by the creator."}
-              </p>
-            </div>
             <div className="space-y-2">
               <Label>Pay with</Label>
               <div className="flex flex-wrap gap-2">
@@ -229,8 +182,7 @@ export function UpgradeDialog() {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Your selected plan unlocks after the creator confirms payment in the Admin panel.
-              Studio access lasts 30 days.
+              Storage access increases after the creator confirms payment in the Admin panel. AI credits are earned separately through partner offers.
             </p>
           </div>
 
@@ -242,6 +194,7 @@ export function UpgradeDialog() {
         </DialogContent>
       </Dialog>
 
+      <Link to="/earn" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"><Gift className="h-3.5 w-3.5" /> Earn AI credits with partner offers</Link>
       {!!requests?.length && (
         <ul className="space-y-1 text-xs text-muted-foreground">
           {requests.slice(0, 3).map((request) => (
