@@ -269,6 +269,7 @@ export type Database = {
       }
       agent_projects: {
         Row: {
+          cloud_connection_id: string | null
           created_at: string
           default_branch: string
           deployment_url: string | null
@@ -291,6 +292,7 @@ export type Database = {
           workspace_settings: Json
         }
         Insert: {
+          cloud_connection_id?: string | null
           created_at?: string
           default_branch?: string
           deployment_url?: string | null
@@ -313,6 +315,7 @@ export type Database = {
           workspace_settings?: Json
         }
         Update: {
+          cloud_connection_id?: string | null
           created_at?: string
           default_branch?: string
           deployment_url?: string | null
@@ -334,7 +337,15 @@ export type Database = {
           user_id?: string
           workspace_settings?: Json
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "agent_projects_cloud_connection_owner_fkey"
+            columns: ["cloud_connection_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "user_cloud_connections"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
       }
       agent_prompt_templates: {
         Row: {
@@ -1861,6 +1872,10 @@ export type Database = {
       }
       finalize_agent_project_workspace_staging: {
         Args: { p_import_id: string; p_project_id: string }
+        Returns: Json
+      }
+      get_user_supabase_connection_secret: {
+        Args: { p_connection_id: string; p_user_id: string }
         Returns: Json
       }
       has_role: {
