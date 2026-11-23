@@ -651,17 +651,26 @@ export const syncAgentTerminalFiles = createServerFn({ method: "POST" })
       storage_path: string; mime_type: string; size_bytes: number; sha256: string;
     }[] = [];
     const oldAssetsResult = await context.supabase.from("agent_project_assets")
-      .select("storage_path").eq("project_id", data.projectId).eq("user_id", context.userId);
+      .select("file_path, storage_path, sha256").eq("project_id", data.projectId).eq("user_id", context.userId);
     if (oldAssetsResult.error) throw new Error("Could not inspect previous binary assets: " + oldAssetsResult.error.message);
+    const previousAssets = new Map((oldAssetsResult.data ?? []).map((asset) => [asset.file_path, asset]));
+    const retainedAssetPaths = new Set<string>();
     try {
       for (const asset of snapshot.binaryAssets) {
-        const storagePath = context.userId + "/" + data.projectId + "/" + importId + "/" + asset.filePath;
-        const { error: uploadError } = await context.supabase.storage.from("builder-project-assets").upload(
-          storagePath, asset.buffer,
-          { contentType: asset.mimeType, cacheControl: "31536000", upsert: false },
-        );
-        if (uploadError) throw new Error("Could not save binary asset " + asset.filePath + ": " + uploadError.message);
-        uploadedPaths.push(storagePath);
+        const previous = previousAssets.get(asset.filePath);
+        const unchanged = previous?.sha256 === asset.sha256;
+        const storagePath = unchanged
+          ? previous.storage_path
+          : context.userId + "/" + data.projectId + "/" + importId + "/" + asset.filePath;
+        if (!unchanged) {
+          const { error: uploadError } = await context.supabase.storage.from("builder-project-assets").upload(
+            storagePath, asset.buffer,
+            { contentType: asset.mimeType, cacheControl: "31536000", upsert: false },
+          );
+          if (uploadError) throw new Error("Could not save binary asset " + asset.filePath + ": " + uploadError.message);
+          uploadedPaths.push(storagePath);
+        }
+        retainedAssetPaths.add(storagePath);
         stagedAssetRows.push({
           import_id: importId, project_id: data.projectId, user_id: context.userId,
           file_path: asset.filePath, storage_path: storagePath, mime_type: asset.mimeType,
@@ -688,7 +697,7 @@ export const syncAgentTerminalFiles = createServerFn({ method: "POST" })
         p_project_id: data.projectId, p_import_id: importId,
       });
       if (finalizeError) throw new Error("Could not finalize the saved workspace: " + finalizeError.message);
-      const oldPaths = (oldAssetsResult.data ?? []).map((asset) => asset.storage_path);
+      const oldPaths = (oldAssetsResult.data ?? []).map((asset) => asset.storage_path).filter((storagePath) => !retainedAssetPaths.has(storagePath));
       if (oldPaths.length) {
         const { error: cleanupError } = await context.supabase.storage.from("builder-project-assets").remove(oldPaths);
         if (cleanupError) console.warn("Old Builder asset cleanup is pending:", cleanupError.message);
