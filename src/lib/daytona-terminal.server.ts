@@ -3,6 +3,7 @@ import { posix as path } from "node:path";
 import { Daytona } from "@daytona/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { VISUAL_SELECT_BRIDGE } from "@/lib/sandbox";
 
 export type AgentProjectFiles = Record<string, string>;
 
@@ -330,9 +331,11 @@ export async function startDaytonaProjectPreview(projectId: string, sourceFiles:
       const config = [
         'import { mergeConfig } from "vite";', configImport,
         "const previewHost = " + JSON.stringify(host) + ";",
+        "const visualSelectBridge = " + JSON.stringify(VISUAL_SELECT_BRIDGE) + ";",
         "export default async (environment) => {",
         ' const base = typeof userConfig === "function" ? await userConfig(environment) : await userConfig;',
-        " const hostConfig = { server: { allowedHosts: [previewHost] }, preview: { allowedHosts: [previewHost] } };",
+        " const visualSelectPlugin = { name: 'experts-visual-select-bridge', transformIndexHtml(html) { const closingHead = html.toLowerCase().lastIndexOf('</head>'); return closingHead >= 0 ? html.slice(0, closingHead) + visualSelectBridge + html.slice(closingHead) : visualSelectBridge + html; } };",
+        " const hostConfig = { plugins: [visualSelectPlugin], server: { allowedHosts: [previewHost] }, preview: { allowedHosts: [previewHost] } };",
         " return Array.isArray(base) ? base.map((entry) => mergeConfig(entry, hostConfig)) : mergeConfig(base ?? {}, hostConfig);",
         "};",
       ].join("\n");
@@ -365,7 +368,7 @@ export async function startDaytonaProjectPreview(projectId: string, sourceFiles:
       const logs = await readText(sandbox, path.join(workdir, ".experts-preview.log"));
       throw new Error(lastError + (logs ? "\n" + logs.slice(-3500) : ""));
     }
-    return { url: previewUrl, port, sandboxName: name, installOutput: "", recovered: false, provider: "daytona" as const };
+    return { url: previewUrl, port, sandboxName: name, installOutput: "", recovered: false, provider: "daytona" as const, visualSelectSupported: isVite };
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     throw new Error("Daytona preview failed while " + stage + ": " + detail);
