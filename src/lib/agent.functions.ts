@@ -547,8 +547,10 @@ export const startAgentPreview = createServerFn({ method: "POST" })
     const files = await loadProjectSourceFiles(context.supabase, data.projectId, context.userId);
     if (!Object.keys(files).length) throw new Error("This project has no saved source files to preview.");
     await assertBuilderResourcePolicy(context.supabase, context.userId, files);
+    const { loadProjectPublicEnvironment } = await import("./project-secrets.server");
+    const projectEnvironment = await loadProjectPublicEnvironment(context.supabase as any, context.userId, data.projectId);
     const { startDaytonaProjectPreview } = await import("./daytona-terminal.server");
-    return startDaytonaProjectPreview(data.projectId, files);
+    return startDaytonaProjectPreview(data.projectId, files, projectEnvironment);
   });
 
 const terminalStartRequest = z
@@ -603,8 +605,21 @@ export const startAgentTerminal = createServerFn({ method: "POST" })
         sha256: asset.sha256,
       });
     }
+    const { loadProjectEnvironment, loadProjectPublicEnvironment } = await import("./project-secrets.server");
+    const [privateEnvironment, publicEnvironment] = await Promise.all([
+      loadProjectEnvironment(context.supabase as any, context.userId, data.projectId),
+      loadProjectPublicEnvironment(context.supabase as any, context.userId, data.projectId),
+    ]);
+    const projectEnvironment = { ...publicEnvironment, ...privateEnvironment };
     const { daytonaTerminalSandboxName, startDaytonaProjectTerminal } = await import("./daytona-terminal.server");
-    return startDaytonaProjectTerminal(daytonaTerminalSandboxName(context.userId), files, data.username ?? "ExpertsTeam", cli as "kilo" | "opencode" | "aider", binaryAssets);
+    return startDaytonaProjectTerminal(
+      daytonaTerminalSandboxName(context.userId),
+      files,
+      data.username ?? "ExpertsTeam",
+      cli as "kilo" | "opencode" | "aider",
+      binaryAssets,
+      projectEnvironment,
+    );
   });
 
 const publishRequest = z.object({
@@ -739,6 +754,8 @@ export const publishAgentProject = createServerFn({ method: "POST" })
     if (startError) throw new Error("Could not start the app publishing job.");
 
     try {
+      const { loadProjectPublicEnvironment } = await import("./project-secrets.server");
+      const projectEnvironment = await loadProjectPublicEnvironment(context.supabase as any, context.userId, data.projectId);
       const { publishDaytonaProject } = await import("./daytona-terminal.server");
       const result = await publishDaytonaProject(
         data.projectId,
@@ -746,6 +763,7 @@ export const publishAgentProject = createServerFn({ method: "POST" })
         data.slug,
         context.userId,
         context.supabase,
+        projectEnvironment,
       );
       const { data: saved, error: saveError } = await context.supabase
         .from("agent_projects")
