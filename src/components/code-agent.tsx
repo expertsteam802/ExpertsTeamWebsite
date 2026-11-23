@@ -2936,6 +2936,14 @@ export function CodeAgent() {
           .expert-agent-assistant .min-h-0.flex-1 { overscroll-behavior:contain; }
           .expert-agent-kilo-surface { min-height:0; }
         }
+        @media (min-width: 768px) and (max-width: 1279px) {
+          .expert-agent-assistant-drawer { position:fixed; top:118px; right:12px; bottom:12px; left:auto; z-index:92; width:min(460px,calc(100vw - 24px)); border:1px solid rgba(34,211,238,.22); border-radius:18px; box-shadow:0 24px 80px rgba(0,0,0,.55); }
+        }
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .expert-agent-workspace-grid { display:flex; min-height:0; flex:1 1 auto; overflow:hidden; }
+          .expert-agent-sidebar-drawer { position:fixed; top:118px; bottom:12px; left:0; z-index:91; width:min(340px,86vw); border:1px solid rgba(148,163,184,.2); border-left:0; border-radius:0 18px 18px 0; box-shadow:24px 0 70px rgba(0,0,0,.55); }
+          .expert-agent-mobile-backdrop { display:block; position:fixed; inset:118px 0 0; z-index:90; border:0; background:rgba(2,6,15,.62); backdrop-filter:blur(3px); }
+        }
         @media (max-width: 380px) {
           .expert-agent-mobile-tabs button { font-size:9px; }
           .expert-agent-mobile-tabs button svg { width:16px; height:16px; }
