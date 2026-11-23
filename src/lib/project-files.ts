@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import type { ProjectFiles } from "@/lib/sandbox";
 
 const FILE_BATCH_SIZE = 100;
@@ -47,7 +48,7 @@ export async function saveProjectFiles(projectId: string, userId: string, files:
   // Readers then fall back to the legacy snapshot instead of seeing a partial tree.
   const { error: markError } = await supabase
     .from("agent_projects")
-    .update({ file_storage_ready_at: null })
+    .update({ files: files as unknown as Json, file_storage_ready_at: null })
     .eq("id", projectId)
     .eq("user_id", userId);
   if (markError) throw markError;
