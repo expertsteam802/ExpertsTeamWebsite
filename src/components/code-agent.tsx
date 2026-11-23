@@ -2846,6 +2846,16 @@ export function CodeAgent() {
                 <ChevronRight className="h-3 w-3" />
                 {activeFile}
               </span>
+              <button
+                type="button"
+                onClick={() => { setQuickOpenQuery(""); setQuickOpen(true); }}
+                className="ml-1 inline-flex h-7 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.03] px-2 text-[10px] text-slate-400 transition hover:border-blue-400/30 hover:bg-blue-400/10 hover:text-blue-100"
+                title="Quick open a project file (Ctrl+P)"
+              >
+                <Command className="h-3.5 w-3.5" />
+                <span className="hidden md:inline">Quick open</span>
+                <kbd className="hidden rounded border border-white/10 px-1 py-0.5 font-mono text-[9px] md:inline">Ctrl P</kbd>
+              </button>
             </div>
 
             <div className="flex items-center gap-1">
@@ -3602,7 +3612,6 @@ export function CodeAgent() {
               {Object.keys(files)
                 .filter((filePath) => filePath.toLowerCase().includes(quickOpenQuery.trim().toLowerCase()))
                 .sort((left, right) => left.localeCompare(right))
-                .slice(0, 100)
                 .map((filePath) => (
                   <button
                     key={filePath}
@@ -3624,7 +3633,7 @@ export function CodeAgent() {
                 <p className="px-3 py-8 text-center text-xs text-slate-500">No matching files found.</p>
               )}
             </div>
-            <p className="mt-2 text-[10px] text-slate-500">Showing up to 100 matches · Search includes folder paths</p>
+            <p className="mt-2 text-[10px] text-slate-500">Search includes complete folder paths across this project</p>
           </div>
         </DialogContent>
       </Dialog>
