@@ -150,6 +150,7 @@ export type Database = {
           default_branch: string
           deployment_url: string | null
           description: string
+          file_storage_ready_at: string | null
           files: Json
           framework: string
           github_repo: string | null
@@ -171,6 +172,7 @@ export type Database = {
           default_branch?: string
           deployment_url?: string | null
           description?: string
+          file_storage_ready_at?: string | null
           files?: Json
           framework?: string
           github_repo?: string | null
@@ -192,6 +194,7 @@ export type Database = {
           default_branch?: string
           deployment_url?: string | null
           description?: string
+          file_storage_ready_at?: string | null
           files?: Json
           framework?: string
           github_repo?: string | null
