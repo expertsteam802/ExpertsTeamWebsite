@@ -250,7 +250,8 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
       throw new Error("Repository name can use letters, numbers, - _ .");
     return { token, repo, files: input.files ?? {} };
   })
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    await assertBuilderResourcePolicy(context.supabase, context.userId, data.files);
     try {
       const { pushToGithub } = await import("./agent.server");
       return {
