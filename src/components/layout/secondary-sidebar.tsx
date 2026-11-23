@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Archive, BriefcaseBusiness, ChevronLeft, ChevronRight, Code2, FileVideo,
-  FolderKanban, Gamepad2, LayoutDashboard, MessageCircle, Shield,
+  FolderKanban, Gamepad2, LayoutDashboard, MessageCircle, Shield, Gift,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils";
 const PERSONAL_LINKS = [
   { to: "/messages", label: "Messages", icon: MessageCircle },
   { to: "/dashboard", label: "My dashboard", icon: LayoutDashboard },
-  { to: "/vault", label: "Personal Vault", icon: Archive },\n  { to: "/earn", label: "Earn AI credits", icon: Gift },
+  { to: "/vault", label: "Personal Vault", icon: Archive },
+  { to: "/earn", label: "Earn AI credits", icon: Gift },
 ] as const;
 
 const MORE_LINKS = [
