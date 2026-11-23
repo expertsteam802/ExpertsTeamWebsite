@@ -81,10 +81,12 @@ function EarnCreditsPage() {
       }
       const destination = new URL(started.destination_url);
       if (destination.protocol !== "https:") throw new Error("This partner offer has an invalid destination.");
-      if (destination.href.includes("{subid}")) {
-        destination.href = destination.href.replaceAll("{subid}", started.tracking_id);
+      const parameter = started.tracking_parameter || "subid";
+      const macro = "{" + parameter + "}";
+      if (destination.href.includes(macro)) {
+        destination.href = destination.href.replaceAll(macro, started.tracking_id);
       } else {
-        destination.searchParams.set("subid", started.tracking_id);
+        destination.searchParams.set(parameter, started.tracking_id);
       }
       return destination.toString();
     },
