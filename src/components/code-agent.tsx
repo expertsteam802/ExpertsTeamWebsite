@@ -1628,8 +1628,8 @@ export function CodeAgent() {
     if (!user) throw new Error("Please sign in to save your project.");
 
     const filesToSave = next.files ?? files;
-    if (!filesToSave || typeof filesToSave !== "object" || Object.keys(filesToSave).length === 0) {
-      throw new Error("This workspace has no project files. The saved project was left unchanged.");
+    if (!filesToSave || typeof filesToSave !== "object") {
+      throw new Error("The workspace file tree is invalid. The saved project was left unchanged.");
     }
     const payload = {
       user_id: user.id,
