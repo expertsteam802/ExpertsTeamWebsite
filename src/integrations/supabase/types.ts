@@ -59,6 +59,41 @@ export type Database = {
           },
         ]
       }
+      agent_project_files: {
+        Row: {
+          byte_size: number | null
+          content: string
+          file_path: string
+          project_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          byte_size?: number | null
+          content?: string
+          file_path: string
+          project_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          byte_size?: number | null
+          content?: string
+          file_path?: string
+          project_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_project_runs: {
         Row: {
           created_at: string
