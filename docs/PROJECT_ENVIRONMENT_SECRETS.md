@@ -6,7 +6,7 @@ Each Builder project has its own environment-variable namespace. Values are encr
 
 1. Generate a 32-byte key, for example with `openssl rand -hex 32`.
 2. Add the result to the server-only deployment environment as `PROJECT_SECRET_ENCRYPTION_KEY`. Do not use a `VITE_` prefix and do not commit the value.
-3. Apply `supabase/migrations/20261123200000_project_environment_secrets.sql` to the ExpertsTeam platform database.
+3. Apply `supabase/migrations/20261123210000_project_environment_secrets.sql` to the ExpertsTeam platform database.
 4. Redeploy the application.
 
 Without the encryption key, save operations fail closed. Do not rotate the key unless existing encrypted project values have been migrated, because old values cannot be decrypted with a new key.
