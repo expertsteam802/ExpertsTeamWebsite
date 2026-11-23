@@ -193,7 +193,6 @@ export const importGitHubProject = createServerFn({ method: "POST" })
     if (!candidates.length)
       throw new Error("No supported text source files were found in this repository.");
     const files: Record<string, string> = {};
-    let totalBytes = 0;
     for (let offset = 0; offset < candidates.length; offset += 6) {
       const batch = candidates.slice(offset, offset + 6);
       const downloaded = await Promise.all(
@@ -216,7 +215,6 @@ export const importGitHubProject = createServerFn({ method: "POST" })
       );
       for (const file of downloaded) {
         if (!file) continue;
-        totalBytes += file.size;
         files[file.path] = file.content;
       }
     }
