@@ -994,38 +994,3 @@ html, body, .et-shell, .et-topbar, .et-secondary-sidebar, .et-main,
     min-height: 0 !important;
   }
 }
-
-
-/* Desktop ExpertAI: keep the agent beside the editor, not below it. */
-@media (min-width: 1280px) {
-  .expert-agent-stage {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) 5px minmax(320px, 28vw);
-    grid-template-rows: auto minmax(0, 1fr);
-    min-height: 0;
-    height: 100%;
-  }
-  .expert-agent-stage > .expert-agent-toolbar {
-    grid-column: 1 / -1;
-    grid-row: 1;
-    min-width: 0;
-  }
-  .expert-agent-stage > .expert-agent-canvas {
-    grid-column: 1;
-    grid-row: 2;
-    min-width: 0;
-    min-height: 0;
-    height: 100%;
-  }
-  .expert-agent-stage > [role="separator"] {
-    grid-column: 2;
-    grid-row: 2;
-  }
-  .expert-agent-stage > .expert-agent-assistant {
-    grid-column: 3;
-    grid-row: 2;
-    min-width: 0;
-    min-height: 0;
-    height: 100%;
-  }
-}
