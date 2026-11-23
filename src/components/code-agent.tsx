@@ -2442,8 +2442,8 @@ export function CodeAgent() {
                 {dirty ? "• Unsaved changes" : "• Saved"}
               </span>
               <select
-                aria-label="Project Supabase backend"
-                title="Choose the Supabase project this app will use as its backend"
+                aria-label="Assigned Supabase backend"
+                title="Save the intended Supabase backend for this app. Runtime data and file operations are not switched yet."
                 value={cloudConnectionId ?? ""}
                 onChange={async (event) => {
                   const nextConnectionId = event.target.value || null;
@@ -2462,7 +2462,7 @@ export function CodeAgent() {
                 }}
                 className="h-7 max-w-[190px] rounded-lg border border-white/10 bg-[#0b1320] px-2 text-[11px] text-slate-300"
               >
-                <option value="">ExpertsTeam default / none</option>
+                <option value="">No external backend assigned</option>
                 {cloudConnections.map((connection) => (
                   <option key={connection.id} value={connection.id}>{connection.display_name}</option>
                 ))}
