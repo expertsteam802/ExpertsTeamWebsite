@@ -33,6 +33,7 @@ import { Route as VaultRouteImport } from './routes/vault'
 import { Route as VideosRouteImport } from './routes/videos'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedConnectionsRouteImport } from './routes/_authenticated/connections'
 import { Route as AuthenticatedCreatorRouteImport } from './routes/_authenticated/creator'
 import { Route as AppsSlugRouteImport } from './routes/apps.$slug'
 import { Route as ApiAiStreamRouteImport } from './routes/api.ai.stream'
@@ -156,6 +157,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedConnectionsRoute = AuthenticatedConnectionsRouteImport.update({
+  id: '/connections',
+  path: '/connections',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedCreatorRoute = AuthenticatedCreatorRouteImport.update({
   id: '/creator',
   path: '/creator',
@@ -197,6 +203,8 @@ export interface FileRoutesByFullPath {
   '/videos': typeof VideosRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/connections': typeof AuthenticatedConnectionsRoute
+  '/connections': typeof AuthenticatedConnectionsRoute
   '/apps/$slug': typeof AppsSlugRoute
   '/api/ai/stream': typeof ApiAiStreamRoute
 }
@@ -254,6 +262,7 @@ export interface FileRoutesById {
   '/videos': typeof VideosRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/connections': typeof AuthenticatedConnectionsRoute
   '/_authenticated/creator': typeof AuthenticatedCreatorRoute
   '/apps/$slug': typeof AppsSlugRoute
   '/api/ai/stream': typeof ApiAiStreamRoute
@@ -285,6 +294,8 @@ export interface FileRouteTypes {
     | '/videos'
     | '/admin'
     | '/dashboard'
+    | '/connections'
+    | '/connections'
     | '/apps/$slug'
     | '/api/ai/stream'
   fileRoutesByTo: FileRoutesByTo
@@ -339,6 +350,7 @@ export interface FileRouteTypes {
     | '/videos'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
+    | '/_authenticated/connections'
     | '/_authenticated/creator'
     | '/apps/$slug'
     | '/api/ai/stream'
@@ -540,6 +552,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/connections': {
+      id: '/_authenticated/connections'
+      path: '/connections'
+      fullPath: '/connections'
+      preLoaderRoute: typeof AuthenticatedConnectionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/creator': {
       id: '/_authenticated/creator'
       path: '/creator'
@@ -567,12 +586,14 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedConnectionsRoute: typeof AuthenticatedConnectionsRoute
   AuthenticatedCreatorRoute: typeof AuthenticatedCreatorRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedConnectionsRoute: AuthenticatedConnectionsRoute,
   AuthenticatedCreatorRoute: AuthenticatedCreatorRoute,
 }
 
