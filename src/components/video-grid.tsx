@@ -45,8 +45,6 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [alignment, setAlignment] = useState<"left" | "center" | "right">("center");
   function handleWatchClick(video: VideoItem) {
-    // Keep learning access direct. Site-level Monetag placements remain separate
-    // from the learner's click to open a lesson.
     void navigate({ to: "/learn/video/$videoId", params: { videoId: video.id } });
   }
 
