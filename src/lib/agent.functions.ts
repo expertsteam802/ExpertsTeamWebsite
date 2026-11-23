@@ -273,9 +273,9 @@ export const importGitHubProject = createServerFn({ method: "POST" })
     };
 
     try {
-      for (let offset = 0; offset < candidates.length; offset += 6) {
+      for (let offset = 0; offset < candidates.length; offset += 3) {
         const downloaded = await Promise.all(
-          candidates.slice(offset, offset + 6).map(async (entry) => {
+          candidates.slice(offset, offset + 3).map(async (entry) => {
             const filePath = entry.path!;
             const rawUrl =
               "https://raw.githubusercontent.com/" +
@@ -288,8 +288,8 @@ export const importGitHubProject = createServerFn({ method: "POST" })
               filePath.split("/").map(encodeURIComponent).join("/");
             const response = await request(rawUrl, "text/plain");
             const buffer = Buffer.from(await response.arrayBuffer());
-            if (buffer.byteLength > 10_000_000) {
-              throw new Error(filePath + " exceeds the current 10 MB text-file import limit. Large binary assets need object-storage support.");
+            if (resourceLimits.maxFileMb && buffer.byteLength > resourceLimits.maxFileMb * 1_000_000) {
+              throw new Error(filePath + " exceeds the administrator-configured per-file limit of " + resourceLimits.maxFileMb + " MB.");
             }
             if (buffer.includes(0)) return null;
             return { path: filePath, content: buffer.toString("utf8"), size: buffer.byteLength };
