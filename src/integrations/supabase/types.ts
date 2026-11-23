@@ -1572,6 +1572,51 @@ export type Database = {
         }
         Relationships: []
       }
+      user_cloud_connections: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+          project_ref: string
+          project_url: string
+          provider: string
+          publishable_key: string
+          secret_id: string | null
+          status: string
+          tested_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          id?: string
+          project_ref: string
+          project_url: string
+          provider?: string
+          publishable_key: string
+          secret_id?: string | null
+          status?: string
+          tested_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+          project_ref?: string
+          project_url?: string
+          provider?: string
+          publishable_key?: string
+          secret_id?: string | null
+          status?: string
+          tested_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1806,6 +1851,10 @@ export type Database = {
       claim_free_ai_credits: { Args: never; Returns: number }
       consume_ai_credit: { Args: never; Returns: number }
       consume_guest_ai_credit: { Args: { p_ip_hash: string }; Returns: boolean }
+      delete_user_supabase_connection: {
+        Args: { p_connection_id: string }
+        Returns: boolean
+      }
       finalize_agent_project_file_staging: {
         Args: { p_import_id: string; p_project_id: string }
         Returns: number
@@ -1831,6 +1880,16 @@ export type Database = {
       replace_agent_project_files: {
         Args: { p_files: Json; p_project_id: string }
         Returns: number
+      }
+      save_user_supabase_connection: {
+        Args: {
+          p_display_name: string
+          p_project_ref: string
+          p_project_url: string
+          p_publishable_key: string
+          p_secret_key?: string
+        }
+        Returns: Json
       }
       start_cpa_offer: {
         Args: { p_offer_id: string }
