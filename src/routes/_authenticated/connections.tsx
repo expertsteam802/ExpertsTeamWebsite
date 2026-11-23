@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { PluginCenterPanel } from "@/components/plugin-center";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -70,6 +71,7 @@ function ConnectionsPage() {
   return (
     <PageShell>
       <main className="mx-auto max-w-5xl space-y-7 px-4 py-8 sm:py-12">
+        <PluginCenterPanel />
         <section className="rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/15 via-card to-card p-6 sm:p-9">
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-primary/15 p-3 text-primary"><Cloud className="h-6 w-6" /></div>
