@@ -1292,7 +1292,7 @@ function AdminPage() {
                         <div>
                           <h3 className="font-semibold">Builder resource policy</h3>
                           <p className="mt-1 text-sm text-muted-foreground">
-                            Control member quotas. Set a value to 0 to remove your admin-defined cap. A temporary transport safety ceiling still applies while project files are stored in a single JSON document: 25 MB total, 10 MB per file and 2,000 files. Moving to per-file storage is required before those technical ceilings can be lifted safely.
+                            Control member quotas. Set a value to 0 to remove your admin-defined cap. Temporary transport and publishing ceilings still apply: 25 MB source project, 10 MB per source file, 2,000 source files, and 500 published files / 40 MB total build output. Moving to per-file project storage and chunked publishing is required before those technical ceilings can be lifted safely.
                           </p>
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2">
