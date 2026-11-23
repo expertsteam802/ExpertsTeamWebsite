@@ -269,7 +269,11 @@ function safePreviewPath(filePath: string) {
     !filePath.split("/").some((part) => !part || part === "." || part === "..") &&
     /^[a-zA-Z0-9_@./-]+$/.test(filePath));
 }
-export async function startDaytonaProjectPreview(projectId: string, sourceFiles: AgentProjectFiles) {
+export async function startDaytonaProjectPreview(
+  projectId: string,
+  sourceFiles: AgentProjectFiles,
+  projectEnvironment: Record<string, string> = {},
+) {
   const entries = Object.entries(sourceFiles);
   if (!entries.length) throw new Error("Add project files before starting the preview.");
   if (entries.some(([filePath]) => !safePreviewPath(filePath))) {
@@ -287,7 +291,10 @@ export async function startDaytonaProjectPreview(projectId: string, sourceFiles:
     let oldManifest: Record<string, string> = {};
     try { oldManifest = oldText ? JSON.parse(oldText) as Record<string, string> : {}; } catch { oldManifest = {}; }
     const nextManifest = Object.fromEntries(entries.map(([filePath, content]) => [filePath, createHash("sha256").update(content).digest("hex")]));
-    const removed = Object.keys(oldManifest).filter((filePath) => !(filePath in sourceFiles));
+    const publicEnvironmentHash = createHash("sha256").update(JSON.stringify(projectEnvironment)).digest("hex");
+    const environmentChanged = oldManifest["__experts_public_environment__"] !== publicEnvironmentHash;
+    nextManifest["__experts_public_environment__"] = publicEnvironmentHash;
+    const removed = Object.keys(oldManifest).filter((filePath) => filePath !== "__experts_public_environment__" && !(filePath in sourceFiles));
     if (removed.length) await command(sandbox, "rm -rf -- " + removed.map((filePath) => shellQuote(path.join(workdir, filePath))).join(" "), workdir, undefined, 45);
     const changed = entries.filter(([filePath]) => oldManifest[filePath] !== nextManifest[filePath]);
     if (changed.length) {
@@ -298,6 +305,9 @@ export async function startDaytonaProjectPreview(projectId: string, sourceFiles:
       }
     }
     await sandbox.fs.uploadFile(Buffer.from(JSON.stringify(nextManifest), "utf8"), path.join(workdir, PREVIEW_META_FILE));
+    if (environmentChanged) {
+      await command(sandbox, "if [ -f .experts-preview.pid ]; then kill \"$(cat .experts-preview.pid)\" 2>/dev/null || true; fi; rm -f .experts-preview.pid", workdir, undefined, 10);
+    }
     let pkg: Record<string, unknown> = {};
     try { pkg = JSON.parse(sourceFiles["package.json"] ?? "{}") as Record<string, unknown>; }
     catch { throw new Error("package.json contains invalid JSON. Fix it before previewing."); }
@@ -319,7 +329,7 @@ export async function startDaytonaProjectPreview(projectId: string, sourceFiles:
         : sourceFiles["yarn.lock"] ? "corepack yarn install --non-interactive"
         : sourceFiles["bun.lock"] || sourceFiles["bun.lockb"] ? "bun install"
         : "npm install --no-audit --no-fund";
-      await command(sandbox, install, workdir, undefined, 300);
+      await command(sandbox, install, workdir, projectEnvironment, 300);
     }
     stage = "starting the development server";
     const link = await sandbox.getPreviewLink(port);
@@ -355,7 +365,7 @@ export async function startDaytonaProjectPreview(projectId: string, sourceFiles:
     if (!ready) {
       const start = "nohup npm run " + scriptName + extraArgs + " > .experts-preview.log 2>&1 < /dev/null & echo $! > .experts-preview.pid";
       await command(sandbox, start, workdir,
-        { HOST: "0.0.0.0", PORT: String(port), ...(isVite ? { __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: host } : {}) }, 30);
+        { ...projectEnvironment, HOST: "0.0.0.0", PORT: String(port), ...(isVite ? { __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: host } : {}) }, 30);
       for (let attempt = 0; attempt < 40; attempt++) {
         try {
           const response = await fetch(previewUrl, { cache: "no-store", signal: AbortSignal.timeout(2500) });
@@ -409,6 +419,7 @@ export async function publishDaytonaProject(
   slug: string,
   userId: string,
   storageClient: SupabaseClient<Database>,
+  projectEnvironment: Record<string, string> = {},
 ) {
   if (!/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(slug)) throw new Error("The public app address is invalid.");
   const entries = Object.entries(sourceFiles);
@@ -459,7 +470,7 @@ export async function publishDaytonaProject(
         : sourceFiles["yarn.lock"] ? "corepack yarn build" + baseArgs
         : sourceFiles["bun.lock"] || sourceFiles["bun.lockb"] ? "bun run build" + (baseArgs ? " --" + baseArgs : "")
         : "npm run build" + (baseArgs ? " --" + baseArgs : "");
-      await command(sandbox, buildCommand, workdir, undefined, 600);
+      await command(sandbox, buildCommand, workdir, projectEnvironment, 600);
 
       stage = "collecting build output";
       const candidates = [".output/public", "dist", "build", "out", "dist/client", "build/client", ".svelte-kit/output/client", "public", "www"];
@@ -571,6 +582,7 @@ export async function startDaytonaProjectTerminal(
   username = "ExpertsTeam",
   cli: CliName = "kilo",
   binaryAssets: AgentProjectBinaryAsset[] = [],
+  projectEnvironment: Record<string, string> = {},
 ) {
   if (Object.keys(sourceFiles).length === 0) {
     throw new Error("Cannot start the CLI with an empty workspace. Reload the saved project files and reconnect.");
@@ -665,6 +677,7 @@ export async function startDaytonaProjectTerminal(
         "nohup node server.cjs > server.log 2>&1 < /dev/null &",
         bridgeDir,
         {
+          ...projectEnvironment,
           TERMINAL_TOKEN: token,
           TERMINAL_CWD: workdir,
           TERMINAL_PORT: String(TERMINAL_PORT),
