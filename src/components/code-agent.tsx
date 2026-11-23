@@ -416,6 +416,7 @@ export function CodeAgent() {
   }, [previewExpanded]);
   const [panelExpanded, setPanelExpanded] = useState(false);
   const [runtimeUrl, setRuntimeUrl] = useState<string | null>(null);
+  const [remoteVisualSelectSupported, setRemoteVisualSelectSupported] = useState(false);
   const [previewAddress, setPreviewAddress] = useState("");
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
@@ -986,6 +987,7 @@ export function CodeAgent() {
               ? lastError
               : new Error("Preview health check failed.");
           setRuntimeStatus("Running · Daytona");
+          setRemoteVisualSelectSupported(Boolean(result.visualSelectSupported));
           if (result.recovered) {
             setRuntimeUrl(result.url);
             setPreviewKey((value) => value + 1);
@@ -1061,7 +1063,7 @@ export function CodeAgent() {
   }, []);
 
   useEffect(() => {
-    if (runtimeUrl) {
+    if (runtimeUrl && !remoteVisualSelectSupported) {
       setVisualSelectMode(false);
       setSelectedPreviewElement(null);
       return;
@@ -1070,7 +1072,7 @@ export function CodeAgent() {
       { __agentVisualSelect: true, enabled: visualSelectMode },
       "*",
     );
-  }, [visualSelectMode, previewKey, runtimeUrl]);
+  }, [visualSelectMode, previewKey, runtimeUrl, remoteVisualSelectSupported]);
 
   async function importTerminalChanges() {
     if (!projectId) return;
@@ -1362,6 +1364,7 @@ export function CodeAgent() {
     if (hasHtmlEntry && !hasRuntimeScript) {
       switchPanel("preview");
       setRuntimeUrl(null);
+      setRemoteVisualSelectSupported(false);
       setPreviewAddress("");
       setRuntimeStatus("Running · browser preview (no cloud VM)");
       setLogs([{ type: "runtime", message: "HTML, CSS and JavaScript are running directly in your browser. No cloud VM or sandbox quota is used." }]);
@@ -1380,6 +1383,7 @@ export function CodeAgent() {
       autoStartedProjectRef.current = activeProjectId;
       const result = await startPreview({ data: { projectId: activeProjectId } });
       setRuntimeUrl(result.url);
+      setRemoteVisualSelectSupported(Boolean(result.visualSelectSupported));
       setPreviewAddress(result.url);
       setRuntimeStatus("Running · Daytona");
       runtimeFilesRef.current = { ...files };
@@ -2824,12 +2828,12 @@ export function CodeAgent() {
                             ? runtimeStatus
                             : "HTML quick preview · press Run for React/Vite"}
                       </span>
-                      {!runtimeUrl && (
+                      {(!runtimeUrl || remoteVisualSelectSupported) && (
                         <button
                           type="button"
                           onClick={() => { setSelectedPreviewElement(null); setVisualSelectMode((enabled) => !enabled); }}
                           className={visualSelectMode ? "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-cyan-300/40 bg-cyan-300/15 px-2 text-[10px] font-semibold text-cyan-100" : "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 text-[10px] font-semibold text-slate-300 hover:border-cyan-300/30 hover:text-cyan-100"}
-                          title="Select an element in the local preview"
+                          title={runtimeUrl ? "Select an element in the cloud Vite preview" : "Select an element in the local preview"}
                         >
                           <MousePointer2 className="h-3.5 w-3.5" /> {visualSelectMode ? "Selecting…" : "Select element"}
                         </button>
@@ -2846,7 +2850,7 @@ export function CodeAgent() {
                       </button>
                     </div>
                   </div>
-                  {selectedPreviewElement && !runtimeUrl && (
+                  {selectedPreviewElement && (
                     <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-cyan-300/15 bg-cyan-300/[0.06] px-3 py-2">
                       <div className="min-w-0"><p className="text-[10px] font-semibold text-cyan-100">Selected {selectedPreviewElement.tag}</p><p className="max-w-[420px] truncate text-[10px] text-slate-400">{selectedPreviewElement.selector}{selectedPreviewElement.text ? " · " + selectedPreviewElement.text : ""}</p></div>
                       <div className="flex gap-2">
@@ -2879,7 +2883,7 @@ export function CodeAgent() {
                       ref={iframeRef}
                       key={previewKey}
                       title="ExpertsTeam project preview"
-                      onLoad={() => { if (!runtimeUrl) iframeRef.current?.contentWindow?.postMessage({ __agentVisualSelect: true, enabled: visualSelectMode }, "*"); }}
+                      onLoad={() => { if (!runtimeUrl || remoteVisualSelectSupported) iframeRef.current?.contentWindow?.postMessage({ __agentVisualSelect: true, enabled: visualSelectMode }, "*"); }}
                       src={runtimeUrl ? previewAddress || runtimeUrl : undefined}
                       srcDoc={runtimeUrl ? undefined : srcDoc}
                       sandbox={
