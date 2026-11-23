@@ -771,8 +771,12 @@ export const publishAgentProject = createServerFn({ method: "POST" })
 
     try {
       const { loadProjectPublicEnvironment } = await import("./project-secrets.server");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const projectEnvironment = await loadProjectPublicEnvironment(context.supabase as any, context.userId, data.projectId);
+      const projectEnvironment = await loadProjectPublicEnvironment(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        context.supabase as any,
+        context.userId,
+        data.projectId,
+      );
       const { publishDaytonaProject } = await import("./daytona-terminal.server");
       const result = await publishDaytonaProject(
         data.projectId,
