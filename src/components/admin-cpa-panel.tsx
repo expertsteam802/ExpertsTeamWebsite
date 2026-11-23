@@ -45,6 +45,7 @@ export function AdminCpaPanel() {
       const destination = form.destination_url.trim();
       if (form.title.trim().length < 2) throw new Error("Enter an offer title.");
       if (!/^https:\/\//i.test(destination)) throw new Error("Partner destination must use HTTPS.");
+      if (!/^[A-Za-z][A-Za-z0-9_]{1,39}$/.test(form.tracking_parameter.trim() || "subid")) throw new Error("Tracking parameter must start with a letter and contain 2–40 letters, numbers or underscores.");
       if (!Number.isSafeInteger(reward) || reward < 1) throw new Error("Reward must be a positive whole number.");
       const { error } = await supabase.from("cpa_offers").insert({
         title: form.title.trim(), description: form.description.trim(), provider: form.provider.trim() || "custom",
