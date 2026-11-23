@@ -118,8 +118,13 @@ Verification performed against the connected project:
 - The test transactions left no temporary conversations, messages, stories or storage objects behind.
 - Generated TypeScript definitions were refreshed for the new tables.
 
-## Deployment status after social platform merge
+## Deployment and production verification — 2026-11-23
 
-The social platform changes were merged to `main` in commit `855688d`. GitHub CI passed formatting, unit tests, lint and the production build. The subsequent CI synchronization commit is `5af166c`.
+- The active GitHub CI workflow is `.github/workflows/ci.yml`. It installs dependencies, runs `npm test`, `npm run lint`, and `npm run build`.
+- The repository does not contain the previously documented `.github/workflows/vercel-deploy.yml`. Production deployment is handled by the Vercel Git integration; check the Vercel dashboard for the exact deployment state.
+- The latest ExpertsTeam guest AI changes are committed to `main`. At the time of this audit, the Vercel status for the latest commit is still pending; production behavior has not yet been verified.
+- The guest AI provider requires the server-only `OPENROUTER_API_KEY` environment variable in Vercel, plus `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY` for guest-credit enforcement. Do not expose either key in browser variables.
+- Supabase Auth's leaked-password protection is currently disabled; enable it in Authentication → Settings → Password Security before broad public launch.
+- The Studio subscription workflow remains manual payment-reference submission and admin confirmation. It is not automatic recurring billing; automatic renewal needs a payment processor and webhook configuration.
+- Do not run `supabase db push` until the pre-existing migration baseline is reconciled with the live schema, as described above.
 
-Production deployment is not yet verified. The GitHub Actions Vercel workflow currently stops before build because these repository secrets are missing: `VERCEL_TOKEN`, `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`. The separate Vercel status also reports an account build-rate limit. A Netlify deploy-preview check passed for the pull request, but that is not confirmation of a production deployment.
