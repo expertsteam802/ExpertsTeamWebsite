@@ -4,6 +4,14 @@ import type { ProjectFiles } from "@/lib/sandbox";
 const FILE_BATCH_SIZE = 100;
 
 export async function loadProjectFiles(projectId: string): Promise<ProjectFiles> {
+  const { data: project, error: projectError } = await supabase
+    .from("agent_projects")
+    .select("file_storage_ready_at")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (projectError) throw projectError;
+  if (!project?.file_storage_ready_at) return {};
+
   const { data, error } = await supabase
     .from("agent_project_files")
     .select("file_path,content")
@@ -35,6 +43,15 @@ export async function deleteProjectFile(projectId: string, filePath: string) {
 
 /** Save changed file rows independently and remove paths no longer in the workspace. */
 export async function saveProjectFiles(projectId: string, userId: string, files: ProjectFiles) {
+  // Mark the snapshot incomplete while a multi-request replacement is in progress.
+  // Readers then fall back to the legacy snapshot instead of seeing a partial tree.
+  const { error: markError } = await supabase
+    .from("agent_projects")
+    .update({ file_storage_ready_at: null })
+    .eq("id", projectId)
+    .eq("user_id", userId);
+  if (markError) throw markError;
+
   const entries = Object.entries(files);
   for (let offset = 0; offset < entries.length; offset += FILE_BATCH_SIZE) {
     const rows = entries.slice(offset, offset + FILE_BATCH_SIZE).map(([file_path, content]) => ({
@@ -65,4 +82,11 @@ export async function saveProjectFiles(projectId: string, userId: string, files:
       .in("file_path", stale.slice(offset, offset + FILE_BATCH_SIZE));
     if (error) throw error;
   }
+
+  const { error: readyError } = await supabase
+    .from("agent_projects")
+    .update({ file_storage_ready_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq("id", projectId)
+    .eq("user_id", userId);
+  if (readyError) throw readyError;
 }
