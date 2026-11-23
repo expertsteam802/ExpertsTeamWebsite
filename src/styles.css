@@ -1148,3 +1148,71 @@ html, body, .et-shell, .et-topbar, .et-secondary-sidebar, .et-main,
   .expert-agent-shell *::before,
   .expert-agent-shell *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+
+
+/* Builder layout correction: persistent explorer left, preview center, agent right. */
+@media (min-width: 1024px) {
+  .expert-agent-workspace-grid {
+    display: grid !important;
+    grid-template-columns: minmax(205px, var(--sidebar-width, 248px)) 5px minmax(0, 1fr) !important;
+    align-items: stretch;
+  }
+  .expert-agent-workspace-grid:not(:has(.expert-agent-sidebar)) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .expert-agent-stage {
+    min-width: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  .expert-agent-stage > .grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 5px minmax(300px, min(27vw, 380px)) !important;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .expert-agent-stage > .grid:has(> aside.expert-agent-assistant.hidden) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .expert-agent-assistant-drawer {
+    position: relative !important;
+    inset: auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  .expert-agent-assistant { min-height: 0 !important; }
+  .expert-agent-toolbar {
+    flex-wrap: nowrap !important;
+    min-width: 0;
+  }
+  .expert-agent-toolbar > div { min-width: 0; }
+  .expert-agent-toolbar > div:nth-child(2) { flex: 0 0 auto; }
+}
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .expert-agent-stage > .grid {
+    grid-template-columns: minmax(0, 1fr) 5px minmax(285px, 32vw) !important;
+  }
+  .expert-agent-sidebar { min-width: 0; }
+  .expert-agent-topbar { padding-inline: 12px !important; }
+  .expert-agent-topbar .text-sm.font-semibold { max-width: 150px; }
+  .expert-agent-toolbar button { padding-inline: 8px !important; }
+}
+@media (min-width: 1280px) {
+  .expert-agent-workspace-grid { grid-template-columns: minmax(210px, var(--sidebar-width, 248px)) 5px minmax(0, 1fr) !important; }
+}
+@media (max-width: 1023px) {
+  .expert-agent-workspace-grid { display: flex !important; }
+  .expert-agent-stage { width: 100%; flex: 1 1 auto; min-width: 0; }
+}
+@media (max-width: 767px) {
+  .expert-agent-toolbar { display: none !important; }
+  .expert-agent-topbar { flex-wrap: nowrap !important; overflow-x: auto; }
+  .expert-agent-topbar > div { flex-shrink: 0; }
+  .expert-agent-assistant-drawer { overflow: hidden !important; }
+  .expert-agent-sidebar-drawer { overflow-y: auto !important; }
+}
