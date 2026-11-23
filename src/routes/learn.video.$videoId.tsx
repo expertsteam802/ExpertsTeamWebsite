@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, BookOpen, Loader2 } from "lucide-react";
 
 import { LearningCodePlayground } from "@/components/learning-code-playground";
+import { MyLeadContentLocker } from "@/components/mylead-content-locker";
 import { VideoPlayerDialog } from "@/components/video-player-dialog";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
@@ -96,6 +97,7 @@ function LearningVideoPage() {
               <h2 className="mt-3 font-display text-lg font-semibold">Learn by doing</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">Open the floating code workspace to write HTML, CSS and JavaScript, then see your result beside the editor without leaving this lesson.</p>
               <p className="mt-4 text-xs text-muted-foreground">Tip: pause the video, try the example, then continue watching.</p>
+              <div className="mt-5"><MyLeadContentLocker /></div>
             </aside>
           </div>
         )}
