@@ -192,11 +192,6 @@ export const importGitHubProject = createServerFn({ method: "POST" })
       });
     if (!candidates.length)
       throw new Error("No supported text source files were found in this repository.");
-    if (candidates.length > 2_000)
-      throw new Error(
-        "This repository contains more than 2,000 supported text files.",
-      );
-
     const files: Record<string, string> = {};
     let totalBytes = 0;
     for (let offset = 0; offset < candidates.length; offset += 6) {
@@ -222,20 +217,72 @@ export const importGitHubProject = createServerFn({ method: "POST" })
       for (const file of downloaded) {
         if (!file) continue;
         totalBytes += file.size;
-        if (totalBytes > 25_000_000)
-          throw new Error(
-            "The repository's text files exceed the 25 MB import request safety envelope.",
-          );
         files[file.path] = file.content;
       }
     }
     if (!Object.keys(files).length) throw new Error("No readable source files could be imported.");
     await assertBuilderResourcePolicy(context.supabase, context.userId, files);
+
+    // Create the project and persist its source files on the server. The
+    // browser receives only metadata, avoiding a huge repository response.
+    const projectName = metadata.name || repo;
+    const repoUrl = metadata.html_url || "https://github.com/" + owner + "/" + repo;
+    const { data: project, error: projectError } = await context.supabase
+      .from("agent_projects")
+      .insert({
+        user_id: context.userId,
+        name: projectName,
+        files: {},
+        messages: [],
+        github_repo: repoUrl,
+        published: false,
+      })
+      .select("id")
+      .single();
+    if (projectError || !project) {
+      throw new Error(projectError?.message || "Could not create the imported project.");
+    }
+
+    try {
+      const entries = Object.entries(files);
+      let batch: { project_id: string; user_id: string; file_path: string; content: string }[] = [];
+      let batchBytes = 0;
+      const flush = async () => {
+        if (!batch.length) return;
+        const { error } = await context.supabase.from("agent_project_files").insert(batch);
+        if (error) throw new Error("Could not save imported source files: " + error.message);
+        batch = [];
+        batchBytes = 0;
+      };
+      for (const [filePath, fileContent] of entries) {
+        const bytes = Buffer.byteLength(fileContent, "utf8");
+        if (batch.length && batchBytes + bytes > 4_000_000) await flush();
+        batch.push({
+          project_id: project.id,
+          user_id: context.userId,
+          file_path: filePath,
+          content: fileContent,
+        });
+        batchBytes += bytes;
+      }
+      await flush();
+
+      const { error: readyError } = await context.supabase
+        .from("agent_projects")
+        .update({ file_storage_ready_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq("id", project.id)
+        .eq("user_id", context.userId);
+      if (readyError) throw new Error("Imported files were saved, but project finalization failed: " + readyError.message);
+    } catch (error) {
+      await context.supabase.from("agent_projects").delete().eq("id", project.id).eq("user_id", context.userId);
+      throw error;
+    }
+
     return {
-      name: metadata.name || repo,
-      repoUrl: metadata.html_url || "https://github.com/" + owner + "/" + repo,
+      id: project.id,
+      name: projectName,
+      repoUrl,
       branch: defaultBranch,
-      files,
       fileCount: Object.keys(files).length,
     };
   });
