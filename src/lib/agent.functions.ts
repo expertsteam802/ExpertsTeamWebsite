@@ -233,40 +233,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
       });
     if (!candidates.length)
       throw new Error("No supported text source files were found in this repository.");
-    const files: Record<string, string> = {};
-    for (let offset = 0; offset < candidates.length; offset += 6) {
-      const batch = candidates.slice(offset, offset + 6);
-      const downloaded = await Promise.all(
-        batch.map(async (entry) => {
-          const path = entry.path!;
-          const rawUrl =
-            "https://raw.githubusercontent.com/" +
-            encodeURIComponent(owner) +
-            "/" +
-            encodeURIComponent(repo) +
-            "/" +
-            encodeURIComponent(defaultBranch) +
-            "/" +
-            path.split("/").map(encodeURIComponent).join("/");
-          const response = await request(rawUrl, "text/plain");
-          const buffer = Buffer.from(await response.arrayBuffer());
-          if (buffer.byteLength > 10_000_000) {
-            throw new Error(path + " exceeds the current 10 MB text-file import limit. Large binary assets need object-storage support.");
-          }
-          if (buffer.includes(0)) return null;
-          return { path, content: buffer.toString("utf8"), size: buffer.byteLength };
-        }),
-      );
-      for (const file of downloaded) {
-        if (!file) continue;
-        files[file.path] = file.content;
-      }
-    }
-    if (!Object.keys(files).length) throw new Error("No readable source files could be imported.");
-    await assertBuilderResourcePolicy(context.supabase, context.userId, files);
-
-    // Create the project and persist its source files on the server. The
-    // browser receives only metadata, avoiding a huge repository response.
+    const resourceLimits = await getBuilderResourceLimits(context.supabase, context.userId);
     const projectName = metadata.name || repo;
     const repoUrl = metadata.html_url || "https://github.com/" + owner + "/" + repo;
     const { data: project, error: projectError } = await context.supabase
@@ -285,38 +252,98 @@ export const importGitHubProject = createServerFn({ method: "POST" })
       throw new Error(projectError?.message || "Could not create the imported project.");
     }
 
+    const importId = crypto.randomUUID();
+    let fileCount = 0;
+    let totalBytes = 0;
+    let batch: {
+      import_id: string;
+      project_id: string;
+      user_id: string;
+      file_path: string;
+      content: string;
+    }[] = [];
+    let batchBytes = 0;
+
+    const flush = async () => {
+      if (!batch.length) return;
+      const { error } = await context.supabase.from("agent_project_file_staging").insert(batch);
+      if (error) throw new Error("Could not stage imported source files: " + error.message);
+      batch = [];
+      batchBytes = 0;
+    };
+
     try {
-      const entries = Object.entries(files);
-      let batch: { project_id: string; user_id: string; file_path: string; content: string }[] = [];
-      let batchBytes = 0;
-      const flush = async () => {
-        if (!batch.length) return;
-        const { error } = await context.supabase.from("agent_project_files").insert(batch);
-        if (error) throw new Error("Could not save imported source files: " + error.message);
-        batch = [];
-        batchBytes = 0;
-      };
-      for (const [filePath, fileContent] of entries) {
-        const bytes = Buffer.byteLength(fileContent, "utf8");
-        if (batch.length && batchBytes + bytes > 4_000_000) await flush();
-        batch.push({
-          project_id: project.id,
-          user_id: context.userId,
-          file_path: filePath,
-          content: fileContent,
-        });
-        batchBytes += bytes;
+      for (let offset = 0; offset < candidates.length; offset += 6) {
+        const downloaded = await Promise.all(
+          candidates.slice(offset, offset + 6).map(async (entry) => {
+            const filePath = entry.path!;
+            const rawUrl =
+              "https://raw.githubusercontent.com/" +
+              encodeURIComponent(owner) +
+              "/" +
+              encodeURIComponent(repo) +
+              "/" +
+              encodeURIComponent(defaultBranch) +
+              "/" +
+              filePath.split("/").map(encodeURIComponent).join("/");
+            const response = await request(rawUrl, "text/plain");
+            const buffer = Buffer.from(await response.arrayBuffer());
+            if (buffer.byteLength > 10_000_000) {
+              throw new Error(filePath + " exceeds the current 10 MB text-file import limit. Large binary assets need object-storage support.");
+            }
+            if (buffer.includes(0)) return null;
+            return { path: filePath, content: buffer.toString("utf8"), size: buffer.byteLength };
+          }),
+        );
+
+        for (const file of downloaded) {
+          if (!file) continue;
+          fileCount += 1;
+          totalBytes += file.size;
+          if (resourceLimits.maxFiles && fileCount > resourceLimits.maxFiles) {
+            throw new Error("This import exceeds the administrator-configured file-count allowance.");
+          }
+          if (resourceLimits.maxProjectMb && totalBytes > resourceLimits.maxProjectMb * 1_000_000) {
+            throw new Error("This import exceeds the administrator-configured project-size allowance.");
+          }
+          if (resourceLimits.maxFileMb && file.size > resourceLimits.maxFileMb * 1_000_000) {
+            throw new Error("A repository file exceeds the administrator-configured per-file allowance: " + file.path);
+          }
+
+          if (batch.length && (batch.length >= 100 || batchBytes + file.size > 4_000_000)) {
+            await flush();
+          }
+          batch.push({
+            import_id: importId,
+            project_id: project.id,
+            user_id: context.userId,
+            file_path: file.path,
+            content: file.content,
+          });
+          batchBytes += file.size;
+        }
       }
+
+      if (!fileCount) throw new Error("No readable source files could be imported.");
       await flush();
 
-      const { error: readyError } = await context.supabase
+      const { error: finalizeError } = await context.supabase.rpc("finalize_agent_project_file_staging", {
+        p_project_id: project.id,
+        p_import_id: importId,
+      });
+      if (finalizeError) throw new Error("Could not finalize imported files: " + finalizeError.message);
+    } catch (error) {
+      await context.supabase
+        .from("agent_project_file_staging")
+        .delete()
+        .eq("import_id", importId)
+        .eq("project_id", project.id)
+        .eq("user_id", context.userId);
+      await context.supabase
         .from("agent_projects")
-        .update({ file_storage_ready_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .delete()
         .eq("id", project.id)
         .eq("user_id", context.userId);
-      if (readyError) throw new Error("Imported files were saved, but project finalization failed: " + readyError.message);
-    } catch (error) {
-      await context.supabase.from("agent_projects").delete().eq("id", project.id).eq("user_id", context.userId);
       throw error;
     }
 
@@ -325,7 +352,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
       name: projectName,
       repoUrl,
       branch: defaultBranch,
-      fileCount: Object.keys(files).length,
+      fileCount,
     };
   });
 
