@@ -369,7 +369,7 @@ export function CodeAgent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [typingMessageIndex, setTypingMessageIndex] = useState<number | null>(null);
   const agentChatEndRef = useRef<HTMLDivElement>(null);
-  const [agentPanelMode, setAgentPanelMode] = useState<"chat" | "terminal" | "chats">("terminal");
+  const [agentPanelMode, setAgentPanelMode] = useState<"chat" | "terminal" | "chats">("chat");
   const [prompt, setPrompt] = useState("");
   const [agentMode, setAgentMode] = useState<"build" | "plan">("build");
   const [planDraft, setPlanDraft] = useState<string | null>(null);
