@@ -1,16 +1,16 @@
-ExpertAI chat and the coding agent use the Kilo AI Gateway exclusively. Anonymous free-model requests do not require a Kilo API key. Set `KILO_API_BASE_URL` or `KILO_MODEL` only when overriding the documented defaults. Never expose a Kilo API key through a `VITE_*` variable. Kilo's anonymous free-model allowance is IP-based; when called through serverless hosting, visitors may share the hosting egress IP, so do not promise a separate per-visitor quota.
+Guest ExpertAI chat uses OpenRouter through a server-side adapter; signed-in ExpertAI and the coding agent currently use the Kilo AI Gateway. Guest chat requires `OPENROUTER_API_KEY` and server-side Supabase service credentials. Keep every provider key server-only: never prefix it with `VITE_`, expose it to the browser, or commit it. OpenRouter's free-model quotas are shared by the configured API account and can change; Supabase separately enforces the guest allowance.
 
 ## Authentication configuration
 
 Google sign-in and email/password authentication are handled by Supabase Auth:
 
-- The project is linked through `supabase/config.toml`. Install the [Supabase CLI](https://supabase.com/docs/guides/cli), log in to the account that owns the project with `supabase login`, then run `supabase db push` from the project root. This applies the ordered migrations that create the app tables, access policies, and upload bucket. Verify you are targeting the intended project before pushing migrations.
+- The active schema migrations are in `supabase/migrations/`. This project has a legacy baseline and an existing migration ledger that must be reconciled before replaying migrations. **Do not run `supabase db push` blindly** against production; first compare the migration ledger and live schema using `docs/DB_MIGRATION_AUDIT.md`.
 - The migrations grant the admin role to the account with the configured creator email, including accounts created after the migrations are applied. They do not create or set an account password; create/sign in to that account through Supabase Auth and keep its password private.
 - In Supabase, enable Google under **Authentication → Providers → Google** and add the Supabase callback URL (`https://<project-ref>.supabase.co/auth/v1/callback`) to the OAuth client in Google Cloud.
 - Under **Authentication → URL Configuration**, set the site URL and allow the local app URL (`http://localhost:5173/**`) and your deployed app URL as redirects.
 - To allow users to sign up without verifying their email, disable **Confirm email** under **Authentication → Providers → Email** in Supabase. With confirmation enabled, Supabase does not create an authenticated session after signup.
 
-ExpertAI uses Kilo Gateway and does not require Gemini credentials. Supabase provider, redirect, and server environment settings must match the active project.
+Guest ExpertAI uses OpenRouter (`OPENROUTER_API_KEY`); signed-in chat and the coding agent currently use Kilo Gateway. Supabase provider, redirect, and server environment settings must match the active project. See `docs/AI_PROVIDER_SETUP.md` for the required server-only variables and guest-chat verification steps.
 
 ## Production deployment to Vercel
 
