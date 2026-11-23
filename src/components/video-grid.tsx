@@ -20,7 +20,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate } from "@/lib/format";
 import { parseYouTubeId, youTubeThumb } from "@/lib/youtube";
-import { openMonetagPopup } from "@/lib/monetag";
 
 export type VideoItem = {
   id: string;
@@ -41,18 +40,13 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<VideoItem | null>(null);
-  const [adOpenedFor, setAdOpenedFor] = useState<Set<string>>(() => new Set());
   const [title, setTitle] = useState("");
   const [link, setLink] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [alignment, setAlignment] = useState<"left" | "center" | "right">("center");
   function handleWatchClick(video: VideoItem) {
-    // Ads must never block access to the actual learning content. Attempt the
-    // optional popup synchronously from the click, then navigate regardless.
-    if (!adOpenedFor.has(video.id)) {
-      openMonetagPopup();
-      setAdOpenedFor((current) => new Set(current).add(video.id));
-    }
+    // Keep learning access direct. Site-level Monetag placements remain separate
+    // from the learner's click to open a lesson.
     void navigate({ to: "/learn/video/$videoId", params: { videoId: video.id } });
   }
 
@@ -150,7 +144,7 @@ export function VideoGrid({ videos }: { videos: VideoItem[] }) {
                 <div className="flex flex-wrap items-center gap-2">
                   <ReportContentButton contentType="video" contentId={video.id} />
                   <Button size="sm" onClick={() => handleWatchClick(video)}>
-                    {adOpenedFor.has(video.id) ? "Continue watching" : "Watch"}
+                    Watch
                   </Button>
                   {canManage && (
                     <>
