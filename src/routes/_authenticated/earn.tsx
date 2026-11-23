@@ -188,6 +188,27 @@ function EarnCreditsPage() {
             )) : <p className="p-5 text-sm text-muted-foreground">Your completed offers will appear here.</p>}
           </Card>
         </section>
+        <section className="space-y-3">
+          <div>
+            <h2 className="font-display text-xl font-semibold">AI credit history</h2>
+            <p className="mt-1 text-sm text-muted-foreground">A transparent record of rewards and AI usage.</p>
+          </div>
+          <Card className="divide-y divide-border p-0">
+            {ledgerQuery.isLoading ? (
+              <p className="p-5 text-sm text-muted-foreground">Loading credit history…</p>
+            ) : ledgerQuery.data?.length ? ledgerQuery.data.map((entry) => (
+              <div key={entry.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div>
+                  <p className="text-sm font-medium">{entry.description || entry.source.replaceAll("_", " ")}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{new Date(entry.created_at).toLocaleString()} · balance after: {entry.balance_after}</p>
+                </div>
+                <span className={entry.amount > 0 ? "font-semibold text-emerald-600" : "font-semibold text-muted-foreground"}>
+                  {entry.amount > 0 ? "+" : ""}{entry.amount}
+                </span>
+              </div>
+            )) : <p className="p-5 text-sm text-muted-foreground">Your AI credit rewards and usage will appear here.</p>}
+          </Card>
+        </section>
       </main>
     </PageShell>
   );
