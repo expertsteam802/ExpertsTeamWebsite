@@ -78,11 +78,61 @@ export async function deleteProjectFile(projectId: string, filePath: string) {
   if (error) throw error;
 }
 
-/** Atomically replace the complete project tree in one database transaction. */
-export async function saveProjectFiles(projectId: string, _userId: string, files: ProjectFiles) {
-  const { error } = await supabase.rpc("replace_agent_project_files", {
-    p_project_id: projectId,
-    p_files: files,
-  });
-  if (error) throw error;
+/**
+ * Upload the next file tree in bounded batches, then atomically swap it into
+ * the live table. A failed upload leaves the previous saved project untouched.
+ */
+export async function saveProjectFiles(projectId: string, userId: string, files: ProjectFiles) {
+  const entries = Object.entries(files);
+  if (!entries.length) throw new Error("Cannot save an empty project file tree.");
+
+  const importId = crypto.randomUUID();
+  let batch: {
+    import_id: string;
+    project_id: string;
+    user_id: string;
+    file_path: string;
+    content: string;
+  }[] = [];
+  let batchBytes = 0;
+
+  const flush = async () => {
+    if (!batch.length) return;
+    const { error } = await supabase.from("agent_project_file_staging").insert(batch);
+    if (error) throw error;
+    batch = [];
+    batchBytes = 0;
+  };
+
+  try {
+    for (const [filePath, content] of entries) {
+      const bytes = new TextEncoder().encode(content).byteLength;
+      if (batch.length && (batch.length >= 100 || batchBytes + bytes > 4_000_000)) {
+        await flush();
+      }
+      batch.push({
+        import_id: importId,
+        project_id: projectId,
+        user_id: userId,
+        file_path: filePath,
+        content,
+      });
+      batchBytes += bytes;
+    }
+    await flush();
+
+    const { error } = await supabase.rpc("finalize_agent_project_file_staging", {
+      p_project_id: projectId,
+      p_import_id: importId,
+    });
+    if (error) throw error;
+  } catch (error) {
+    await supabase
+      .from("agent_project_file_staging")
+      .delete()
+      .eq("import_id", importId)
+      .eq("project_id", projectId)
+      .eq("user_id", userId);
+    throw error;
+  }
 }
