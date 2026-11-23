@@ -44,7 +44,7 @@ function PricingPage() {
             <Sparkles className="h-3.5 w-3.5" /> Straightforward access
           </span>
           <h1 className="mt-5 font-display text-4xl font-bold tracking-tight sm:text-6xl">
-            Start free. <span className="brand-text">Build from $5.</span>
+            Start free. <span className="brand-text">Earn your AI credits.</span>
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
             Learn, connect and use the platform for free. When you need a custom website, business
@@ -104,7 +104,7 @@ function PricingPage() {
             </Card>
             <Card className="p-6">
               <Sparkles className="h-6 w-6 text-primary" />
-              <h2 className="mt-3 font-display text-xl font-semibold">Clear AI and compute limits</h2>
+              <h2 className="mt-3 font-display text-xl font-semibold">Earn AI credits with partners</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 AI credits, sandbox time, file size and hosting capacity depend on account allowance
                 and infrastructure. Free access does not mean unlimited compute or unlimited AI use.
