@@ -1983,28 +1983,18 @@ export function CodeAgent() {
       const imported = await importGithub({
         data: { repoUrl, token: githubAccessToken || importToken.trim() || undefined },
       });
-      const { data, error } = await supabase
-        .from("agent_projects")
-        .insert({
-          user_id: user.id,
-          name: imported.name,
-          files: imported.files as unknown as Json,
-          messages: [],
-          github_repo: imported.repoUrl,
-          published: false,
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-      await saveProjectFiles(data.id, user.id, imported.files);
+      const importedFiles = await loadProjectFiles(imported.id);
+      if (!Object.keys(importedFiles).length) {
+        throw new Error("The repository was imported, but its saved files could not be loaded.");
+      }
       resetRuntimeForProjectChange();
-      setProjectId(data.id);
+      setProjectId(imported.id);
       setPublishedUrl(null);
       setThumbnailUrl(null);
       setName(imported.name);
-      setFiles(imported.files);
+      setFiles(importedFiles);
       setMessages([]);
-      setActiveFile(Object.keys(imported.files).sort()[0] ?? "README.md");
+      setActiveFile(Object.keys(importedFiles).sort()[0] ?? "README.md");
       setGithubRepo(imported.name);
       setLogs([]);
       switchPanel("code");
