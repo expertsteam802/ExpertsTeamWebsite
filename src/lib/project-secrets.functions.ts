@@ -3,9 +3,14 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const projectIdSchema = z.string().uuid();
+const publicBuildKeys = new Set([
+  "VITE_SUPABASE_URL",
+  "VITE_SUPABASE_PUBLISHABLE_KEY",
+  "VITE_SUPABASE_ANON_KEY",
+]);
 const envKeySchema = z.string().regex(/^[A-Z][A-Z0-9_]{0,127}$/).refine(
-  (key) => !key.startsWith("VITE_"),
-  "VITE_ variables are public in browser builds and cannot be stored as secrets.",
+  (key) => !key.startsWith("VITE_") || publicBuildKeys.has(key),
+  "Only the public Supabase URL and publishable/anon key may use the VITE_ prefix. Never expose a secret key in a browser build.",
 );
 
 async function assertOwnedProject(supabase: any, userId: string, projectId: string) {
