@@ -203,15 +203,20 @@ export const importGitHubProject = createServerFn({ method: "POST" })
         const segments = path.split("/");
         const filename = segments.at(-1) ?? "";
         return (
-          path.length <= 512 &&
-          /^[A-Za-z0-9_@./+ -]+$/.test(path) &&
+          path.length <= 1024 &&
+          !path.startsWith("/") &&
           !segments.some(
-            (part) => !part || part === "." || part === ".." || ignoredDirectories.has(part),
+            (part) =>
+              !part ||
+              part === "." ||
+              part === ".." ||
+              part.includes("\\") ||
+              /[\u0000-\u001f\u007f]/.test(part) ||
+              ignoredDirectories.has(part),
           ) &&
           !segments.some((part) => part.startsWith(".experts-")) &&
           !secretName.test(filename) &&
-          !binaryExtensions.test(filename) &&
-          (entry.size ?? 0) <= 10_000_000
+          !binaryExtensions.test(filename)
         );
       })
       .sort((left, right) => {
@@ -242,7 +247,10 @@ export const importGitHubProject = createServerFn({ method: "POST" })
             path.split("/").map(encodeURIComponent).join("/");
           const response = await request(rawUrl, "text/plain");
           const buffer = Buffer.from(await response.arrayBuffer());
-          if (buffer.byteLength > 10_000_000 || buffer.includes(0)) return null;
+          if (buffer.byteLength > 10_000_000) {
+            throw new Error(path + " exceeds the current 10 MB text-file import limit. Large binary assets need object-storage support.");
+          }
+          if (buffer.includes(0)) return null;
           return { path, content: buffer.toString("utf8"), size: buffer.byteLength };
         }),
       );
