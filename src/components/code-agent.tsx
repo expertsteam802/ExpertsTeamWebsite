@@ -1978,11 +1978,6 @@ export function CodeAgent() {
     if (CODING_AGENT_UNDER_DEVELOPMENT) return;
     const text = prompt.trim();
     if (!text || busy) return;
-    if (referenceImages.length) {
-      toast.error("Image attachments are not supported by the connected CLI agent yet. Remove the image and send your text prompt.");
-      return;
-    }
-
     const session = terminalConnection;
     if (!session || session.projectId !== projectId) {
       toast.info("Your selected coding CLI is still connecting. Try sending again in a moment.");
@@ -2011,8 +2006,10 @@ export function CodeAgent() {
           sandboxName: session.sandboxName,
           cli: session.cli,
           prompt: cliPrompt,
+          referenceImages,
         },
       });
+      setReferenceImages([]);
       const updatedFiles: ProjectFiles = { ...files };
       const changed: string[] = [];
       for (const [path, content] of Object.entries(result.files)) {
