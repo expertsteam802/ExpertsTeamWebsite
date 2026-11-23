@@ -140,12 +140,43 @@ export const importGitHubProject = createServerFn({ method: "POST" })
     );
     const tree = (await treeResponse.json()) as {
       truncated?: boolean;
-      tree?: Array<{ path?: string; type?: string; size?: number }>;
+      tree?: Array<{ path?: string; type?: string; size?: number; sha?: string }>;
     };
-    if (tree.truncated)
-      throw new Error(
-        "This repository is too large for a complete project import. Try a smaller repository.",
-      );
+    let repositoryTree = tree.tree ?? [];
+
+    // GitHub truncates recursive tree responses for very large repositories.
+    // Fall back to walking individual tree objects so nested directories are
+    // not silently omitted or rejected solely because of that API response cap.
+    if (tree.truncated) {
+      const branchResponse = await request(apiBase + "/branches/" + encodeURIComponent(defaultBranch));
+      const branch = (await branchResponse.json()) as { commit?: { commit?: { tree?: { sha?: string } } } };
+      const rootTreeSha = branch.commit?.commit?.tree?.sha;
+      if (!rootTreeSha) throw new Error("GitHub did not return the repository tree.");
+      const pending: { sha: string; prefix: string }[] = [{ sha: rootTreeSha, prefix: "" }];
+      const visited = new Set<string>();
+      const expanded: Array<{ path: string; type: string; size?: number }> = [];
+      const worker = async () => {
+        while (pending.length) {
+          const next = pending.shift();
+          if (!next || visited.has(next.sha)) continue;
+          visited.add(next.sha);
+          const response = await request(apiBase + "/git/trees/" + encodeURIComponent(next.sha));
+          const node = (await response.json()) as {
+            truncated?: boolean;
+            tree?: Array<{ path?: string; type?: string; size?: number; sha?: string }>;
+          };
+          if (node.truncated) throw new Error("A GitHub directory tree exceeded the API's per-tree response limit.");
+          for (const entry of node.tree ?? []) {
+            if (!entry.path || !entry.type) continue;
+            const fullPath = next.prefix ? next.prefix + "/" + entry.path : entry.path;
+            if (entry.type === "tree" && entry.sha) pending.push({ sha: entry.sha, prefix: fullPath });
+            else if (entry.type === "blob") expanded.push({ path: fullPath, type: "blob", size: entry.size });
+          }
+        }
+      };
+      await Promise.all(Array.from({ length: 4 }, () => worker()));
+      repositoryTree = expanded;
+    }
     const ignoredDirectories = new Set([
       ".git",
       "node_modules",
@@ -163,7 +194,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
       /\.(?:png|jpe?g|gif|webp|ico|pdf|zip|gz|tar|woff2?|ttf|otf|mp4|mp3|wav|mov|avi|exe|dll|so|dylib|class|jar|wasm|lockb)$/i;
     const secretName =
       /^(?:\.env(?:\..*)?|\.npmrc|\.netrc|\.pypirc|id_rsa|id_ed25519|credentials?(?:\..*)?|secrets?(?:\..*)?)$/i;
-    const candidates = (tree.tree ?? [])
+    const candidates = (repositoryTree)
       .filter((entry) => entry.type === "blob" && typeof entry.path === "string")
       .filter((entry) => {
         const path = entry.path!;
