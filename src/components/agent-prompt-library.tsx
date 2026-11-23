@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bookmark, Check, Plus, Trash2, X } from "lucide-react";
+import { Bookmark, Plus, Star, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -105,7 +105,7 @@ export function AgentPromptLibrary({
                 <div key={template.id} className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-2.5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0"><p className="truncate text-[11px] font-semibold text-slate-200">{template.title}</p><p className="mt-1 line-clamp-2 whitespace-pre-wrap text-[10px] leading-4 text-slate-500">{template.prompt}</p></div>
-                    <button type="button" onClick={() => toggleFavorite.mutate(template)} className={template.is_favorite ? "rounded-md p-1 text-amber-300" : "rounded-md p-1 text-slate-600 hover:text-amber-300"} title={template.is_favorite ? "Remove favorite" : "Add favorite"}><Check className="h-3.5 w-3.5" /></button>
+                    <button type="button" onClick={() => toggleFavorite.mutate(template)} className={template.is_favorite ? "rounded-md p-1 text-amber-300" : "rounded-md p-1 text-slate-600 hover:text-amber-300"} title={template.is_favorite ? "Remove favorite" : "Add favorite"}><Star className="h-3.5 w-3.5" /></button>
                   </div>
                   <div className="mt-2 flex items-center justify-between">
                     <button type="button" onClick={() => { onUse(template.prompt); setOpen(false); }} className="rounded-lg bg-cyan-400/10 px-2.5 py-1.5 text-[10px] font-semibold text-cyan-200 hover:bg-cyan-400/20">Use prompt</button>
