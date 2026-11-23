@@ -3355,6 +3355,22 @@ export function CodeAgent() {
           .expert-agent-topbar { background: #111a27 !important; }
           .expert-agent-sidebar-drawer { background: #101925 !important; }
         }
+        .expert-agent-shell.expert-agent-light {
+          --et-builder-line: #dce3ed;
+          background: #f5f7fb !important;
+          color: #172033 !important;
+        }
+        .expert-agent-light .expert-agent-stage { background: #f5f7fb !important; }
+        .expert-agent-light .expert-agent-toolbar,
+        .expert-agent-light .expert-agent-statusbar { background: #ffffff !important; border-color: #dce3ed !important; }
+        .expert-agent-light .expert-agent-workspace-tab[class*="bg-cyan-400/10"] {
+          background: rgba(59,130,246,.12) !important;
+          border-color: rgba(59,130,246,.2) !important;
+          color: #1d4ed8 !important;
+        }
+        .expert-agent-light .expert-agent-workspace-tab { color: #64748b !important; }
+        .expert-agent-light .expert-agent-workspace-tab:hover { color: #1e293b !important; background: #edf2f8 !important; }
+        .expert-agent-light .expert-agent-mobile-dock { background: rgba(255,255,255,.98) !important; border-color: #dce3ed !important; }
         @media (prefers-reduced-motion: reduce) {
           .expert-agent-shell *, .expert-agent-shell *::before, .expert-agent-shell *::after {
             scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important;
