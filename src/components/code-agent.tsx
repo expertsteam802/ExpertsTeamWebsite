@@ -1731,16 +1731,14 @@ export function CodeAgent() {
       return;
     }
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("agent_projects")
         .insert({
           user_id: user.id,
           name: (name.trim() || "Untitled project") + " copy",
           files: files as unknown as Json,
           messages: messages.slice(-40) as unknown as Json,
-        })
-        .select("id")
-        .single();
+        });
       if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
       toast.success("Project duplicated and saved. Refresh your project list to open the copy.");
