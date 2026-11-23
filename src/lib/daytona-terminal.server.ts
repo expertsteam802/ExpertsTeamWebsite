@@ -582,6 +582,7 @@ export async function startDaytonaProjectTerminal(
   username = "ExpertsTeam",
   cli: CliName = "kilo",
   binaryAssets: AgentProjectBinaryAsset[] = [],
+  projectEnvironment: Record<string, string> = {},
 ) {
   if (Object.keys(sourceFiles).length === 0) {
     throw new Error("Cannot start the CLI with an empty workspace. Reload the saved project files and reconnect.");
@@ -680,6 +681,7 @@ export async function startDaytonaProjectTerminal(
           TERMINAL_CWD: workdir,
           TERMINAL_PORT: String(TERMINAL_PORT),
           PATH: install.pathValue,
+          ...projectEnvironment,
         },
         15,
       );
