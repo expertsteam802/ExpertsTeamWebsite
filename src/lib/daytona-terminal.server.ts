@@ -760,6 +760,44 @@ export async function readDaytonaProjectFiles(name: string) {
   return { files };
 }
 
+export async function writeDaytonaProjectReferenceImages(
+  name: string,
+  images: Array<{ name: string; mimeType: "image/png" | "image/jpeg" | "image/webp"; data: string }>,
+) {
+  if (!images.length) return [];
+  if (images.length > 3) throw new Error("Attach no more than three visual references.");
+  const { api } = client();
+  const sandbox = await findSandboxByName(api, name) as DaytonaSandbox | undefined;
+  if (!sandbox) throw new Error("Your saved Daytona workspace could not be found.");
+  if (["stopped", "archived"].includes(String(sandbox.state ?? "").toLowerCase())) await sandbox.start(120);
+  const workdir = await workspacePath(sandbox);
+  const directory = path.join(workdir, ".experts-reference-assets");
+  await command(sandbox, "mkdir -p " + shellQuote(directory), workdir, undefined, 30);
+  const allowedExtensions = new Map([
+    ["image/png", "png"],
+    ["image/jpeg", "jpg"],
+    ["image/webp", "webp"],
+  ]);
+  let totalBytes = 0;
+  const uploaded: string[] = [];
+  const files = images.map((image, index) => {
+    const extension = allowedExtensions.get(image.mimeType);
+    if (!extension || !/^[A-Za-z0-9._-]{1,140}$/.test(image.name)) {
+      throw new Error("A visual reference has an invalid filename or image type.");
+    }
+    const data = Buffer.from(image.data, "base64");
+    if (!data.length || data.length > 700_000) throw new Error("Each visual reference must be 700 KB or smaller after compression.");
+    totalBytes += data.byteLength;
+    if (totalBytes > 2_000_000) throw new Error("Visual references must total 2 MB or less.");
+    const filename = String(index + 1).padStart(2, "0") + "-" + image.name.replace(/\.[^.]+$/, "") + "." + extension;
+    const destination = path.join(directory, filename);
+    uploaded.push(path.relative(workdir, destination));
+    return { destination, source: data };
+  });
+  await uploadFiles(sandbox, files);
+  return uploaded;
+}
+
 export async function runDaytonaProjectCommand(name: string, commandText: string) {
   if (!commandText.trim() || commandText.length > 48_000) throw new Error("The agent command is too long.");
   const { api } = client();
