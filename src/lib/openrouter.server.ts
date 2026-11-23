@@ -52,7 +52,7 @@ export async function generateOpenRouterContent(request: GeminiRequest): Promise
           name: "Groq",
           url: "https://api.groq.com/openai/v1/chat/completions",
           key: groqKey,
-          model: process.env["GROQ_MODEL"]?.trim() || "llama-3.3-70b-versatile",
+          model: process.env["GROQ_MODEL"]?.trim() || "openai/gpt-oss-120b",
         }]
       : []),
     ...(openRouterKey
