@@ -83,8 +83,12 @@ export const revokePluginConnection = createServerFn({ method: "POST" })
       .select("id,provider").eq("id", data.connectionId).eq("user_id", context.userId).maybeSingle();
     if (lookupError) throw new Error(lookupError.message);
     if (!connection) throw new Error("Plugin connection not found.");
-    const { error } = await db.from("user_plugin_connections")
-      .delete().eq("id", data.connectionId).eq("user_id", context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: removed, error } = await supabaseAdmin.rpc("delete_user_plugin_connection", {
+      p_connection_id: data.connectionId,
+      p_user_id: context.userId,
+    });
     if (error) throw new Error("Could not revoke plugin: " + error.message);
+    if (!removed) throw new Error("Plugin connection could not be revoked.");
     return { ok: true };
   });
