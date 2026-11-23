@@ -9,7 +9,7 @@ export const Route = createFileRoute("/cookies")({
       {
         name: "description",
         content:
-          "Details about essential storage, Google AdSense and Monetag advertising technologies, embedded media and browser controls on ExpertsTeam.",
+          "Details about essential storage, advertising technologies, embedded media and browser controls on ExpertsTeam.",
       },
     ],
     links: [{ rel: "canonical", href: "https://expertsteam.giize.com/cookies" }],
@@ -60,21 +60,6 @@ function CookiesPage() {
                 My Ad Center
               </a>
               .
-            </p>
-          </section>
-          <section>
-            <h2 className="text-xl font-semibold text-foreground">Monetag advertising</h2>
-            <p>
-              ExpertsTeam uses Monetag advertising formats, including Vignette Banner and In-Page
-              Push. Monetag and its advertising partners may use cookies, local storage, device or
-              network identifiers, and similar technologies to deliver ads, control frequency,
-              measure performance and prevent invalid activity. An ad interaction may open an
-              advertiser's website. These technologies and the data processed are subject to
-              Monetag's own privacy information and the choices available in your browser or
-              applicable consent interface. Read{" "}
-              <a href="https://monetag.com/privacy/" target="_blank" rel="noreferrer" className="text-primary underline">
-                Monetag's privacy policy
-              </a>.
             </p>
           </section>
           <section>
