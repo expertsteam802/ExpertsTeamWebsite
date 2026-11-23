@@ -242,21 +242,21 @@ export const importGitHubProject = createServerFn({ method: "POST" })
 
 export const pushProjectToGithub = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: { token: string; repo: string; files: Record<string, string> }) => {
-    const token = String(input?.token ?? "").trim();
-    const repo = String(input?.repo ?? "").trim();
-    if (!token) throw new Error("Paste a GitHub access token.");
-    if (!/^[A-Za-z0-9._-]{1,100}$/.test(repo))
-      throw new Error("Repository name can use letters, numbers, - _ .");
-    return { token, repo, files: input.files ?? {} };
-  })
+  .validator((input: unknown) => z.object({
+    projectId: z.string().uuid(),
+    token: z.string().trim().min(1).max(500),
+    repo: z.string().trim().regex(/^[A-Za-z0-9._-]{1,100}$/),
+  }).parse(input))
   .handler(async ({ data, context }) => {
-    await assertBuilderResourcePolicy(context.supabase, context.userId, data.files);
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const files = await loadProjectSourceFiles(context.supabase, data.projectId, context.userId);
+    if (!Object.keys(files).length) throw new Error("This project has no saved source files to push.");
+    await assertBuilderResourcePolicy(context.supabase, context.userId, files);
     try {
       const { pushToGithub } = await import("./agent.server");
       return {
         ok: true as const,
-        ...(await pushToGithub({ ...data, message: "Update from ExpertsTeam agent" })),
+        ...(await pushToGithub({ token: data.token, repo: data.repo, files, message: "Update from ExpertsTeam agent" })),
       };
     } catch (error) {
       return { ok: false as const, error: error instanceof Error ? error.message : "Push failed" };
