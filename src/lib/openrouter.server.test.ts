@@ -4,15 +4,25 @@ import { afterEach, test } from "node:test";
 import { generateOpenRouterContent } from "./openrouter.server";
 
 const originalFetch = globalThis.fetch;
-const originalKey = process.env["OPENROUTER_API_KEY"];
-const originalModel = process.env["OPENROUTER_MODEL"];
+const originalEnv = {
+  groqKey: process.env["GROQ_API_KEY"],
+  groqModel: process.env["GROQ_MODEL"],
+  openRouterKey: process.env["OPENROUTER_API_KEY"],
+  openRouterModel: process.env["OPENROUTER_MODEL"],
+};
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
-  if (originalKey === undefined) delete process.env["OPENROUTER_API_KEY"];
-  else process.env["OPENROUTER_API_KEY"] = originalKey;
-  if (originalModel === undefined) delete process.env["OPENROUTER_MODEL"];
-  else process.env["OPENROUTER_MODEL"] = originalModel;
+  const entries = [
+    ["GROQ_API_KEY", originalEnv.groqKey],
+    ["GROQ_MODEL", originalEnv.groqModel],
+    ["OPENROUTER_API_KEY", originalEnv.openRouterKey],
+    ["OPENROUTER_MODEL", originalEnv.openRouterModel],
+  ] as const;
+  for (const [key, value] of entries) {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
 });
 
 const request = {
@@ -21,32 +31,58 @@ const request = {
   generationConfig: { maxOutputTokens: 1024 },
 };
 
-test("guest adapter calls OpenRouter server-side and normalizes the completion", async () => {
-  process.env["OPENROUTER_API_KEY"] = "test-secret";
-  process.env["OPENROUTER_MODEL"] = "openrouter/free";
+test("guest adapter uses Groq first and normalizes its completion", async () => {
+  process.env["GROQ_API_KEY"] = "groq-test-secret";
+  process.env["GROQ_MODEL"] = "llama-3.3-70b-versatile";
+  delete process.env["OPENROUTER_API_KEY"];
   let sentAuthorization = "";
   let sentModel = "";
-  let referer = "";
+
   globalThis.fetch = (async (url, init) => {
-    assert.equal(String(url), "https://openrouter.ai/api/v1/chat/completions");
+    assert.equal(String(url), "https://api.groq.com/openai/v1/chat/completions");
     const headers = new Headers(init?.headers);
     sentAuthorization = headers.get("authorization") ?? "";
-    referer = headers.get("HTTP-Referer") ?? "";
     const body = JSON.parse(String(init?.body ?? "{}")) as { model?: string };
     sentModel = body.model ?? "";
     return Response.json({
-      choices: [{ finish_reason: "stop", message: { content: "Hello from OpenRouter." } }],
+      choices: [{ finish_reason: "stop", message: { content: "Hello from Groq." } }],
     });
   }) as typeof fetch;
 
   const response = await generateOpenRouterContent(request);
-  assert.equal(sentAuthorization, "Bearer test-secret");
-  assert.equal(sentModel, "openrouter/free");
-  assert.equal(referer, "https://expertsteam.giize.com");
-  assert.equal(response.candidates?.[0]?.content?.parts?.[0]?.text, "Hello from OpenRouter.");
+  assert.equal(sentAuthorization, "Bearer groq-test-secret");
+  assert.equal(sentModel, "llama-3.3-70b-versatile");
+  assert.equal(response.candidates?.[0]?.content?.parts?.[0]?.text, "Hello from Groq.");
 });
 
-test("guest adapter fails clearly when its server-only key is missing", async () => {
+test("guest adapter falls back to OpenRouter when Groq is unavailable", async () => {
+  process.env["GROQ_API_KEY"] = "groq-test-secret";
+  process.env["OPENROUTER_API_KEY"] = "openrouter-test-secret";
+  let calls = 0;
+  let openRouterReferer = "";
+
+  globalThis.fetch = (async (url, init) => {
+    calls += 1;
+    if (String(url).includes("api.groq.com")) {
+      return new Response("rate limited", { status: 429 });
+    }
+    assert.equal(String(url), "https://openrouter.ai/api/v1/chat/completions");
+    const headers = new Headers(init?.headers);
+    assert.equal(headers.get("authorization"), "Bearer openrouter-test-secret");
+    openRouterReferer = headers.get("HTTP-Referer") ?? "";
+    return Response.json({
+      choices: [{ finish_reason: "stop", message: { content: "Fallback worked." } }],
+    });
+  }) as typeof fetch;
+
+  const response = await generateOpenRouterContent(request);
+  assert.equal(calls, 2);
+  assert.equal(openRouterReferer, "https://expertsteam.giize.com");
+  assert.equal(response.candidates?.[0]?.content?.parts?.[0]?.text, "Fallback worked.");
+});
+
+test("guest adapter reports unavailable when no server-side provider key is configured", async () => {
+  delete process.env["GROQ_API_KEY"];
   delete process.env["OPENROUTER_API_KEY"];
-  await assert.rejects(generateOpenRouterContent(request), /OPENROUTER_API_KEY/);
+  await assert.rejects(generateOpenRouterContent(request), /guest service is temporarily unavailable/i);
 });
