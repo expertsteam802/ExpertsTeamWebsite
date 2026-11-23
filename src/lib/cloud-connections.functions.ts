@@ -10,6 +10,17 @@ const connectionInput = z.object({
   secretKey: z.string().trim().max(2000).optional().default(""),
 });
 
+function legacyJwtRole(token: string): string | null {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { role?: unknown };
+    return typeof parsed.role === "string" ? parsed.role : null;
+  } catch {
+    return null;
+  }
+}
+
 function parseSupabaseProjectUrl(raw: string) {
   const url = new URL(raw);
   if (url.protocol !== "https:" || url.username || url.password || url.port || url.search || url.hash) {
@@ -28,10 +39,10 @@ export const connectSupabaseProject = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { url, projectRef } = parseSupabaseProjectUrl(data.projectUrl);
     const key = data.publishableKey;
-    if (!(key.startsWith("sb_publishable_") || key.split(".").length === 3)) {
-      throw new Error("Enter a Supabase publishable key or legacy anon key, not a secret key.");
+    if (!(key.startsWith("sb_publishable_") || legacyJwtRole(key) === "anon")) {
+      throw new Error("Enter a Supabase publishable key or legacy anon key. Do not use a secret/service_role key here.");
     }
-    if (data.secretKey && !(data.secretKey.startsWith("sb_secret_") || data.secretKey.split(".").length === 3)) {
+    if (data.secretKey && !(data.secretKey.startsWith("sb_secret_") || legacyJwtRole(data.secretKey) === "service_role")) {
       throw new Error("The server key must be a Supabase secret key or legacy service_role key.");
     }
 
