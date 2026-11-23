@@ -9,6 +9,25 @@ import {
 import { generateGeminiContent } from "@/lib/gemini.server";
 import { generateOpenRouterContent } from "@/lib/openrouter.server";
 
+function assistantMessageResponse(message: string): Response {
+  const encoder = new TextEncoder();
+  const event = { candidates: [{ content: { parts: [{ text: message }] } }] };
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(encoder.encode("data: " + JSON.stringify(event) + "\\n\\n"));
+      controller.enqueue(encoder.encode("data: [DONE]\\n\\n"));
+      controller.close();
+    },
+  });
+  return new Response(body, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
+    },
+  });
+}
+
 const requestSchema = z
   .object({
     prompt: z.string().trim().min(1).max(6000),
@@ -107,46 +126,12 @@ export const Route = createFileRoute("/api/ai/stream")({
             auth: { persistSession: false, autoRefreshToken: false },
             global: token ? { headers: { Authorization: `Bearer ${token}` } } : {},
           });
-          let isAdmin = false;
-          let profileCredits = 0;
           if (!isGuest) {
             const { data: authData, error: authError } = await supabase.auth.getUser(token);
             if (authError || !authData.user) {
               return Response.json(
                 { error: "Your session is invalid. Please sign in again." },
                 { status: 401 },
-              );
-            }
-            const { data: profile, error: profileError } = await supabase
-              .from("profiles")
-              .select("ai_credits")
-              .eq("id", authData.user.id)
-              .single();
-            if (profileError) {
-              return Response.json(
-                { error: "Could not check your AI credit balance." },
-                { status: 500 },
-              );
-            }
-            profileCredits = profile.ai_credits;
-            const { data: adminRole, error: roleError } = await supabase.rpc("has_role", {
-              _user_id: authData.user.id,
-              _role: "admin",
-            });
-            if (roleError) {
-              return Response.json(
-                { error: "Could not verify your account permissions." },
-                { status: 500 },
-              );
-            }
-            isAdmin = Boolean(adminRole);
-            if (!isAdmin && profileCredits < 1) {
-              return Response.json(
-                {
-                  error:
-                    "You have no AI credits remaining. Upgrade your Studio plan or watch a reward ad when available.",
-                },
-                { status: 402 },
               );
             }
           }
@@ -210,34 +195,23 @@ export const Route = createFileRoute("/api/ai/stream")({
               );
             }
             if (!canUseCredits) {
-              return Response.json(
-                {
-                  error:
-                    "You've used your 15 free guest credits for this 24-hour period. Create an account for more AI credits.",
-                },
-                { status: 402 },
+              return assistantMessageResponse(
+                "You've reached the 15-message guest limit for this 24-hour period. Sign in to use unlimited ExpertAI chat.",
               );
             }
           }
 
-          const consumeCredit = async (): Promise<string | null> => {
-            if (isAdmin) return null;
-            if (isGuest) {
-              if (!guestServiceClient || !guestIpHash)
-                return "Guest access is temporarily unavailable. Sign in to continue or try again later.";
-              const { data: allowed, error } = await guestServiceClient.rpc(
-                "consume_guest_ai_credit",
-                {
-                  p_ip_hash: guestIpHash,
-                },
-              );
-              if (error) return "Guest chat credits could not be checked. Please try again later.";
-              if (!allowed)
-                return "You've used your 15 free guest credits for this 24-hour period. Create an account for more AI credits.";
-              return null;
-            }
-            const { error } = await supabase.rpc("consume_ai_credit");
-            return error?.message ?? null;
+          const consumeGuestCredit = async (): Promise<string | null> => {
+            if (!guestServiceClient || !guestIpHash)
+              return "Guest access is temporarily unavailable. Please try again later.";
+            const { data: allowed, error } = await guestServiceClient.rpc(
+              "consume_guest_ai_credit",
+              { p_ip_hash: guestIpHash },
+            );
+            if (error) return "Guest chat is temporarily unavailable. Please try again later.";
+            if (!allowed)
+              return "You've reached the 15-message guest limit for this 24-hour period. Sign in to use unlimited ExpertAI chat.";
+            return null;
           };
 
           const { prompt, history = [], attachments = [] } = parsed.data;
@@ -340,9 +314,11 @@ export const Route = createFileRoute("/api/ai/stream")({
               "\n\nI reached the current multi-round response limit. Ask me to continue and I will pick up from here.";
           }
 
-          const creditError = await consumeCredit();
-          if (creditError) {
-            return Response.json({ error: creditError }, { status: 402 });
+          if (isGuest) {
+            const creditError = await consumeGuestCredit();
+            if (creditError) {
+              return assistantMessageResponse(creditError);
+            }
           }
           const encoder = new TextEncoder();
           let cursor = 0;
@@ -372,11 +348,11 @@ export const Route = createFileRoute("/api/ai/stream")({
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           console.error("[ExpertAI stream]", message);
-          if (/(Kilo|OpenRouter).*(quota is exhausted|HTTP 429|rate limit)|free-model rate limit|upstream model provider returned HTTP 429/i.test(message)) {
-            return Response.json({ error: message }, { status: 429 });
+          if (/(quota is exhausted|HTTP 429|rate limit)|free-model rate limit|upstream model provider returned HTTP 429/i.test(message)) {
+            return assistantMessageResponse("ExpertAI is busy right now. Please wait a moment and send your message again.");
           }
-          if (/Kilo free access is unavailable|OpenRouter rejected|OPENROUTER_API_KEY|Guest access is temporarily unavailable|Guest chat credits could not be checked/i.test(message)) {
-            return Response.json({ error: message }, { status: 503 });
+          if (/Kilo|OpenRouter|OPENROUTER_API_KEY|Guest access is temporarily unavailable|Guest chat credits could not be checked/i.test(message)) {
+            return assistantMessageResponse("ExpertAI is temporarily unavailable. Please try again shortly.");
           }
           if (/cannot fit the current request/i.test(message)) {
             return Response.json({ error: message }, { status: 413 });
@@ -384,9 +360,8 @@ export const Route = createFileRoute("/api/ai/stream")({
           if (/does not support image input/i.test(message)) {
             return Response.json({ error: message }, { status: 400 });
           }
-          return Response.json(
-            { error: "ExpertAI is temporarily unavailable through the configured AI provider. Please try again shortly." },
-            { status: 503 },
+          return assistantMessageResponse(
+            "ExpertAI is temporarily unavailable right now. Please try again shortly.",
           );
         }
       },
