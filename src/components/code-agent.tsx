@@ -35,6 +35,7 @@ import {
   Smartphone,
   Square,
   Sparkles,
+  Star,
   Tablet,
   Terminal,
   TerminalSquare,
@@ -120,7 +121,7 @@ type ReferenceImage = {
   data: string;
 };
 
-type CheckpointRow = { id: string; name: string; files: ProjectFiles; created_at: string };
+type CheckpointRow = { id: string; name: string; files: ProjectFiles; created_at: string; is_bookmarked: boolean };
 type DeveloperVaultGroup = { id: string; name: string; count: number; kind: "file" | "project"; createdAt: string };
 
 type ProjectRow = {
@@ -743,8 +744,9 @@ export function CodeAgent() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agent_project_checkpoints")
-        .select("id,name,files,created_at")
+        .select("id,name,files,created_at,is_bookmarked")
         .eq("project_id", projectId!)
+        .order("is_bookmarked", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(20);
       if (error) throw error;
@@ -1770,6 +1772,20 @@ export function CodeAgent() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not duplicate this project.");
     }
+  }
+
+  async function toggleCheckpointBookmark(checkpoint: CheckpointRow) {
+    if (!user) return;
+    const { error } = await supabase
+      .from("agent_project_checkpoints")
+      .update({ is_bookmarked: !checkpoint.is_bookmarked })
+      .eq("id", checkpoint.id)
+      .eq("user_id", user.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["agent-project-checkpoints", projectId] });
   }
 
   async function restoreCheckpoint(checkpoint: CheckpointRow) {
@@ -3484,9 +3500,14 @@ export function CodeAgent() {
                   <p className="truncate text-sm font-medium text-slate-100">{checkpoint.name}</p>
                   <p className="mt-1 text-[11px] text-slate-500">{new Date(checkpoint.created_at).toISOString().replace("T", " ").slice(0, 16)} UTC · {Object.keys(checkpoint.files ?? {}).length} files</p>
                 </div>
-                <Button size="sm" variant="outline" disabled={restoringCheckpointId !== null} onClick={() => void restoreCheckpoint(checkpoint)} className="shrink-0 border-cyan-400/20 text-cyan-100">
-                  {restoringCheckpointId === checkpoint.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Restore"}
-                </Button>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button type="button" onClick={() => void toggleCheckpointBookmark(checkpoint)} className={checkpoint.is_bookmarked ? "rounded-lg bg-amber-300/10 p-2 text-amber-300" : "rounded-lg p-2 text-slate-500 hover:bg-white/5 hover:text-amber-300"} title={checkpoint.is_bookmarked ? "Remove bookmark" : "Bookmark version"} aria-label={checkpoint.is_bookmarked ? "Remove version bookmark" : "Bookmark version"}>
+                    <Star className="h-4 w-4" />
+                  </button>
+                  <Button size="sm" variant="outline" disabled={restoringCheckpointId !== null} onClick={() => void restoreCheckpoint(checkpoint)} className="shrink-0 border-cyan-400/20 text-cyan-100">
+                    {restoringCheckpointId === checkpoint.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Restore"}
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
