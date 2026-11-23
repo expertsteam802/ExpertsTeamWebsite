@@ -68,12 +68,11 @@ function PrivacyPage() {
               ExpertsTeam uses service providers to operate the platform, including Supabase for
               authentication, database and storage, and Vercel for hosting and deployment. Embedded
               YouTube media is provided by Google/YouTube. Advertising may be supplied by Google
-              AdSense and Monetag (operated by the Propeller Ads group). These advertising providers
-              and their partners may receive technical information such as IP address, browser and
-              device details, ad request and interaction data, and may use cookies or similar
-              technologies to deliver, measure, limit, prevent fraud in, and where permitted,
-              personalise advertising. Their processing is governed by their own terms and privacy
-              notices. See{" "}
+              AdSense. Google and its advertising partners may receive technical information such
+              as IP address, browser and device details, ad request and interaction data, and may
+              use cookies or similar technologies to deliver, measure, limit, prevent fraud in, and
+              where permitted, personalise ads. Their processing is governed by Google's privacy
+              terms and notices. See{" "}
               <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noreferrer" className="text-primary underline">
                 Google's partner-sites privacy information
               </a>
