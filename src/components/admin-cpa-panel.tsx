@@ -14,7 +14,7 @@ import type { Tables } from "@/integrations/supabase/types";
 type Offer = Tables<"cpa_offers">;
 type Conversion = Tables<"cpa_conversions">;
 
-const emptyOffer = { title: "", description: "", provider: "CPA Grip", category: "general", tracking_parameter: "subid", destination_url: "", reward_credits: "10", instructions: "" };
+const emptyOffer = { title: "", description: "", provider: "CPA Grip", category: "general", tracking_parameter: "tracking_id", destination_url: "", reward_credits: "10", instructions: "" };
 
 export function AdminCpaPanel() {
   const queryClient = useQueryClient();
@@ -91,7 +91,7 @@ export function AdminCpaPanel() {
           <div className="min-w-0">
             <p className="font-medium">CPA Grip server postback endpoint</p>
             <code className="mt-1 block break-all text-xs text-muted-foreground">{typeof window === "undefined" ? "https://expertsteam.giize.com/api/cpa-grip/postback" : window.location.origin + "/api/cpa-grip/postback"}</code>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">In CPA Grip, map its click/sub-ID macro to <code>subid</code>, its unique conversion ID to <code>event_id</code>, and send the shared <code>key</code>. Configure the same secret as the server-only Vercel variable <code>CPA_GRIP_POSTBACK_SECRET</code>. Do not put the secret in a public offer URL.</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">In CPA Grip, send its offer <code>tracking_id</code> macro back as the postback parameter <code>subid</code>. Add a unique <code>event_id</code> if your account exposes one, and send the shared <code>key</code>. Configure the same secret as the server-only Vercel variable <code>CPA_GRIP_POSTBACK_SECRET</code>. Do not put the secret in a public offer URL.</p>
           </div>
           <Button type="button" size="sm" variant="outline" onClick={() => {
             const endpoint = window.location.origin + "/api/cpa-grip/postback";
@@ -102,7 +102,7 @@ export function AdminCpaPanel() {
           <div className="space-y-2"><Label htmlFor="cpa-title">Offer title</Label><Input id="cpa-title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Complete a partner survey" /></div>
           <div className="space-y-2"><Label htmlFor="cpa-provider">CPA network / provider</Label><Input id="cpa-provider" value={form.provider} onChange={e => setForm({ ...form, provider: e.target.value })} placeholder="CPA Grip" /></div>
           <div className="space-y-2"><Label htmlFor="cpa-category">Category</Label><Input id="cpa-category" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="Survey, app install, signup…" /></div>
-          <div className="space-y-2"><Label htmlFor="cpa-tracking-parameter">Tracking parameter</Label><Input id="cpa-tracking-parameter" value={form.tracking_parameter} onChange={e => setForm({ ...form, tracking_parameter: e.target.value.replace(/[^A-Za-z0-9_]/g, "") })} placeholder="subid" /></div>
+          <div className="space-y-2"><Label htmlFor="cpa-tracking-parameter">Tracking parameter</Label><Input id="cpa-tracking-parameter" value={form.tracking_parameter} onChange={e => setForm({ ...form, tracking_parameter: e.target.value.replace(/[^A-Za-z0-9_]/g, "") })} placeholder="tracking_id" /></div>
           <div className="space-y-2"><Label htmlFor="cpa-reward">Credits awarded</Label><Input id="cpa-reward" type="number" min="1" step="1" value={form.reward_credits} onChange={e => setForm({ ...form, reward_credits: e.target.value })} /></div>
           <div className="space-y-2 md:col-span-2"><Label htmlFor="cpa-url">Partner offer URL (HTTPS)</Label><Input id="cpa-url" value={form.destination_url} onChange={e => setForm({ ...form, destination_url: e.target.value })} placeholder="Paste the CPA Grip offer URL; tracking is appended automatically" /></div>
           <div className="space-y-2 md:col-span-2"><Label htmlFor="cpa-description">Description</Label><Textarea id="cpa-description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} /></div>
