@@ -80,6 +80,12 @@ import { buildSrcDocWithConsole, STARTER_FILES, type ProjectFiles } from "@/lib/
 type Message = { role: "user" | "assistant"; content: string };
 type ProjectTreeNode = { name: string; path: string; folder: boolean; children: ProjectTreeNode[] };
 
+function isInternalAgentWorkspaceFile(filePath: string) {
+  const parts = filePath.split("/");
+  return parts.some((part) => part.startsWith(".experts-") || [".kilo", ".kilocode", ".opencode"].includes(part)) ||
+    filePath === ".config/kilo/kilo.jsonc";
+}
+
 function buildProjectFileTree(filePaths: string[]): ProjectTreeNode[] {
   const root: ProjectTreeNode[] = [];
   for (const filePath of filePaths) {
@@ -2012,9 +2018,14 @@ export function CodeAgent() {
   }
 
   function openProject(project: ProjectRow) {
-    const savedFiles = project.files && Object.keys(project.files).length ? project.files : null;
+    // Older workspaces may already contain terminal bookkeeping from before
+    // the server-side filter was added. Hide those entries when restoring too.
+    const cleanedFiles = Object.fromEntries(
+      Object.entries(project.files ?? {}).filter(([filePath]) => !isInternalAgentWorkspaceFile(filePath)),
+    ) as ProjectFiles;
+    const savedFiles = Object.keys(cleanedFiles).length ? cleanedFiles : null;
     if (!savedFiles) {
-      toast.error("This saved project has no recoverable files. It was not replaced with a new starter project.");
+      toast.error("This saved project has no recoverable source files. No new starter project was created.");
       return;
     }
     resetRuntimeForProjectChange();
@@ -2025,7 +2036,7 @@ export function CodeAgent() {
     setFiles(savedFiles);
     const savedMessages = Array.isArray(project.messages) ? (project.messages as Message[]) : [];
     setMessages(savedMessages);
-    setActiveFile(Object.keys(project.files ?? {})[0] ?? "index.html");
+    setActiveFile(Object.keys(savedFiles)[0] ?? "index.html");
     setGithubRepo(project.github_repo?.split("/").pop() ?? "");
     setLogs([]);
     switchPanel("preview");
