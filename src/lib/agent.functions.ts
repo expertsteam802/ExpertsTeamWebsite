@@ -85,7 +85,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     let parsed: URL;
     try {
       parsed = new URL(data.repoUrl);
@@ -230,6 +230,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
       }
     }
     if (!Object.keys(files).length) throw new Error("No readable source files could be imported.");
+    await assertBuilderResourcePolicy(context.supabase, context.userId, files);
     return {
       name: metadata.name || repo,
       repoUrl: metadata.html_url || "https://github.com/" + owner + "/" + repo,
