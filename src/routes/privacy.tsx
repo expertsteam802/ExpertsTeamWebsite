@@ -76,10 +76,6 @@ function PrivacyPage() {
               notices. See{" "}
               <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noreferrer" className="text-primary underline">
                 Google's partner-sites privacy information
-              </a>{" "}
-              and{" "}
-              <a href="https://monetag.com/privacy/" target="_blank" rel="noreferrer" className="text-primary underline">
-                Monetag's privacy policy
               </a>
               . You can manage Google ad personalisation through{" "}
               <a href="https://myadcenter.google.com/" target="_blank" rel="noreferrer" className="text-primary underline">
@@ -102,8 +98,8 @@ function PrivacyPage() {
           <Card className="p-5 sm:p-6">
             <h2 className="font-display text-lg font-semibold">5. Cookies and choices</h2>
             <p className="mt-2 text-sm leading-7 text-muted-foreground">
-              Essential browser storage supports sign-in, security and preferences. Google AdSense,
-              Monetag and embedded media may use cookies or similar technologies. Where applicable
+              Essential browser storage supports sign-in, security and preferences. Google AdSense
+              and embedded media may use cookies or similar technologies. Where applicable
               law requires prior consent for non-essential storage or advertising technologies, the
               relevant tags must not run until valid consent has been obtained. Google requires a
               Google-certified consent management platform for personalised ads in the EEA, UK and
