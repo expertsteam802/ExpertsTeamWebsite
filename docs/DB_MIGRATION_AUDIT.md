@@ -118,6 +118,14 @@ Verification performed against the connected project:
 - The test transactions left no temporary conversations, messages, stories or storage objects behind.
 - Generated TypeScript definitions were refreshed for the new tables.
 
+## Production audit follow-up — 2026-11-23
+
+- Applied and committed `20261123002000_add_content_reports_reviewed_by_index_and_merge_select_policy.sql`. It adds the missing `content_reports(reviewed_by)` foreign-key index and merges the admin/member SELECT policies into one equivalent policy. Live SQL verification confirmed the index and resulting policy.
+- The remaining RLS-without-policy findings are intentional: `private.guest_ai_usage` is accessed only by the server's service role, and the malformed legacy relation `public."public.community_posts"` has client privileges revoked. The real `public.community_posts` table has public-read and authenticated owner-write policies.
+- The six SECURITY DEFINER warnings are not automatically vulnerabilities. Their execute grants are limited to authenticated/service_role, and each function is intended to perform a privileged operation with its own caller/role/ownership checks. Keep reviewing these checks when changing the functions; do not revoke them blindly because the app calls them.
+- Supabase Auth leaked-password protection remains disabled and must be enabled in the Supabase dashboard before broad public launch.
+- The advisor also reports 15 unused indexes. Do not drop them solely from this report; several may serve infrequent foreign-key or admin workflows and need workload-aware review.
+
 ## Deployment and production verification — 2026-11-23
 
 - The active GitHub CI workflow is `.github/workflows/ci.yml`. It installs dependencies, runs `npm test`, `npm run lint`, and `npm run build`.
