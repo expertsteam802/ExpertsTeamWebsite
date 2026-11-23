@@ -204,7 +204,6 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/connections': typeof AuthenticatedConnectionsRoute
-  '/connections': typeof AuthenticatedConnectionsRoute
   '/apps/$slug': typeof AppsSlugRoute
   '/api/ai/stream': typeof ApiAiStreamRoute
 }
@@ -233,6 +232,7 @@ export interface FileRoutesByTo {
   '/videos': typeof VideosRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/connections': typeof AuthenticatedConnectionsRoute
   '/apps/$slug': typeof AppsSlugRoute
   '/api/ai/stream': typeof ApiAiStreamRoute
 }
@@ -295,7 +295,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/connections'
-    | '/connections'
     | '/apps/$slug'
     | '/api/ai/stream'
   fileRoutesByTo: FileRoutesByTo
@@ -324,6 +323,7 @@ export interface FileRouteTypes {
     | '/videos'
     | '/admin'
     | '/dashboard'
+    | '/connections'
     | '/apps/$slug'
     | '/api/ai/stream'
   id:
