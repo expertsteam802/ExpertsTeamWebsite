@@ -2576,7 +2576,7 @@ export function CodeAgent() {
               </button>
             </div>
 
-            <div className="px-3">
+            <div className="expert-agent-projects-section shrink-0 px-3">
               <div className="mb-2 flex items-center justify-between px-1">
                 <span className="flex items-center gap-2 text-xs font-semibold text-slate-300">
                   <Folder className="h-3.5 w-3.5 text-cyan-300" />
@@ -2662,8 +2662,8 @@ export function CodeAgent() {
 
             <div className="mx-3 my-4 border-t border-white/[0.07]" />
 
-            <div className="px-3">
-              <div className="mb-2 flex items-center justify-between px-1">
+            <div className="expert-agent-files-section flex min-h-0 flex-1 flex-col overflow-hidden px-3">
+              <div className="mb-2 flex shrink-0 items-center justify-between px-1">
                 <span className="flex items-center gap-2 text-xs font-semibold text-slate-300">
                   <Folder className="h-3.5 w-3.5 text-amber-300" />
                   Project files
