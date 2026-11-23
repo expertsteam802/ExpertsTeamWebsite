@@ -1216,3 +1216,71 @@ html, body, .et-shell, .et-topbar, .et-secondary-sidebar, .et-main,
   .expert-agent-assistant-drawer { overflow: hidden !important; }
   .expert-agent-sidebar-drawer { overflow-y: auto !important; }
 }
+
+
+/* Explorer refinement: independent project switcher, project list and file tree.
+   The sidebar itself must not scroll as one giant document. */
+.expert-agent-sidebar {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+.expert-agent-sidebar > .expert-agent-project-list,
+.expert-agent-sidebar .expert-agent-project-list {
+  flex: 0 1 auto;
+  max-height: min(22vh, 190px) !important;
+  min-height: 52px;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(125,211,252,.28) transparent;
+}
+.expert-agent-sidebar .expert-agent-file-tree {
+  flex: 1 1 0%;
+  min-height: 100px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(125,211,252,.28) transparent;
+  padding-bottom: 12px;
+}
+.expert-agent-sidebar .expert-agent-file-tree button {
+  max-width: 100%;
+}
+.expert-agent-sidebar .expert-agent-file-tree [class*="truncate"] {
+  min-width: 0;
+}
+@media (min-width: 1024px) {
+  .expert-agent-workspace-grid {
+    grid-template-columns: minmax(245px, 285px) 5px minmax(0, 1fr) !important;
+  }
+  .expert-agent-stage > .grid {
+    grid-template-columns: minmax(0, 1fr) 5px minmax(320px, 350px) !important;
+  }
+}
+@media (min-width: 1024px) and (max-width: 1350px) {
+  .expert-agent-workspace-grid {
+    grid-template-columns: minmax(220px, 245px) 5px minmax(0, 1fr) !important;
+  }
+  .expert-agent-stage > .grid {
+    grid-template-columns: minmax(0, 1fr) 5px minmax(290px, 315px) !important;
+  }
+}
+@media (max-width: 1023px) {
+  .expert-agent-sidebar-drawer {
+    position: absolute;
+    z-index: 60;
+    inset-block: 0;
+    left: 0;
+    width: min(88vw, 340px);
+    max-width: calc(100vw - 36px);
+    box-shadow: 24px 0 70px rgba(0,0,0,.48);
+  }
+}
+@media (max-width: 767px) {
+  .expert-agent-topbar select[aria-label="Switch project"] {
+    max-width: 128px !important;
+  }
+}
