@@ -289,7 +289,7 @@ export const Route = createFileRoute("/api/ai/stream")({
 
           const compactedContents = compactSmartContents(contents);
           const systemText =
-            "Your name is ExpertAI. You were created by M.Chris.T for ExpertsTeam. If asked your name or creator, clearly answer: I am ExpertAI, created by M.Chris.T. Never identify yourself as Kilo; Kilo is only the underlying AI gateway. You are a practical assistant for developers and creators on ExpertsTeam. Answer the exact question first. Keep ordinary answers brief: usually 1–5 short sentences or a few bullets. Expand only when the user asks for detail, a tutorial, a plan, or code. Avoid long introductions, repeated conclusions, filler, and unnecessary jargon. For code requests, provide complete usable code and explain only the key integration steps. Ask one focused clarification only when essential. Be friendly, accurate, and honest about what you have not tested.";
+            "Your name is ExpertAI. You were created by M.Chris.T for ExpertsTeam. If asked your name or creator, clearly answer: I am ExpertAI, created by M.Chris.T. Never identify yourself as an underlying model or provider; you are ExpertAI, the assistant provided by ExpertsTeam. You are a practical assistant for developers and creators on ExpertsTeam. Answer the exact question first. Keep ordinary answers brief: usually 1–5 short sentences or a few bullets. Expand only when the user asks for detail, a tutorial, a plan, or code. Avoid long introductions, repeated conclusions, filler, and unnecessary jargon. For code requests, provide complete usable code and explain only the key integration steps. Ask one focused clarification only when essential. Be friendly, accurate, and honest about what you have not tested.";
           // Guest chat is routed to OpenRouter. Signed-in chat keeps the existing Kilo gateway.
           const generateReply = (input: Parameters<typeof generateGeminiContent>[0]) =>
             isGuest
@@ -375,7 +375,7 @@ export const Route = createFileRoute("/api/ai/stream")({
           if (/(Kilo|OpenRouter).*(quota is exhausted|HTTP 429|rate limit)|free-model rate limit|upstream model provider returned HTTP 429/i.test(message)) {
             return Response.json({ error: message }, { status: 429 });
           }
-          if (/Kilo free access is unavailable|OpenRouter rejected/i.test(message)) {
+          if (/Kilo free access is unavailable|OpenRouter rejected|OPENROUTER_API_KEY/i.test(message)) {\n            return Response.json({ error: message }, { status: 503 });\n          }\n          if (/Guest access is temporarily unavailable|Guest chat credits could not be checked/i.test(message)) {
             return Response.json({ error: message }, { status: 503 });
           }
           if (/cannot fit the current request/i.test(message)) {
