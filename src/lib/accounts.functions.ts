@@ -35,20 +35,57 @@ export const deleteUserAccount = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: files, error: filesError } = await supabaseAdmin
-      .from("files")
-      .select("storage_path")
-      .eq("user_id", data.userId);
-    if (filesError)
-      throw new Error("Could not load the user's uploaded files: " + filesError.message);
+    const removeStoragePrefix = async (bucket: string, prefix: string) => {
+      const storage = supabaseAdmin.storage.from(bucket);
+      const pendingFolders = [prefix];
+      const objectPaths: string[] = [];
 
-    if (files?.length) {
-      const paths = files.map((file) => file.storage_path).filter(Boolean);
-      if (paths.length) {
-        const { error: storageError } = await supabaseAdmin.storage.from("uploads").remove(paths);
-        if (storageError)
-          throw new Error("Could not remove the user's uploaded files: " + storageError.message);
+      while (pendingFolders.length) {
+        const folder = pendingFolders.pop()!;
+        let offset = 0;
+        while (true) {
+          const { data: entries, error: listError } = await storage.list(folder, {
+            limit: 1000,
+            offset,
+          });
+          if (listError) {
+            throw new Error("Could not inspect " + bucket + " storage: " + listError.message);
+          }
+          for (const entry of entries ?? []) {
+            const objectPath = folder + "/" + entry.name;
+            if (entry.id === null) pendingFolders.push(objectPath);
+            else objectPaths.push(objectPath);
+          }
+          if (!entries || entries.length < 1000) break;
+          offset += entries.length;
+        }
       }
+
+      for (let offset = 0; offset < objectPaths.length; offset += 100) {
+        const { error: removeError } = await storage.remove(objectPaths.slice(offset, offset + 100));
+        if (removeError) {
+          throw new Error("Could not remove files from " + bucket + ": " + removeError.message);
+        }
+      }
+    };
+
+    // Remove all owner-scoped uploads, including profile images and project thumbnails,
+    // not only objects that still have a row in public.files.
+    for (const bucket of ["uploads", "personal-vault", "developer-vault", "workspace-media"]) {
+      await removeStoragePrefix(bucket, data.userId);
+    }
+
+    // Private message media is stored under conversation-id/user-id. Remove only
+    // this member's objects so the other participant's attachments are preserved.
+    const { data: memberships, error: membershipsError } = await supabaseAdmin
+      .from("direct_conversation_members")
+      .select("conversation_id")
+      .eq("user_id", data.userId);
+    if (membershipsError) {
+      throw new Error("Could not inspect the user's private message media: " + membershipsError.message);
+    }
+    for (const membership of memberships ?? []) {
+      await removeStoragePrefix("direct-messages", membership.conversation_id + "/" + data.userId);
     }
 
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
