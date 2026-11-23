@@ -1049,24 +1049,38 @@ export function CodeAgent() {
       toast.info("The CLI terminal is temporarily paused because the free Vercel Sandbox quota is exhausted. Your Agent Builder files remain saved.");
       return;
     }
-    // Reuse the already-running CLI sandbox when the user returns from Agent Chat.
-    // The terminal panel may have closed its WebSocket while hidden, but that must
-    // not create a replacement VM or restart the CLI process.
-    if (terminalConnection?.projectId === projectId) {
+    // Reuse a live socket. A saved connection object alone is not proof that
+    // the browser WebSocket is still open: the PTY can exit while the sandbox
+    // and its project files remain available.
+    const sameProjectSession = terminalConnection?.projectId === projectId;
+    if (sameProjectSession && terminalReady && terminalSocketRef.current?.readyState === WebSocket.OPEN) {
       setShowConnectionCinematic(false);
       setAgentPanelMode("terminal");
       terminalLastActivityRef.current = Date.now();
       return;
     }
+    // First launch / page refresh gets the connection animation. Reconnecting
+    // an existing workspace or switching projects happens quietly in the background.
     setConnectionProgress(0);
-    setShowConnectionCinematic(true);
+    setShowConnectionCinematic(!terminalConnection);
     try {
       const selectedCli = await chooseTerminalCli();
       let nextFiles = files;
       const previousProjectId = terminalConnection?.projectId;
-      if (terminalConnection) {
+      if (terminalConnection && !sameProjectSession) {
         const syncedFiles = await closeTerminalSession();
         if (syncedFiles && previousProjectId === projectId) nextFiles = syncedFiles;
+      } else if (sameProjectSession && terminalConnection) {
+        // Save recoverable files if the sandbox is still reachable, but do not
+        // stop the workspace just to reconnect its terminal socket.
+        try {
+          const synced = await syncTerminalFiles({
+            data: { projectId: terminalConnection.projectId, sandboxName: terminalConnection.sandboxName },
+          });
+          nextFiles = synced.files;
+        } catch {
+          // Keep the last saved editor contents; the server will retry workspace startup.
+        }
       }
       const activeProjectId = await persist({ files: nextFiles });
       const connection = await connectTerminal({
@@ -2599,10 +2613,10 @@ export function CodeAgent() {
                         onClick={() => setPreviewExpanded((expanded) => !expanded)}
                         className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 text-[10px] font-semibold text-slate-300 transition hover:border-cyan-300/30 hover:bg-cyan-300/10 hover:text-cyan-100"
                         aria-label={previewExpanded ? "Restore preview height" : "Expand preview to full height"}
-                        title={previewExpanded ? "Restore preview" : "Expand preview vertically"}
+                        title={previewExpanded ? "Exit extended preview and return to Studio" : "Expand preview vertically"}
                       >
                         <Maximize2 className="h-3.5 w-3.5" />
-                        {previewExpanded ? "Restore" : "Expand"}
+                        {previewExpanded ? "Exit extended preview" : "Expand preview"}
                       </button>
                     </div>
                   </div>
