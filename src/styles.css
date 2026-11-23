@@ -994,3 +994,157 @@ html, body, .et-shell, .et-topbar, .et-secondary-sidebar, .et-main,
     min-height: 0 !important;
   }
 }
+
+
+/* ExpertsTeam Builder — cohesive Bolt-style workspace chrome.
+   Keep the existing blue/cyan brand accent while using compact, neutral
+   workbench surfaces, clear active states, and predictable panel sizing. */
+.expert-agent-shell {
+  --agent-bg: #080d16;
+  --agent-panel: #0d1420;
+  --agent-panel-raised: #121c2b;
+  --agent-line: rgba(148, 163, 184, .13);
+  --agent-muted: #8b98aa;
+  --agent-accent: #38bdf8;
+  --agent-accent-bright: #7dd3fc;
+  background: var(--agent-bg) !important;
+  color: #e7edf6 !important;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+.expert-agent-topbar {
+  min-height: 54px !important;
+  flex-wrap: nowrap !important;
+  gap: 12px !important;
+  padding: 7px 14px !important;
+  background: #0b111c !important;
+  border-bottom: 1px solid var(--agent-line) !important;
+  box-shadow: none !important;
+}
+.expert-agent-topbar .expert-agent-brand-mark {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 8px !important;
+}
+.expert-agent-topbar > div:first-child { min-width: 0; }
+.expert-agent-topbar > div:first-child > div:last-child { flex-wrap: wrap; row-gap: 3px; }
+.expert-agent-workspace-grid { background: var(--agent-bg); }
+.expert-agent-sidebar {
+  background: #0b111b !important;
+  border-color: var(--agent-line) !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148,163,184,.22) transparent;
+}
+.expert-agent-sidebar > div:first-child {
+  padding-top: 12px !important;
+  padding-bottom: 9px !important;
+}
+.expert-agent-sidebar .max-h-64 {
+  max-height: min(34vh, 360px);
+  scrollbar-width: thin;
+}
+.expert-agent-sidebar button { transition: background-color .16s ease, color .16s ease, border-color .16s ease; }
+.expert-agent-sidebar .bg-cyan-400\/10 {
+  background: rgba(56,189,248,.11) !important;
+  box-shadow: inset 2px 0 #38bdf8;
+}
+.expert-agent-sidebar .text-cyan-200 { color: #bae6fd !important; }
+.expert-agent-stage { background: #080d16; }
+.expert-agent-toolbar {
+  min-height: 46px !important;
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+  padding: 6px 10px !important;
+  background: #0b121e !important;
+  border-color: var(--agent-line) !important;
+}
+.expert-agent-toolbar > div { min-width: 0; }
+.expert-agent-workspace-tab {
+  min-height: 31px;
+  border: 1px solid transparent;
+  border-radius: 7px !important;
+  padding: 6px 10px !important;
+  white-space: nowrap;
+}
+.expert-agent-workspace-tab.bg-cyan-400\/10 {
+  color: #bae6fd !important;
+  background: rgba(56,189,248,.12) !important;
+  border-color: rgba(56,189,248,.18) !important;
+}
+.expert-agent-editor-tabs {
+  height: 38px !important;
+  background: #0b111b !important;
+  border-color: var(--agent-line) !important;
+}
+.expert-agent-editor-tabs > * { border-radius: 6px 6px 0 0; }
+.expert-agent-kilo-surface { background: #080d16; }
+.expert-agent-statusbar {
+  min-height: 27px;
+  padding: 4px 12px !important;
+  background: #0b111b !important;
+  border-color: var(--agent-line) !important;
+  color: #94a3b8 !important;
+  font-size: 10px;
+}
+.expert-agent-shell .cm-editor {
+  height: 100%;
+  background: #080d16 !important;
+  color: #dbe7f5 !important;
+  font-size: 13px;
+}
+.expert-agent-shell .cm-gutters {
+  background: #0a111c !important;
+  color: #64748b !important;
+  border-color: rgba(148,163,184,.09) !important;
+}
+.expert-agent-shell .cm-activeLine,
+.expert-agent-shell .cm-activeLineGutter { background: rgba(56,189,248,.055) !important; }
+.expert-agent-shell :is(input,select,textarea) {
+  color-scheme: dark;
+  border-color: rgba(148,163,184,.18) !important;
+  background-color: #0b1421 !important;
+}
+.expert-agent-shell :is(button,a):focus-visible,
+.expert-agent-shell :is(input,select,textarea):focus-visible {
+  outline: 2px solid rgba(56,189,248,.75);
+  outline-offset: 2px;
+}
+.expert-agent-shell .expert-agent-assistant,
+.expert-agent-shell .expert-agent-assistant-drawer {
+  background: #0b121e !important;
+  border-color: var(--agent-line) !important;
+}
+.expert-agent-shell .expert-agent-assistant-drawer {
+  box-shadow: -18px 0 54px rgba(0,0,0,.32);
+}
+.expert-agent-shell .expert-agent-canvas {
+  background: #080d16;
+}
+.expert-agent-shell .expert-agent-canvas iframe {
+  background: white;
+  box-shadow: 0 0 0 1px rgba(148,163,184,.12), 0 16px 48px rgba(0,0,0,.22);
+}
+.expert-agent-shell .expert-agent-mobile-backdrop {
+  background: rgba(2,6,14,.68);
+  backdrop-filter: blur(3px);
+}
+.expert-agent-shell :is(.rounded-xl,.rounded-2xl,.rounded-3xl)[class*="border"]:hover {
+  border-color: rgba(56,189,248,.22);
+  box-shadow: none;
+}
+@media (min-width: 768px) {
+  .expert-agent-shell { min-height: 0 !important; }
+  .expert-agent-sidebar { width: 100%; }
+}
+@media (max-width: 767px) {
+  .expert-agent-topbar { min-height: 52px !important; padding-inline: 10px !important; }
+  .expert-agent-topbar > div:first-child { flex: 1 1 auto; }
+  .expert-agent-toolbar { min-height: 42px !important; }
+  .expert-agent-toolbar > div:nth-child(2) { flex: 0 0 auto !important; order: initial !important; }
+  .expert-agent-workspace-tab { padding-inline: 8px !important; font-size: 11px !important; }
+  .expert-agent-statusbar { padding-inline: 8px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .expert-agent-shell *,
+  .expert-agent-shell *::before,
+  .expert-agent-shell *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}
