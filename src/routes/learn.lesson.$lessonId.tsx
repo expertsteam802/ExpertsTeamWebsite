@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, Lightbulb } from "lucide-react";
 
 import { LearningCodePlayground } from "@/components/learning-code-playground";
+import { MyLeadContentLocker } from "@/components/mylead-content-locker";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -162,6 +163,7 @@ function CodingLessonPage() {
           <h1 className="mt-2 font-display text-3xl font-bold sm:text-4xl">{lesson.title}</h1>
           <p className="mt-3 max-w-3xl text-muted-foreground">{lesson.summary}</p>
         </header>
+        <div className="mb-6"><MyLeadContentLocker /></div>
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
           <div className="space-y-5">
             <Card className="gap-3 p-5 sm:p-6">
