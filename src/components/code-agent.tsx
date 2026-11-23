@@ -2463,6 +2463,21 @@ export function CodeAgent() {
                 {dirty ? "• Unsaved changes" : "• Saved"}
               </span>
               <select
+                aria-label="Switch project"
+                title="Switch between your saved projects"
+                value={projectId ?? ""}
+                onChange={(event) => {
+                  const selected = projects.find((project) => project.id === event.target.value);
+                  if (selected) openProject(selected);
+                }}
+                className="h-7 max-w-[180px] rounded-lg border border-cyan-400/20 bg-[#0b1320] px-2 text-[11px] font-medium text-cyan-100"
+              >
+                <option value="" disabled>Select project…</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>{project.name}</option>
+                ))}
+              </select>
+              <select
                 aria-label="Project Supabase backend"
                 title="Use your own Supabase project for this app's browser data and storage."
                 value={cloudConnectionId ?? ""}
@@ -2547,7 +2562,7 @@ export function CodeAgent() {
         {/* Left sidebar */}
         {sidebarOpen && <button type="button" className="expert-agent-mobile-backdrop" onClick={() => setSidebarOpen(false)} aria-label="Close project explorer" />}
         {sidebarOpen && (
-          <aside className="expert-agent-sidebar expert-agent-sidebar-drawer flex min-h-0 flex-col overflow-y-auto border-b border-white/[0.08] bg-[#0b1320] lg:border-b-0 lg:border-r">
+          <aside className="expert-agent-sidebar expert-agent-sidebar-drawer flex min-h-0 flex-col overflow-hidden border-b border-white/[0.08] bg-[#0b1320] lg:border-b-0 lg:border-r">
             <div className="flex items-center justify-between px-4 pb-3 pt-4">
               <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
                 Workspace
@@ -2598,7 +2613,7 @@ export function CodeAgent() {
                 </div>
               </div>
 
-              <div className="max-h-64 space-y-1 overflow-y-auto">
+              <div className="expert-agent-project-list max-h-64 space-y-1 overflow-y-auto">
                 {projectsLoading && (
                   <p className="px-2 py-2 text-xs text-slate-500">Loading projects…</p>
                 )}
@@ -2662,7 +2677,7 @@ export function CodeAgent() {
                 </button>
               </div>
 
-              <div className="space-y-0.5">
+              <div className="expert-agent-file-tree min-h-0 flex-1 space-y-0.5 overflow-y-auto overscroll-contain pr-1">
                 {projectFileTree.length ? renderProjectTree(projectFileTree) : (
                   <p className="px-2 py-3 text-[11px] text-slate-500">No project files yet.</p>
                 )}
