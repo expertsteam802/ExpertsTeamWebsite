@@ -2016,7 +2016,7 @@ export function CodeAgent() {
       });
       setReferenceImages([]);
       if (modeOverride === "plan") {
-        const planMessage = "Plan ready for your review. No project files were changed.\\n\\n" + result.message;
+        const planMessage = "Plan ready for your review. No project files were changed.\n\n" + result.message;
         const finalMessages: Message[] = [...nextMessages, { role: "assistant", content: planMessage }];
         setPlanDraft(result.message);
         setMessages(finalMessages);
@@ -2991,7 +2991,7 @@ export function CodeAgent() {
                     <div ref={agentChatEndRef} />
                   </div>
                   {referenceImages.length > 0 && <div className="flex shrink-0 flex-wrap gap-2 border-t border-white/[0.06] px-3 pt-2">{referenceImages.map((image) => <span key={image.name} className="rounded-md bg-white/5 px-2 py-1 text-[10px] text-slate-300">{image.name}</span>)}</div>}
-                  {planDraft && <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-emerald-400/15 bg-emerald-400/[0.06] px-3 py-2"><span className="text-[10px] text-emerald-200">Plan ready · project files unchanged</span><div className="flex gap-2"><button type="button" onClick={() => setPlanDraft(null)} className="rounded-lg px-2.5 py-1.5 text-[10px] text-slate-400 hover:bg-white/5">Discard</button><button type="button" onClick={() => { const approved = planDraft; setPlanDraft(null); setAgentMode("build"); void sendPrompt("build", "Implement this approved plan. Follow the steps in order and verify the result:\\n\\n" + approved); }} disabled={busy} className="rounded-lg bg-emerald-400 px-3 py-1.5 text-[10px] font-semibold text-slate-950 disabled:opacity-40">Implement plan</button></div></div>}
+                  {planDraft && <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-emerald-400/15 bg-emerald-400/[0.06] px-3 py-2"><span className="text-[10px] text-emerald-200">Plan ready · project files unchanged</span><div className="flex gap-2"><button type="button" onClick={() => setPlanDraft(null)} className="rounded-lg px-2.5 py-1.5 text-[10px] text-slate-400 hover:bg-white/5">Discard</button><button type="button" onClick={() => { const approved = planDraft; setPlanDraft(null); setAgentMode("build"); void sendPrompt("build", "Implement this approved plan. Follow the steps in order and verify the result:\n\n" + approved); }} disabled={busy} className="rounded-lg bg-emerald-400 px-3 py-1.5 text-[10px] font-semibold text-slate-950 disabled:opacity-40">Implement plan</button></div></div>}
                   <div className="shrink-0 border-t border-white/[0.08] bg-[#0a1422] p-3">
                     <div className="rounded-2xl border border-white/10 bg-[#0c1727] p-2 focus-within:border-cyan-400/40">
                       <Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendPrompt(); } }} placeholder="Ask ExpertsTeam Agent to plan or build something…" className="min-h-[76px] resize-none border-0 bg-transparent text-xs text-white shadow-none focus-visible:ring-0" disabled={busy} />
