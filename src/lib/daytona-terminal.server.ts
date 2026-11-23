@@ -677,11 +677,11 @@ export async function startDaytonaProjectTerminal(
         "nohup node server.cjs > server.log 2>&1 < /dev/null &",
         bridgeDir,
         {
+          ...projectEnvironment,
           TERMINAL_TOKEN: token,
           TERMINAL_CWD: workdir,
           TERMINAL_PORT: String(TERMINAL_PORT),
           PATH: install.pathValue,
-          ...projectEnvironment,
         },
         15,
       );
