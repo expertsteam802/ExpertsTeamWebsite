@@ -93,6 +93,6 @@ export async function loadProjectPublicEnvironment(
   // Explicit project environment entries override the connection defaults.
   return {
     ...connectedProjectEnvironment,
-    ...Object.fromEntries(Object.entries(all).filter(([key]) => PUBLIC_BUILD_KEYS.has(key))),
+    ...Object.fromEntries(Object.entries(all).filter(([key]) => PUBLIC_BUILD_KEYS.has(key)).sort(([left], [right]) => left.localeCompare(right))),
   };
 }
