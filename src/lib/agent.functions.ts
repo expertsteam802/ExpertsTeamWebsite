@@ -513,6 +513,7 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
       projectId: z.string().uuid(),
       sandboxName: z.string().min(20).max(80),
       cli: z.enum(["kilo", "opencode", "aider"]),
+      mode: z.enum(["build", "plan"]).optional().default("build"),
       prompt: z.string().trim().min(1).max(200_000),
       referenceImages: z.array(referenceImageSchema).max(3).optional().default([]),
     }).parse(input),
@@ -554,13 +555,22 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
       : data.cli === "opencode"
         ? "opencode run " + quote(promptWithReferences)
         : "aider --yes --message " + quote(promptWithReferences);
-    const result = await runDaytonaProjectCommand(
-      terminalName,
-      "runuser -u experts-shell -- env HOME=/home/experts-shell USER=experts-shell LOGNAME=experts-shell " +
-        "PATH=/home/experts-shell/.local/bin:/home/experts-shell/.cargo/bin:/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin " +
-        commandWithReferences,
-    );
-    if (result.exitCode !== 0) {
+    const cliEnvironment = "runuser -u experts-shell -- env HOME=/home/experts-shell USER=experts-shell LOGNAME=experts-shell " +
+      "PATH=/home/experts-shell/.local/bin:/home/experts-shell/.cargo/bin:/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin ";
+    const executionCommand = data.mode === "plan"
+      ? [
+          'PLAN_DIR="$(mktemp -d /tmp/experts-plan-XXXXXX)" || exit 1',
+          'tar --exclude="./node_modules" --exclude="./.git" --exclude="./dist" --exclude="./build" --exclude="./.next" --exclude="./.experts-terminal-*" --exclude="./.experts-preview-*" -cf - . | tar -xf - -C "$PLAN_DIR" || { rm -rf "$PLAN_DIR"; exit 1; }',
+          'chmod -R a-w "$PLAN_DIR"',
+          '(cd "$PLAN_DIR" && ' + cliEnvironment + commandWithReferences + ')',
+          'PLAN_EXIT=$?',
+          'chmod -R u+w "$PLAN_DIR" 2>/dev/null || true',
+          'rm -rf "$PLAN_DIR"',
+          'exit "$PLAN_EXIT"',
+        ].join("\n")
+      : cliEnvironment + commandWithReferences;
+    const result = await runDaytonaProjectCommand(terminalName, executionCommand);
+    if (result.exitCode !== 0 && (data.mode !== "plan" || !result.stdout.trim())) {
       const detail = result.stderr || result.stdout || "The agent could not complete the request.";
       throw new Error(detail.slice(-6000));
     }
@@ -569,7 +579,7 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
       const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
       if (creditError) throw new Error(creditError.message);
     }
-    return { message: (result.stdout || "Your project update is complete.").slice(-12000), files: files.files };
+    return { message: (result.stdout || (data.mode === "plan" ? "The agent could not produce a plan." : "Your project update is complete.")).slice(-12000), files: files.files, mode: data.mode };
   });
 
 export const stopAgentPreview = createServerFn({ method: "POST" })
