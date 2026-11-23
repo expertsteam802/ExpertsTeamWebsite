@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 const PERSONAL_LINKS = [
   { to: "/messages", label: "Messages", icon: MessageCircle },
   { to: "/dashboard", label: "My dashboard", icon: LayoutDashboard },
-  { to: "/vault", label: "Personal Vault", icon: Archive },
+  { to: "/vault", label: "Personal Vault", icon: Archive },\n  { to: "/earn", label: "Earn AI credits", icon: Gift },
 ] as const;
 
 const MORE_LINKS = [
