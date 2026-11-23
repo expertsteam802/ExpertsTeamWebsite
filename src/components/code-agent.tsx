@@ -72,6 +72,7 @@ import { extractZipTextFiles } from "@/lib/zip-text-import";
 import type { Json } from "@/integrations/supabase/types";
 import {
   pushProjectToGithub,
+  listGitHubRepositories,
   importGitHubProject,
   publishAgentProject,
   runAgentTerminalPrompt,
@@ -313,6 +314,7 @@ export function CodeAgent() {
   const queryClient = useQueryClient();
   const runCliPrompt = useServerFn(runAgentTerminalPrompt);
   const push = useServerFn(pushProjectToGithub);
+  const listGithubRepos = useServerFn(listGitHubRepositories);
   const importGithub = useServerFn(importGitHubProject);
   const publish = useServerFn(publishAgentProject);
   const startPreview = useServerFn(startAgentPreview);
@@ -394,6 +396,8 @@ export function CodeAgent() {
   const [importingVault, setImportingVault] = useState(false);
   const [githubToken, setGithubToken] = useState("");
   const [githubRepo, setGithubRepo] = useState("");
+  const [githubRepositories, setGithubRepositories] = useState<{ fullName: string; private: boolean; url: string; defaultBranch: string }[]>([]);
+  const [loadingGithubRepositories, setLoadingGithubRepositories] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [assistantOpen, setAssistantOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(248);
@@ -1983,6 +1987,25 @@ export function CodeAgent() {
       toast.error(error instanceof Error ? error.message : "Could not import this Developer Vault project.");
     } finally {
       setImportingVault(false);
+    }
+  }
+
+  async function loadGithubRepositories() {
+    const token = githubAccessToken || githubToken.trim();
+    if (!token) {
+      toast.error("Connect GitHub first to load your repositories.");
+      return;
+    }
+    setLoadingGithubRepositories(true);
+    try {
+      const repositories = await listGithubRepos({ data: { token } });
+      setGithubRepositories(repositories);
+      if (!repositories.length) toast.info("No repositories with push access were found.");
+      else toast.success("Loaded " + repositories.length + " GitHub repositories.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not load GitHub repositories.");
+    } finally {
+      setLoadingGithubRepositories(false);
     }
   }
 
@@ -3722,14 +3745,36 @@ export function CodeAgent() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="github-repo">Repository name</Label>
+              <Label htmlFor="github-repo">Repository (owner/name)</Label>
               <Input
                 id="github-repo"
                 value={githubRepo}
                 onChange={(event) => setGithubRepo(event.target.value)}
-                placeholder="my-awesome-project"
+                placeholder="your-account/my-awesome-project"
                 className="border-white/10 bg-white/5"
               />
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="github-repository-picker">Your repositories</Label>
+                <Button type="button" size="sm" variant="outline" className="h-7 border-white/15 bg-white/5 px-2 text-xs text-white hover:bg-white/10" onClick={() => void loadGithubRepositories()} disabled={loadingGithubRepositories || !(githubAccessToken || githubToken.trim())}>
+                  {loadingGithubRepositories ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <Github className="mr-1.5 h-3 w-3" />}
+                  Refresh list
+                </Button>
+              </div>
+              <select
+                id="github-repository-picker"
+                value={githubRepo}
+                onChange={(event) => setGithubRepo(event.target.value)}
+                className="h-10 w-full rounded-md border border-white/10 bg-[#0b1320] px-3 text-sm text-slate-100"
+              >
+                <option value="">Choose a repository…</option>
+                {githubRepositories.map((repository) => (
+                  <option key={repository.fullName} value={repository.fullName}>
+                    {repository.fullName}{repository.private ? " · Private" : ""}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="github-token">GitHub personal access token</Label>
