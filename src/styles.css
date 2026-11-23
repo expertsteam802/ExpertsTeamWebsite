@@ -264,7 +264,8 @@
   background:
     radial-gradient(ellipse at 50% -18%, rgba(109, 40, 217, 0.14), transparent 42%), var(--agent-bg) !important;
   color: #e8edf7 !important;
-  min-height: 640px;
+  min-height: 0;
+  height: 100%;
   isolation: isolate;
 }
 .expert-agent-shell ::selection {
@@ -946,5 +947,50 @@ html, body, .et-shell, .et-topbar, .et-secondary-sidebar, .et-main,
   .expert-agent-sidebar-drawer,
   .expert-agent-assistant-drawer {
     scroll-behavior: auto;
+  }
+}
+
+
+/* Desktop viewport fitting: never force the full-screen builder taller than
+   the available browser viewport. Short laptop windows use a compact chrome
+   while the editor/preview/terminal work area takes the remaining space. */
+@media (min-width: 768px) {
+  .expert-agent-shell {
+    min-height: 0 !important;
+    height: 100%;
+  }
+}
+@media (min-width: 768px) and (max-height: 760px) {
+  .expert-agent-topbar {
+    min-height: 48px !important;
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+    gap: 8px !important;
+  }
+  .expert-agent-topbar .expert-agent-brand-mark {
+    width: 30px;
+    height: 30px;
+  }
+  .expert-agent-toolbar {
+    min-height: 42px !important;
+    padding-top: 3px !important;
+    padding-bottom: 3px !important;
+    gap: 5px !important;
+  }
+  .expert-agent-toolbar button {
+    min-height: 28px;
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+  }
+  .expert-agent-statusbar {
+    min-height: 26px !important;
+    padding-top: 3px !important;
+    padding-bottom: 3px !important;
+  }
+  .expert-agent-assistant {
+    min-height: 0 !important;
+  }
+  .expert-agent-sidebar {
+    min-height: 0 !important;
   }
 }
