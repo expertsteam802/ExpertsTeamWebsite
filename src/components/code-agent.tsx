@@ -414,6 +414,8 @@ export function CodeAgent() {
     }
   }, []);
   const [newFileOpen, setNewFileOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [quickOpenQuery, setQuickOpenQuery] = useState("");
   const [newFileName, setNewFileName] = useState("");
   const [renameFileOpen, setRenameFileOpen] = useState(false);
   const [renameFileFrom, setRenameFileFrom] = useState<string | null>(null);
@@ -1904,6 +1906,12 @@ export function CodeAgent() {
       const key = event.key.toLowerCase();
       const modifier = event.ctrlKey || event.metaKey;
       if (!modifier || event.altKey) return;
+      if (key === "p") {
+        event.preventDefault();
+        setQuickOpen(true);
+        setQuickOpenQuery("");
+        return;
+      }
       if (key === "s") {
         event.preventDefault();
         if (!saveMutation.isPending) saveMutation.mutate();
@@ -3574,6 +3582,53 @@ export function CodeAgent() {
       </Dialog>
 
       {/* New file dialog */}
+      <Dialog open={quickOpen} onOpenChange={setQuickOpen}>
+        <DialogContent className="border-slate-700 bg-[#101a29] p-0 text-white sm:max-w-xl">
+          <DialogHeader className="border-b border-white/10 px-4 py-3">
+            <DialogTitle className="flex items-center gap-2 text-sm">
+              <Command className="h-4 w-4 text-blue-300" /> Quick open file
+              <span className="ml-auto rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-normal text-slate-500">Ctrl P</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-3">
+            <Input
+              autoFocus
+              value={quickOpenQuery}
+              onChange={(event) => setQuickOpenQuery(event.target.value)}
+              placeholder="Search project files by name or path…"
+              className="border-white/10 bg-white/5 text-sm"
+            />
+            <div className="mt-3 max-h-[min(55vh,420px)] space-y-1 overflow-y-auto">
+              {Object.keys(files)
+                .filter((filePath) => filePath.toLowerCase().includes(quickOpenQuery.trim().toLowerCase()))
+                .sort((left, right) => left.localeCompare(right))
+                .slice(0, 100)
+                .map((filePath) => (
+                  <button
+                    key={filePath}
+                    type="button"
+                    onClick={() => {
+                      setOpenFileTabs((current) => current.includes(filePath) ? current : [...current, filePath]);
+                      setActiveFile(filePath);
+                      switchPanel("code");
+                      setQuickOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-slate-300 transition hover:bg-blue-400/10"
+                  >
+                    <FileCode2 className="h-3.5 w-3.5 shrink-0 text-blue-300" />
+                    <span className="min-w-0 flex-1 truncate">{filePath}</span>
+                    {activeFile === filePath && <span className="text-[10px] text-blue-300">Active</span>}
+                  </button>
+                ))}
+              {!Object.keys(files).some((filePath) => filePath.toLowerCase().includes(quickOpenQuery.trim().toLowerCase())) && (
+                <p className="px-3 py-8 text-center text-xs text-slate-500">No matching files found.</p>
+              )}
+            </div>
+            <p className="mt-2 text-[10px] text-slate-500">Showing up to 100 matches · Search includes folder paths</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={newFileOpen} onOpenChange={setNewFileOpen}>
         <DialogContent className="border-slate-700 bg-[#101a29] text-white sm:max-w-md">
           <DialogHeader>
