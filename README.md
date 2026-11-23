@@ -12,16 +12,9 @@ Google sign-in and email/password authentication are handled by Supabase Auth:
 
 Guest ExpertAI uses OpenRouter (`OPENROUTER_API_KEY`); signed-in chat and the coding agent currently use Kilo Gateway. Supabase provider, redirect, and server environment settings must match the active project. See `docs/AI_PROVIDER_SETUP.md` for the required server-only variables and guest-chat verification steps.
 
-## Production deployment to Vercel
+## Production deployment
 
-The repository includes a GitHub Actions workflow at `.github/workflows/vercel-deploy.yml` that deploys the `main` branch to Vercel production on every push and can also be run manually.
+The website is connected to Vercel. Pushes to `main` should trigger the production deployment through the Vercel Git integration. Verify the resulting deployment in the Vercel project dashboard before announcing a release. The repository's `.github/workflows/ci.yml` runs tests, lint and a production build; it does not deploy to Vercel.
 
-Before the workflow can deploy, add these three values in **GitHub → Settings → Secrets and variables → Actions → New repository secret**:
+Keep Vercel environment variables configured for the correct environments (Production, Preview and Development). AI provider keys and Supabase secret/service-role keys must remain server-only and must never use a `VITE_*` prefix.
 
-- `VERCEL_TOKEN`: create a token in your Vercel account settings.
-- `VERCEL_ORG_ID`: the Vercel team/account ID for the project.
-- `VERCEL_PROJECT_ID`: the project ID for this website.
-
-Find the project and team IDs in Vercel under **Project → Settings → General** (the project ID) and the Vercel team/account settings (the team ID). Keep the token private; do not commit it to the repository.
-
-After saving all three secrets, open **GitHub → Actions → Deploy to Vercel → Run workflow** and run it on `main`. The workflow pulls the production Vercel settings, builds the app, and deploys the prebuilt output to production. If any credential is missing, the workflow fails at its validation step and names the missing secret; it does not report a successful deployment.
