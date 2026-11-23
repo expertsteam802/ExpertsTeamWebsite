@@ -2925,7 +2925,7 @@ export function CodeAgent() {
         .expert-agent-light .expert-agent-assistant button:hover, .expert-agent-light .expert-agent-sidebar button:hover { background-color:#e5ebf4!important; }
         .expert-agent-kilo-surface .xterm { height: 100%; }
         .expert-agent-kilo-surface .xterm-viewport { overflow-y: scroll !important; overscroll-behavior: contain; scrollbar-width: thin; touch-action: pan-y; }
-        @media (prefers-reduced-motion: reduce) { .expert-agent-canvas { animation: none !important; } }\n      `}
+        @media (prefers-reduced-motion: reduce) { .expert-agent-canvas { animation: none !important; } }
         @media (min-width: 1280px) {
           .expert-agent-topbar { min-height:60px; padding-top:8px; padding-bottom:8px; flex-wrap:nowrap; }
           .expert-agent-toolbar { min-height:52px; flex-wrap:nowrap; padding-top:6px; padding-bottom:6px; gap:6px; }
@@ -2969,7 +2969,7 @@ export function CodeAgent() {
           .expert-agent-mobile-tabs button svg { width:16px; height:16px; }
           .expert-agent-assistant-drawer { left:5px; right:5px; }
         }
-</style>
+      `}</style>
 
       <Dialog open={thumbnailDialogOpen} onOpenChange={setThumbnailDialogOpen}>
         <DialogContent className="border-slate-700 bg-[#101a29] text-white sm:max-w-lg">
