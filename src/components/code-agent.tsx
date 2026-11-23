@@ -1743,16 +1743,7 @@ export function CodeAgent() {
         .single();
       if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
-      toast.success("Project duplicated", {
-        action: {
-          label: "Open copy",
-          onClick: () => {
-            const copy = projects.find((project) => project.id === data.id);
-            if (copy) openProject(copy);
-            else toast.info("The copy is saved. Refresh your project list to open it.");
-          },
-        },
-      });
+      toast.success("Project duplicated and saved. Refresh your project list to open the copy.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not duplicate this project.");
     }
@@ -3428,7 +3419,7 @@ export function CodeAgent() {
               <div key={checkpoint.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-slate-100">{checkpoint.name}</p>
-                  <p className="mt-1 text-[11px] text-slate-500">{new Date(checkpoint.created_at).toLocaleString()} · {Object.keys(checkpoint.files ?? {}).length} files</p>
+                  <p className="mt-1 text-[11px] text-slate-500">{new Date(checkpoint.created_at).toISOString().replace("T", " ").slice(0, 16)} UTC · {Object.keys(checkpoint.files ?? {}).length} files</p>
                 </div>
                 <Button size="sm" variant="outline" disabled={restoringCheckpointId !== null} onClick={() => void restoreCheckpoint(checkpoint)} className="shrink-0 border-cyan-400/20 text-cyan-100">
                   {restoringCheckpointId === checkpoint.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Restore"}
