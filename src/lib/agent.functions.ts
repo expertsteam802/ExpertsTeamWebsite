@@ -30,9 +30,9 @@ const codingRequest = z
   })
   .refine(
     ({ files }) =>
-      Object.keys(files).length <= 80 &&
-      Object.values(files).reduce((total, content) => total + content.length, 0) <= 200000,
-    "The project is too large to send to the agent.",
+      Object.keys(files).length <= 2_000 &&
+      Object.values(files).reduce((total, content) => total + content.length, 0) <= 25_000_000,
+    "The project exceeds the 25 MB agent request safety envelope.",
   )
   .refine(({ referenceImage, referenceImages }) => {
     const references = referenceImages?.length
@@ -267,9 +267,9 @@ const previewRequest = z
   })
   .refine(
     ({ files }) =>
-      Object.keys(files).length <= 400 &&
-      Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 3_000_000,
-    "The project is too large to preview.",
+      Object.keys(files).length <= 2_000 &&
+      Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 25_000_000,
+    "The project exceeds the 25 MB preview request safety envelope.",
   );
 
 async function assertProjectOwnership(
@@ -346,9 +346,9 @@ const publishRequest = z
   })
   .refine(
     ({ files }) =>
-      Object.keys(files).length <= 120 &&
-      Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 1_000_000,
-    "The project is too large to publish.",
+      Object.keys(files).length <= 2_000 &&
+      Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 25_000_000,
+    "The project exceeds the 25 MB publishing request safety envelope.",
   );
 
 export const stopAgentTerminal = createServerFn({ method: "POST" })
