@@ -1898,7 +1898,7 @@ export function CodeAgent() {
       }
     }, 1200);
     return () => window.clearTimeout(timeout);
-  }, [dirty, busy, user?.id, projectId, files, messages, name, cloudConnectionId, autoSaveStatus]);
+  }, [dirty, busy, user?.id, projectId, files, messages, name, cloudConnectionId, autoSaveStatus, persist]);
   useEffect(() => {
     const handleWorkspaceShortcut = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
@@ -1918,7 +1918,7 @@ export function CodeAgent() {
     };
     window.addEventListener("keydown", handleWorkspaceShortcut);
     return () => window.removeEventListener("keydown", handleWorkspaceShortcut);
-  }, [saveMutation.isPending, runtimeBusy]);
+  }, [saveMutation.isPending, saveMutation.mutate, runtimeBusy, runProject]);
 
   const githubMutation = useMutation({
     mutationFn: async () => {
