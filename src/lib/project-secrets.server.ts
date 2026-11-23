@@ -70,7 +70,29 @@ export async function loadProjectPublicEnvironment(
   projectId: string,
 ): Promise<Record<string, string>> {
   const all = await loadProjectEnvironment(supabase, userId, projectId);
-  return Object.fromEntries(
-    Object.entries(all).filter(([key]) => PUBLIC_BUILD_KEYS.has(key)),
-  );
+  const { data: project, error: projectError } = await supabase
+    .from("agent_projects")
+    .select("cloud_connection_id")
+    .eq("id", projectId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (projectError) throw new Error("Could not load the project's Supabase connection: " + projectError.message);
+
+  let connectedProjectEnvironment: Record<string, string> = {};
+  if (project?.cloud_connection_id) {
+    const { getUserSupabaseConnectionCredentials } = await import("./cloud-connections.server");
+    const credentials = await getUserSupabaseConnectionCredentials(project.cloud_connection_id, userId);
+    connectedProjectEnvironment = {
+      VITE_SUPABASE_URL: credentials.project_url,
+      VITE_SUPABASE_PUBLISHABLE_KEY: credentials.publishable_key,
+      NEXT_PUBLIC_SUPABASE_URL: credentials.project_url,
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: credentials.publishable_key,
+    };
+  }
+
+  // Explicit project environment entries override the connection defaults.
+  return {
+    ...connectedProjectEnvironment,
+    ...Object.fromEntries(Object.entries(all).filter(([key]) => PUBLIC_BUILD_KEYS.has(key))),
+  };
 }
