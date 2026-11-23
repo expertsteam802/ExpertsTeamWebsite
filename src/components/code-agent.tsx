@@ -386,7 +386,7 @@ export function CodeAgent() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [assistantOpen, setAssistantOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(248);
-  const [assistantWidth, setAssistantWidth] = useState(520);
+  const [assistantWidth, setAssistantWidth] = useState(400);
   useEffect(() => {
     if (window.matchMedia("(max-width: 767px)").matches) {
       setSidebarOpen(false);
@@ -2295,7 +2295,7 @@ export function CodeAgent() {
       if (target === "sidebar") {
         setSidebarWidth(Math.min(420, Math.max(190, startWidth + delta)));
       } else {
-        setAssistantWidth(Math.min(720, Math.max(380, startWidth - delta)));
+        setAssistantWidth(Math.min(560, Math.max(340, startWidth - delta)));
       }
     };
     const onUp = () => {
@@ -2716,7 +2716,7 @@ export function CodeAgent() {
                 <button
                   key={value}
                   onClick={() => switchPanel(value)}
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  className={`expert-agent-workspace-tab flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                     panel === value
                       ? "bg-cyan-400/10 text-cyan-200"
                       : "text-slate-500 hover:bg-white/[0.05] hover:text-slate-200"
@@ -3293,6 +3293,73 @@ export function CodeAgent() {
           .expert-agent-mobile-tabs button { font-size:9px; }
           .expert-agent-mobile-tabs button svg { width:16px; height:16px; }
           .expert-agent-assistant-drawer { left:5px; right:5px; }
+        }
+
+        /* Bolt-inspired, ExpertsTeam-branded builder workspace */
+        .expert-agent-shell {
+          --et-builder-accent: #5b9cff;
+          --et-builder-accent-soft: rgba(91,156,255,.13);
+          --et-builder-line: #273344;
+          background: #0b111b !important;
+          color: #e7edf6;
+          font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+          letter-spacing: -.01em;
+        }
+        .expert-agent-topbar {
+          min-height: 56px !important; padding: 7px 14px !important; gap: 10px !important;
+          background: #111a27 !important; border-color: var(--et-builder-line) !important;
+          box-shadow: 0 1px 0 rgba(0,0,0,.16);
+        }
+        .expert-agent-brand-mark { width: 30px !important; height: 30px !important; border-radius: 8px !important; }
+        .expert-agent-topbar .text-\\[10px\\].font-bold { letter-spacing: .12em; color: #8bbcff !important; }
+        .expert-agent-topbar .rounded-full.border.border-cyan-400\\/20 { border-color: rgba(91,156,255,.24) !important; background: var(--et-builder-accent-soft) !important; color: #a9ceff !important; }
+        .expert-agent-topbar .text-sm.font-semibold { font-size: 13px !important; font-weight: 600 !important; color: #edf3fb !important; }
+        .expert-agent-topbar select, .expert-agent-topbar button, .expert-agent-topbar a { border-radius: 7px !important; }
+        .expert-agent-workspace-grid { background: #0b111b; }
+        .expert-agent-sidebar { background: #101925 !important; border-color: var(--et-builder-line) !important; scrollbar-width: thin; scrollbar-color: #34445a transparent; }
+        .expert-agent-sidebar > div:first-child { padding-top: 13px; }
+        .expert-agent-sidebar .text-\\[10px\\].font-bold { color: #7f91a8 !important; letter-spacing: .13em; }
+        .expert-agent-sidebar .text-xs.font-semibold { color: #d7e1ef !important; }
+        .expert-agent-sidebar .max-h-64 { max-height: 34vh; }
+        .expert-agent-sidebar button { transition: background-color .14s ease, color .14s ease; }
+        .expert-agent-sidebar .mt-auto > div { background: #162235 !important; border-color: #2b3c53 !important; border-radius: 9px !important; }
+        .expert-agent-stage { background: #0b111b !important; }
+        .expert-agent-toolbar { min-height: 48px !important; padding: 6px 12px !important; gap: 8px !important; background: #111a27 !important; border-color: var(--et-builder-line) !important; }
+        .expert-agent-workspace-tab { min-height: 32px; border: 1px solid transparent; border-radius: 7px !important; padding: 6px 11px !important; color: #91a0b4 !important; }
+        .expert-agent-workspace-tab:hover { color: #e4edf8 !important; background: rgba(255,255,255,.045) !important; }
+        .expert-agent-workspace-tab[class*="bg-cyan-400/10"] { color: #b8d7ff !important; background: rgba(91,156,255,.14) !important; border-color: rgba(91,156,255,.2) !important; }
+        .expert-agent-toolbar > div:last-child button { border-radius: 7px !important; }
+        .expert-agent-toolbar > div:last-child button[class*="bg-emerald-500"] { background: #2563b8 !important; color: white !important; }
+        .expert-agent-toolbar > div:last-child button[class*="border-cyan-400"] { background: rgba(91,156,255,.14) !important; border-color: rgba(91,156,255,.28) !important; color: #c1dcff !important; }
+        .expert-agent-assistant { background: #111a27 !important; border-color: var(--et-builder-line) !important; }
+        .expert-agent-assistant > div:first-child { min-height: 52px; border-color: var(--et-builder-line) !important; }
+        .expert-agent-assistant > div:nth-child(2), .expert-agent-assistant > div:nth-child(3) { background: #0e1723 !important; border-color: var(--et-builder-line) !important; }
+        .expert-agent-assistant .bg-gradient-to-br { background: rgba(91,156,255,.15) !important; color: #a9ceff !important; }
+        .expert-agent-assistant textarea { min-height: 92px !important; line-height: 1.55 !important; }
+        .expert-agent-assistant .rounded-2xl.border.border-white\\/10 { background: #0d1622 !important; border-color: #33445b !important; border-radius: 11px !important; }
+        .expert-agent-assistant button[class*="bg-cyan-400"] { background: #4f91ed !important; color: #07111e !important; }
+        .expert-agent-assistant button[class*="bg-cyan-400"]:hover { background: #75adfa !important; }
+        .expert-agent-canvas { background: #e8edf4 !important; }
+        .expert-agent-canvas iframe { border-color: #2b3748 !important; border-radius: 8px !important; }
+        .expert-agent-statusbar { min-height: 30px; padding: 5px 12px !important; background: #111a27 !important; border-color: var(--et-builder-line) !important; }
+        .expert-agent-kilo-surface { background: #080e17 !important; }
+        .expert-agent-mobile-dock { background: rgba(14,22,34,.98) !important; border-color: var(--et-builder-line) !important; }
+        @media (min-width: 1280px) {
+          .expert-agent-topbar { flex-wrap: wrap !important; }
+          .expert-agent-workspace-grid { grid-template-columns: var(--sidebar-width) 5px minmax(0,1fr) !important; }
+          .expert-agent-sidebar { min-width: 0; }
+          .expert-agent-toolbar { flex-wrap: nowrap !important; }
+          .expert-agent-assistant { min-width: 340px; }
+        }
+        @media (max-width: 1279px) { .expert-agent-assistant-drawer { background: #111a27 !important; } }
+        @media (max-width: 767px) {
+          .expert-agent-topbar { background: #111a27 !important; }
+          .expert-agent-sidebar-drawer { background: #101925 !important; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .expert-agent-shell *, .expert-agent-shell *::before, .expert-agent-shell *::after {
+            scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+          }
         }
       `}</style>
 
