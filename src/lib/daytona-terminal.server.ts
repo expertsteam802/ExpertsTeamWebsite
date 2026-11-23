@@ -790,7 +790,7 @@ export async function writeDaytonaProjectReferenceImages(
     const safeName = image.name.replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 100) || "reference";
     const filename = String(index + 1).padStart(2, "0") + "-" + safeName + "." + extension;
     const destination = path.join(directory, filename);
-    uploaded.push(path.relative(workdir, destination));
+    uploaded.push(destination);
     return { destination, source: data };
   });
   await uploadFiles(sandbox, files);
