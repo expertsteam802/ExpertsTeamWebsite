@@ -2791,7 +2791,8 @@ export function CodeAgent() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-semibold text-cyan-200">Expert 1.0</span>\n                  <button type="button" onClick={() => setAssistantOpen(false)} className="expert-agent-mobile-close rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Close builder panel"><X className="h-4 w-4" /></button>
+                  <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-semibold text-cyan-200">Expert 1.0</span>
+                  <button type="button" onClick={() => setAssistantOpen(false)} className="expert-agent-mobile-close rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Close builder panel"><X className="h-4 w-4" /></button>
                 </div>
               </div>
               <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/[0.07] bg-[#0a1422] px-3 py-2">
