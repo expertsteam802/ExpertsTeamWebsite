@@ -21,10 +21,24 @@ export async function loadProjectFiles(projectId: string): Promise<ProjectFiles>
       .maybeSingle();
     if (legacyError) throw legacyError;
     const snapshot = legacy?.files;
-    if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) return {};
-    return Object.fromEntries(
-      Object.entries(snapshot).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
-    );
+    const recoveredSnapshot =
+      snapshot && typeof snapshot === "object" && !Array.isArray(snapshot)
+        ? Object.fromEntries(
+            Object.entries(snapshot).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+          )
+        : {};
+    if (Object.keys(recoveredSnapshot).length) return recoveredSnapshot;
+
+    // If the legacy JSON snapshot has already been cleared but a previous
+    // migration or interrupted deployment left file rows behind, recover
+    // from those rows rather than treating the workspace as empty.
+    const { data: recoveredRows, error: recoveredRowsError } = await supabase
+      .from("agent_project_files")
+      .select("file_path,content")
+      .eq("project_id", projectId)
+      .order("file_path", { ascending: true });
+    if (recoveredRowsError) throw recoveredRowsError;
+    return Object.fromEntries((recoveredRows ?? []).map((row) => [row.file_path, row.content]));
   }
 
   const { data, error } = await supabase
