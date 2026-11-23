@@ -2753,8 +2753,12 @@ export function CodeAgent() {
                 onClick={() => {
                   const linkedRepo = projects.find((project) => project.id === projectId)?.github_repo;
                   if (linkedRepo) {
-                    const match = linkedRepo.match(/github\\.com\\/[^/]+\\/([^/]+)/i);
-                    if (match?.[1]) setGithubRepo(match[1].replace(/\\.git$/i, ""));
+                    try {
+                      const repoName = new URL(linkedRepo).pathname.split("/").filter(Boolean).at(-1)?.replace(/\.git$/i, "");
+                      if (repoName) setGithubRepo(repoName);
+                    } catch {
+                      // A malformed legacy repository URL should not block opening GitHub settings.
+                    }
                   }
                   setGithubOpen(true);
                 }}
