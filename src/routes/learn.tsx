@@ -5,6 +5,7 @@ import { BookOpen, FileText, GraduationCap, Search, Video } from "lucide-react";
 
 import { AddVideoDialog } from "@/components/add-video-dialog";
 import { FileGrid, type CommunityFile } from "@/components/file-grid";
+import { MyLeadContentLocker } from "@/components/mylead-content-locker";
 import { PageShell } from "@/components/layout/page-shell";
 import { UploadDialog } from "@/components/upload-dialog";
 import { VideoGrid, type VideoItem } from "@/components/video-grid";
@@ -158,6 +159,7 @@ function LearnPage() {
                   {filteredFiles.length} resources
                 </span>
               </div>
+              <div className="mb-4"><MyLeadContentLocker /></div>
               <div className="mb-4 flex items-center gap-2 rounded-xl border border-border bg-card/70 px-3"><Search className="h-4 w-4 shrink-0 text-muted-foreground" /><Input value={resourceSearch} onChange={(event) => setResourceSearch(event.target.value)} placeholder="Search books, files and learning resources…" className="border-0 bg-transparent shadow-none focus-visible:ring-0" /></div>
               {filesLoading ? (
                 <Card className="p-8 text-sm text-muted-foreground">Loading books and files…</Card>
@@ -190,6 +192,7 @@ function LearnPage() {
                 </div>
                 <AddVideoDialog category="lesson" triggerLabel="Add learning video" />
               </div>
+              <div className="mb-4"><MyLeadContentLocker /></div>
               <div className="mb-4 flex items-center gap-2 rounded-xl border border-border bg-card/70 px-3"><Search className="h-4 w-4 shrink-0 text-muted-foreground" /><Input value={resourceSearch} onChange={(event) => setResourceSearch(event.target.value)} placeholder="Search learning videos by title or creator…" className="border-0 bg-transparent shadow-none focus-visible:ring-0" /></div>
               {videosLoading ? (
                 <Card className="p-8 text-sm text-muted-foreground">Loading videos…</Card>
@@ -209,6 +212,7 @@ function LearnPage() {
                   A simple path from the basics to building a real app.
                 </p>
               </div>
+              <div className="mb-4"><MyLeadContentLocker /></div>
               <div className="grid gap-4 sm:grid-cols-2">
                 {LESSONS.map((lesson, index) => (
                   <a
