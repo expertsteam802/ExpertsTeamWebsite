@@ -13,13 +13,15 @@ Without the encryption key, save operations fail closed. Do not rotate the key u
 
 ## Connecting a user's own Supabase project
 
-In ExpertAI Studio, open a project and choose **Environment**. Add the credentials for that project's own Supabase instance:
+Open **Connections & Integrations** and connect the Supabase project you own. ExpertsTeam verifies the URL and public key, stores the publishable key with the connection metadata, and stores the optional server secret in Supabase Vault. Then select that connection in the ExpertAI Studio project header. The selected project's public URL and publishable key are passed into its Daytona preview and static production build. Use **Environment** for other project-specific variables or explicit public overrides.
+
+For a Vite or Next.js app configured manually, the public variable names are:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY` (or `VITE_SUPABASE_ANON_KEY` for the legacy public anon key)
 - `SUPABASE_SECRET_KEY` only for future server-side operations that genuinely require elevated access
 
-Never add a service-role/secret key to a browser-visible `VITE_*` variable. The platform stores the values encrypted in its own control-plane database; the Supabase URL and keys still point to the project owner's separate Supabase project. They are not written into project source files.
+Never add a service-role/secret key to a browser-visible `VITE_*` variable. The platform stores the connection metadata in its control-plane database and stores the optional secret in Supabase Vault; the Supabase URL and keys still point to the project owner's separate Supabase project. They are not written into project source files.
 
 ## Current implementation boundary
 
