@@ -303,7 +303,8 @@ const fileIcon = (name: string) => {
 };
 
 export function CodeAgent() {
-  const { user, profile, isAdmin, isDeveloper } = useAuth();
+  const { user, session, profile, isAdmin, isDeveloper } = useAuth();
+  const githubAccessToken = (session as (typeof session & { provider_token?: string }) | null)?.provider_token ?? "";
   const terminalUsername = (profile?.username || user?.email?.split("@")[0] || "user")
     .replace(/[^a-zA-Z0-9_-]/g, "")
     .slice(0, 39) || "user";
@@ -1820,7 +1821,7 @@ export function CodeAgent() {
   const githubMutation = useMutation({
     mutationFn: async () => {
       const result = await push({
-        data: { token: githubToken, repo: githubRepo, files },
+        data: { token: githubAccessToken || githubToken, repo: githubRepo, files },
       });
       if (!result.ok) throw new Error(result.error || "GitHub push failed");
       await persist({ extra: { github_repo: result.url } });
@@ -1943,6 +1944,18 @@ export function CodeAgent() {
     }
   }
 
+  async function connectGitHubAccount() {
+    const { data, error } = await supabase.auth.linkIdentity({
+      provider: "github",
+      options: { redirectTo: window.location.href, scopes: "repo" },
+    });
+    if (error) {
+      toast.error(error.message || "Could not start GitHub authorization. Enable GitHub as an OAuth provider in Supabase first.");
+      return;
+    }
+    if (data.url) window.location.assign(data.url);
+  }
+
   async function cloneGithubRepository() {
     if (!user || importingRepo) return;
     const repoUrl = importRepoUrl.trim();
@@ -1955,7 +1968,7 @@ export function CodeAgent() {
       // Preserve the workspace currently open before switching to the imported repository.
       if (dirty) await persist();
       const imported = await importGithub({
-        data: { repoUrl, token: importToken.trim() || undefined },
+        data: { repoUrl, token: githubAccessToken || importToken.trim() || undefined },
       });
       const { data, error } = await supabase
         .from("agent_projects")
@@ -3442,15 +3455,18 @@ export function CodeAgent() {
                 placeholder="Optional token for private repositories"
                 className="border-white/10 bg-white/5"
               />
+              <Button type="button" variant="outline" className="w-full border-white/15 bg-white/5 text-white hover:bg-white/10" onClick={() => void connectGitHubAccount()}>
+                <Github className="mr-2 h-4 w-4" />{githubAccessToken ? "GitHub connected" : "Connect GitHub for private repositories"}
+              </Button>
               <p className="text-[11px] leading-5 text-slate-500">
-                Public repositories can be imported without a token. A token is used only for this
-                import and is never saved.
+                Public repositories work without authorization. Connecting GitHub uses the OAuth
+                session token; a one-time token can still be pasted above if needed.
               </p>
             </div>
             <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-3 text-xs leading-5 text-slate-400">
-              Imports up to 400 text files and 3 MB of source text per project (maximum 500 KB per
-              file). Generated folders, binary assets and secret files are skipped. Your GitHub
-              repository is not modified.
+              Imports up to 2,000 text files and 25 MB of source text per project (maximum 10 MB per
+              file, subject to the cloud runtime's own limits). Generated folders, binary assets and
+              secret files are skipped. Your GitHub repository is not modified.
             </div>
             <Button
               className="w-full bg-white text-slate-950 hover:bg-slate-200"
@@ -3499,14 +3515,17 @@ export function CodeAgent() {
                 placeholder="Paste token for this push"
                 className="border-white/10 bg-white/5"
               />
+              <Button type="button" variant="outline" className="w-full border-white/15 bg-white/5 text-white hover:bg-white/10" onClick={() => void connectGitHubAccount()}>
+                <Github className="mr-2 h-4 w-4" />{githubAccessToken ? "GitHub connected" : "Connect GitHub account"}
+              </Button>
               <p className="text-[11px] leading-5 text-slate-500">
-                The token is sent to the server for this operation and is not saved in your project.
-                Never share it with anyone.
+                OAuth is preferred. A one-time personal access token is only used for this operation
+                and is not saved in your project.
               </p>
             </div>
             <Button
               className="w-full bg-white text-slate-950 hover:bg-slate-200"
-              disabled={githubMutation.isPending || !githubToken.trim() || !githubRepo.trim()}
+              disabled={githubMutation.isPending || !(githubAccessToken || githubToken.trim()) || !githubRepo.trim()}
               onClick={() => githubMutation.mutate()}
             >
               {githubMutation.isPending ? (
