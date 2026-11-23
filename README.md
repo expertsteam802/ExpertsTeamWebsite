@@ -1,4 +1,4 @@
-Guest ExpertAI chat uses OpenRouter through a server-side adapter; signed-in ExpertAI and the coding agent currently use the Kilo AI Gateway. Guest chat requires `OPENROUTER_API_KEY` and server-side Supabase service credentials. Keep every provider key server-only: never prefix it with `VITE_`, expose it to the browser, or commit it. OpenRouter's free-model quotas are shared by the configured API account and can change; Supabase separately enforces the guest allowance.
+Guest ExpertAI chat tries Groq first and falls back to OpenRouter through a server-side adapter; signed-in ExpertAI and the coding agent use the configured server-side AI gateway. Guest chat requires `GROQ_API_KEY` or `OPENROUTER_API_KEY`, plus server-side Supabase service credentials for guest limits. Keep every provider key server-only: never prefix it with `VITE_`, expose it to the browser, or commit it. Provider quotas and free-model availability can change; Supabase separately enforces the guest allowance.
 
 ## Authentication configuration
 
@@ -10,7 +10,7 @@ Google sign-in and email/password authentication are handled by Supabase Auth:
 - Under **Authentication → URL Configuration**, set the site URL and allow the local app URL (`http://localhost:5173/**`) and your deployed app URL as redirects.
 - To allow users to sign up without verifying their email, disable **Confirm email** under **Authentication → Providers → Email** in Supabase. With confirmation enabled, Supabase does not create an authenticated session after signup.
 
-Guest ExpertAI uses OpenRouter (`OPENROUTER_API_KEY`); signed-in chat and the coding agent currently use Kilo Gateway. Supabase provider, redirect, and server environment settings must match the active project. See `docs/AI_PROVIDER_SETUP.md` for the required server-only variables and guest-chat verification steps.
+Guest ExpertAI tries Groq (`GROQ_API_KEY`) first and uses OpenRouter (`OPENROUTER_API_KEY`) as fallback; signed-in chat and the coding agent use the configured server-side AI gateway. Supabase provider, redirect, and server environment settings must match the active project. See `docs/AI_PROVIDER_SETUP.md` for the required server-only variables and guest-chat verification steps.
 
 ## Production deployment
 
