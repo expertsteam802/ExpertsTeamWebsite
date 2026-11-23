@@ -21,7 +21,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { fileIconFor } from "@/lib/file-icons";
 import { formatBytes, formatDate } from "@/lib/format";
-import { openMonetagPopup } from "@/lib/monetag";
 import { signedUrlFor } from "@/lib/upload";
 
 export type CommunityFile = {
@@ -45,22 +44,14 @@ export function FileGrid({ files }: { files: CommunityFile[] }) {
   const { user, isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<CommunityFile | null>(null);
-  const [adOpenedFor, setAdOpenedFor] = useState<Set<string>>(() => new Set());
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("0");
   const [editSourceUrl, setEditSourceUrl] = useState("");
   const [editThumbnailUrl, setEditThumbnailUrl] = useState("");
   function handleDownloadClick(file: CommunityFile) {
-    if (!adOpenedFor.has(file.id)) {
-      if (!openMonetagPopup()) {
-        toast.error("Allow pop-ups, then click again to continue.");
-        return;
-      }
-      setAdOpenedFor((current) => new Set(current).add(file.id));
-      toast.info("Your ad opened in a separate window. Click again to continue to the resource.");
-      return;
-    }
+    // Do not gate user downloads behind a direct-link popup. Monetag placements
+    // are loaded independently on approved public content pages.
     void requestDownload(file);
   }
 
