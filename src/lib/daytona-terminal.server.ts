@@ -291,7 +291,10 @@ export async function startDaytonaProjectPreview(
     let oldManifest: Record<string, string> = {};
     try { oldManifest = oldText ? JSON.parse(oldText) as Record<string, string> : {}; } catch { oldManifest = {}; }
     const nextManifest = Object.fromEntries(entries.map(([filePath, content]) => [filePath, createHash("sha256").update(content).digest("hex")]));
-    const removed = Object.keys(oldManifest).filter((filePath) => !(filePath in sourceFiles));
+    const publicEnvironmentHash = createHash("sha256").update(JSON.stringify(projectEnvironment)).digest("hex");
+    const environmentChanged = oldManifest["__experts_public_environment__"] !== publicEnvironmentHash;
+    nextManifest["__experts_public_environment__"] = publicEnvironmentHash;
+    const removed = Object.keys(oldManifest).filter((filePath) => filePath !== "__experts_public_environment__" && !(filePath in sourceFiles));
     if (removed.length) await command(sandbox, "rm -rf -- " + removed.map((filePath) => shellQuote(path.join(workdir, filePath))).join(" "), workdir, undefined, 45);
     const changed = entries.filter(([filePath]) => oldManifest[filePath] !== nextManifest[filePath]);
     if (changed.length) {
@@ -302,6 +305,9 @@ export async function startDaytonaProjectPreview(
       }
     }
     await sandbox.fs.uploadFile(Buffer.from(JSON.stringify(nextManifest), "utf8"), path.join(workdir, PREVIEW_META_FILE));
+    if (environmentChanged) {
+      await command(sandbox, "if [ -f .experts-preview.pid ]; then kill \"$(cat .experts-preview.pid)\" 2>/dev/null || true; fi; rm -f .experts-preview.pid", workdir, undefined, 10);
+    }
     let pkg: Record<string, unknown> = {};
     try { pkg = JSON.parse(sourceFiles["package.json"] ?? "{}") as Record<string, unknown>; }
     catch { throw new Error("package.json contains invalid JSON. Fix it before previewing."); }
