@@ -20,7 +20,7 @@ const referenceImageSchema = z.object({
 
 const codingRequest = z
   .object({
-    prompt: z.string().trim().min(1).max(200_000),
+    prompt: z.string().trim().min(1).max(100_000),
     files: z.record(z.string().max(512), z.string().max(10_000_000)),
     history: z
       .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(3000) }))
@@ -514,7 +514,7 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
       sandboxName: z.string().min(20).max(80),
       cli: z.enum(["kilo", "opencode", "aider"]),
       mode: z.enum(["build", "plan"]).optional().default("build"),
-      prompt: z.string().trim().min(1).max(200_000),
+      prompt: z.string().trim().min(1).max(100_000),
       referenceImages: z.array(referenceImageSchema).max(3).optional().default([]),
     }).parse(input),
   )
