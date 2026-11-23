@@ -14,6 +14,94 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_project_asset_staging: {
+        Row: {
+          created_at: string
+          file_path: string
+          import_id: string
+          mime_type: string
+          project_id: string
+          sha256: string
+          size_bytes: number
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_path: string
+          import_id: string
+          mime_type?: string
+          project_id: string
+          sha256: string
+          size_bytes: number
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_path?: string
+          import_id?: string
+          mime_type?: string
+          project_id?: string
+          sha256?: string
+          size_bytes?: number
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_asset_staging_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_project_assets: {
+        Row: {
+          file_path: string
+          id: string
+          mime_type: string
+          project_id: string
+          sha256: string
+          size_bytes: number
+          storage_path: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          file_path: string
+          id?: string
+          mime_type?: string
+          project_id: string
+          sha256: string
+          size_bytes: number
+          storage_path: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          file_path?: string
+          id?: string
+          mime_type?: string
+          project_id?: string
+          sha256?: string
+          size_bytes?: number
+          storage_path?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_assets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_project_checkpoints: {
         Row: {
           created_at: string
@@ -1721,6 +1809,10 @@ export type Database = {
       finalize_agent_project_file_staging: {
         Args: { p_import_id: string; p_project_id: string }
         Returns: number
+      }
+      finalize_agent_project_workspace_staging: {
+        Args: { p_import_id: string; p_project_id: string }
+        Returns: Json
       }
       has_role: {
         Args: {
