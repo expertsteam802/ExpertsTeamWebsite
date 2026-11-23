@@ -917,7 +917,6 @@ export function CodeAgent() {
         const replacement = await connectTerminal({
           data: {
             projectId: session.projectId,
-            files: recoveryFiles,
             username: terminalUsername,
             cli: session.cli,
           },
@@ -963,7 +962,7 @@ export function CodeAgent() {
           let lastError: unknown;
           for (let attempt = 1; attempt <= 3 && active; attempt++) {
             try {
-              result = await startPreview({ data: { projectId, files } });
+              result = await startPreview({ data: { projectId } });
               break;
             } catch (error) {
               lastError = error;
@@ -1186,7 +1185,7 @@ export function CodeAgent() {
       }
       const activeProjectId = await persist({ files: nextFiles });
       const connection = await connectTerminal({
-        data: { projectId: activeProjectId, files: nextFiles, username: terminalUsername, cli: selectedCli },
+        data: { projectId: activeProjectId, username: terminalUsername, cli: selectedCli },
       });
       setTerminalConnection({ ...connection, projectId: activeProjectId, cli: selectedCli });
       setConnectionProgress(100);
@@ -1372,7 +1371,7 @@ export function CodeAgent() {
     try {
       const activeProjectId = projectId ?? (await persist());
       autoStartedProjectRef.current = activeProjectId;
-      const result = await startPreview({ data: { projectId: activeProjectId, files } });
+      const result = await startPreview({ data: { projectId: activeProjectId } });
       setRuntimeUrl(result.url);
       setPreviewAddress(result.url);
       setRuntimeStatus("Running · Daytona");
@@ -1458,7 +1457,7 @@ export function CodeAgent() {
         toast.error("Choose a URL slug with 3–60 characters, using letters, numbers and hyphens.");
         return;
       }
-      const result = await publish({ data: { projectId: activeProjectId, files, slug } });
+      const result = await publish({ data: { projectId: activeProjectId, slug } });
       await queryClient.invalidateQueries({ queryKey: ["agent-projects", user?.id] });
       const url = result.publicUrl;
       setPublishedUrl(url);
