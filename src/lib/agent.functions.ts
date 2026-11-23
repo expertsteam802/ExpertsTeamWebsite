@@ -545,8 +545,11 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
     } = await import("./daytona-terminal.server");
     const terminalName = assertDaytonaTerminalSandboxName(context.userId, data.sandboxName);
     const referencePaths = await writeDaytonaProjectReferenceImages(terminalName, data.referenceImages);
+    const modePrompt = data.mode === "plan"
+      ? "PLANNING ONLY. Inspect the project and produce a concrete implementation plan with affected files, dependencies, risks, test steps, and ordered tasks. Do not create, edit, delete, rename, or format any project files. Do not run commands that change project state. Return the plan as readable text only.\\n\\nREQUEST:\\n" + data.prompt
+      : data.prompt;
     const promptWithReferences = referencePaths.length
-      ? data.prompt + "\n\nVISUAL REFERENCES (read these image files before changing the UI):\n" +
+      ? modePrompt + "\n\nVISUAL REFERENCES (read these image files before planning or changing the UI):\n" +
         referencePaths.map((filePath) => "- " + filePath).join("\n") +
         "\nUse the attached images as visual requirements. Recreate their layout and details in actual editable source code."
       : data.prompt;
