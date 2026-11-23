@@ -69,13 +69,12 @@ export function ProjectEnvironmentPanel({
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Add credentials belonging to this project. Values are encrypted before storage and are never shown again after saving.
-            Never use a VITE_ prefix for secrets.
+            Only the public Supabase URL and publishable/anon key may use VITE_ names.
           </p>
           <div className="rounded-xl border bg-muted/30 p-3 text-sm">
             <p className="font-medium">Connect your own Supabase project</p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Add SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY. Add SUPABASE_SECRET_KEY only when a server-side deployment task needs elevated access.
-              These values are securely stored for this project; automatic runtime switching is not enabled yet.
+              Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY) for your own browser app. These three public values are passed to the Builder preview and static production build. Private keys are encrypted and stored, but are not exposed to browser builds.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
@@ -106,7 +105,7 @@ export function ProjectEnvironmentPanel({
               )) : <p className="text-sm text-muted-foreground">No project variables saved yet.</p>}
           </div>
           <p className="text-[11px] leading-5 text-muted-foreground">
-            Security requirement: configure PROJECT_SECRET_ENCRYPTION_KEY as a 32-byte server-only deployment variable before using this feature. Without it, saving is disabled by the server.
+            Security requirement: configure PROJECT_SECRET_ENCRYPTION_KEY as a 32-byte server-only deployment variable and apply the project-secrets migration. Service-role keys must never use VITE_ names.
           </p>
         </div>
       </DialogContent>
