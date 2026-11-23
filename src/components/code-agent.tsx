@@ -2523,7 +2523,7 @@ export function CodeAgent() {
                 ExpertsTeam
               </span>
               <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[9px] font-semibold text-cyan-200">
-                EXPERTAI STUDIO
+                INFINITY EXPERT MODE
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -2850,7 +2850,7 @@ export function CodeAgent() {
                 type="button"
                 onClick={() => { setQuickOpenQuery(""); setQuickOpen(true); }}
                 className="ml-1 inline-flex h-7 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.03] px-2 text-[10px] text-slate-400 transition hover:border-blue-400/30 hover:bg-blue-400/10 hover:text-blue-100"
-                title="Quick open a project file (Ctrl+P)"
+                title="Quick open any project file (Ctrl+P)"
               >
                 <Command className="h-3.5 w-3.5" />
                 <span className="hidden md:inline">Quick open</span>
@@ -2862,7 +2862,7 @@ export function CodeAgent() {
               {(
                 [
                   ["preview", Eye, "Preview"],
-                  ["code", Code2, "Files"],
+                  ["code", Code2, "Code"],
                   ["console", Terminal, "Console"],
                   ["terminal", TerminalSquare, "Terminal"],
                 ] as const
@@ -3022,9 +3022,9 @@ export function CodeAgent() {
                 className={`ml-1 rounded-lg p-2 ${
                   assistantOpen ? "bg-cyan-400/10 text-cyan-200" : "text-slate-500 hover:bg-white/5"
                 }`}
-                aria-label="Toggle ExpertAI builder"
+                aria-label="Toggle Infinity Expert AI panel"
               >
-                <Bot className="h-4 w-4" />
+                <Bot className="h-4 w-4" /><span className="hidden text-[10px] font-semibold lg:inline">Agent</span>
               </button>
               {panel !== "preview" && (
                 <button
@@ -3313,11 +3313,11 @@ export function CodeAgent() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-white">{isAdmin ? "ExpertsTeam Agent Studio" : "ExpertsTeam Agent"}</p>
-                    <p className="text-[10px] text-slate-500">{isAdmin ? "Workspace controls · project builder" : "AI-powered project builder"}</p>
+                    <p className="text-[10px] text-slate-500">{isAdmin ? "Full-stack workspace · project controls" : "Autonomous full-stack coding workspace"}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-semibold text-cyan-200">Expert 1.0</span>
+                  <span className="rounded-full border border-blue-400/25 bg-gradient-to-r from-blue-400/15 to-cyan-300/10 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-cyan-100">INFINITY EXPERT</span>
                   <button type="button" onClick={() => setAssistantOpen(false)} className="expert-agent-mobile-close rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Close builder panel"><X className="h-4 w-4" /></button>
                 </div>
               </div>
