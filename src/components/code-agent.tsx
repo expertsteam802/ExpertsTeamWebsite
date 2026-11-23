@@ -2194,7 +2194,8 @@ export function CodeAgent() {
         style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
       >
         {/* Left sidebar */}
-        {sidebarOpen && <button type="button" className="expert-agent-mobile-backdrop" onClick={() => setSidebarOpen(false)} aria-label="Close project explorer" />}\n        {sidebarOpen && (
+        {sidebarOpen && <button type="button" className="expert-agent-mobile-backdrop" onClick={() => setSidebarOpen(false)} aria-label="Close project explorer" />}
+        {sidebarOpen && (
           <aside className="expert-agent-sidebar expert-agent-sidebar-drawer flex min-h-0 flex-col overflow-y-auto border-b border-white/[0.08] bg-[#0b1320] lg:border-b-0 lg:border-r">
             <div className="flex items-center justify-between px-4 pb-3 pt-4">
               <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
