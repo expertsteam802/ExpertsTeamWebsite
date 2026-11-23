@@ -425,54 +425,125 @@ export async function pushToGithub({
     Accept: "application/vnd.github+json",
     "Content-Type": "application/json",
     "User-Agent": "experts-team-agent",
+    "X-GitHub-Api-Version": "2022-11-28",
   };
 
-  const userRes = await fetch("https://api.github.com/user", { headers });
-  if (!userRes.ok) throw new Error(`GitHub rejected the token (${userRes.status}).`);
-  const { login } = (await userRes.json()) as { login: string };
+  const request = async (url: string, init: RequestInit = {}) => {
+    const response = await fetch(url, { ...init, headers: { ...headers, ...(init.headers ?? {}) } });
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(`GitHub request failed (${response.status}): ${detail.slice(0, 1200)}`);
+    }
+    return response;
+  };
+  const api = "https://api.github.com";
+  const user = (await (await request(api + "/user")).json()) as { login?: string };
+  if (!user.login) throw new Error("GitHub did not return the connected account name.");
+  const login = user.login;
 
-  const repoRes = await fetch(`https://api.github.com/repos/${login}/${repo}`, { headers });
-  if (repoRes.status === 404) {
-    const created = await fetch("https://api.github.com/user/repos", {
+  let repoInfo: { default_branch?: string };
+  const repoResponse = await fetch(api + "/repos/" + encodeURIComponent(login) + "/" + encodeURIComponent(repo), { headers });
+  if (repoResponse.status === 404) {
+    await request(api + "/user/repos", {
       method: "POST",
-      headers,
       body: JSON.stringify({
         name: repo,
         auto_init: true,
         description: "Built with the ExpertsTeam agent",
       }),
     });
-    if (!created.ok) throw new Error(`Could not create repository: ${await created.text()}`);
-  } else if (!repoRes.ok) {
-    throw new Error(`GitHub error ${repoRes.status}`);
+    const createdInfo = await request(api + "/repos/" + encodeURIComponent(login) + "/" + encodeURIComponent(repo));
+    repoInfo = (await createdInfo.json()) as { default_branch?: string };
+  } else if (!repoResponse.ok) {
+    throw new Error(`GitHub could not open the target repository (${repoResponse.status}).`);
+  } else {
+    repoInfo = (await repoResponse.json()) as { default_branch?: string };
   }
 
   const allFiles: Record<string, string> = {
     ...files,
     ".github/workflows/deploy.yml": PAGES_WORKFLOW,
   };
-
   if (!allFiles["README.md"]) {
     allFiles["README.md"] =
       `# ${repo}\n\nBuilt with the ExpertsTeam AI agent.\n\nLive: https://${login}.github.io/${repo}/\n`;
   }
 
-  for (const [path, content] of Object.entries(allFiles)) {
-    const url = `https://api.github.com/repos/${login}/${repo}/contents/${encodeURI(path)}`;
-    const existing = await fetch(url, { headers });
-    const sha = existing.ok ? ((await existing.json()) as { sha?: string }).sha : undefined;
-    const bytes = new TextEncoder().encode(content);
-    let binary = "";
-    bytes.forEach((b) => (binary += String.fromCharCode(b)));
-    const put = await fetch(url, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify({ message, content: btoa(binary), sha }),
-    });
-    if (!put.ok) throw new Error(`Failed to push ${path}: ${put.status} ${await put.text()}`);
+  const entries = Object.entries(allFiles);
+  if (!entries.length) throw new Error("There are no project files to push.");
+  for (const [filePath, content] of entries) {
+    if (!isSafeProjectPath(filePath)) throw new Error("Refusing to push an unsafe file path: " + filePath);
+    if (typeof content !== "string") throw new Error("A project file is not text: " + filePath);
   }
 
-  await fetch(`https://api.github.com/repos/${login}/${repo}/pages`, {
+  const branch = repoInfo.default_branch || "main";
+  const refPath = branch.split("/").map(encodeURIComponent).join("/");
+  let parentCommit: string | undefined;
+  let baseTree: string | undefined;
+  const refResponse = await fetch(api + "/repos/" + login + "/" + repo + "/git/ref/heads/" + refPath, { headers });
+  if (refResponse.ok) {
+    const ref = (await refResponse.json()) as { object?: { sha?: string } };
+    parentCommit = ref.object?.sha;
+    if (parentCommit) {
+      const commit = (await (await request(api + "/repos/" + login + "/" + repo + "/git/commits/" + parentCommit)).json()) as {
+        tree?: { sha?: string };
+      };
+      baseTree = commit.tree?.sha;
+    }
+  } else if (refResponse.status !== 404) {
+    throw new Error(`GitHub could not read branch ${branch} (${refResponse.status}).`);
+  }
+
+  // Upload blobs in bounded concurrency, then publish one Git tree + commit.
+  // This avoids two Contents API calls per file and handles much larger trees.
+  const treeEntries: { path: string; mode: "100644"; type: "blob"; sha: string }[] = [];
+  for (let offset = 0; offset < entries.length; offset += 6) {
+    const batch = entries.slice(offset, offset + 6);
+    const blobs = await Promise.all(batch.map(async ([filePath, content]) => {
+      const response = await request(api + "/repos/" + login + "/" + repo + "/git/blobs", {
+        method: "POST",
+        body: JSON.stringify({ content, encoding: "utf-8" }),
+      });
+      const blob = (await response.json()) as { sha?: string };
+      if (!blob.sha) throw new Error("GitHub did not return a blob ID for " + filePath);
+      return { path: filePath, mode: "100644" as const, type: "blob" as const, sha: blob.sha };
+    }));
+    treeEntries.push(...blobs);
+  }
+
+  const treePayload: { base_tree?: string; tree: typeof treeEntries } = { tree: treeEntries };
+  if (baseTree) treePayload.base_tree = baseTree;
+  const treeResponse = await request(api + "/repos/" + login + "/" + repo + "/git/trees", {
+    method: "POST",
+    body: JSON.stringify(treePayload),
+  });
+  const tree = (await treeResponse.json()) as { sha?: string };
+  if (!tree.sha) throw new Error("GitHub did not return the new project tree.");
+
+  const commitResponse = await request(api + "/repos/" + login + "/" + repo + "/git/commits", {
+    method: "POST",
+    body: JSON.stringify({
+      message,
+      tree: tree.sha,
+      ...(parentCommit ? { parents: [parentCommit] } : {}),
+    }),
+  });
+  const commit = (await commitResponse.json()) as { sha?: string };
+  if (!commit.sha) throw new Error("GitHub did not return the new project commit.");
+
+  if (parentCommit) {
+    await request(api + "/repos/" + login + "/" + repo + "/git/refs/heads/" + refPath, {
+      method: "PATCH",
+      body: JSON.stringify({ sha: commit.sha, force: false }),
+    });
+  } else {
+    await request(api + "/repos/" + login + "/" + repo + "/git/refs", {
+      method: "POST",
+      body: JSON.stringify({ ref: "refs/heads/" + branch, sha: commit.sha }),
+    });
+  }
+
+  await fetch(api + "/repos/" + login + "/" + repo + "/pages", {
     method: "POST",
     headers,
     body: JSON.stringify({ build_type: "workflow" }),
