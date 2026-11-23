@@ -1691,8 +1691,16 @@ export type Database = {
         Returns: boolean
       }
       is_workspace_member: { Args: { _user_id: string }; Returns: boolean }
+      process_cpa_grip_conversion: {
+        Args: { p_provider_event_id?: string; p_tracking_id: string }
+        Returns: Json
+      }
       record_video_view: { Args: { p_video_id: string }; Returns: undefined }
       redeem_invite: { Args: { _code: string }; Returns: Json }
+      replace_agent_project_files: {
+        Args: { p_files: Json; p_project_id: string }
+        Returns: number
+      }
       start_cpa_offer: {
         Args: { p_offer_id: string }
         Returns: {
