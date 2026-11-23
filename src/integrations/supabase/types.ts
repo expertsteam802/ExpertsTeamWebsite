@@ -172,6 +172,39 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_prompt_templates: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          is_favorite: boolean
+          prompt: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          is_favorite?: boolean
+          prompt: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          is_favorite?: boolean
+          prompt?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_chats: {
         Row: {
           content: string
