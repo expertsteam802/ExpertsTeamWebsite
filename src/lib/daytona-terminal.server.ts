@@ -800,7 +800,7 @@ export async function writeDaytonaProjectReferenceImages(
 }
 
 export async function runDaytonaProjectCommand(name: string, commandText: string) {
-  if (!commandText.trim() || commandText.length > 250_000) throw new Error("The agent command exceeds the 250,000-character transport safety envelope.");
+  if (!commandText.trim() || commandText.length > 120_000) throw new Error("The agent command exceeds the 120,000-character transport safety envelope.");
   const { api } = client();
   const sandbox = await findSandboxByName(api, name) as DaytonaSandbox | undefined;
   if (!sandbox) throw new Error("Your saved Daytona workspace could not be found.");
