@@ -1800,6 +1800,7 @@ export function CodeAgent() {
     const restored = data.files as unknown as ProjectFiles;
     setFiles(restored);
     setActiveFile(Object.keys(restored)[0] ?? "index.html");
+    setAutoSaveStatus("saved");
     setDirty(true);
     setPreviewKey((value) => value + 1);
     try {
@@ -1881,7 +1882,7 @@ export function CodeAgent() {
 
   const saveMutation = useMutation({
     mutationFn: () => persist(),
-    onSuccess: () => toast.success("Project saved successfully"),
+    onSuccess: () => { setAutoSaveStatus("saved"); toast.success("Project saved successfully"); },
     onError: (error: Error) => toast.error(error.message),
   });
   useEffect(() => {
@@ -2423,6 +2424,7 @@ export function CodeAgent() {
     setNewFileName("");
     setNewFileOpen(false);
     switchPanel("code");
+    setAutoSaveStatus("saved");
     setDirty(true);
   }
 
@@ -2441,6 +2443,7 @@ export function CodeAgent() {
     delete updated[renameFileFrom];
     setFiles(updated);
     if (activeFile === renameFileFrom) setActiveFile(nextPath);
+    setAutoSaveStatus("saved");
     setDirty(true);
     setRenameFileOpen(false);
     setRenameFileFrom(null);
@@ -2454,11 +2457,13 @@ export function CodeAgent() {
     setFiles(updated);
     if (activeFile === path) setActiveFile(Object.keys(updated)[0] ?? "");
     setOpenFileTabs((current) => current.filter((filePath) => filePath !== path));
+    setAutoSaveStatus("saved");
     setDirty(true);
   }
 
   function updateFile(value: string) {
     setFiles((current) => ({ ...current, [activeFile]: value }));
+    setAutoSaveStatus("saved");
     setDirty(true);
   }
 
