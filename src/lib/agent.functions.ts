@@ -63,7 +63,7 @@ export const runCodingAgent = createServerFn({ method: "POST" })
     if (roleError) throw new Error(roleError.message);
     if (!isAdmin && profile.ai_credits < 1)
       throw new Error(
-        "You have no AI credits remaining on this account. Ask an administrator about your usage allowance.",
+        "You have no AI credits remaining. Visit Earn AI Credits to complete a partner offer.",
       );
     await assertBuilderResourcePolicy(context.supabase, context.userId, data.files, data.prompt);
     const { runAgent } = await import("./agent.server");
@@ -513,12 +513,18 @@ export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
       projectId: z.string().uuid(),
       sandboxName: z.string().min(20).max(80),
       cli: z.enum(["kilo", "opencode", "aider"]),
-      prompt: z.string().trim().min(1).max(40000),
+      prompt: z.string().trim().min(1).max(200_000),
       referenceImages: z.array(referenceImageSchema).max(3).optional().default([]),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const { data: project, error: projectError } = await context.supabase
+      .from("agent_projects").select("files").eq("id", data.projectId).eq("user_id", context.userId).single();
+    if (projectError) throw new Error("Could not load the project resource information.");
+    const projectFiles = project.files && typeof project.files === "object" && !Array.isArray(project.files)
+      ? project.files as Record<string, string> : {};
+    await assertBuilderResourcePolicy(context.supabase, context.userId, projectFiles, data.prompt);
     const { data: profile, error: profileError } = await context.supabase
       .from("profiles").select("ai_credits").eq("id", context.userId).single();
     if (profileError) throw new Error(profileError.message);
