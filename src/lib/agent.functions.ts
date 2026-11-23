@@ -605,8 +605,21 @@ export const startAgentTerminal = createServerFn({ method: "POST" })
         sha256: asset.sha256,
       });
     }
+    const { loadProjectEnvironment, loadProjectPublicEnvironment } = await import("./project-secrets.server");
+    const [privateEnvironment, publicEnvironment] = await Promise.all([
+      loadProjectEnvironment(context.supabase as any, context.userId, data.projectId),
+      loadProjectPublicEnvironment(context.supabase as any, context.userId, data.projectId),
+    ]);
+    const projectEnvironment = { ...publicEnvironment, ...privateEnvironment };
     const { daytonaTerminalSandboxName, startDaytonaProjectTerminal } = await import("./daytona-terminal.server");
-    return startDaytonaProjectTerminal(daytonaTerminalSandboxName(context.userId), files, data.username ?? "ExpertsTeam", cli as "kilo" | "opencode" | "aider", binaryAssets);
+    return startDaytonaProjectTerminal(
+      daytonaTerminalSandboxName(context.userId),
+      files,
+      data.username ?? "ExpertsTeam",
+      cli as "kilo" | "opencode" | "aider",
+      binaryAssets,
+      projectEnvironment,
+    );
   });
 
 const publishRequest = z.object({
