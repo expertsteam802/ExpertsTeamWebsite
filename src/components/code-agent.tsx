@@ -359,7 +359,10 @@ export function CodeAgent() {
     setOpenFileTabs((current) => {
       const existing = current.filter((filePath) => files[filePath] !== undefined);
       if (files[activeFile] !== undefined && !existing.includes(activeFile)) existing.push(activeFile);
-      return existing.slice(-8);
+      const next = existing.slice(-8);
+      return next.length === current.length && next.every((filePath, index) => filePath === current[index])
+        ? current
+        : next;
     });
   }, [activeFile, files]);
   const projectFileTree = useMemo(() => buildProjectFileTree(Object.keys(files)), [files]);
@@ -3012,7 +3015,7 @@ export function CodeAgent() {
                           <File className={`h-3 w-3 shrink-0 ${fileIcon(filePath)}`} />
                           <span className="truncate">{filePath.split("/").at(-1)}</span>
                         </button>
-                        <button type="button" onClick={() => closeEditorTab(filePath)} disabled={openFileTabs.length <= 1} className="rounded p-0.5 text-slate-500 opacity-0 transition hover:bg-white/10 hover:text-white group-hover:opacity-100 disabled:pointer-events-none" aria-label={`Close ${filePath}`}>
+                        <button type="button" onClick={() => closeEditorTab(filePath)} disabled={openFileTabs.length <= 1} className="rounded p-0.5 text-slate-500 opacity-100 transition hover:bg-white/10 hover:text-white sm:opacity-0 sm:group-hover:opacity-100 disabled:pointer-events-none" aria-label={`Close ${filePath}`}>
                           <X className="h-3 w-3" />
                         </button>
                       </div>
