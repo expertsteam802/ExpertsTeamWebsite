@@ -6,7 +6,7 @@ export const Route = createFileRoute("/ai")({
   head: () => ({
     meta: [
       { name: "robots", content: "noindex, nofollow" },
-      { title: "ExpertsTeam — Infinity Expert Mode" },
+      { title: "ExpertsTeam — ExpertAI Studio" },
       {
         name: "description",
         content: "Build, edit, preview, and publish applications in the ExpertsTeam workspace.",
