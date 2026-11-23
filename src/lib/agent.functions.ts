@@ -65,7 +65,8 @@ export const runCodingAgent = createServerFn({ method: "POST" })
       throw new Error(
         "You have no AI credits remaining on this account. Ask an administrator about your usage allowance.",
       );
-    await assertBuilderResourcePolicy(context.supabase, context.userId, data.files, data.prompt);\n    const { runAgent } = await import("./agent.server");
+    await assertBuilderResourcePolicy(context.supabase, context.userId, data.files, data.prompt);
+    const { runAgent } = await import("./agent.server");
     const result = await runAgent(data);
     if (!isAdmin) {
       const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
@@ -334,6 +335,7 @@ export const startAgentPreview = createServerFn({ method: "POST" })
   .validator((input: unknown) => previewRequest.parse(input))
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    await assertBuilderResourcePolicy(context.supabase, context.userId, data.files);
     const { startDaytonaProjectPreview } = await import("./daytona-terminal.server");
     return startDaytonaProjectPreview(data.projectId, data.files);
   });
@@ -358,6 +360,7 @@ export const startAgentTerminal = createServerFn({ method: "POST" })
   .validator((input: unknown) => terminalStartRequest.parse(input))
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    await assertBuilderResourcePolicy(context.supabase, context.userId, data.files);
     const { data: siteSettings, error: settingsError } = await context.supabase
       .from("site_settings")
       .select("site_branding_settings")
@@ -428,6 +431,7 @@ export const publishAgentProject = createServerFn({ method: "POST" })
   .validator((input: unknown) => publishRequest.parse(input))
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    await assertBuilderResourcePolicy(context.supabase, context.userId, data.files);
     const now = new Date().toISOString();
     const { error: startError } = await context.supabase
       .from("agent_projects")
