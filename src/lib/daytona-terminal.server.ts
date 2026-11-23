@@ -703,9 +703,12 @@ export async function readDaytonaProjectFiles(name: string) {
   if (!sandbox) throw new Error("Your saved Daytona workspace could not be found.");
   if (["stopped", "archived"].includes(String(sandbox.state ?? "").toLowerCase())) await sandbox.start(120);
   const workdir = await workspacePath(sandbox);
+  // Only synchronize actual project files. Daytona also contains tool caches,
+  // package-manager metadata, test output and generated artifacts; counting those
+  // as user source files caused false 25 MB save failures.
   const listing = await command(
     sandbox,
-    "find . -type d \\( -name node_modules -o -name .git -o -name .kilo -o -name .kilocode -o -name .opencode -o -name dist -o -name build -o -name out -o -name .next -o -name .vercel -o -name coverage -o -name .experts-terminal-bridge \\) -prune -o -type f -print",
+    "find . -type d \\( -name node_modules -o -name .git -o -name .kilo -o -name .kilocode -o -name .opencode -o -name .npm -o -name .cache -o -name .turbo -o -name .vite -o -name .parcel-cache -o -name .svelte-kit -o -name .next -o -name .nuxt -o -name .astro -o -name .angular -o -name .output -o -name .vercel -o -name .wrangler -o -name .firebase -o -name .expo -o -name .gradle -o -name .pytest_cache -o -name __pycache__ -o -name .venv -o -name venv -o -name dist -o -name build -o -name out -o -name coverage -o -name test-results -o -name playwright-report -o -name storybook-static -o -name target -o -name vendor -o -name .experts-terminal-bridge \\) -prune -o -type f -print",
     workdir,
     undefined,
     30,
@@ -716,20 +719,28 @@ export async function readDaytonaProjectFiles(name: string) {
       !filePath.startsWith("/") &&
       !filePath.split("/").some((part) => !part || part === "." || part === "..") &&
       !filePath.split("/").some((part) => part.startsWith(".experts-") || [".kilo", ".kilocode", ".opencode"].includes(part)) &&
-      ![".npmrc", ".netrc", ".pypirc"].includes(filename) &&
+      ![".npmrc", ".netrc", ".pypirc", ".DS_Store", "Thumbs.db"].includes(filename) &&
       !/^\.env(?:\.|$)/i.test(filename) &&
       !/^(?:id_rsa|id_ed25519|credentials?|secrets?)(?:\.|$)/i.test(filename) &&
-      !/\.(?:pem|key|p12|pfx)$/i.test(filename);
+      !/\.(?:pem|key|p12|pfx|log|tsbuildinfo)$/i.test(filename) &&
+      !/^(?:npm-debug|yarn-debug|yarn-error|pnpm-debug)\.log/i.test(filename) &&
+      !/\.map$/i.test(filename);
   });
-  if (paths.length > 2_000) throw new Error("The project has more than 2,000 files; remove generated files before importing.");
+  if (paths.length > 2_000) throw new Error("The project contains more than 2,000 source files after generated folders were excluded. No files were overwritten.");
   const files: AgentProjectFiles = {};
   let totalBytes = 0;
   for (const filePath of paths) {
     const buffer = await sandbox.fs.downloadFile(path.join(workdir, filePath));
-    totalBytes += buffer.byteLength;
-    if (buffer.byteLength > 10_000_000 || totalBytes > 25_000_000) {
-      throw new Error("The project files exceed the 25 MB workspace limit.");
+    // Binary assets are not text source. Keep them out of the text-file sync
+    // rather than decoding them as UTF-8 and charging their bytes to this limit.
+    if (buffer.includes(0)) continue;
+    if (buffer.byteLength > 10_000_000) {
+      throw new Error("Could not save " + filePath + " (" + (buffer.byteLength / 1_000_000).toFixed(2) + " MB): one text file exceeds the 10 MB per-file safety limit. Other files were left unchanged.");
     }
+    if (totalBytes + buffer.byteLength > 25_000_000) {
+      throw new Error("Could not finish saving " + filePath + ": source files total more than 25 MB after generated folders and binary files were excluded. Saved source size before this file: " + (totalBytes / 1_000_000).toFixed(2) + " MB. No partial project update was applied.");
+    }
+    totalBytes += buffer.byteLength;
     files[filePath] = buffer.toString("utf8");
   }
   if (Object.keys(files).length === 0) {
