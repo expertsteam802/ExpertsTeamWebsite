@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowUpRight, Clock3, Coins, Gift, ShieldCheck } from "lucid
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { MyLeadOfferwall } from "@/components/mylead-offerwall";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
@@ -129,6 +130,8 @@ function EarnCreditsPage() {
             </Card>
           </div>
         </section>
+
+        <MyLeadOfferwall />
 
         <div className="flex items-center justify-between gap-3">
           <div>
