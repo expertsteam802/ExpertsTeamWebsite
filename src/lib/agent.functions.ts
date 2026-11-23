@@ -263,17 +263,7 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
     }
   });
 
-const previewRequest = z
-  .object({
-    projectId: z.string().uuid(),
-    files: z.record(z.string().max(512), z.string().max(10_000_000)),
-  })
-  .refine(
-    ({ files }) =>
-      Object.keys(files).length <= 2_000 &&
-      Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 25_000_000,
-    "The project exceeds the 25 MB preview request safety envelope.",
-  );
+const previewRequest = z.object({ projectId: z.string().uuid() });
 
 async function assertBuilderResourcePolicy(
   supabase: typeof import("@/integrations/supabase/client").supabase,
@@ -317,6 +307,32 @@ async function assertBuilderResourcePolicy(
   if (maxPromptChars && prompt && prompt.length > maxPromptChars) throw new Error("This request exceeds the administrator-configured prompt length.");
 }
 
+async function loadProjectSourceFiles(
+  supabase: typeof import("@/integrations/supabase/client").supabase,
+  projectId: string,
+  userId: string,
+): Promise<Record<string, string>> {
+  const { data: rows, error: fileError } = await supabase
+    .from("agent_project_files")
+    .select("file_path,content")
+    .eq("project_id", projectId)
+    .eq("user_id", userId)
+    .order("file_path", { ascending: true });
+  if (fileError) throw new Error("Could not load the saved project files.");
+  if (rows?.length) return Object.fromEntries(rows.map((row) => [row.file_path, row.content]));
+
+  const { data: project, error } = await supabase
+    .from("agent_projects")
+    .select("files")
+    .eq("id", projectId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw new Error("Could not load the legacy project snapshot.");
+  const legacy = project?.files;
+  if (!legacy || typeof legacy !== "object" || Array.isArray(legacy)) return {};
+  return Object.fromEntries(Object.entries(legacy).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+}
+
 async function assertProjectOwnership(
   supabase: typeof import("@/integrations/supabase/client").supabase,
   projectId: string,
@@ -337,9 +353,11 @@ export const startAgentPreview = createServerFn({ method: "POST" })
   .validator((input: unknown) => previewRequest.parse(input))
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
-    await assertBuilderResourcePolicy(context.supabase, context.userId, data.files);
+    const files = await loadProjectSourceFiles(context.supabase, data.projectId, context.userId);
+    if (!Object.keys(files).length) throw new Error("This project has no saved source files to preview.");
+    await assertBuilderResourcePolicy(context.supabase, context.userId, files);
     const { startDaytonaProjectPreview } = await import("./daytona-terminal.server");
-    return startDaytonaProjectPreview(data.projectId, data.files);
+    return startDaytonaProjectPreview(data.projectId, files);
   });
 
 const terminalStartRequest = z
@@ -347,22 +365,16 @@ const terminalStartRequest = z
     projectId: z.string().uuid(),
     username: z.string().trim().min(1).max(39).regex(/^[a-zA-Z0-9_-]+$/).optional(),
     cli: z.enum(["kilo", "opencode", "aider"]).optional(),
-    files: z.record(z.string().max(10_000_000)),
-  })
-  .refine(
-    ({ files }) =>
-      Object.keys(files).length <= 2_000 &&
-      Object.values(files).every((value) => value.length <= 10_000_000) &&
-      Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 25_000_000,
-    "The project exceeds the 25 MB Linux workspace limit.",
-  );
+  });
 
 export const startAgentTerminal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => terminalStartRequest.parse(input))
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
-    await assertBuilderResourcePolicy(context.supabase, context.userId, data.files);
+    const files = await loadProjectSourceFiles(context.supabase, data.projectId, context.userId);
+    if (!Object.keys(files).length) throw new Error("This project has no saved source files for the terminal.");
+    await assertBuilderResourcePolicy(context.supabase, context.userId, files);
     const { data: siteSettings, error: settingsError } = await context.supabase
       .from("site_settings")
       .select("site_branding_settings")
@@ -382,21 +394,13 @@ export const startAgentTerminal = createServerFn({ method: "POST" })
     const cli = data.cli ?? defaultCli;
     if (!enabledClis.includes(cli)) throw new Error("This coding CLI is not enabled by the administrator.");
     const { daytonaTerminalSandboxName, startDaytonaProjectTerminal } = await import("./daytona-terminal.server");
-    return startDaytonaProjectTerminal(daytonaTerminalSandboxName(context.userId), data.files, data.username ?? "ExpertsTeam", cli as "kilo" | "opencode" | "aider");
+    return startDaytonaProjectTerminal(daytonaTerminalSandboxName(context.userId), files, data.username ?? "ExpertsTeam", cli as "kilo" | "opencode" | "aider");
   });
 
-const publishRequest = z
-  .object({
-    projectId: z.string().uuid(),
-    slug: z.string().regex(/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/),
-    files: z.record(z.string().max(512), z.string().max(10_000_000)),
-  })
-  .refine(
-    ({ files }) =>
-      Object.keys(files).length <= 2_000 &&
-      Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 25_000_000,
-    "The project exceeds the 25 MB publishing request safety envelope.",
-  );
+const publishRequest = z.object({
+  projectId: z.string().uuid(),
+  slug: z.string().regex(/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/),
+});
 
 export const stopAgentTerminal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -433,7 +437,9 @@ export const publishAgentProject = createServerFn({ method: "POST" })
   .validator((input: unknown) => publishRequest.parse(input))
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
-    await assertBuilderResourcePolicy(context.supabase, context.userId, data.files);
+    const files = await loadProjectSourceFiles(context.supabase, data.projectId, context.userId);
+    if (!Object.keys(files).length) throw new Error("This project has no saved source files to publish.");
+    await assertBuilderResourcePolicy(context.supabase, context.userId, files);
     const now = new Date().toISOString();
     const { error: startError } = await context.supabase
       .from("agent_projects")
@@ -446,7 +452,7 @@ export const publishAgentProject = createServerFn({ method: "POST" })
       const { publishDaytonaProject } = await import("./daytona-terminal.server");
       const result = await publishDaytonaProject(
         data.projectId,
-        data.files,
+        files,
         data.slug,
         context.userId,
         context.supabase,
