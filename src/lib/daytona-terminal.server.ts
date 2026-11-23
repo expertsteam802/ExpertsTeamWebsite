@@ -757,9 +757,7 @@ export async function readDaytonaProjectFiles(name: string) {
       !/^(?:npm-debug|yarn-debug|yarn-error|pnpm-debug)\.log/i.test(filename) &&
       !/\.map$/i.test(filename);
   });
-  if (paths.length > 2_000) throw new Error("The project contains more than 2,000 source files after generated folders were excluded. No files were overwritten.");
   const files: AgentProjectFiles = {};
-  let totalBytes = 0;
   for (const filePath of paths) {
     const buffer = await sandbox.fs.downloadFile(path.join(workdir, filePath));
     // Binary assets are not text source. Keep them out of the text-file sync
@@ -768,10 +766,6 @@ export async function readDaytonaProjectFiles(name: string) {
     if (buffer.byteLength > 10_000_000) {
       throw new Error("Could not save " + filePath + " (" + (buffer.byteLength / 1_000_000).toFixed(2) + " MB): one text file exceeds the 10 MB per-file safety limit. Other files were left unchanged.");
     }
-    if (totalBytes + buffer.byteLength > 25_000_000) {
-      throw new Error("Could not finish saving " + filePath + ": source files total more than 25 MB after generated folders and binary files were excluded. Saved source size before this file: " + (totalBytes / 1_000_000).toFixed(2) + " MB. No partial project update was applied.");
-    }
-    totalBytes += buffer.byteLength;
     files[filePath] = buffer.toString("utf8");
   }
   if (Object.keys(files).length === 0) {
