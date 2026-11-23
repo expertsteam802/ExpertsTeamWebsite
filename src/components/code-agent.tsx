@@ -693,6 +693,7 @@ export function CodeAgent() {
     if (!busy || !session || session.projectId !== projectId || !user?.id) return;
     let active = true;
     let saving = false;
+    let lastSaveError = "";
     const saveSnapshot = async () => {
       if (!active || saving) return;
       saving = true;
@@ -742,12 +743,19 @@ export function CodeAgent() {
           terminalRecoveryFilesRef.current = { ...persisted };
         }
 
+        lastSaveError = "";
         if (active && (changedPaths.length || deletedPaths.length) && projectId === session.projectId) {
           setFiles({ ...snapshot.files });
           setDirty(false);
         }
-      } catch {
-        // Retry on the next poll. Files already committed remain saved.
+      } catch (error) {
+        // Retry on the next poll and surface a single warning instead of silently
+        // losing the user's confidence that generated files are being saved.
+        const message = error instanceof Error ? error.message : "Automatic file saving failed.";
+        if (active && message !== lastSaveError) {
+          lastSaveError = message;
+          setLogs((current) => [...current.slice(-199), { type: "warn", message: "Auto-save will retry: " + message }]);
+        }
       } finally {
         saving = false;
       }
@@ -1156,11 +1164,17 @@ export function CodeAgent() {
       return;
     }
     if (!window.confirm("Import " + imported + " file(s) into this project? Existing paths will be replaced.")) return;
+    try {
+      await persist({ files: nextFiles });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Imported files could not be saved.");
+      return;
+    }
     setFiles(nextFiles);
     setActiveFile(Object.keys(nextFiles).find((path) => !Object.prototype.hasOwnProperty.call(files, path)) ?? Object.keys(nextFiles)[0] ?? "index.html");
-    setDirty(true);
+    setDirty(false);
     setPreviewKey((value) => value + 1);
-    toast.success("Imported " + imported + " file(s)" + (skipped ? " · " + skipped + " skipped" : "") + ". Save to keep them.");
+    toast.success("Imported and auto-saved " + imported + " file(s)" + (skipped ? " · " + skipped + " skipped" : "") + ".");
   }
 
 
