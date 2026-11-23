@@ -58,6 +58,9 @@ const PUBLIC_BUILD_KEYS = new Set([
   "VITE_SUPABASE_URL",
   "VITE_SUPABASE_PUBLISHABLE_KEY",
   "VITE_SUPABASE_ANON_KEY",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
 ]);
 
 /** Only explicitly approved public configuration is passed to browser builds. */
