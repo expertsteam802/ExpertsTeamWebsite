@@ -2749,6 +2749,31 @@ export function CodeAgent() {
             <div className="flex items-center gap-1">
               <Button
                 size="sm"
+                variant="outline"
+                onClick={() => {
+                  const linkedRepo = projects.find((project) => project.id === projectId)?.github_repo;
+                  if (linkedRepo) {
+                    const match = linkedRepo.match(/github\\.com\\/[^/]+\\/([^/]+)/i);
+                    if (match?.[1]) setGithubRepo(match[1].replace(/\\.git$/i, ""));
+                  }
+                  setGithubOpen(true);
+                }}
+                className="h-8 border-white/10 bg-white/[0.04] px-3 text-xs text-slate-200 hover:border-blue-400/30 hover:bg-blue-400/10"
+                title="Connect GitHub or push this project"
+              >
+                <Github className="mr-1.5 h-3.5 w-3.5" /> GitHub
+              </Button>
+              <a
+                href="https://vercel.com/new"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-3 text-xs font-medium text-slate-200 transition hover:border-white/20 hover:bg-white/[0.08]"
+                title="Import your GitHub repository into Vercel and configure automatic deployments"
+              >
+                <ExternalLink className="h-3.5 w-3.5" /> Vercel
+              </a>
+              <Button
+                size="sm"
                 onClick={() => void publishProject()}
                 disabled={publishing}
                 className="ml-1 h-8 rounded-lg bg-emerald-500 px-3 text-xs font-semibold text-white hover:bg-emerald-400"
