@@ -202,7 +202,10 @@ function cliPrompt(username: string, cli: CliName) {
     'for f in /sys/fs/cgroup/memory.current /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory.events /sys/fs/cgroup/memory/memory.usage_in_bytes /sys/fs/cgroup/memory/memory.limit_in_bytes; do if [ -r "$f" ]; then printf "%s: " "$f"; tr "\\n" " " < "$f"; printf "\\n"; fi; done',
   ].join("; ");
   const launch = 'if command -v ' + cli + ' >/dev/null 2>&1; then ' + diagnostics +
-    '; ' + cli + '; cli_status=$?; printf "\\n' + cliLabel + ' exited with code %s. The terminal is still available.\\n" "$cli_status"; ' +
+    '; ' + cli + '; cli_status=$?; ' +
+    'stty sane 2>/dev/null || true; ' +
+    'printf "\\033[?1000l\\033[?1002l\\033[?1003l\\033[?1006l\\033[?1015l\\033[?1004l\\033[?2004l\\033[?1049l\\033[?25h\\033[0m"; ' +
+    'printf "\\n' + cliLabel + ' exited with code %s. The terminal is still available.\\n" "$cli_status"; ' +
     'if [ "$cli_status" -eq 137 ]; then printf "[Diagnostic] Exit 137 usually means the process received SIGKILL. Review memory.current, memory.max and oom_kill counters above.\\n"; fi; ' +
     'else printf "\\nThe ' + cliLabel + ' runtime is unavailable. Reconnect the workspace to repair it.\\n"; fi';
   const skipEnv = "$" + "${EXPERTS_SKIP_KILO:-0}";
