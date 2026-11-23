@@ -169,120 +169,63 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
-const MONETAG_VIGNETTE_PATHS = new Set(["/", "/learn", "/about"]);
-const MONETAG_IN_PAGE_PUSH_PATHS = new Set(["/learn", "/about"]);
-
-const ADSENSE_PUBLIC_CONTENT_PATHS = new Set([
-  "/",
-  "/about",
-  "/learn",
-]);
+const ADSENSE_PUBLIC_CONTENT_PATHS = new Set(["/", "/about", "/learn"]);
 
 function RootShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const previousPathRef = useRef(pathname);
   const isLearningVideoPage = pathname.startsWith("/learn/video/");
-  const shouldLoadVignette = MONETAG_VIGNETTE_PATHS.has(pathname) || isLearningVideoPage;
-  const shouldLoadInPagePush = MONETAG_IN_PAGE_PUSH_PATHS.has(pathname) || isLearningVideoPage;
-  const shouldLoadMonetag = shouldLoadVignette || shouldLoadInPagePush;
   const shouldLoadAdsense = ADSENSE_PUBLIC_CONTENT_PATHS.has(pathname) || isLearningVideoPage;
 
-  // Monetag and AdSense are permitted only on the explicitly approved public
-  // content routes above. On every other tab, remove their loaders and creatives.
+  // Remove legacy Monetag scripts and unregister its old service worker for
+  // visitors upgrading from a release that installed it.
   useEffect(() => {
-    if (shouldLoadMonetag && shouldLoadAdsense) return;
-
-    const removeAdElements = () => {
-      document
-        .querySelectorAll(
-          [
-            'script[src*="n6wxm.com"]',
-            'script[src*="nap5k.com"]',
-            'script[src*="5gvci.com"]',
-            'script[src*="googlesyndication.com"]',
-            'script[src*="doubleclick.net"]',
-            'script[src*="googleadservices.com"]',
-            'script[data-zone="12296060"]',
-            'script[data-zone="12296064"]',
-            'iframe[src*="n6wxm.com"]',
-            'iframe[src*="nap5k.com"]',
-            'iframe[src*="5gvci.com"]',
-            'iframe[src*="monetag"]',
-            'iframe[src*="googlesyndication.com"]',
-            'iframe[src*="googleadservices.com"]',
-            'iframe[src*="doubleclick.net"]',
-            'iframe[id^="google_ads_iframe"]',
-            'ins.adsbygoogle',
-            '.google-auto-placed',
-            '[id*="monetag"]',
-            '[class*="monetag"]',
-          ].join(", "),
-        )
-        .forEach((element) => element.remove());
+    const removeLegacyMonetag = () => {
+      document.querySelectorAll(
+        'script[src*="n6wxm.com"], script[src*="nap5k.com"], script[src*="5gvci.com"], iframe[src*="monetag"], [id*="monetag"], [class*="monetag"]',
+      ).forEach((element) => element.remove());
     };
-
-    removeAdElements();
-    const observer = new MutationObserver(removeAdElements);
+    removeLegacyMonetag();
+    const observer = new MutationObserver(removeLegacyMonetag);
     observer.observe(document.documentElement, { childList: true, subtree: true });
-
-    // The Monetag service worker can keep showing push creatives after its
-    // page script is removed. Unregister this site's Monetag worker on ad-free tabs.
     if ("serviceWorker" in navigator) {
       void navigator.serviceWorker.getRegistrations().then((registrations) => {
         for (const registration of registrations) {
           const scriptUrl = registration.active?.scriptURL ?? registration.waiting?.scriptURL ?? registration.installing?.scriptURL ?? "";
-          const workerUrl = new URL(scriptUrl, window.location.origin);
-          const isMonetagWorker =
-            /5gvci\.com|n6wxm\.com|nap5k\.com|monetag/i.test(scriptUrl) ||
-            workerUrl.pathname === "/sw.js";
-          if (isMonetagWorker) void registration.unregister();
+          if (/5gvci\.com|n6wxm\.com|nap5k\.com/i.test(scriptUrl) || new URL(scriptUrl, window.location.origin).pathname === "/sw.js") {
+            void registration.unregister();
+          }
         }
       }).catch(() => undefined);
     }
-
     return () => observer.disconnect();
-  }, [pathname, shouldLoadMonetag, shouldLoadAdsense]);
+  }, []);
 
-  // Ad providers attach document-level scripts, listeners and creatives.
-  // A client-side route transition across the ad boundary must become a full
-  // document navigation in BOTH directions: ad -> ad-free and ad-free -> ad.
-  // This gives the destination page a clean document and initializes only the
-  // ad providers allowed for that destination route.
+  useEffect(() => {
+    if (shouldLoadAdsense) return;
+    const removeAdsense = () => {
+      document.querySelectorAll(
+        'script[src*="googlesyndication.com"], script[src*="doubleclick.net"], script[src*="googleadservices.com"], iframe[src*="googlesyndication.com"], iframe[src*="googleadservices.com"], iframe[src*="doubleclick.net"], iframe[id^="google_ads_iframe"], ins.adsbygoogle, .google-auto-placed',
+      ).forEach((element) => element.remove());
+    };
+    removeAdsense();
+    const observer = new MutationObserver(removeAdsense);
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [shouldLoadAdsense]);
+
   useEffect(() => {
     const previousPath = previousPathRef.current;
     previousPathRef.current = pathname;
-
-    const previousPageAllowsAds =
-      MONETAG_VIGNETTE_PATHS.has(previousPath) ||
-      MONETAG_IN_PAGE_PUSH_PATHS.has(previousPath) ||
-      ADSENSE_PUBLIC_CONTENT_PATHS.has(previousPath) ||
-      previousPath.startsWith("/learn/video/");
-    const currentPageAllowsAds = shouldLoadMonetag || shouldLoadAdsense;
-
-    if (previousPath !== pathname && previousPageAllowsAds !== currentPageAllowsAds) {
+    const previousAllowsAds = ADSENSE_PUBLIC_CONTENT_PATHS.has(previousPath) || previousPath.startsWith("/learn/video/");
+    if (previousPath !== pathname && previousAllowsAds !== shouldLoadAdsense) {
       window.location.reload();
     }
-  }, [pathname, shouldLoadMonetag, shouldLoadAdsense]);
+  }, [pathname, shouldLoadAdsense]);
 
   return (
     <html lang="en" className="theme-dark dark">
       <head>
-        {shouldLoadVignette && (
-          <script
-            dangerouslySetInnerHTML={{
-              __html:
-                "(function(s){s.dataset.zone='12296060',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))",
-            }}
-          />
-        )}
-        {shouldLoadInPagePush && (
-          <script
-            dangerouslySetInnerHTML={{
-              __html:
-                "(function(s){s.dataset.zone='12296064',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))",
-            }}
-          />
-        )}
         <HeadContent />
         {shouldLoadAdsense && (
           <script
@@ -303,8 +246,7 @@ function RootShell({ children }: { children: ReactNode }) {
               sameAs: ["https://www.youtube.com/@expertchris", "https://instagram.com/m_chris_t"],
               contactPoint: [{ "@type": "ContactPoint", contactType: "customer support", email: "mucyochristhecla@gmail.com" }],
               url: "https://expertsteam.giize.com/",
-              description:
-                "ExpertsTeam is a software and technology company building AI systems, custom software, websites, mobile applications and digital solutions.",
+              description: "ExpertsTeam is a software and technology company building AI systems, custom software, websites, mobile applications and digital solutions.",
             }),
           }}
         />
@@ -317,8 +259,7 @@ function RootShell({ children }: { children: ReactNode }) {
               name: "ExpertsTeam",
               alternateName: ["Experts Team", "expertsteam.giize.com"],
               url: "https://expertsteam.giize.com/",
-              description:
-                "ExpertsTeam is a software and technology company building AI systems, custom software, websites, mobile applications and digital solutions for people and businesses.",
+              description: "ExpertsTeam is a software and technology company building AI systems, custom software, websites, mobile applications and digital solutions for people and businesses.",
             }),
           }}
         />
