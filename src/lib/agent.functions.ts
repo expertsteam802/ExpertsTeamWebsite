@@ -177,7 +177,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
           !segments.some((part) => part.startsWith(".experts-")) &&
           !secretName.test(filename) &&
           !binaryExtensions.test(filename) &&
-          (entry.size ?? 0) <= 500000
+          (entry.size ?? 0) <= 10_000_000
         );
       })
       .sort((left, right) => {
@@ -191,9 +191,9 @@ export const importGitHubProject = createServerFn({ method: "POST" })
       });
     if (!candidates.length)
       throw new Error("No supported text source files were found in this repository.");
-    if (candidates.length > 400)
+    if (candidates.length > 2_000)
       throw new Error(
-        "This repository contains more than 400 supported text files. Reduce the repository size and try again.",
+        "This repository contains more than 2,000 supported text files.",
       );
 
     const files: Record<string, string> = {};
@@ -221,9 +221,9 @@ export const importGitHubProject = createServerFn({ method: "POST" })
       for (const file of downloaded) {
         if (!file) continue;
         totalBytes += file.size;
-        if (totalBytes > 3_000_000)
+        if (totalBytes > 25_000_000)
           throw new Error(
-            "The repository's text files exceed the current 3 MB project import limit. Use a smaller repository or remove generated files.",
+            "The repository's text files exceed the 25 MB import request safety envelope.",
           );
         files[file.path] = file.content;
       }
