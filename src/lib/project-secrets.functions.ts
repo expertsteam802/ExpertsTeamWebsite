@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { encryptProjectSecret } from "./project-secrets.server";
 
 const projectIdSchema = z.string().uuid();
 const envKeySchema = z.string().regex(/^[A-Z][A-Z0-9_]{0,127}$/).refine(
@@ -39,6 +38,7 @@ export const saveProjectEnvironmentVariable = createServerFn({ method: "POST" })
   }).parse(input))
   .handler(async ({ data, context }) => {
     await assertOwnedProject(context.supabase, context.userId, data.projectId);
+    const { encryptProjectSecret } = await import("./project-secrets.server");
     const encrypted = encryptProjectSecret(data.value);
     const { error } = await (context.supabase as any).from("agent_project_env_vars").upsert({
       project_id: data.projectId, user_id: context.userId, key: data.key, ...encrypted,
