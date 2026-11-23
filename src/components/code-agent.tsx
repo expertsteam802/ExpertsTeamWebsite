@@ -128,7 +128,7 @@ type DeveloperVaultGroup = { id: string; name: string; count: number; kind: "fil
 type ProjectRow = {
   id: string;
   name: string;
-  files: ProjectFiles;
+  files?: ProjectFiles;
   messages: Message[];
   published: boolean;
   slug: string | null;
@@ -703,7 +703,7 @@ export function CodeAgent() {
       if (!user) return [];
       const { data, error } = await supabase
         .from("agent_projects")
-        .select("id,name,files,messages,published,slug,deployment_url,thumbnail_url,github_repo,updated_at")
+        .select("id,name,messages,published,slug,deployment_url,thumbnail_url,github_repo,updated_at")
         .eq("user_id", user.id)
         .order("updated_at", { ascending: false });
       if (error) throw error;
@@ -1216,11 +1216,9 @@ export function CodeAgent() {
   useEffect(() => {
     if (!user?.id || projectsLoading || autoStartedKiloRef.current) return;
     if (!projectId && projects.length > 0) {
-      const mostRecentSavedProject = projects.find(
-        (project) => project.files && Object.keys(project.files).length > 0,
-      );
+      const mostRecentSavedProject = projects[0];
       if (mostRecentSavedProject) {
-        openProject(mostRecentSavedProject);
+        void openProject(mostRecentSavedProject);
         return;
       }
       toast.error("Your saved projects were found, but none currently contains recoverable source files. No new project was created.");
@@ -2142,8 +2140,20 @@ export function CodeAgent() {
     } catch {
       sourceFiles = {};
     }
-    if (!Object.keys(sourceFiles).length && project.files && typeof project.files === "object") {
-      sourceFiles = project.files as ProjectFiles;
+    if (!Object.keys(sourceFiles).length) {
+      const { data: legacyProject, error } = await supabase
+        .from("agent_projects")
+        .select("files")
+        .eq("id", project.id)
+        .eq("user_id", user?.id ?? "")
+        .maybeSingle();
+      if (error) throw error;
+      if (legacyProject?.files && typeof legacyProject.files === "object" && !Array.isArray(legacyProject.files)) {
+        sourceFiles = legacyProject.files as ProjectFiles;
+        if (user?.id && Object.keys(sourceFiles).length) {
+          await saveProjectFiles(project.id, user.id, sourceFiles);
+        }
+      }
     }
     // Older workspaces may already contain terminal bookkeeping from before
     // the server-side filter was added. Hide those entries when restoring too.
