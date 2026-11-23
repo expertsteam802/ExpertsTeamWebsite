@@ -1,55 +1,46 @@
 # ExpertAI provider configuration
 
-## Guest chat — OpenRouter
+## Guest chat — Groq primary, OpenRouter fallback
 
-Guest ExpertAI requests are sent from the server to OpenRouter. Visitors do not need a Supabase account or an OpenRouter key. Supabase still enforces the server-side guest allowance (15 prompts per IP/session hash per rolling 24-hour window).
+Guest ExpertAI requests are sent from the server. The adapter tries Groq first and falls back to OpenRouter if Groq is unavailable, rate-limited or returns an upstream error. Visitors never need provider API keys or accounts.
 
-Set these variables in Vercel for **Production, Preview, and Development** as needed:
+Set these variables in Vercel for **Production** (and Preview/Development if you test those environments):
 
 | Variable | Value | Required |
 | --- | --- | --- |
-| `OPENROUTER_API_KEY` | Secret from https://openrouter.ai/settings/keys | Yes for guest AI |
+| `GROQ_API_KEY` | Server-side Groq API key | Recommended primary route |
+| `GROQ_MODEL` | `llama-3.3-70b-versatile` | No |
+| `OPENROUTER_API_KEY` | Server-side OpenRouter API key | Recommended fallback |
 | `OPENROUTER_MODEL` | `openrouter/free` | No |
 
-Keep `OPENROUTER_API_KEY` server-only. Never prefix it with `VITE_`, expose it in browser code, or commit it to Git.
+At least one provider key is required. For resilience, configure both. The default models are selected in server code; model availability, rate limits and free quotas can change. Do not promise uninterrupted or unlimited guest access based on free-tier availability.
 
-OpenRouter's free-model router selects an available free model. Free model availability and provider quotas can change. OpenRouter currently documents a 20 requests/minute limit and 50 requests/day for free variants on an unfunded account; failed attempts may count toward the limit. Check current limits before advertising guest availability.
+Keep every provider key server-only. Never prefix a key with `VITE_`, expose it to browser code, or commit it to Git.
 
 ## Signed-in chat and coding agent
 
-Signed-in ExpertAI and the coding agent currently use the Kilo Gateway adapter:
-
-| Variable | Value | Required |
-| --- | --- | --- |
-| `KILO_API_BASE_URL` | `https://ai-gateway.kilo.ai/api/v1` | No |
-| `KILO_MODEL` | `kilo-auto/free` | No |
-| `KILO_API_KEY` | Kilo Gateway key | No for anonymous free access |
-
-The Kilo adapter is separate from the Builder's interactive Kilo CLI terminal.
+Signed-in chat and the coding agent use the server-side provider route configured by the application. Keep its gateway credentials server-only as well. The interactive terminal/CLI used inside the builder is a separate runtime from chat completion routing.
 
 ## Supabase server configuration
 
-Guest requests require the following server-only variables in Vercel:
+Guest requests require these server-side variables in Vercel:
 
 - `SUPABASE_URL` (or the existing `VITE_SUPABASE_URL` fallback)
 - `SUPABASE_PUBLISHABLE_KEY` (or the existing `VITE_SUPABASE_PUBLISHABLE_KEY` fallback)
 - `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY`
 
-Never expose a Supabase secret/service-role key through a `VITE_*` variable. The secret key is used only by the server to check and consume guest credits in the private schema.
+Never expose a Supabase secret/service-role key through a `VITE_*` variable. The secret key is used only by the server to check and consume guest credits.
+
+Guest chat currently has a 15-message allowance per rolling 24-hour period. Authenticated users follow their separate account entitlement and credit logic.
 
 ## Verification after deployment
 
-1. Deploy the `main` branch.
+1. Confirm at least one guest provider key is configured; both are recommended.
 2. Open a private/incognito browser window and send a text-only guest message without signing in.
-3. Confirm the response streams and the guest counter decreases.
-4. Send another message and confirm the server-side counter changes in Supabase.
-5. Exhaust the allowance in a test environment and confirm the API returns HTTP 402.
-6. Confirm an invalid/missing guest session returns HTTP 400.
-7. Confirm a missing OpenRouter key returns a clear HTTP 503 rather than a generic error.
-8. Sign in and verify signed-in chat still uses Kilo and decrements the authenticated user's AI credits.
-9. Check Vercel logs for provider status codes; never log API keys, prompts, or uploaded content.
+3. Confirm the response streams and the guest allowance is consumed only for a completed/accepted request.
+4. If both keys are configured, temporarily test with an invalid primary key in Preview and confirm the fallback route responds.
+5. Confirm an invalid/missing guest session is rejected.
+6. Test the 15-message guest limit in a safe test environment.
+7. Sign in and verify authenticated chat and the coding agent independently.
+8. Check server logs for provider status codes; never log API keys, prompts or uploaded content.
 
-Official references:
-- https://openrouter.ai/openrouter/free
-- https://openrouter.ai/collections/free-models/
-- https://supabase.com/docs/guides/database/postgres/row-level-security
