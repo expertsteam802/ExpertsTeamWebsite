@@ -425,6 +425,7 @@ export function CodeAgent() {
   const [cloudConnectionId, setCloudConnectionId] = useState<string | null>(null);
   const [environmentPanelOpen, setEnvironmentPanelOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "error">("saved");
   const [runtimeBusy, setRuntimeBusy] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [previewExpanded, setPreviewExpanded] = useState(false);
@@ -1884,6 +1885,20 @@ export function CodeAgent() {
     onError: (error: Error) => toast.error(error.message),
   });
   useEffect(() => {
+    if (!dirty || busy || !user || autoSaveStatus === "saving" || autoSaveStatus === "error") return;
+    const timeout = window.setTimeout(async () => {
+      setAutoSaveStatus("saving");
+      try {
+        await persist();
+        setAutoSaveStatus("saved");
+      } catch (error) {
+        setAutoSaveStatus("error");
+        toast.error(error instanceof Error ? "Auto-save failed: " + error.message : "Auto-save failed. Your changes are still in this workspace.");
+      }
+    }, 1200);
+    return () => window.clearTimeout(timeout);
+  }, [dirty, busy, user?.id, projectId, files, messages, name, cloudConnectionId, autoSaveStatus]);
+  useEffect(() => {
     const handleWorkspaceShortcut = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       const modifier = event.ctrlKey || event.metaKey;
@@ -2524,7 +2539,7 @@ export function CodeAgent() {
                 </button>
               )}
               <span className="text-xs text-slate-500">
-                {dirty ? "• Unsaved changes" : "• Saved"}
+                {dirty ? (autoSaveStatus === "saving" ? "• Saving…" : autoSaveStatus === "error" ? "• Auto-save failed" : "• Unsaved changes") : "• Saved"}
               </span>
               <select
                 aria-label="Switch project"
@@ -2604,7 +2619,7 @@ export function CodeAgent() {
           </a>
           <span className="hidden text-xs text-slate-500 sm:inline">Workspace</span>
           <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] text-slate-400">
-            {dirty ? "Changes not saved" : "All changes saved"}
+            {dirty ? (autoSaveStatus === "saving" ? "Saving changes…" : autoSaveStatus === "error" ? "Auto-save failed" : "Changes not saved") : "All changes saved"}
           </span>
         </div>
         {publishedUrl && (
