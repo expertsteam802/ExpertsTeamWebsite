@@ -353,6 +353,8 @@ export function CodeAgent() {
   const agentChatEndRef = useRef<HTMLDivElement>(null);
   const [agentPanelMode, setAgentPanelMode] = useState<"chat" | "terminal" | "chats">("terminal");
   const [prompt, setPrompt] = useState("");
+  const [agentMode, setAgentMode] = useState<"build" | "plan">("build");
+  const [planDraft, setPlanDraft] = useState<string | null>(null);
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
   const referenceInputRef = useRef<HTMLInputElement>(null);
   const projectFileInputRef = useRef<HTMLInputElement>(null);
@@ -1974,9 +1976,9 @@ export function CodeAgent() {
     }
   }
 
-  async function sendPrompt() {
+  async function sendPrompt(modeOverride: "build" | "plan" = agentMode, promptOverride?: string) {
     if (CODING_AGENT_UNDER_DEVELOPMENT) return;
-    const text = prompt.trim();
+    const text = (promptOverride ?? prompt).trim();
     if (!text || busy) return;
     const session = terminalConnection;
     if (!session || session.projectId !== projectId) {
@@ -1992,24 +1994,38 @@ export function CodeAgent() {
 
     try {
       const activeProjectId = projectId ?? (await persist());
-      await saveCheckpoint(`Before: ${text.slice(0, 96)}`);
+      if (modeOverride === "build") await saveCheckpoint(`Before: ${text.slice(0, 96)}`);
       const conversationContext = messages.slice(-8).map((message) =>
         (message.role === "user" ? "USER: " : "ASSISTANT: ") + message.content.slice(-1800)
       ).join("\n\n");
-      const cliPrompt = conversationContext
-        ? "Continue this ExpertsTeam Agent conversation. Use the existing project files as the source of truth.\n\n" +
-          conversationContext + "\n\nUSER: " + text
-        : text;
+      const cliPrompt = modeOverride === "plan"
+        ? text
+        : conversationContext
+          ? "Continue this ExpertsTeam Agent conversation. Use the existing project files as the source of truth.\n\n" +
+            conversationContext + "\n\nUSER: " + text
+          : text;
       const result = await runCliPrompt({
         data: {
           projectId: activeProjectId,
           sandboxName: session.sandboxName,
           cli: session.cli,
+          mode: modeOverride,
           prompt: cliPrompt,
           referenceImages,
         },
       });
       setReferenceImages([]);
+      if (modeOverride === "plan") {
+        const planMessage = "Plan ready for your review. No project files were changed.\\n\\n" + result.message;
+        const finalMessages: Message[] = [...nextMessages, { role: "assistant", content: planMessage }];
+        setPlanDraft(result.message);
+        setMessages(finalMessages);
+        setTypingMessageIndex(finalMessages.length - 1);
+        await persist({ messages: finalMessages });
+        await queryClient.invalidateQueries({ queryKey: ["profile"] });
+        return;
+      }
+      setPlanDraft(null);
       const updatedFiles: ProjectFiles = { ...files };
       const changed: string[] = [];
       for (const [path, content] of Object.entries(result.files)) {
@@ -2975,16 +2991,18 @@ export function CodeAgent() {
                     <div ref={agentChatEndRef} />
                   </div>
                   {referenceImages.length > 0 && <div className="flex shrink-0 flex-wrap gap-2 border-t border-white/[0.06] px-3 pt-2">{referenceImages.map((image) => <span key={image.name} className="rounded-md bg-white/5 px-2 py-1 text-[10px] text-slate-300">{image.name}</span>)}</div>}
+                  {planDraft && <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-emerald-400/15 bg-emerald-400/[0.06] px-3 py-2"><span className="text-[10px] text-emerald-200">Plan ready · project files unchanged</span><div className="flex gap-2"><button type="button" onClick={() => setPlanDraft(null)} className="rounded-lg px-2.5 py-1.5 text-[10px] text-slate-400 hover:bg-white/5">Discard</button><button type="button" onClick={() => { const approved = planDraft; setPlanDraft(null); setAgentMode("build"); void sendPrompt("build", "Implement this approved plan. Follow the steps in order and verify the result:\\n\\n" + approved); }} disabled={busy} className="rounded-lg bg-emerald-400 px-3 py-1.5 text-[10px] font-semibold text-slate-950 disabled:opacity-40">Implement plan</button></div></div>}
                   <div className="shrink-0 border-t border-white/[0.08] bg-[#0a1422] p-3">
                     <div className="rounded-2xl border border-white/10 bg-[#0c1727] p-2 focus-within:border-cyan-400/40">
-                      <Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendPrompt(); } }} placeholder="Ask ExpertsTeam Agent to build or change something…" className="min-h-[76px] resize-none border-0 bg-transparent text-xs text-white shadow-none focus-visible:ring-0" disabled={busy} />
+                      <Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendPrompt(); } }} placeholder="Ask ExpertsTeam Agent to plan or build something…" className="min-h-[76px] resize-none border-0 bg-transparent text-xs text-white shadow-none focus-visible:ring-0" disabled={busy} />
                       <div className="flex items-center justify-between gap-2 px-1 pt-2">
                         <div className="flex items-center gap-1">
+                          <button type="button" onClick={() => setAgentMode((mode) => mode === "plan" ? "build" : "plan")} disabled={busy} className={agentMode === "plan" ? "rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-2.5 py-2 text-[10px] font-semibold text-emerald-200" : "rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}>{agentMode === "plan" ? "Plan mode on" : "Plan first"}</button>
                           <input ref={referenceInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={(event) => { void attachReferenceImages(event.target.files); event.currentTarget.value = ""; }} />
                           <button type="button" onClick={() => referenceInputRef.current?.click()} disabled={busy} className="rounded-lg p-2 text-slate-400 hover:bg-white/5 hover:text-cyan-200 disabled:opacity-40" title="Attach visual references"><ImagePlus className="h-4 w-4" /></button>
                           <span className="text-[9px] text-slate-600">Enter to send · Shift+Enter for new line</span>
                         </div>
-                        <button type="button" onClick={() => void sendPrompt()} disabled={!prompt.trim() || busy} className="inline-flex items-center gap-2 rounded-xl bg-cyan-400 px-3 py-2 text-[10px] font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-3.5 w-3.5" /> {busy ? "Working" : "Send"}</button>
+                        <button type="button" onClick={() => void sendPrompt()} disabled={!prompt.trim() || busy} className="inline-flex items-center gap-2 rounded-xl bg-cyan-400 px-3 py-2 text-[10px] font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-3.5 w-3.5" /> {busy ? "Working" : agentMode === "plan" ? "Create plan" : "Build"}</button>
                       </div>
                     </div>
                     <p className="mt-2 text-center text-[9px] text-slate-600">Usage display shows your remaining ExpertsTeam AI credits.</p>
