@@ -312,6 +312,24 @@ async function loadProjectSourceFiles(
   projectId: string,
   userId: string,
 ): Promise<Record<string, string>> {
+  const readRows = async () => {
+    const allRows: { file_path: string; content: string }[] = [];
+    const pageSize = 500;
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await supabase
+        .from("agent_project_files")
+        .select("file_path,content")
+        .eq("project_id", projectId)
+        .eq("user_id", userId)
+        .order("file_path", { ascending: true })
+        .range(offset, offset + pageSize - 1);
+      if (error) throw new Error("Could not load the saved project files.");
+      allRows.push(...(data ?? []));
+      if (!data || data.length < pageSize) break;
+    }
+    return allRows;
+  };
+
   const { data: projectMeta, error: metaError } = await supabase
     .from("agent_projects")
     .select("file_storage_ready_at")
@@ -336,24 +354,12 @@ async function loadProjectSourceFiles(
 
     // A cleared legacy snapshot is expected after successful per-file migration.
     // If the readiness marker is missing, still recover any intact file rows.
-    const { data: recoveredRows, error: recoveredRowsError } = await supabase
-      .from("agent_project_files")
-      .select("file_path,content")
-      .eq("project_id", projectId)
-      .eq("user_id", userId)
-      .order("file_path", { ascending: true });
-    if (recoveredRowsError) throw new Error("Could not recover the saved project files.");
-    return Object.fromEntries((recoveredRows ?? []).map((row) => [row.file_path, row.content]));
+    const recoveredRows = await readRows();
+    return Object.fromEntries(recoveredRows.map((row) => [row.file_path, row.content]));
   }
 
-  const { data: rows, error: fileError } = await supabase
-    .from("agent_project_files")
-    .select("file_path,content")
-    .eq("project_id", projectId)
-    .eq("user_id", userId)
-    .order("file_path", { ascending: true });
-  if (fileError) throw new Error("Could not load the saved project files.");
-  return Object.fromEntries((rows ?? []).map((row) => [row.file_path, row.content]));
+  const rows = await readRows();
+  return Object.fromEntries(rows.map((row) => [row.file_path, row.content]));
 }
 
 async function assertProjectOwnership(
