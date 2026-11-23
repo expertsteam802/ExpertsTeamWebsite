@@ -386,7 +386,7 @@ function publishableFile(filePath: string) {
   return !parts.some((part) => ["node_modules", ".git", ".vercel"].includes(part)) &&
     !/^\.env(?:\.|$)/i.test(filename) &&
     !/^(?:id_rsa|id_ed25519|credentials?|secrets?)(?:\.|$)/i.test(filename) &&
-    /\.(?:pem|key|p12|pfx)$/i.test(filename);
+    !/\.(?:pem|key|p12|pfx)$/i.test(filename);
 }
 function publishMime(filePath: string) {
   const ext = filePath.split(".").pop()?.toLowerCase();
