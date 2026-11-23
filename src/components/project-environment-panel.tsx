@@ -26,7 +26,7 @@ export function ProjectEnvironmentPanel({
   const listKeys = useServerFn(listProjectEnvironmentKeys);
   const saveVariable = useServerFn(saveProjectEnvironmentVariable);
   const deleteVariable = useServerFn(deleteProjectEnvironmentVariable);
-  const [key, setKey] = useState("SUPABASE_URL");
+  const [key, setKey] = useState("VITE_SUPABASE_URL");
   const [value, setValue] = useState("");
 
   const variables = useQuery({
