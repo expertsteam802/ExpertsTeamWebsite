@@ -23,6 +23,6 @@ Never add a service-role/secret key to a browser-visible `VITE_*` variable. The 
 
 ## Current implementation boundary
 
-This release provides project ownership checks, AES-256-GCM encrypted storage, key-name listing, replacement, and deletion. Only the three allowlisted public Supabase settings (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and `VITE_SUPABASE_ANON_KEY`) are passed into the Daytona preview process and static production build. Those values are public by design and will be visible in the browser bundle.
+This release provides project ownership checks, AES-256-GCM encrypted storage, key-name listing, replacement, and deletion. Only the allowlisted public Supabase settings (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_ANON_KEY`, and their `NEXT_PUBLIC_*` equivalents) are passed into the Daytona preview process and static production build. Those values are public by design and will be visible in the browser bundle.
 
 Private variables such as `SUPABASE_SECRET_KEY` remain encrypted and are not injected into the browser build, preview shell, or AI coding terminal. The current publishing target is static hosting, so private server-side credentials are not consumed by that target. A future server-hosting adapter must retrieve them only inside trusted server code. Environment values are never returned by the list action; never return `loadProjectEnvironment` results from a browser-callable server function.
