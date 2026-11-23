@@ -82,8 +82,24 @@ export function UploadDialog({ defaultCategory = "resource" }: { defaultCategory
           throw new Error("Thumbnail URLs must use HTTPS.");
       }
       if (file && file.size > MAX_UPLOAD_BYTES) throw new Error("Files must be 200MB or smaller.");
-      if (file && profile && file.size > profile.storage_quota_bytes) {
-        throw new Error("This file is bigger than your remaining space — upgrade for more room.");
+      if (file && profile) {
+        const { data: existingFiles, error: storageUsageError } = await supabase
+          .from("files")
+          .select("size_bytes")
+          .eq("user_id", user.id);
+        if (storageUsageError) {
+          throw new Error("Could not check your remaining storage space. Please try again.");
+        }
+        const usedBytes = (existingFiles ?? []).reduce(
+          (total, existingFile) => total + Number(existingFile.size_bytes ?? 0),
+          0,
+        );
+        const remainingBytes = Math.max(0, Number(profile.storage_quota_bytes) - usedBytes);
+        if (file.size > remainingBytes) {
+          throw new Error(
+            "This file is larger than your remaining storage space. Remove files or upgrade your storage.",
+          );
+        }
       }
       setPercent(0);
       const path = file
