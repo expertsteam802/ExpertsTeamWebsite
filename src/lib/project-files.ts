@@ -1,6 +1,24 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ProjectFiles } from "@/lib/sandbox";
 
+const FILE_READ_PAGE_SIZE = 500;
+
+async function readProjectFileRows(projectId: string) {
+  const rows: { file_path: string; content: string }[] = [];
+  for (let offset = 0; ; offset += FILE_READ_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("agent_project_files")
+      .select("file_path,content")
+      .eq("project_id", projectId)
+      .order("file_path", { ascending: true })
+      .range(offset, offset + FILE_READ_PAGE_SIZE - 1);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < FILE_READ_PAGE_SIZE) break;
+  }
+  return rows;
+}
+
 export async function loadProjectFiles(projectId: string): Promise<ProjectFiles> {
   const { data: project, error: projectError } = await supabase
     .from("agent_projects")
@@ -32,22 +50,12 @@ export async function loadProjectFiles(projectId: string): Promise<ProjectFiles>
     // If the legacy JSON snapshot has already been cleared but a previous
     // migration or interrupted deployment left file rows behind, recover
     // from those rows rather than treating the workspace as empty.
-    const { data: recoveredRows, error: recoveredRowsError } = await supabase
-      .from("agent_project_files")
-      .select("file_path,content")
-      .eq("project_id", projectId)
-      .order("file_path", { ascending: true });
-    if (recoveredRowsError) throw recoveredRowsError;
-    return Object.fromEntries((recoveredRows ?? []).map((row) => [row.file_path, row.content]));
+    const recoveredRows = await readProjectFileRows(projectId);
+    return Object.fromEntries(recoveredRows.map((row) => [row.file_path, row.content]));
   }
 
-  const { data, error } = await supabase
-    .from("agent_project_files")
-    .select("file_path,content")
-    .eq("project_id", projectId)
-    .order("file_path", { ascending: true });
-  if (error) throw error;
-  return Object.fromEntries((data ?? []).map((row) => [row.file_path, row.content]));
+  const rows = await readProjectFileRows(projectId);
+  return Object.fromEntries(rows.map((row) => [row.file_path, row.content]));
 }
 
 export async function saveProjectFile(projectId: string, userId: string, filePath: string, content: string) {
