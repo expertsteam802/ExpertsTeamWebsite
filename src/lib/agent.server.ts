@@ -440,19 +440,27 @@ export async function pushToGithub({
   const user = (await (await request(api + "/user")).json()) as { login?: string };
   if (!user.login) throw new Error("GitHub did not return the connected account name.");
   const login = user.login;
+  const repoParts = repo.split("/").filter(Boolean);
+  if (repoParts.length < 1 || repoParts.length > 2 || repoParts.some((part) => !/^[A-Za-z0-9_.-]{1,100}$/.test(part))) {
+    throw new Error("Choose a GitHub repository as owner/name.");
+  }
+  const owner = repoParts.length === 2 ? repoParts[0] : login;
+  const repository = repoParts.length === 2 ? repoParts[1] : repoParts[0];
+  const repoApi = api + "/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repository);
 
   let repoInfo: { default_branch?: string };
-  const repoResponse = await fetch(api + "/repos/" + encodeURIComponent(login) + "/" + encodeURIComponent(repo), { headers });
+  const repoResponse = await fetch(repoApi, { headers });
   if (repoResponse.status === 404) {
+    if (owner !== login) throw new Error("The selected organization repository does not exist or you lack permission to create it.");
     await request(api + "/user/repos", {
       method: "POST",
       body: JSON.stringify({
-        name: repo,
+        name: repository,
         auto_init: true,
         description: "Built with the ExpertsTeam agent",
       }),
     });
-    const createdInfo = await request(api + "/repos/" + encodeURIComponent(login) + "/" + encodeURIComponent(repo));
+    const createdInfo = await request(repoApi);
     repoInfo = (await createdInfo.json()) as { default_branch?: string };
   } else if (!repoResponse.ok) {
     throw new Error(`GitHub could not open the target repository (${repoResponse.status}).`);
@@ -466,7 +474,7 @@ export async function pushToGithub({
   };
   if (!allFiles["README.md"]) {
     allFiles["README.md"] =
-      `# ${repo}\n\nBuilt with the ExpertsTeam AI agent.\n\nLive: https://${login}.github.io/${repo}/\n`;
+      `# ${repository}\n\nBuilt with the ExpertsTeam AI agent.\n\nLive: https://${owner}.github.io/${repository}/\n`;
   }
 
   const entries = Object.entries(allFiles);
@@ -480,7 +488,7 @@ export async function pushToGithub({
   const refPath = branch.split("/").map(encodeURIComponent).join("/");
   let parentCommit: string | undefined;
   let baseTree: string | undefined;
-  const refResponse = await fetch(api + "/repos/" + login + "/" + repo + "/git/ref/heads/" + refPath, { headers });
+  const refResponse = await fetch(repoApi + "/git/ref/heads/" + refPath, { headers });
   if (refResponse.ok) {
     const ref = (await refResponse.json()) as { object?: { sha?: string } };
     parentCommit = ref.object?.sha;
@@ -550,8 +558,8 @@ export async function pushToGithub({
   }).catch(() => undefined);
 
   return {
-    url: `https://github.com/${login}/${repo}`,
-    pagesUrl: `https://${login}.github.io/${repo}/`,
+    url: `https://github.com/${owner}/${repository}`,
+    pagesUrl: `https://${owner}.github.io/${repository}/`,
   };
 }
 
