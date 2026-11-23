@@ -195,10 +195,10 @@ function terminalBridgeSource(workdir: string, bridgeDir: string) {
 function cliPrompt(username: string, cli: CliName) {
   const safeUsername = username.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 39) || "ExpertsTeam";
   const launch = cli === "kilo"
-    ? 'command -v kilo >/dev/null 2>&1 && exec kilo || printf "\\nThe agent runtime is unavailable. Reconnect the workspace to repair it.\\n"'
+    ? 'if command -v kilo >/dev/null 2>&1; then kilo; cli_status=$?; printf "\\nKilo exited with code %s. The terminal is still available.\\n" "$cli_status"; else printf "\\nThe Kilo runtime is unavailable. Reconnect the workspace to repair it.\\n"; fi'
     : cli === "opencode"
-      ? 'command -v opencode >/dev/null 2>&1 && exec opencode || printf "\\nThe agent runtime is unavailable. Reconnect the workspace to repair it.\\n"'
-      : 'command -v aider >/dev/null 2>&1 && exec aider || printf "\\nThe agent runtime is unavailable. Reconnect the workspace to repair it.\\n"';
+      ? 'if command -v opencode >/dev/null 2>&1; then opencode; cli_status=$?; printf "\\nOpenCode exited with code %s. The terminal is still available.\\n" "$cli_status"; else printf "\\nThe OpenCode runtime is unavailable. Reconnect the workspace to repair it.\\n"; fi'
+      : 'if command -v aider >/dev/null 2>&1; then aider; cli_status=$?; printf "\\nAider exited with code %s. The terminal is still available.\\n" "$cli_status"; else printf "\\nThe Aider runtime is unavailable. Reconnect the workspace to repair it.\\n"; fi';
   const skipEnv = "$" + "{EXPERTS_SKIP_KILO:-0}";
   return "export PS1=" + shellQuote(safeUsername + "@expertsteam:\\w$ ") +
     "\nPROMPT_COMMAND=\nif [ \"" + skipEnv + "\" != \"1\" ]; then\n  " + launch + "\nfi\n";
