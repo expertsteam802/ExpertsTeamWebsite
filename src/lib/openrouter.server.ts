@@ -36,62 +36,63 @@ function toMessages(request: GeminiRequest): OpenRouterMessage[] {
   return messages;
 }
 
-/** Guest ExpertAI uses OpenRouter from the server; its key is never sent to browsers. */
+/** Guest ExpertAI routes through Groq first, then OpenRouter as a fallback.
+ * Both keys stay server-side; neither provider is exposed as the product brand.
+ */
 export async function generateOpenRouterContent(request: GeminiRequest): Promise<GeminiResponse> {
-  const apiKey = process.env["OPENROUTER_API_KEY"]?.trim();
-  if (!apiKey) {
-    throw new Error("Guest AI is not configured yet. Add OPENROUTER_API_KEY as a server-only Vercel environment variable.");
-  }
-
   const activeRequest = compactSmartRequest(request);
-  const body: Record<string, unknown> = {
-    model: process.env["OPENROUTER_MODEL"]?.trim() || "openrouter/free",
-    messages: toMessages(activeRequest),
-    max_tokens: Math.min(request.generationConfig?.maxOutputTokens ?? 4096, 8192),
-  };
+  const messages = toMessages(activeRequest);
+  const maxTokens = Math.min(request.generationConfig?.maxOutputTokens ?? 4096, 8192);
+  const groqKey = process.env["GROQ_API_KEY"]?.trim();
+  const openRouterKey = process.env["OPENROUTER_API_KEY"]?.trim();
+  const providers = [
+    ...(groqKey ? [{ name: "Groq", url: "https://api.groq.com/openai/v1/chat/completions", key: groqKey, model: process.env["GROQ_MODEL"]?.trim() || "llama-3.3-70b-versatile" }] : []),
+    ...(openRouterKey ? [{ name: "OpenRouter", url: "https://openrouter.ai/api/v1/chat/completions", key: openRouterKey, model: process.env["OPENROUTER_MODEL"]?.trim() || "openrouter/free" }] : []),
+  ];
+  if (!providers.length) {
+    throw new Error("ExpertAI guest service is temporarily unavailable. Please try again later.");
+  }
+  let lastError = "No AI route could complete the request.";
+  for (const provider of providers) {
+    const body: Record<string, unknown> = {
+      model: provider.model,
+      messages,
+      max_tokens: maxTokens,
+    };
   if (request.generationConfig?.responseMimeType === "application/json") {
     body.response_format = { type: "json_object" };
   }
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
+  for (const provider of providers) {
+    const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      Authorization: "Bearer " + apiKey,
-      "HTTP-Referer": "https://expertsteam.giize.com",
-      "X-Title": "ExpertsTeam ExpertAI",
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(55000),
-  });
-
-  if (!response.ok) {
-    const detail = (await response.text()).slice(0, 1200);
-    if (response.status === 429) {
-      throw new Error("OpenRouter free-model rate limit reached. Please wait and try again.");
+      Authorization: "Bearer " + provider.key,
+    };
+    if (provider.name === "OpenRouter") {
+      headers["HTTP-Referer"] = "https://expertsteam.giize.com";
+      headers["X-Title"] = "ExpertsTeam ExpertAI";
     }
-    if (response.status === 402 || response.status === 403) {
-      throw new Error("OpenRouter rejected the guest AI request. Check the server API key and account limits.");
-    }
-    if (response.status === 400 && /response_format|json_object|unsupported parameter/i.test(detail)) {
+    const response = await fetch(provider.url, {
+      method: "POST", headers, body: JSON.stringify(body),
+      signal: AbortSignal.timeout(55000),
+    });
+    if (response.ok) return parseResponse(await response.json());
+    const detail = (await response.text()).slice(0, 1000);
+    lastError = provider.name + " returned HTTP " + response.status + ": " + detail;
+    // If a route rejects JSON mode, retry once without the optional response format.
+    if (response.status === 400 && body.response_format && /response_format|json_object|unsupported parameter/i.test(detail)) {
       delete body.response_format;
-      const retry = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + apiKey,
-          "HTTP-Referer": "https://expertsteam.giize.com",
-          "X-Title": "ExpertsTeam ExpertAI",
-        },
-        body: JSON.stringify(body),
+      const retry = await fetch(provider.url, {
+        method: "POST", headers, body: JSON.stringify(body),
         signal: AbortSignal.timeout(55000),
       });
-      if (!retry.ok) throw new Error("OpenRouter HTTP " + retry.status + ": " + (await retry.text()).slice(0, 800));
-      return parseResponse(await retry.json());
+      if (retry.ok) return parseResponse(await retry.json());
+      lastError = provider.name + " returned HTTP " + retry.status + ": " + (await retry.text()).slice(0, 800);
     }
-    throw new Error("OpenRouter HTTP " + response.status + ": " + detail);
+    // Quota, capacity and upstream failures move to the next configured route.
   }
-  return parseResponse(await response.json());
+  console.error("[ExpertAI] All configured guest routes failed:", lastError);
+  throw new Error("ExpertAI is temporarily busy. Please try again in a moment.");
 }
 
 function parseResponse(value: unknown): GeminiResponse {
