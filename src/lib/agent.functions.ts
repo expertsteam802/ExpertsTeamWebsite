@@ -20,7 +20,7 @@ const referenceImageSchema = z.object({
 
 const codingRequest = z
   .object({
-    prompt: z.string().trim().min(1).max(16000),
+    prompt: z.string().trim().min(1).max(200_000),
     files: z.record(z.string().max(512), z.string().max(10_000_000)),
     history: z
       .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(3000) }))
