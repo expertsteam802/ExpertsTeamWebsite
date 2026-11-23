@@ -19,7 +19,7 @@ Register an OAuth App in GitHub Developer Settings:
 
 - Homepage URL: `https://expertsteam.giize.com`
 - Authorization callback URL: `https://expertsteam.giize.com/api/plugins/github/callback`
-- Requested scopes: `repo read:user user:email`
+- Requested scopes: `repo delete_repo read:user user:email`
 
 Add its client ID and secret to Vercel as the GitHub environment variables above. For local development, set `APP_URL` to the local origin and register that exact callback URL in a development OAuth App.
 
@@ -29,7 +29,7 @@ Register an OAuth application in the Supabase organization that owns the Experts
 
 `https://expertsteam.giize.com/api/plugins/supabase/callback`
 
-The integration uses the official Supabase authorization endpoint and authorization-code + PKCE flow. Configure the minimum Management API scopes needed by the integration in the OAuth application settings, then add its client ID and secret to Vercel.
+The integration uses the official Supabase authorization endpoint and authorization-code + PKCE flow. Configure Management API scopes for project/organization read access and database read/write access (including the `database:read` and `database:write` scopes used by the SQL endpoints). Add any project deletion scope only if you intend to offer that permission. Then add its client ID and secret to Vercel.
 
 ## Callback endpoints
 
@@ -47,4 +47,4 @@ The integration uses the official Supabase authorization endpoint and authorizat
 
 ## Current implementation boundary
 
-This first connection pass wires GitHub and Supabase Management OAuth, encrypted token persistence, per-user action permissions, and revocation. The provider-specific action executors (GitHub repository operations and Supabase Management API/database operations) must check the permission row on every operation and write an audit event. Do not expose a raw token to the Agent prompt or browser.
+This first connection pass wires GitHub and Supabase Management OAuth, encrypted token persistence, per-user action permissions, revocation, and a permission-checked server action executor. GitHub currently supports repository listing, file reads/writes, branch creation, pull requests, issues, and repository deletion. Supabase currently supports organization/project listing, schema inspection, read-only SQL, SQL writes, table create/alter/drop, and project deletion. Destructive actions require explicit confirmation. The Agent UI still needs its tool-calling adapter to invoke this executor; do not expose a raw token to the Agent prompt or browser. Vercel, Netlify, Stripe, Figma, and Google Drive are reserved catalog providers and do not yet have OAuth adapters/action executors.
