@@ -16,6 +16,8 @@ import {
   Folder,
   FolderInput,
   Github,
+  History,
+  CopyPlus,
   ImagePlus,
   Loader2,
   Maximize2,
@@ -362,6 +364,8 @@ export function CodeAgent() {
   const [logs, setLogs] = useState<{ type: string; message: string }[]>([]);
   const [previewKey, setPreviewKey] = useState(0);
   const [githubOpen, setGithubOpen] = useState(false);
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
+  const [restoringCheckpointId, setRestoringCheckpointId] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [importRepoUrl, setImportRepoUrl] = useState("");
   const [importToken, setImportToken] = useState("");
@@ -1721,6 +1725,68 @@ export function CodeAgent() {
     }
   }
 
+  async function duplicateCurrentProject() {
+    if (!user) {
+      toast.error("Sign in to duplicate this project.");
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from("agent_projects")
+        .insert({
+          user_id: user.id,
+          name: (name.trim() || "Untitled project") + " copy",
+          files: files as unknown as Json,
+          messages: messages.slice(-40) as unknown as Json,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
+      toast.success("Project duplicated", {
+        action: {
+          label: "Open copy",
+          onClick: () => {
+            const copy = projects.find((project) => project.id === data.id);
+            if (copy) openProject(copy);
+            else toast.info("The copy is saved. Refresh your project list to open it.");
+          },
+        },
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not duplicate this project.");
+    }
+  }
+
+  async function restoreCheckpoint(checkpoint: CheckpointRow) {
+    if (!user || !projectId || restoringCheckpointId) return;
+    if (!window.confirm("Restore this version? Your current project will first be saved as a new checkpoint.")) return;
+    setRestoringCheckpointId(checkpoint.id);
+    try {
+      await saveCheckpoint("Before restore");
+      const restored = checkpoint.files;
+      if (!restored || typeof restored !== "object" || !Object.keys(restored).length) {
+        throw new Error("This version contains no recoverable source files.");
+      }
+      await persist({ files: restored });
+      setFiles(restored);
+      setActiveFile(Object.keys(restored)[0] ?? "index.html");
+      setDirty(false);
+      setPreviewKey((value) => value + 1);
+      if (terminalConnection?.projectId === projectId) {
+        await stopTerminal({ data: { sandboxName: terminalConnection.sandboxName } });
+        setTerminalConnection(null);
+        setTerminalReady(false);
+      }
+      setVersionHistoryOpen(false);
+      toast.success("Restored version: " + checkpoint.name + ". Reopen the Agent terminal to sync the restored files.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not restore this version.");
+    } finally {
+      setRestoringCheckpointId(null);
+    }
+  }
+
   const saveMutation = useMutation({
     mutationFn: () => persist(),
     onSuccess: () => toast.success("Project saved successfully"),
@@ -2425,10 +2491,12 @@ export function CodeAgent() {
             </div>
 
             <div className="mx-3 my-3 border-t border-white/[0.07]" />
-            <div className="grid grid-cols-3 gap-1 px-3">
+            <div className="grid grid-cols-5 gap-1 px-3">
               <Button size="sm" variant="outline" onClick={createProject} className="h-8 border-white/10 bg-white/[0.03] px-2 text-[10px] text-slate-300" title="New project"><Plus className="h-3.5 w-3.5" /></Button>
               <Button size="sm" variant="outline" onClick={() => projectFileInputRef.current?.click()} className="h-8 border-white/10 bg-white/[0.03] px-2 text-[10px] text-slate-300" title="Add files"><FolderInput className="h-3.5 w-3.5" /></Button>
               <Button size="sm" variant="outline" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="h-8 border-cyan-400/20 bg-cyan-400/[0.06] px-2 text-[10px] text-cyan-100" title="Save project">{saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}</Button>
+              <Button size="sm" variant="outline" onClick={() => setVersionHistoryOpen(true)} disabled={!projectId} className="h-8 border-white/10 bg-white/[0.03] px-2 text-[10px] text-slate-300" title="Version history"><History className="h-3.5 w-3.5" /></Button>
+              <Button size="sm" variant="outline" onClick={() => void duplicateCurrentProject()} className="h-8 border-white/10 bg-white/[0.03] px-2 text-[10px] text-slate-300" title="Duplicate project"><CopyPlus className="h-3.5 w-3.5" /></Button>
             </div>
 
             <div className="mt-auto p-3">
@@ -3343,6 +3411,30 @@ export function CodeAgent() {
               )}
               Push files to GitHub
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={versionHistoryOpen} onOpenChange={setVersionHistoryOpen}>
+        <DialogContent className="max-h-[80dvh] overflow-hidden border-slate-700 bg-[#101a29] text-white sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><History className="h-5 w-5" /> Project version history</DialogTitle>
+          </DialogHeader>
+          <div className="min-h-0 space-y-2 overflow-y-auto">
+            {checkpoints.length === 0 ? (
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-slate-400">
+                No saved versions yet. ExpertsTeam automatically creates a checkpoint before each Agent change.
+              </div>
+            ) : checkpoints.map((checkpoint) => (
+              <div key={checkpoint.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-slate-100">{checkpoint.name}</p>
+                  <p className="mt-1 text-[11px] text-slate-500">{new Date(checkpoint.created_at).toLocaleString()} · {Object.keys(checkpoint.files ?? {}).length} files</p>
+                </div>
+                <Button size="sm" variant="outline" disabled={restoringCheckpointId !== null} onClick={() => void restoreCheckpoint(checkpoint)} className="shrink-0 border-cyan-400/20 text-cyan-100">
+                  {restoringCheckpointId === checkpoint.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Restore"}
+                </Button>
+              </div>
+            ))}
           </div>
         </DialogContent>
       </Dialog>
