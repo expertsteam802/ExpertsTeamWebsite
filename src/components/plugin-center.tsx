@@ -113,6 +113,14 @@ export function PluginCenterPanel() {
 
   const connections = (query.data?.connections ?? []) as PluginConnection[];
   const catalog = query.data?.catalog ?? [];
+  const audit = query.data?.audit ?? [];
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get("plugin_error");
+    const connected = params.get("plugin_connected");
+    if (error) { toast.error(error); params.delete("plugin_error"); window.history.replaceState({}, "", window.location.pathname + (params.size ? "?" + params.toString() : "")); }
+    else if (connected) { toast.success(connected === "github" ? "GitHub connected successfully" : "Supabase Management connected successfully"); params.delete("plugin_connected"); window.history.replaceState({}, "", window.location.pathname + (params.size ? "?" + params.toString() : "")); }
+  }, []);
   const permissions = query.data?.permissions ?? [];
 
   return (
@@ -154,6 +162,15 @@ export function PluginCenterPanel() {
             {expanded === connection.id && <PermissionEditor connection={connection} actions={actions} savedActions={saved} saving={saveMutation.isPending} onSave={(next) => saveMutation.mutate({ connectionId: connection.id, actions: next })} />}
           </div>;
         })}
+      </Card>
+      <Card className="gap-3 p-5">
+        <div className="flex items-center gap-2"><Activity className="h-5 w-5 text-primary" /><h3 className="font-semibold">Recent plugin activity</h3></div>
+        {audit.length === 0 ? <p className="text-xs text-muted-foreground">No plugin actions have been recorded yet.</p> : <div className="divide-y divide-border">
+          {audit.map((entry: any) => <div key={entry.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-xs">
+            <div><p className="font-medium">{entry.provider} · {entry.action}</p><p className="text-muted-foreground">{entry.resource || "Account-level action"}</p></div>
+            <span className={entry.success ? "text-emerald-600" : "text-destructive"}>{entry.success ? "Succeeded" : "Failed"} · {new Date(entry.created_at).toLocaleString()}</span>
+          </div>)}
+        </div>}
       </Card>
     </section>
   );
