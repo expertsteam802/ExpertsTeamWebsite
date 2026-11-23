@@ -199,6 +199,39 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_credit_transactions: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          description: string
+          id: string
+          reference_id: string | null
+          source: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          created_at?: string
+          description?: string
+          id?: string
+          reference_id?: string | null
+          source: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          description?: string
+          id?: string
+          reference_id?: string | null
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_snippets: {
         Row: {
           code: string
@@ -534,6 +567,107 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
+        }
+        Relationships: []
+      }
+      cpa_conversions: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          id: string
+          offer_id: string | null
+          provider: string
+          provider_event_id: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reward_credits: number
+          status: string
+          tracking_id: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          id?: string
+          offer_id?: string | null
+          provider?: string
+          provider_event_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reward_credits: number
+          status?: string
+          tracking_id: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          id?: string
+          offer_id?: string | null
+          provider?: string
+          provider_event_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reward_credits?: number
+          status?: string
+          tracking_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cpa_conversions_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "cpa_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cpa_offers: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          destination_url: string
+          id: string
+          instructions: string
+          is_active: boolean
+          is_featured: boolean
+          provider: string
+          reward_credits: number
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string
+          destination_url: string
+          id?: string
+          instructions?: string
+          is_active?: boolean
+          is_featured?: boolean
+          provider?: string
+          reward_credits?: number
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          destination_url?: string
+          id?: string
+          instructions?: string
+          is_active?: boolean
+          is_featured?: boolean
+          provider?: string
+          reward_credits?: number
+          sort_order?: number
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1460,13 +1594,17 @@ export type Database = {
           service: string
         }[]
       }
+      admin_review_cpa_conversion: {
+        Args: { p_approve: boolean; p_conversion_id: string; p_note?: string }
+        Returns: number
+      }
       admin_review_subscription_request: {
         Args: { p_approve: boolean; p_request_id: string }
         Returns: undefined
       }
       can_use_guest_ai_credit: { Args: { p_ip_hash: string }; Returns: boolean }
-      consume_ai_credit: { Args: never; Returns: number }
       claim_free_ai_credits: { Args: never; Returns: number }
+      consume_ai_credit: { Args: never; Returns: number }
       consume_guest_ai_credit: { Args: { p_ip_hash: string }; Returns: boolean }
       has_role: {
         Args: {
@@ -1478,6 +1616,13 @@ export type Database = {
       is_workspace_member: { Args: { _user_id: string }; Returns: boolean }
       record_video_view: { Args: { p_video_id: string }; Returns: undefined }
       redeem_invite: { Args: { _code: string }; Returns: Json }
+      start_cpa_offer: {
+        Args: { p_offer_id: string }
+        Returns: {
+          destination_url: string
+          tracking_id: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "developer" | "member" | "creator"
