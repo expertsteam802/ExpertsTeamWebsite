@@ -59,6 +59,41 @@ export type Database = {
           },
         ]
       }
+      agent_project_file_staging: {
+        Row: {
+          content: string
+          created_at: string
+          file_path: string
+          import_id: string
+          project_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          file_path: string
+          import_id: string
+          project_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          file_path?: string
+          import_id?: string
+          project_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_file_staging_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_project_files: {
         Row: {
           byte_size: number | null
@@ -1683,6 +1718,10 @@ export type Database = {
       claim_free_ai_credits: { Args: never; Returns: number }
       consume_ai_credit: { Args: never; Returns: number }
       consume_guest_ai_credit: { Args: { p_ip_hash: string }; Returns: boolean }
+      finalize_agent_project_file_staging: {
+        Args: { p_import_id: string; p_project_id: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
