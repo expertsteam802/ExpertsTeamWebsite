@@ -69,12 +69,12 @@ export function ProjectEnvironmentPanel({
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Add credentials belonging to this project. Values are encrypted before storage and are never shown again after saving.
-            Only the public Supabase URL and publishable/anon key may use VITE_ names.
+            Only the public Supabase URL and publishable/anon key may use VITE_ or NEXT_PUBLIC_ names.
           </p>
           <div className="rounded-xl border bg-muted/30 p-3 text-sm">
             <p className="font-medium">Connect your own Supabase project</p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY) for your own browser app. These three public values are passed to the Builder preview and static production build. Private keys are encrypted and stored, but are not exposed to browser builds.
+              Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY) for Vite, or the matching NEXT_PUBLIC_SUPABASE_* names for Next.js. These allowlisted public values are passed to the Builder preview and static production build. Private keys are encrypted and stored, but are not exposed to browser builds.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
