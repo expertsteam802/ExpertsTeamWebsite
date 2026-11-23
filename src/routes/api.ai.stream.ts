@@ -353,7 +353,7 @@ export const Route = createFileRoute("/api/ai/stream")({
                 controller.close();
                 return;
               }
-              // The Kilo gateway currently returns a completed response rather than
+              // The selected gateway currently returns a completed response rather than
               // upstream token events. Do not add an artificial per-chunk delay here:
               // flush larger chunks immediately so the UI does not make replies slower.
               const text = answerText.slice(cursor, cursor + 160);
