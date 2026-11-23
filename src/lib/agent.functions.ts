@@ -579,7 +579,9 @@ export const syncAgentTerminalFiles = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
     const { assertDaytonaTerminalSandboxName, readDaytonaProjectFiles } = await import("./daytona-terminal.server");
-    return readDaytonaProjectFiles(assertDaytonaTerminalSandboxName(context.userId, data.sandboxName));
+    const snapshot = await readDaytonaProjectFiles(assertDaytonaTerminalSandboxName(context.userId, data.sandboxName));
+    await assertBuilderResourcePolicy(context.supabase, context.userId, snapshot.files);
+    return snapshot;
   });
 
 export const refreshAgentTerminal = createServerFn({ method: "POST" })
