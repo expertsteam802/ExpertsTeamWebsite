@@ -580,7 +580,9 @@ export function ChrisAiChat({
         };
         setGuestMessages((current) => [...current, guestReply]);
         setGuestCredits((current) => {
-          const next = Math.max(0, current - 1);
+          const limitReached = /reached the 15-message guest limit/i.test(reply);
+          const temporaryProviderIssue = /^ExpertAI is (?:busy|temporarily unavailable)/i.test(reply);
+          const next = limitReached ? 0 : temporaryProviderIssue ? current : Math.max(0, current - 1);
           try {
             window.localStorage.setItem(
               `experts-team:guest-ai-credits:${guestSessionId}`,
