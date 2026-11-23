@@ -8,6 +8,8 @@ type CallbackValues = {
   secret: string;
 };
 
+const MAX_POSTBACK_BYTES = 8 * 1024;
+
 function safeSecretMatch(expected: string, provided: string): boolean {
   const encoder = new TextEncoder();
   const left = encoder.encode(expected);
@@ -34,27 +36,73 @@ function readValues(url: URL, body: Record<string, unknown> = {}): CallbackValue
   };
 }
 
+async function readBoundedBody(request: Request): Promise<Record<string, unknown>> {
+  const declaredLength = Number(request.headers.get("content-length") ?? 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_POSTBACK_BYTES) {
+    throw new Error("PAYLOAD_TOO_LARGE");
+  }
+
+  const contentType = (request.headers.get("content-type") ?? "").toLowerCase();
+  const isJson = contentType.includes("application/json");
+  const isForm = contentType.includes("application/x-www-form-urlencoded");
+  if (!isJson && !isForm) throw new Error("UNSUPPORTED_MEDIA_TYPE");
+  if (!request.body) return {};
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_POSTBACK_BYTES) {
+        await reader.cancel();
+        throw new Error("PAYLOAD_TOO_LARGE");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  const raw = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  if (isJson) {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("INVALID_PAYLOAD");
+    }
+    return parsed as Record<string, unknown>;
+  }
+  return Object.fromEntries(new URLSearchParams(raw).entries());
+}
+
 async function handlePostback(request: Request): Promise<Response> {
   const url = new URL(request.url);
   let body: Record<string, unknown> = {};
   if (request.method === "POST") {
-    const contentType = request.headers.get("content-type") ?? "";
     try {
-      if (contentType.includes("application/json")) {
-        const parsed: unknown = await request.json();
-        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) body = parsed as Record<string, unknown>;
-      } else {
-        const raw = await request.text();
-        const params = new URLSearchParams(raw);
-        body = Object.fromEntries(params.entries());
+      body = await readBoundedBody(request);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "";
+      if (reason === "PAYLOAD_TOO_LARGE") {
+        return Response.json({ ok: false, error: "Postback payload is too large." }, { status: 413 });
       }
-    } catch {
+      if (reason === "UNSUPPORTED_MEDIA_TYPE") {
+        return Response.json({ ok: false, error: "Use JSON or form-encoded postback data." }, { status: 415 });
+      }
       return Response.json({ ok: false, error: "Invalid postback payload." }, { status: 400 });
     }
   }
 
   const values = readValues(url, body);
-  const providedSecret = request.headers.get("x-cpa-grip-secret") ?? values.secret;
+  const providedSecret = request.headers.get("x-cpa-grip-secret")?.trim() || values.secret;
   const expectedSecret = process.env["CPA_GRIP_POSTBACK_SECRET"] ?? "";
   if (!expectedSecret) {
     console.error("[CPA Grip] Postback disabled: CPA_GRIP_POSTBACK_SECRET is not configured.");
@@ -64,8 +112,11 @@ async function handlePostback(request: Request): Promise<Response> {
     return Response.json({ ok: false, error: "Unauthorized postback." }, { status: 401 });
   }
 
-  if (!values.trackingId || values.trackingId.length > 128) {
+  if (values.trackingId.length < 8 || values.trackingId.length > 128) {
     return Response.json({ ok: false, error: "Missing or invalid subid/tracking identifier." }, { status: 400 });
+  }
+  if (values.eventId.length > 200) {
+    return Response.json({ ok: false, error: "Invalid provider event identifier." }, { status: 400 });
   }
 
   const successfulStatuses = new Set(["", "1", "approved", "success", "successful", "complete", "completed", "converted", "conversion"]);
