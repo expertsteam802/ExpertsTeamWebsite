@@ -158,8 +158,10 @@ export const importGitHubProject = createServerFn({ method: "POST" })
       const worker = async () => {
         while (pending.length) {
           const next = pending.shift();
-          if (!next || visited.has(next.sha)) continue;
-          visited.add(next.sha);
+          if (!next) continue;
+          const visitKey = next.sha + ":" + next.prefix;
+          if (visited.has(visitKey)) continue;
+          visited.add(visitKey);
           const response = await request(apiBase + "/git/trees/" + encodeURIComponent(next.sha));
           const node = (await response.json()) as {
             truncated?: boolean;
