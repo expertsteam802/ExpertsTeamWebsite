@@ -271,10 +271,10 @@ function safePreviewPath(filePath: string) {
 export async function startDaytonaProjectPreview(projectId: string, sourceFiles: AgentProjectFiles) {
   const entries = Object.entries(sourceFiles);
   if (!entries.length) throw new Error("Add project files before starting the preview.");
-  if (entries.length > 2_000 || entries.some(([filePath, content]) => !safePreviewPath(filePath) || content.length > 10_000_000))
-    throw new Error("The project contains invalid or oversized files.");
-  if (entries.reduce((sum, [, content]) => sum + Buffer.byteLength(content), 0) > 25_000_000)
-    throw new Error("The project exceeds the 25 MB preview workspace limit.");
+  if (entries.length > 2_000 || entries.some(([filePath, content]) => !safePreviewPath(filePath) || Buffer.byteLength(content, "utf8") > 10_000_000))
+    throw new Error("The project contains invalid paths or files larger than 10 MB.");
+  if (entries.reduce((sum, [, content]) => sum + Buffer.byteLength(content, "utf8"), 0) > 25_000_000)
+    throw new Error("The project exceeds the 25 MB preview request safety envelope.");
   const { api } = client();
   const name = previewSandboxName(projectId);
   let stage = "connecting to Daytona";
@@ -408,8 +408,10 @@ export async function publishDaytonaProject(
 ) {
   if (!/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(slug)) throw new Error("The public app address is invalid.");
   const entries = Object.entries(sourceFiles);
-  if (!entries.length || entries.length > 2_000 || entries.some(([filePath]) => !safePreviewPath(filePath)))
-    throw new Error("The project contains invalid or oversized files.");
+  if (!entries.length || entries.length > 2_000 || entries.some(([filePath, content]) => !safePreviewPath(filePath) || Buffer.byteLength(content, "utf8") > 10_000_000))
+    throw new Error("The project contains invalid paths or files larger than 10 MB.");
+  if (entries.reduce((sum, [, content]) => sum + Buffer.byteLength(content, "utf8"), 0) > 25_000_000)
+    throw new Error("The project exceeds the 25 MB publishing request safety envelope.");
   const { api } = client();
   const name = previewSandboxName(projectId);
   let stage = "connecting to Daytona";
