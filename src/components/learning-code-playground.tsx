@@ -79,8 +79,8 @@ export function LearningCodePlayground({ floating = true }: { floating?: boolean
               <Button size="sm" variant="outline" onClick={() => setPreviewVersion((v) => v + 1)}><Play className="mr-2 h-4 w-4" /> Run preview</Button>
             </div>
           </DialogHeader>
-          <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-2">
-            <section className="flex min-h-[260px] min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-[#111827]">
+          <div className="grid min-h-0 flex-1 grid-rows-2 gap-3 overflow-y-auto lg:grid-cols-2 lg:grid-rows-1 lg:overflow-hidden">
+            <section className="flex min-h-[220px] min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-[#111827]">
               <div className="flex shrink-0 items-center gap-1 border-b border-white/10 bg-[#0b1220] p-2">
                 {(["html", "css", "js"] as const).map((tab) => (
                   <button key={tab} type="button" onClick={() => setActiveTab(tab)} className={`rounded-md px-3 py-1.5 text-xs font-semibold uppercase ${activeTab === tab ? "bg-primary text-primary-foreground" : "text-slate-400 hover:bg-white/10"}`}>{tab}</button>
@@ -91,7 +91,7 @@ export function LearningCodePlayground({ floating = true }: { floating?: boolean
                 <CodeMirror value={currentCode} height="100%" minHeight="260px" theme={oneDark} extensions={extensions} onChange={setCurrentCode} basicSetup={{ lineNumbers: true, foldGutter: true, autocompletion: true }} />
               </div>
             </section>
-            <section className="flex min-h-[260px] min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card">
+            <section className="flex min-h-[220px] min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card">
               <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
                 <Eye className="h-4 w-4 text-primary" />
                 <span className="text-xs font-semibold">Live preview</span>
