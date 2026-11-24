@@ -613,6 +613,7 @@ export function CodeAgent() {
   const [sidebarWidth, setSidebarWidth] = useState(248);
   const [projectFilter, setProjectFilter] = useState("");
   const [fileFilter, setFileFilter] = useState("");
+  const [draggedFilePath, setDraggedFilePath] = useState<string | null>(null);
   const [assistantWidth, setAssistantWidth] = useState(420);
   useEffect(() => {
     if (window.matchMedia("(max-width: 767px)").matches) {
@@ -911,7 +912,18 @@ export function CodeAgent() {
             <button
               type="button"
               onClick={() => setExpandedFolders((current) => ({ ...current, [node.path]: !(current[node.path] ?? depth === 0) }))}
-              className="flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-[11px] font-medium text-slate-300 hover:bg-white/[0.05] hover:text-white"
+              onDragOver={(event) => {
+                if (!draggedFilePath) return;
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                const sourcePath = event.dataTransfer.getData("text/plain") || draggedFilePath;
+                if (sourcePath) moveFileToFolder(sourcePath, node.path);
+                setDraggedFilePath(null);
+              }}
+              className={`flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-[11px] font-medium ${draggedFilePath ? "border border-dashed border-cyan-400/40 bg-cyan-400/[0.06] text-cyan-100" : "text-slate-300 hover:bg-white/[0.05] hover:text-white"}`}
               style={{ paddingLeft: 8 + depth * 14 }}
               aria-expanded={isOpen}
             >
@@ -928,8 +940,15 @@ export function CodeAgent() {
         <div key={path} className={`group flex items-center rounded-lg ${path === activeFile ? "bg-white/[0.07]" : "hover:bg-white/[0.04]"}`}>
           <button
             type="button"
+            draggable
+            onDragStart={(event) => {
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData("text/plain", path);
+              setDraggedFilePath(path);
+            }}
+            onDragEnd={() => setDraggedFilePath(null)}
             onClick={() => { setActiveFile(path); switchPanel("code"); }}
-            className={`flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-1 text-left text-xs ${path === activeFile ? "text-white" : "text-slate-400"}`}
+            className={`flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-1 text-left text-xs ${draggedFilePath === path ? "opacity-40" : ""} ${path === activeFile ? "text-white" : "text-slate-400"}`}
             style={{ paddingLeft: 26 + depth * 14 }}
           >
             <FileCode2 className={`h-3.5 w-3.5 shrink-0 ${fileIcon(path)}`} />
