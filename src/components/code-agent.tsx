@@ -774,8 +774,15 @@ export function CodeAgent() {
       theme: { background: "#050a12", foreground: "#dbeafe", cursor: "#34d399", selectionBackground: "#164e63" },
     });
     const fit = new FitAddon();
-    terminal.loadAddon(fit); terminal.open(container); fit.fit();
+    terminal.loadAddon(fit);
+    terminal.open(container);
     legacyTerminalRef.current = terminal;
+    container.style.width = "100%";
+    container.style.height = "100%";
+    requestAnimationFrame(() => {
+      if (container.clientWidth > 1 && container.clientHeight > 1) fit.fit();
+      terminal.focus();
+    });
     const socket = new WebSocket(terminalConnection.url, ["experts-terminal-plain", terminalConnection.token]);
     socket.binaryType = "arraybuffer";
     socket.onopen = () => {
@@ -3442,7 +3449,7 @@ export function CodeAgent() {
                     <div ref={agentChatEndRef} />
                   </div>
                   {referenceImages.length > 0 && <div className="flex shrink-0 flex-wrap gap-2 border-t border-white/[0.06] px-3 pt-2">{referenceImages.map((image) => <span key={image.name} className="rounded-md bg-white/5 px-2 py-1 text-[10px] text-slate-300">{image.name}</span>)}</div>}
-                  <div className="shrink-0 border-t border-white/[0.08] bg-[#0a1422] p-3">
+                  <div className="shrink-0 border-t border-white/[0.08] bg-[#0a1422] p-3 px-3">
                     <div className="rounded-xl border border-slate-700 bg-[#0B0F17] p-2 shadow-[0_-8px_30px_rgba(0,0,0,.16)] focus-within:border-blue-400/50">
                       <div className="relative">
                         <Textarea value={prompt} onChange={(event) => { setPrompt(event.target.value); event.target.style.height = "auto"; event.target.style.height = Math.min(event.target.scrollHeight, 160) + "px"; }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendPrompt(); } }} placeholder="Ask ExpertAI anything..." className="min-h-[72px] max-h-40 resize-y border-0 bg-transparent pb-10 pr-14 text-xs leading-5 text-white shadow-none focus-visible:ring-0" disabled={busy} />
@@ -3921,63 +3928,62 @@ export function CodeAgent() {
           .expert-agent-preview-subbar > div:last-child { gap:0!important; }
           .expert-agent-preview-subbar button { padding:5px!important; }
         }
-        /* Stable 3-column desktop workspace: activity rail / agent / workbench. */
+        /* Three direct workspace tracks: activity rail, persistent agent chat, workbench. */
         .expert-agent-workspace-grid {
-          display:grid!important;
-          grid-template-columns:48px minmax(340px,min(32%,460px)) minmax(0,1fr)!important;
-          grid-template-rows:minmax(0,1fr)!important;
+          display:flex!important;flex-direction:row!important;align-items:stretch!important;
           width:100%!important;height:calc(100dvh - 48px)!important;
           min-width:0!important;min-height:0!important;gap:0!important;
-          overflow:hidden!important;
+          overflow:hidden!important;padding:0!important;
         }
         .expert-agent-workspace-grid > .et-studio-activity-rail {
-          grid-column:1!important;grid-row:1!important;
-          width:48px!important;min-width:48px!important;max-width:48px!important;
-          flex:0 0 48px!important;flex-shrink:0!important;
+          display:flex!important;order:0!important;flex:0 0 48px!important;flex-shrink:0!important;
+          width:48px!important;min-width:48px!important;max-width:48px!important;height:100%!important;
         }
         .expert-agent-stage { display:contents!important; }
         .expert-agent-stage > .grid { display:contents!important; }
+        .expert-agent-stage > .expert-agent-toolbar,
+        .expert-agent-stage > .expert-agent-statusbar,
+        .expert-agent-stage > footer,
+        .expert-agent-stage [aria-label="Resize ExpertAI panel"] { display:none!important; }
         .expert-agent-stage .expert-agent-assistant:not(.hidden) {
-          grid-column:2!important;grid-row:1!important;
-          display:flex!important;flex-direction:column!important;
-          width:100%!important;min-width:340px!important;max-width:460px!important;
+          display:flex!important;order:1!important;position:relative!important;inset:auto!important;
+          flex:0 0 32%!important;width:32%!important;min-width:340px!important;max-width:440px!important;
           height:100%!important;min-height:0!important;flex-shrink:0!important;
+          border:0!important;border-right:1px solid #1E293B!important;border-radius:0!important;
           overflow:hidden!important;
         }
         .expert-agent-stage .expert-agent-canvas {
-          grid-column:3!important;grid-row:1!important;
-          flex:1 1 0!important;width:100%!important;min-width:0!important;
+          display:flex!important;order:2!important;position:relative!important;inset:auto!important;
+          flex:1 1 0!important;width:auto!important;min-width:0!important;max-width:none!important;
           height:100%!important;min-height:0!important;overflow:hidden!important;
         }
-        /* The old draggable separator occupied the same grid cell as the canvas. */
-        .expert-agent-stage [aria-label="Resize ExpertAI panel"] { display:none!important; }
-        .expert-agent-workspace-grid:has(.expert-agent-assistant.hidden) {
-          grid-template-columns:48px minmax(0,1fr)!important;
-        }
-        .expert-agent-workspace-grid:has(.expert-agent-assistant.hidden) .expert-agent-canvas {
-          grid-column:2!important;
-        }
+        .expert-agent-workspace-grid:has(.expert-agent-assistant.hidden) .expert-agent-canvas { flex:1 1 0!important; }
         .expert-agent-assistant > div:first-child { flex:0 0 48px!important; }
         .expert-agent-assistant .min-h-0.flex-1 {
           flex:1 1 0!important;min-height:0!important;overflow-y:auto!important;padding:16px!important;
         }
         .expert-agent-assistant .shrink-0.border-t {
-          flex:0 0 auto!important;margin-top:auto!important;padding:12px!important;
+          flex:0 0 auto!important;margin-top:auto!important;padding:12px!important;padding-inline:12px!important;
           border-top:1px solid #1E293B!important;
         }
         .expert-agent-assistant .shrink-0.border-t > div { width:100%!important;max-width:none!important; }
+        .expert-agent-assistant .shrink-0.border-t > div.rounded-xl { padding-inline:12px!important; }
         .expert-agent-code-explorer {
           flex:0 0 220px!important;width:220px!important;min-width:220px!important;max-width:220px!important;
           border-right:1px solid #1E293B!important;
         }
         .expert-agent-editor-tabs { flex:0 0 40px!important; }
+        .expert-agent-canvas > div:has(> span) { min-width:0!important; }
+        .expert-agent-canvas .legacy-terminal-container,
+        .expert-agent-canvas [aria-label="Original Linux terminal"] { width:100%!important;height:100%!important;min-width:0!important;min-height:0!important; }
+        .expert-agent-canvas .xterm { width:100%!important;height:100%!important; }
         @media (max-width:767px) {
-          .expert-agent-workspace-grid { display:grid!important;grid-template-columns:48px minmax(0,1fr)!important;height:calc(100dvh - 48px)!important; }
+          .expert-agent-workspace-grid { display:flex!important;flex-direction:row!important;height:calc(100dvh - 48px)!important; }
           .expert-agent-stage .expert-agent-assistant:not(.hidden) {
             position:fixed!important;inset:48px 0 0 48px!important;width:auto!important;
             min-width:0!important;max-width:none!important;height:auto!important;z-index:92!important;
           }
-          .expert-agent-stage .expert-agent-canvas { grid-column:2!important; }
+          .expert-agent-stage .expert-agent-canvas { flex:1 1 0!important;min-width:0!important; }
         }
         @media (prefers-reduced-motion:reduce) {
           .expert-agent-workspace-grid,.expert-agent-stage .expert-agent-canvas,.expert-agent-assistant { transition:none!important; }
