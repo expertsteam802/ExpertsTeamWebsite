@@ -25,7 +25,7 @@ export const Route = createFileRoute("/api/plugins/supabase/callback")({
         body: new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: pluginOAuthRedirect("supabase"), code_verifier: signed.codeVerifier }),
         signal: AbortSignal.timeout(15000),
       });
-      const token = await tokenResponse.json() as { access_token?: string; refresh_token?: string; expires_in?: number; token_type?: string; error?: string; message?: string };
+      const token = await tokenResponse.json() as { access_token?: string; refresh_token?: string; expires_in?: number; token_type?: string; scope?: string; error?: string; message?: string };
       if (!tokenResponse.ok || !token.access_token) throw new Error(token.message || token.error || "Supabase OAuth token exchange failed.");
       const projectsResponse = await fetch("https://api.supabase.com/v1/projects", {
         headers: { Authorization: "Bearer " + token.access_token, Accept: "application/json" },
@@ -40,11 +40,12 @@ export const Route = createFileRoute("/api/plugins/supabase/callback")({
         p_display_name: "Supabase Management (" + accountLabel + ")",
         p_provider_account_id: "management-account",
         p_provider_username: null,
-        p_scopes: ["projects.read", "management_api"],
+        p_scopes: token.scope?.split(/\s+/).filter(Boolean) ?? [],
         p_token_payload: {
           access_token: token.access_token,
           refresh_token: token.refresh_token ?? null,
           token_type: token.token_type ?? "bearer",
+          scope: token.scope ?? null,
           expires_at: token.expires_in ? Date.now() + token.expires_in * 1000 : null,
         },
       });

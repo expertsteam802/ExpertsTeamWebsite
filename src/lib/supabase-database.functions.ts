@@ -205,8 +205,8 @@ export const manageSupabaseDatabase = createServerFn({ method: "POST" })
       return { tables: [], columns, rows: rowsFrom(result), primaryKey, result };
     }
 
-    const values = data.values;
-    if (!values || typeof values !== "object" || Array.isArray(values) || !Object.keys(values).length) {
+    const values = data.values ?? {};
+    if (data.operation !== "delete" && (!values || typeof values !== "object" || Array.isArray(values) || !Object.keys(values).length)) {
       throw new Error("Enter at least one column value.");
     }
     if (JSON.stringify(values).length > 100_000) throw new Error("The row payload is too large.");

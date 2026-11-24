@@ -9,6 +9,7 @@ import {
   Command,
   Copy,
   Download,
+  Database,
   ExternalLink,
   Eye,
   File,
@@ -65,6 +66,7 @@ import { toast } from "sonner";
 import { AgentPromptLibrary } from "@/components/agent-prompt-library";
 import { MyLeadOfferwall } from "@/components/mylead-offerwall";
 import { ProjectEnvironmentPanel } from "@/components/project-environment-panel";
+import { SupabaseDatabasePanel } from "@/components/supabase-database-panel";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -611,6 +613,7 @@ export function CodeAgent() {
   const [projectNameEditing, setProjectNameEditing] = useState(false);
   const [cloudConnectionId, setCloudConnectionId] = useState<string | null>(null);
   const [environmentPanelOpen, setEnvironmentPanelOpen] = useState(false);
+  const [databasePanelOpen, setDatabasePanelOpen] = useState(false);
   const [creditsOfferwallOpen, setCreditsOfferwallOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "error">("saved");
@@ -1121,6 +1124,8 @@ export function CodeAgent() {
       return data ?? [];
     },
   });
+
+  const databaseProjectRef = cloudConnections.find((connection) => connection.id === cloudConnectionId)?.project_ref ?? cloudConnections[0]?.project_ref ?? null;
 
   const { data: developerVaultRows = [], isLoading: developerVaultLoading } = useQuery({
     queryKey: ["developer-vault-import-list", user?.id],
@@ -3247,6 +3252,7 @@ export function CodeAgent() {
         </div>
       )}
       <ProjectEnvironmentPanel projectId={projectId} open={environmentPanelOpen} onOpenChange={setEnvironmentPanelOpen} />
+      <SupabaseDatabasePanel projectRef={databaseProjectRef} open={databasePanelOpen} onOpenChange={setDatabasePanelOpen} />
       {/* Workspace top bar */}
       <header className="expert-agent-topbar flex min-h-[62px] flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#0d1523] px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -3425,6 +3431,7 @@ export function CodeAgent() {
         <nav className="et-studio-activity-rail" aria-label="Studio tools">
           <button type="button" onClick={() => { setAssistantOpen(true); setAgentPanelMode("chat"); }} title="AI Agent Chat" aria-label="AI Agent Chat"><Bot /></button>
           <button type="button" onClick={() => setVersionHistoryOpen(true)} title="Version history and checkpoints" aria-label="Version history"><History /></button>
+          <button type="button" onClick={() => setDatabasePanelOpen(true)} title="Supabase tables and rows" aria-label="Database tables"><Database /></button>
           <button type="button" onClick={() => setEnvironmentPanelOpen(true)} title="Database and secrets" aria-label="Database and secrets"><Settings2 /></button>
           <a href="/community" title="Community Remix and Showcase" aria-label="Community Remix"><Sparkles /></a>
           <button type="button" onClick={() => setEnvironmentPanelOpen(true)} title="Studio settings and help" aria-label="Studio settings"><MoreHorizontal /></button>
