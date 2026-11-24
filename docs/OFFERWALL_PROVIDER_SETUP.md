@@ -15,6 +15,8 @@ Set these as server-only deployment environment variables:
 
 All `*_CREDITS_PER_UNIT` values default to `1`. Set an explicit conversion factor for each placement after checking the partner's reward currency and the ExpertsTeam credit economics. The server rejects non-positive or excessive conversion factors and rewards.
 
+Optional geo-routing variables: `TOROX_ALLOWED_COUNTRIES`, `ADGATE_ALLOWED_COUNTRIES`, `CPX_ALLOWED_COUNTRIES`, and `LOOTABLY_ALLOWED_COUNTRIES` accept comma-separated ISO-3166 alpha-2 country codes. Matching `*_BLOCKED_COUNTRIES` variables can explicitly exclude countries. If no allowlist is configured, the provider remains available in all detected countries. The geo endpoint uses the hosting platform's country header and does not expose the visitor's IP address.
+
 Client-visible placement settings:
 
 - `VITE_ADGATE_WALL_ID`: AdGate Rewards wall ID.

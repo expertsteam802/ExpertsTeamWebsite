@@ -41,6 +41,7 @@ import { Route as ApiOfferwallToroxPostbackRouteImport } from './routes/api.offe
 import { Route as ApiOfferwallAdgatePostbackRouteImport } from './routes/api.offerwall.adgate.postback'
 import { Route as ApiOfferwallCpxPostbackRouteImport } from './routes/api.offerwall.cpx.postback'
 import { Route as ApiOfferwallLootablyPostbackRouteImport } from './routes/api.offerwall.lootably.postback'
+import { Route as ApiOfferwallGeoRouteImport } from './routes/api.offerwall.geo'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -201,6 +202,11 @@ const ApiOfferwallLootablyPostbackRoute = ApiOfferwallLootablyPostbackRouteImpor
   path: '/api/offerwall/lootably/postback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOfferwallGeoRoute = ApiOfferwallGeoRouteImport.update({
+  id: '/api/offerwall/geo',
+  path: '/api/offerwall/geo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -234,6 +240,7 @@ export interface FileRoutesByFullPath {
   '/api/offerwall/adgate/postback': typeof ApiOfferwallAdgatePostbackRoute
   '/api/offerwall/cpx/postback': typeof ApiOfferwallCpxPostbackRoute
   '/api/offerwall/lootably/postback': typeof ApiOfferwallLootablyPostbackRoute
+  '/api/offerwall/geo': typeof ApiOfferwallGeoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -298,6 +305,7 @@ export interface FileRoutesById {
   '/api/offerwall/adgate/postback': typeof ApiOfferwallAdgatePostbackRoute
   '/api/offerwall/cpx/postback': typeof ApiOfferwallCpxPostbackRoute
   '/api/offerwall/lootably/postback': typeof ApiOfferwallLootablyPostbackRoute
+  '/api/offerwall/geo': typeof ApiOfferwallGeoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -333,6 +341,7 @@ export interface FileRouteTypes {
     | '/api/offerwall/adgate/postback'
     | '/api/offerwall/cpx/postback'
     | '/api/offerwall/lootably/postback'
+    | '/api/offerwall/geo'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -366,6 +375,7 @@ export interface FileRouteTypes {
     | '/api/offerwall/adgate/postback'
     | '/api/offerwall/cpx/postback'
     | '/api/offerwall/lootably/postback'
+    | '/api/offerwall/geo'
   id:
     | '__root__'
     | '/'
@@ -398,6 +408,7 @@ export interface FileRouteTypes {
     | '/api/offerwall/adgate/postback'
     | '/api/offerwall/cpx/postback'
     | '/api/offerwall/lootably/postback'
+    | '/api/offerwall/geo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -428,6 +439,7 @@ export interface RootRouteChildren {
   ApiOfferwallAdgatePostbackRoute: typeof ApiOfferwallAdgatePostbackRoute
   ApiOfferwallCpxPostbackRoute: typeof ApiOfferwallCpxPostbackRoute
   ApiOfferwallLootablyPostbackRoute: typeof ApiOfferwallLootablyPostbackRoute
+  ApiOfferwallGeoRoute: typeof ApiOfferwallGeoRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -656,6 +668,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOfferwallLootablyPostbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/offerwall/geo': {
+      id: '/api/offerwall/geo'
+      path: '/api/offerwall/geo'
+      fullPath: '/api/offerwall/geo'
+      preLoaderRoute: typeof ApiOfferwallGeoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -705,6 +724,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOfferwallAdgatePostbackRoute: ApiOfferwallAdgatePostbackRoute,
   ApiOfferwallCpxPostbackRoute: ApiOfferwallCpxPostbackRoute,
   ApiOfferwallLootablyPostbackRoute: ApiOfferwallLootablyPostbackRoute,
+  ApiOfferwallGeoRoute: ApiOfferwallGeoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
