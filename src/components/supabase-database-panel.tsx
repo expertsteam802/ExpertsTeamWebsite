@@ -472,7 +472,10 @@ export function SupabaseDatabasePanel({
             <aside className="max-h-48 overflow-auto border-b border-slate-800 p-3 md:max-h-[70vh] md:border-b-0 md:border-r">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Tables · {tables.length}</span>
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void loadTables()} disabled={busy}><RefreshCw className="h-3 w-3" /></Button>
+                <div className="flex items-center gap-1">
+                  <Button size="sm" variant="outline" className="h-7 border-slate-700 px-2 text-[9px]" onClick={() => { setMigrationPrompt(""); setMigrationSql(""); setMigrationOpen(true); }}>SQL Migration</Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void loadTables()} disabled={busy}><RefreshCw className="h-3 w-3" /></Button>
+                </div>
               </div>
               <div className="space-y-1">
                 {tables.map((table) => (
@@ -480,7 +483,7 @@ export function SupabaseDatabasePanel({
                     <span className="block truncate">{table.table_name}</span><span className="text-[9px] text-slate-600">{table.table_schema}</span>
                   </button>
                 ))}
-                {!tables.length && <p className="py-4 text-[10px] text-slate-600">No tables returned. Check OAuth Database Read permission.</p>}
+                {!tables.length && <p className="py-4 text-[10px] text-slate-600">No tables returned. Enable Database Read and Database Write scopes on the ExpertsTeam OAuth app, then reconnect Supabase.</p>}
               </div>
             </aside>
             <section className="flex min-h-0 flex-col">
@@ -493,7 +496,6 @@ export function SupabaseDatabasePanel({
                       <Button size="icon" variant="outline" className="h-8 w-8 border-slate-700" onClick={() => void loadRows(activeTable, filter)} disabled={busy}><Search className="h-3 w-3" /></Button>
                     </div>
                     <Button size="sm" onClick={beginInsert} disabled={busy} className="h-8 text-[10px]"><Plus className="mr-1 h-3 w-3" /> Add row</Button>
-                    <Button size="sm" variant="outline" onClick={() => { setMigrationPrompt(""); setMigrationSql(""); setMigrationOpen(true); }} className="h-8 border-slate-700 text-[10px]">SQL Migration</Button>
                     <Button size="sm" variant="outline" onClick={() => void generateSeedData()} disabled={busy || seedGenerating || !projectId} className="h-8 border-slate-700 text-[10px]">{seedGenerating ? "Generating…" : "AI Seed"}</Button>
                     <Button size="sm" variant="outline" onClick={() => { setMigrationPrompt(""); setMigrationSql(""); setMigrationOpen(true); }} className="h-8 border-slate-700 text-[10px]">SQL Migration</Button>
                     <Button size="sm" variant="outline" onClick={() => void generateSeedData()} disabled={busy || seedGenerating || !projectId} className="h-8 border-slate-700 text-[10px]">{seedGenerating ? "Generating…" : "AI Seed"}</Button>
