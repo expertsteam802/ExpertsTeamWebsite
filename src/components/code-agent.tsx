@@ -417,7 +417,7 @@ export function CodeAgent() {
   const [sidebarWidth, setSidebarWidth] = useState(248);
   const [projectFilter, setProjectFilter] = useState("");
   const [fileFilter, setFileFilter] = useState("");
-  const [assistantWidth, setAssistantWidth] = useState(360);
+  const [assistantWidth, setAssistantWidth] = useState(420);
   useEffect(() => {
     if (window.matchMedia("(max-width: 767px)").matches) {
       setSidebarOpen(false);
@@ -2695,8 +2695,8 @@ export function CodeAgent() {
                   {name}
                 </button>
               )}
-              <span className="text-xs text-slate-500">
-                {dirty ? (autoSaveStatus === "saving" ? "• Saving…" : autoSaveStatus === "error" ? "• Auto-save failed" : "• Unsaved changes") : "• Saved"}
+              <span className={dirty ? "rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold text-amber-200" : "rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200"}>
+                {dirty ? (autoSaveStatus === "saving" ? "Saving…" : autoSaveStatus === "error" ? "Save failed" : "Unsaved") : "✓ Saved"}
               </span>
               <select
                 aria-label="Project Supabase backend"
@@ -3809,7 +3809,7 @@ export function CodeAgent() {
         .expert-agent-stage > .expert-agent-toolbar > div:last-child > button[aria-label="Toggle ExpertAI builder"],
         .expert-agent-stage > .expert-agent-toolbar > div:last-child > a { display:none!important; }
         .expert-agent-stage > .grid:has(> aside.expert-agent-assistant) {
-          grid-template-columns:minmax(300px,30%) 5px minmax(0,1fr)!important;background:#0B0F17!important;
+          grid-template-columns:minmax(300px,var(--assistant-width,420px)) 5px minmax(0,1fr)!important;background:#0B0F17!important;
         }
         .expert-agent-stage > .grid:has(> aside.expert-agent-assistant) > aside.expert-agent-assistant {
           grid-column:1!important;grid-row:1!important;min-width:0!important;width:auto!important;
@@ -3851,7 +3851,7 @@ export function CodeAgent() {
           .expert-agent-mobile-backdrop { inset:48px 0 0 48px!important; }
         }
         @media (max-width:1100px) {
-          .expert-agent-stage > .grid:has(> aside.expert-agent-assistant) { grid-template-columns:minmax(260px,36%) 5px minmax(0,1fr)!important; }
+          .expert-agent-stage > .grid:has(> aside.expert-agent-assistant) { grid-template-columns:minmax(260px,var(--assistant-width,360px)) 5px minmax(0,1fr)!important; }
           .expert-agent-topbar .et-studio-header-actions button:first-child { font-size:0!important;gap:0!important;padding:0 8px!important; }
           .expert-agent-topbar .et-studio-header-actions button:first-child svg { margin:0!important; }
         }
