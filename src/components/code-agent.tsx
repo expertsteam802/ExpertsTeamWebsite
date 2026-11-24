@@ -504,6 +504,8 @@ export function CodeAgent() {
   const [selfHealBusy, setSelfHealBusy] = useState(false);
   const [selfHealJustApplied, setSelfHealJustApplied] = useState(false);
   const [selfHealAttempts, setSelfHealAttempts] = useState(0);
+  const [autoHealEnabled, setAutoHealEnabled] = useState(true);
+  const autoHealAttemptedErrorsRef = useRef(new Set<string>());
   const [previewKey, setPreviewKey] = useState(0);
   const [githubOpen, setGithubOpen] = useState(false);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
@@ -1931,6 +1933,16 @@ export function CodeAgent() {
       setSelfHealBusy(false);
     }
   }
+
+  useEffect(() => {
+    if (!autoHealEnabled || busy || selfHealBusy || !projectId || selfHealAttempts >= 3) return;
+    const latestError = [...logs].reverse().find((entry) => entry.type === "error" && entry.message.trim());
+    if (!latestError) return;
+    const fingerprint = latestError.message.trim().slice(0, 3000);
+    if (!fingerprint || autoHealAttemptedErrorsRef.current.has(fingerprint)) return;
+    autoHealAttemptedErrorsRef.current.add(fingerprint);
+    void attemptRuntimeSelfHeal();
+  }, [autoHealEnabled, busy, selfHealBusy, projectId, selfHealAttempts, logs, attemptRuntimeSelfHeal]);
 
   async function saveProjectThumbnailUrl() {
     const value = thumbnailUrlInput.trim();
@@ -3780,6 +3792,7 @@ export function CodeAgent() {
                       Browser console
                     </span>
                     <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => setAutoHealEnabled((enabled) => !enabled)} aria-pressed={autoHealEnabled} className={autoHealEnabled ? "rounded-md border border-emerald-300/20 bg-emerald-300/[0.06] px-2 py-1 text-[9px] text-emerald-200" : "rounded-md border border-slate-700 px-2 py-1 text-[9px] text-slate-500"} title="Automatically attempt guarded zero-credit repairs when preview errors appear">{autoHealEnabled ? "Auto-fix on" : "Auto-fix off"}</button>
                       <span className="text-[10px] text-slate-600">Preview logs only</span>
                       {logs.some((entry) => entry.type === "error") && (
                         <button
@@ -3896,21 +3909,28 @@ export function CodeAgent() {
                       <div className="overflow-hidden rounded-xl border border-slate-700 bg-[#0b1220]">
                         <div className="flex items-center justify-between border-b border-slate-700 px-3 py-2">
                           <span className="text-[10px] font-semibold text-slate-200">File diff</span>
-                          <span className="text-[9px] text-emerald-300">{latestFileDiffs.length} file{latestFileDiffs.length === 1 ? "" : "s"} changed</span>
+                          <span className="text-[9px] text-emerald-300">{latestFileDiffs.length} files · {latestFileDiffs.reduce((sum, diff) => sum + diff.after.split("\n").filter((line) => !diff.before.split("\n").includes(line)).length, 0)} added / {latestFileDiffs.reduce((sum, diff) => sum + diff.before.split("\n").filter((line) => !diff.after.split("\n").includes(line)).length, 0)} removed</span>
                         </div>
                         {latestFileDiffs.map((diff) => {
                           const beforeLines = diff.before.split("\n");
                           const afterLines = diff.after.split("\n");
-                          const removed = beforeLines.filter((line) => !afterLines.includes(line)).slice(0, 6);
-                          const added = afterLines.filter((line) => !beforeLines.includes(line)).slice(0, 6);
-                          return <div key={diff.path} className="border-b border-slate-800 last:border-0">
-                            <div className="flex items-center gap-2 px-3 py-2 font-mono text-[10px] text-slate-300"><FileCode2 className="h-3 w-3 text-blue-300" />{diff.path}</div>
-                            <div className="max-h-36 overflow-auto bg-[#080d16] px-3 py-2 font-mono text-[9px] leading-5">
-                              {removed.map((line, index) => <div key={"r"+index} className="whitespace-pre-wrap break-all text-red-300"><span className="mr-2 text-red-500">−</span>{line || " "}</div>)}
-                              {added.map((line, index) => <div key={"a"+index} className="whitespace-pre-wrap break-all text-emerald-300"><span className="mr-2 text-emerald-500">+</span>{line || " "}</div>)}
-                              {!removed.length && !added.length && <div className="text-slate-500">File updated · open Code to inspect the full source</div>}
-                            </div>
-                          </div>;
+                          const removed = beforeLines.filter((line) => !afterLines.includes(line));
+                          const added = afterLines.filter((line) => !beforeLines.includes(line));
+                          return (
+                            <details key={diff.path} className="border-b border-slate-800 last:border-0">
+                              <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 font-mono text-[10px] text-slate-300 hover:bg-white/[0.03]">
+                                <FileCode2 className="h-3 w-3 text-blue-300" />
+                                <span className="min-w-0 flex-1 truncate">{diff.path}</span>
+                                <span className="text-emerald-300">+{added.length}</span>
+                                <span className="text-rose-300">−{removed.length}</span>
+                              </summary>
+                              <div className="max-h-48 overflow-auto bg-[#080d16] px-3 py-2 font-mono text-[9px] leading-5">
+                                {removed.slice(0, 80).map((line, index) => <div key={"r" + index} className="whitespace-pre-wrap break-all text-red-300"><span className="mr-2 text-red-500">−</span>{line || " "}</div>)}
+                                {added.slice(0, 80).map((line, index) => <div key={"a" + index} className="whitespace-pre-wrap break-all text-emerald-300"><span className="mr-2 text-emerald-500">+</span>{line || " "}</div>)}
+                                {!removed.length && !added.length && <div className="text-slate-500">File updated · open Code to inspect the full source</div>}
+                              </div>
+                            </details>
+                          );
                         })}
                       </div>
                     )}
