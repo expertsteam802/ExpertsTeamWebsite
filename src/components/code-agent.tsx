@@ -2704,6 +2704,17 @@ export function CodeAgent() {
             {dirty ? (autoSaveStatus === "saving" ? "Saving changes…" : autoSaveStatus === "error" ? "Auto-save failed" : "Changes not saved") : "All changes saved"}
           </span>
         </div>
+        <div className="et-studio-header-actions">
+          <Button type="button" size="sm" variant="outline" onClick={() => setEnvironmentPanelOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700">
+            <Settings2 className="mr-1.5 h-3.5 w-3.5" /> 1-Click DB &amp; Auth
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => setGithubOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700">
+            <Github className="mr-1.5 h-3.5 w-3.5" /> GitHub
+          </Button>
+          <Button type="button" size="sm" onClick={() => void publishProject()} disabled={publishing} className="h-8 bg-blue-600 px-3 text-[11px] font-semibold text-white hover:bg-blue-500">
+            {publishing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />} Deploy ↑
+          </Button>
+        </div>
         {publishedUrl && (
           <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-2 text-xs">
             <span className="font-semibold text-emerald-200">Live URL</span>
@@ -2805,6 +2816,15 @@ export function CodeAgent() {
         )}
 
         {/* Centre and assistant area */}
+        <nav className="et-studio-activity-rail" aria-label="Studio tools">
+          <button type="button" onClick={() => { setAssistantOpen(true); setAgentPanelMode("chat"); }} title="AI Agent Chat" aria-label="AI Agent Chat"><Bot /></button>
+          <button type="button" onClick={() => setVersionHistoryOpen(true)} title="Version history and checkpoints" aria-label="Version history"><History /></button>
+          <button type="button" onClick={() => setEnvironmentPanelOpen(true)} title="Database, secrets and environment" aria-label="Database and secrets"><Settings2 /></button>
+          <a href="/community" title="Community and Showcase" aria-label="Community and Showcase"><Sparkles /></a>
+          <div className="et-studio-activity-spacer" />
+          <a href="/learn" title="Learn to Code" aria-label="Learn to Code"><ExternalLink /></a>
+          <button type="button" onClick={() => setEnvironmentPanelOpen(true)} title="Studio settings and help" aria-label="Studio settings"><Settings2 /></button>
+        </nav>
         <main className="expert-agent-stage flex min-h-0 min-w-0 flex-col overflow-hidden">
           {/* Toolbar */}
           <div className="expert-agent-toolbar flex min-h-[48px] flex-wrap items-center justify-between gap-2 border-b border-white/[0.08] bg-[#0d1726] px-3 py-2">
@@ -3603,6 +3623,116 @@ export function CodeAgent() {
           .expert-agent-shell *, .expert-agent-shell *::before, .expert-agent-shell *::after {
             scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important;
           }
+        }
+        /* ExpertsTeam Studio — unified dark IDE workspace */
+        .expert-agent-shell {
+          --et-studio-bg:#0B0F17; --et-studio-panel:#111827; --et-studio-line:#1E293B;
+          background:var(--et-studio-bg)!important;color:#e5edf8!important;
+          font-family:Inter,ui-sans-serif,system-ui,sans-serif;color-scheme:dark;
+        }
+        .expert-agent-shell.expert-agent-light { background:#0B0F17!important;color:#e5edf8!important; }
+        .expert-agent-topbar {
+          box-sizing:border-box;height:48px!important;min-height:48px!important;max-height:48px!important;
+          flex:0 0 48px!important;flex-wrap:nowrap!important;gap:10px!important;padding:0 12px!important;
+          overflow:hidden;background:#111827!important;border-bottom:1px solid #1E293B!important;box-shadow:none!important;
+        }
+        .expert-agent-topbar .expert-agent-brand-mark { width:27px!important;height:27px!important; }
+        .expert-agent-topbar > div:first-child { min-width:0;flex:1 1 auto;gap:9px!important; }
+        .expert-agent-topbar > div:first-child > div { min-width:0; }
+        .expert-agent-topbar > div:first-child > div > div:first-child { display:none!important; }
+        .expert-agent-topbar > div:first-child > div > div:nth-child(2) { gap:7px!important; }
+        .expert-agent-topbar .text-sm.font-semibold { max-width:190px;color:#f1f5f9!important; }
+        .expert-agent-topbar .et-studio-header-actions { display:flex;align-items:center;gap:7px;flex:0 0 auto; }
+        .expert-agent-topbar > div:nth-of-type(2) { gap:7px!important;flex:0 0 auto; }
+        .expert-agent-topbar > div:nth-of-type(2) > a,.expert-agent-topbar > div:nth-of-type(2) > span { display:none!important; }
+        .expert-agent-topbar button,.expert-agent-topbar a { white-space:nowrap; }
+        .expert-agent-workspace-grid { display:grid!important;grid-template-columns:48px minmax(0,1fr)!important;min-height:0!important;background:#0B0F17!important; }
+        .et-studio-activity-rail {
+          grid-column:1;grid-row:1;display:flex;min-height:0;flex-direction:column;align-items:center;gap:8px;
+          padding:10px 6px;background:#0d1421;border-right:1px solid #1E293B;z-index:4;
+        }
+        .et-studio-activity-rail button,.et-studio-activity-rail a {
+          display:flex;width:34px;height:34px;align-items:center;justify-content:center;border:1px solid transparent;
+          border-radius:9px;color:#94a3b8;background:transparent;transition:all .15s ease;
+        }
+        .et-studio-activity-rail svg { width:17px;height:17px; }
+        .et-studio-activity-rail button:hover,.et-studio-activity-rail a:hover {
+          color:#dbeafe;background:rgba(59,130,246,.13);border-color:rgba(59,130,246,.24);
+        }
+        .et-studio-activity-spacer { flex:1 1 auto; }
+        .expert-agent-workspace-grid > .expert-agent-stage { grid-column:2;grid-row:1;min-width:0;background:#0B0F17!important; }
+        .expert-agent-sidebar-drawer { z-index:30!important; }
+        .expert-agent-stage > .expert-agent-toolbar {
+          min-height:46px!important;height:46px!important;flex:0 0 46px!important;flex-wrap:nowrap!important;
+          padding:0 12px!important;background:#111827!important;border-bottom:1px solid #1E293B!important;
+        }
+        .expert-agent-stage > .expert-agent-toolbar > div:first-child { display:none!important; }
+        .expert-agent-stage > .expert-agent-toolbar > div:nth-child(2) { margin-right:auto; }
+        .expert-agent-stage > .expert-agent-toolbar > div:nth-child(2) .expert-agent-workspace-tab {
+          height:32px;border-radius:7px!important;padding:0 12px!important;color:#94a3b8!important;
+        }
+        .expert-agent-stage > .expert-agent-toolbar > div:nth-child(2) .expert-agent-workspace-tab[class*="bg-cyan-400/10"] {
+          color:#bfdbfe!important;background:rgba(59,130,246,.13)!important;border:1px solid rgba(59,130,246,.26)!important;
+        }
+        .expert-agent-stage > .expert-agent-toolbar > div:last-child { gap:5px!important; }
+        .expert-agent-stage > .expert-agent-toolbar > div:last-child > button[aria-label="Toggle ExpertAI builder"],
+        .expert-agent-stage > .expert-agent-toolbar > div:last-child > a { display:none!important; }
+        .expert-agent-stage > .grid:has(> aside.expert-agent-assistant) {
+          grid-template-columns:minmax(300px,30%) 5px minmax(0,1fr)!important;background:#0B0F17!important;
+        }
+        .expert-agent-stage > .grid:has(> aside.expert-agent-assistant) > aside.expert-agent-assistant {
+          grid-column:1!important;grid-row:1!important;min-width:0!important;width:auto!important;
+          background:#111827!important;border:0!important;border-right:1px solid #1E293B!important;
+        }
+        .expert-agent-stage > .grid:has(> aside.expert-agent-assistant) > [aria-label="Resize ExpertAI panel"] {
+          grid-column:2!important;grid-row:1!important;background:#1E293B!important;
+        }
+        .expert-agent-stage > .grid:has(> aside.expert-agent-assistant) > .expert-agent-canvas {
+          grid-column:3!important;grid-row:1!important;min-width:0!important;background:#0B0F17!important;
+        }
+        .expert-agent-assistant > div:first-child {
+          height:48px!important;min-height:48px!important;padding:0 14px!important;
+          background:#111827!important;border-bottom:1px solid #1E293B!important;
+        }
+        .expert-agent-assistant > div:first-child .bg-gradient-to-br { background:rgba(59,130,246,.16)!important;color:#93c5fd!important; }
+        .expert-agent-assistant > div:nth-child(2) { display:none!important; }
+        .expert-agent-assistant > div:nth-child(3) { min-height:38px!important;padding:6px 12px!important;background:#111827!important;border-color:#1E293B!important; }
+        .expert-agent-assistant > div:nth-child(3) > div { color:#94a3b8!important; }
+        .expert-agent-assistant > div:nth-child(3) > span { color:#6ee7b7!important; }
+        .expert-agent-assistant .min-h-0.flex-1 { padding:14px!important;scrollbar-width:thin;scrollbar-color:#334155 transparent; }
+        .expert-agent-assistant .min-h-0.flex-1 > div > div { border-radius:12px!important; }
+        .expert-agent-assistant .shrink-0.border-t { background:#111827!important;border-color:#1E293B!important; }
+        .expert-agent-assistant .shrink-0.border-t > div { border-radius:12px!important;background:#0B0F17!important;border:1px solid #334155!important; }
+        .expert-agent-assistant textarea { min-height:68px!important;font-size:12px!important;line-height:1.5!important; }
+        .expert-agent-assistant button[class*="bg-cyan-400"] { background:#3B82F6!important;color:white!important; }
+        .expert-agent-assistant button[class*="bg-cyan-400"]:hover { background:#2563eb!important; }
+        .expert-agent-canvas { background:#0B0F17!important; }
+        .expert-agent-canvas > div:first-child { min-height:40px!important;background:#111827!important;border-color:#1E293B!important; }
+        .expert-agent-canvas iframe { border:1px solid #1E293B!important;border-radius:10px!important; }
+        .expert-agent-canvas > div:has(> iframe) { padding:12px!important;background:#0B0F17!important; }
+        .expert-agent-statusbar,.expert-agent-mobile-dock { display:none!important; }
+        @media (min-width:768px) {
+          .expert-agent-topbar { flex-wrap:nowrap!important; }
+          .expert-agent-sidebar-drawer { top:48px!important;left:48px!important;bottom:0!important; }
+          .expert-agent-mobile-backdrop { inset:48px 0 0 48px!important; }
+        }
+        @media (max-width:1100px) {
+          .expert-agent-stage > .grid:has(> aside.expert-agent-assistant) { grid-template-columns:minmax(260px,36%) 5px minmax(0,1fr)!important; }
+          .expert-agent-topbar .et-studio-header-actions button:first-child { font-size:0!important;gap:0!important;padding:0 8px!important; }
+          .expert-agent-topbar .et-studio-header-actions button:first-child svg { margin:0!important; }
+        }
+        @media (max-width:767px) {
+          .expert-agent-topbar { height:48px!important;min-height:48px!important;max-height:48px!important;padding:0 8px!important; }
+          .expert-agent-topbar .et-studio-header-actions button:first-child { display:none!important; }
+          .expert-agent-workspace-grid { display:flex!important; }
+          .et-studio-activity-rail { display:none!important; }
+          .expert-agent-stage { width:100%; }
+          .expert-agent-stage > .grid:has(> aside.expert-agent-assistant) { display:flex!important; }
+          .expert-agent-stage > .grid:has(> aside.expert-agent-assistant) > .expert-agent-canvas { display:none!important; }
+          .expert-agent-stage > .grid:has(> aside.expert-agent-assistant) > aside.expert-agent-assistant {
+            display:flex!important;position:fixed!important;inset:48px 0 0!important;width:100%!important;z-index:92!important;border-radius:0!important;
+          }
+          .expert-agent-topbar .et-studio-header-actions button { height:30px!important;font-size:10px!important; }
         }
       `}</style>
 
