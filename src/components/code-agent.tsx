@@ -1913,6 +1913,15 @@ export function CodeAgent() {
             nextFiles[path] = entry.content;
             imported += 1;
           }
+          for (const entry of extracted.assets) {
+            const path = safePath(entry.path);
+            if (!path) { skipped += 1; continue; }
+            const buffer = new ArrayBuffer(entry.data.byteLength);
+            new Uint8Array(buffer).set(entry.data);
+            binaryFiles.push({ path, file: new File([buffer], path, { type: entry.mimeType }), mimeType: entry.mimeType });
+            delete nextFiles[path];
+            imported += 1;
+          }
         } catch { skipped += 1; }
         continue;
       }
