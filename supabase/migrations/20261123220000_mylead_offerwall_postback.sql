@@ -69,6 +69,7 @@ declare
   v_status text := lower(btrim(p_status));
   v_event public.mylead_postback_events%rowtype;
   v_previous_status text;
+  v_previous_amount integer;
   v_conversion_id uuid;
   v_balance integer;
   v_awarded integer := 0;
@@ -114,6 +115,7 @@ begin
     raise exception 'MyLead transaction ID is already associated with another player.';
   end if;
   v_previous_status := v_event.status;
+  v_previous_amount := v_event.virtual_amount;
 
   -- Keep the latest state and metadata for this unique transaction.
   update public.mylead_postback_events
@@ -193,7 +195,7 @@ begin
        where t.source = 'refund' and t.reference_id = v_conversion_id
     ) then
       select ai_credits into v_balance from public.profiles where id = p_player_id for update;
-      v_debit := least(coalesce(v_balance, 0), greatest(coalesce(p_virtual_amount, 0), 1));
+      v_debit := least(coalesce(v_balance, 0), greatest(coalesce(v_previous_amount, p_virtual_amount, 0), 1));
       if v_debit > 0 then
         update public.profiles set ai_credits = ai_credits - v_debit
          where id = p_player_id returning ai_credits into v_balance;
