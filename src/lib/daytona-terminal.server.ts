@@ -77,6 +77,22 @@ export function assertDaytonaTerminalSandboxName(userId: string, name: string) {
   if (name !== stable && !isLegacy) throw new Error("This terminal session does not belong to the signed-in account.");
   return name;
 }
+export async function getDaytonaProjectPortForwardUrl(sandboxName: string, port: number) {
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error("Choose a valid TCP port between 1 and 65535.");
+  }
+  const sandbox = await client().api.get(sandboxName);
+  if (["stopped", "archived"].includes(String(sandbox.state ?? "").toLowerCase())) {
+    await sandbox.start(120);
+  }
+  const preview = await sandbox.getPreviewLink(port);
+  const url = new URL(preview.url);
+  if (url.protocol !== "https:" || !url.hostname) {
+    throw new Error("Daytona returned an invalid port-forwarding URL.");
+  }
+  return { url: url.toString(), port };
+}
+
 
 async function findSandboxByName(api: DaytonaApi, name: string): Promise<DaytonaSandbox | undefined> {
   for await (const sandbox of api.list()) {

@@ -88,6 +88,7 @@ import {
   publishAgentProject,
   runCodingAgent,
   runAgentTerminalCommand,
+  getAgentProjectPortForwardUrl,
   runAgentSelfHeal,
   startAgentTerminal,
   stopAgentTerminal,
@@ -491,6 +492,7 @@ export function CodeAgent() {
   const queryClient = useQueryClient();
   const runCodeAgent = useServerFn(runCodingAgent);
   const runTerminalCommand = useServerFn(runAgentTerminalCommand);
+  const forwardProjectPort = useServerFn(getAgentProjectPortForwardUrl);
   const repairRuntimeError = useServerFn(runAgentSelfHeal);
   const beginGithubOAuth = useServerFn(beginGitHubPluginOAuth);
   const push = useServerFn(pushProjectToGithub);
@@ -677,6 +679,10 @@ export function CodeAgent() {
   const [webhookTestBody, setWebhookTestBody] = useState('{\n  "event": "experts.webhook.test",\n  "test": true\n}');
   const [webhookTestOutput, setWebhookTestOutput] = useState("");
   const [webhookTestBusy, setWebhookTestBusy] = useState(false);
+  const [portForwardOpen, setPortForwardOpen] = useState(false);
+  const [portForwardPort, setPortForwardPort] = useState("3000");
+  const [portForwardUrl, setPortForwardUrl] = useState("");
+  const [portForwardBusy, setPortForwardBusy] = useState(false);
   const [completionsOpen, setCompletionsOpen] = useState(false);
   const [enabledEditorPacks, setEnabledEditorPacks] = useState<string[]>(["react", "html", "css"]);
   const [projectNameEditing, setProjectNameEditing] = useState(false);
@@ -2022,6 +2028,31 @@ export function CodeAgent() {
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     toast.success("Project files exported");
+  }
+
+  async function createPortForward() {
+    if (!projectId || !terminalConnection?.sandboxName || terminalConnection.projectId !== projectId) {
+      toast.info("Connect this project's Daytona terminal before forwarding a port.");
+      return;
+    }
+    const port = Number(portForwardPort);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      toast.error("Enter a valid TCP port between 1 and 65535.");
+      return;
+    }
+    setPortForwardBusy(true);
+    setPortForwardUrl("");
+    try {
+      const result = await forwardProjectPort({
+        data: { projectId, sandboxName: terminalConnection.sandboxName, port },
+      });
+      setPortForwardUrl(result.url);
+      toast.success("Port " + port + " is forwarded.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not forward this port.");
+    } finally {
+      setPortForwardBusy(false);
+    }
   }
 
   async function runWebhookTest() {
@@ -3835,6 +3866,12 @@ export function CodeAgent() {
           {projectId && <DeploymentHistoryPanel projectId={projectId} />}
           {projectId && <CustomDomainPanel projectId={projectId} />}
           <Button type="button" size="sm" variant="outline" onClick={() => {
+            setPortForwardUrl("");
+            setPortForwardOpen(true);
+          }} className="h-8 border-slate-700 bg-slate-800/70 px-2.5 text-[10px] text-slate-200 hover:border-cyan-500/50 hover:bg-slate-700" title="Expose another port from this Daytona workspace">
+            <ExternalLink className="mr-1 h-3.5 w-3.5" />Forward port
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => {
             setWebhookTestUrl((runtimeUrl || publishedUrl || "") + "/api/webhook");
             setWebhookTestOutput("");
             setWebhookTesterOpen(true);
@@ -5303,6 +5340,27 @@ export function CodeAgent() {
             </div>
           </div>
           <p className="text-[9px] leading-4 text-slate-500">Package installs run in your connected Linux workspace and sync the updated manifest back into this project.</p>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={portForwardOpen} onOpenChange={setPortForwardOpen}>
+        <DialogContent className="max-w-lg border-slate-700 bg-[#0b1320] text-white">
+          <DialogHeader><DialogTitle>Daytona port forwarding</DialogTitle></DialogHeader>
+          <p className="text-xs leading-5 text-slate-400">Expose a development server or service running on another TCP port in this project's Daytona workspace. Start the service in the terminal first.</p>
+          <div className="space-y-1.5">
+            <Label htmlFor="port-forward-number" className="text-slate-300">Local workspace port</Label>
+            <Input id="port-forward-number" type="number" min="1" max="65535" value={portForwardPort} onChange={(event) => setPortForwardPort(event.target.value)} className="border-slate-700 bg-[#080e19] font-mono text-white" />
+          </div>
+          <div className="flex justify-end">
+            <Button type="button" onClick={() => void createPortForward()} disabled={portForwardBusy || !terminalConnection || terminalConnection.projectId !== projectId}>
+              {portForwardBusy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />}
+              {portForwardBusy ? "Forwarding…" : "Forward port"}
+            </Button>
+          </div>
+          {portForwardUrl && <div className="space-y-2 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.06] p-3">
+            <p className="text-xs font-semibold text-emerald-200">Port {portForwardPort} is exposed</p>
+            <a href={portForwardUrl} target="_blank" rel="noopener noreferrer" className="block break-all text-xs text-emerald-100 underline underline-offset-2">{portForwardUrl}</a>
+            <Button type="button" size="sm" variant="outline" onClick={() => void navigator.clipboard.writeText(portForwardUrl).then(() => toast.success("Forwarded URL copied.")).catch(() => toast.error("Could not copy the URL."))}>Copy URL</Button>
+          </div>}
         </DialogContent>
       </Dialog>
       <Dialog open={webhookTesterOpen} onOpenChange={setWebhookTesterOpen}>
