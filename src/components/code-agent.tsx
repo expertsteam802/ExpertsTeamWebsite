@@ -1456,13 +1456,43 @@ export function CodeAgent() {
       const data = event.data as {
         __agentConsole?: boolean;
         __agentSelection?: boolean;
+        __agentInlineTextEdit?: { originalText?: string; newText?: string };
         element?: { tag: string; selector: string; id: string; classes: string; text: string; outerHTML: string; styles: Record<string, string> };
         type?: string;
         message?: string;
       };
+      if (data?.__agentInlineTextEdit) {
+        const originalText = data.__agentInlineTextEdit.originalText?.trim() ?? "";
+        const newText = data.__agentInlineTextEdit.newText?.trim() ?? "";
+        const candidates = Object.entries(files).filter(([path, source]) =>
+          /\.(html?|jsx?|tsx?|vue|svelte)$/i.test(path) && originalText && source.includes(originalText)
+        );
+        const matches = candidates.reduce((count, [, source]) => count + source.split(originalText).length - 1, 0);
+        if (!originalText || !newText || !matches) {
+          toast.error("Could not map the inline text edit back to source. Use the Visual Edit panel instead.");
+        } else if (matches !== 1) {
+          toast.error("This text appears more than once in source. Use the Visual Edit panel to target it safely.");
+        } else {
+          const [sourcePath, source] = candidates[0]!;
+          const safeText = newText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          const nextFiles = { ...files, [sourcePath]: source.replace(originalText, safeText) };
+          setFiles(nextFiles);
+          setDirty(true);
+          setVisualSelectMode(false);
+          setSelectedPreviewElement(null);
+          if (projectId && user) {
+            void persist({ files: nextFiles }).then(() => {
+              setDirty(false);
+              toast.success("Preview text updated and saved · 0 AI credits.");
+            }).catch((error) => toast.error(error instanceof Error ? error.message : "Inline text edit could not be saved."));
+          } else {
+            toast.success("Preview text updated · 0 AI credits.");
+          }
+        }
+        return;
+      }
       if (data?.__agentSelection && data.element) {
         setSelectedPreviewElement(data.element);
-        setVisualSelectMode(false);
         return;
       }
       if (!data?.__agentConsole) return;
@@ -1476,7 +1506,7 @@ export function CodeAgent() {
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, []);
+  }, [files, projectId, user?.id, persist]);
 
   useEffect(() => {
     if (runtimeUrl && !remoteVisualSelectSupported) {
@@ -3739,7 +3769,7 @@ export function CodeAgent() {
                           ))}
                         </div>
                         <div className="mt-3 flex items-center justify-between gap-2">
-                          <button type="button" onClick={() => { const item = selectedPreviewElement; setPrompt("Edit this selected element in my project.\nSelector: " + item.selector + "\nTag: " + item.tag + "\nCurrent text: " + item.text + "\nCurrent HTML: " + item.outerHTML + "\nCurrent styles: " + JSON.stringify(item.styles) + "\nMake the requested changes only to this element and preserve the rest of the page."); setSelectedPreviewElement(null); switchPanel("chat"); }} className="rounded-lg border border-slate-700 px-2.5 py-2 text-[10px] font-medium text-slate-300 hover:bg-slate-700">Ask AI</button>
+                          <button type="button" onClick={() => { const item = selectedPreviewElement; setPrompt("Edit this selected element in my project.\nSelector: " + item.selector + "\nTag: " + item.tag + "\nCurrent text: " + item.text + "\nCurrent HTML: " + item.outerHTML + "\nCurrent styles: " + JSON.stringify(item.styles) + "\nMake the requested changes only to this element and preserve the rest of the page."); setSelectedPreviewElement(null); setVisualSelectMode(false); switchPanel("chat"); }} className="rounded-lg border border-slate-700 px-2.5 py-2 text-[10px] font-medium text-slate-300 hover:bg-slate-700">Ask AI</button>
                           <button type="button" onClick={applyVisualElementEdits} className="rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-semibold text-white hover:bg-blue-500">Apply edits</button>
                         </div>
                         <p className="mt-2 text-[9px] leading-4 text-slate-500">Direct source edits; no AI credits. Ambiguous text changes are blocked.</p>
