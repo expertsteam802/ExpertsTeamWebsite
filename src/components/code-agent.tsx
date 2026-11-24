@@ -2309,7 +2309,7 @@ export function CodeAgent() {
   }
 
   function expandSlashCommand(value: string) {
-    const match = value.match(/^\\/(fix|refactor|seo|responsive|explain|test)(?:\\s+([\\s\\S]*))?$/i);
+    const match = value.match(/^\/(fix|refactor|seo|responsive|explain|test)(?:\s+([\s\S]*))?$/i);
     if (!match) return value;
     const command = match[1]!.toLowerCase();
     const detail = match[2]?.trim() ?? "";
@@ -2321,11 +2321,11 @@ export function CodeAgent() {
       explain: "Explain the relevant project architecture and code in clear steps. Do not modify files.",
       test: "Add or improve meaningful automated tests for the requested behavior, then inspect related code for likely regressions. Do not claim tests ran unless verified.",
     };
-    return [detail, instructions[command]].filter(Boolean).join("\\n\\n");
+    return [detail, instructions[command]].filter(Boolean).join("\n\n");
   }
 
   function pinMentionedContext(value: string) {
-    const mentions = [...value.matchAll(/@([a-zA-Z0-9_./-]+)/g)].map((match) => match[1]!.replace(/\\/$/, ""));
+    const mentions = [...value.matchAll(/@([a-zA-Z0-9_./-]+)/g)].map((match) => match[1]!.replace(/\/$/, ""));
     if (!mentions.length) return value;
     const pinned = new Set<string>();
     for (const mention of mentions) {
@@ -2338,7 +2338,7 @@ export function CodeAgent() {
       }
     }
     if (!pinned.size) return value;
-    return value + "\\n\\nPINNED PROJECT CONTEXT (prioritize these exact paths):\\n" + [...pinned].slice(0, 40).join("\\n");
+    return value + "\n\nPINNED PROJECT CONTEXT (prioritize these exact paths):\n" + [...pinned].slice(0, 40).join("\n");
   }
 
   function dismissPlanDraft() {
@@ -2379,7 +2379,7 @@ export function CodeAgent() {
 
     try {
       // Ordinary conversation must never create a checkpoint, touch files, or start a terminal.
-      if (modeOverride === "build" && !isAgentBuildRequest(text) && !/^\\/(fix|refactor|seo|responsive|test)\\b/i.test(text) && referenceImages.length === 0) {
+      if (modeOverride === "build" && !isAgentBuildRequest(text) && !/^\/(fix|refactor|seo|responsive|test)\b/i.test(text) && referenceImages.length === 0) {
         const result = await runCodeAgent({
           data: {
             mode: "chat",
