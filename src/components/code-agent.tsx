@@ -2190,7 +2190,7 @@ export function CodeAgent() {
           },
         });
         setReferenceImages([]);
-        const planMessage = "Plan ready for your review. No project files were changed.\\n\\n" + result.message;
+        const planMessage = "Plan ready for your review. No project files were changed.\n\n" + result.message;
         const finalMessages: Message[] = [...nextMessages, { role: "assistant", content: planMessage }];
         setPlanDraft(result.message);
         setMessages(finalMessages);
