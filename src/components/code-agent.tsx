@@ -2343,7 +2343,7 @@ export function CodeAgent() {
   }
 
   function expandSlashCommand(value: string) {
-    const match = value.match(/^\/(fix|refactor|seo|responsive|explain|test)(?:\s+([\s\S]*))?$/i);
+    const match = value.match(/^\/(fix|refactor|seo|responsive|explain|test|docs)(?:\s+([\s\S]*))?$/i);
     if (!match) return value;
     const command = match[1]!.toLowerCase();
     const detail = match[2]?.trim() ?? "";
@@ -2394,8 +2394,8 @@ export function CodeAgent() {
     if (CODING_AGENT_UNDER_DEVELOPMENT) return;
     const text = (promptOverride ?? prompt).trim();
     if (!text || busy) return;
-    const docsCommand = text.match(/^\\/docs\\s+(.+)$/i);
-    const groundPackages = docsCommand ? docsCommand[1]!.split(/[\\s,]+/).filter(Boolean).slice(0, 3) : [];
+    const docsCommand = text.match(/^\/docs\s+(.+)$/i);
+    const groundPackages = docsCommand ? docsCommand[1]!.split(/[\s,]+/).filter(Boolean).slice(0, 3) : [];
     const expandedPrompt = pinMentionedContext(expandSlashCommand(text));
     const agentPrompt = tutorMode
       ? expandedPrompt + "\n\nTutor Mode is enabled: after implementing this request, include a concise beginner-friendly explanation of the important files and concepts changed, one practical next exercise, and a relevant link to https://expertsteam.giize.com/learn. Do not claim a lesson was completed."
@@ -2416,7 +2416,7 @@ export function CodeAgent() {
 
     try {
       // Ordinary conversation must never create a checkpoint, touch files, or start a terminal.
-      if (modeOverride === "build" && !isAgentBuildRequest(text) && !/^\/(fix|refactor|seo|responsive|test)\b/i.test(text) && referenceImages.length === 0) {
+      if (modeOverride === "build" && !isAgentBuildRequest(text) && !/^\/(fix|refactor|seo|responsive|test|docs)\b/i.test(text) && referenceImages.length === 0) {
         const result = await runCodeAgent({
           data: {
             mode: "chat",
@@ -2443,6 +2443,7 @@ export function CodeAgent() {
           data: {
             mode: "plan",
             modelTier,
+            groundPackages,
             prompt: agentPrompt,
             files,
             history: messages.slice(-8).map((message) => ({ ...message, content: message.content.slice(-3000) })),

@@ -24,7 +24,7 @@ const codingRequest = z
     prompt: z.string().trim().min(1).max(100_000),
     mode: z.enum(["build", "plan", "chat"]).optional().default("build"),
     modelTier: z.enum(["fast", "balanced", "architect"]).optional().default("fast"),
-    groundPackages: z.array(z.string().trim().min(1).max(214).regex(/^(?:@[a-z0-9._-]+\\/)?[a-z0-9][a-z0-9._-]*$/i)).max(3).optional().default([]),
+    groundPackages: z.array(z.string().trim().min(1).max(214).regex(/^(?:@[a-z0-9._-]+\/)?[a-z0-9][a-z0-9._-]*$/i)).max(3).optional().default([]),
     files: z.record(z.string().max(512), z.string().max(10_000_000)),
     history: z
       .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(3000) }))
@@ -89,9 +89,9 @@ export const runCodingAgent = createServerFn({ method: "POST" })
           "### " + (metadata.name ?? packageName) + " · " + (metadata["dist-tags"]?.latest ?? "latest"),
           metadata.description ?? "",
           (metadata.readme ?? "No README was published in the npm registry.").slice(0, 12000),
-        ].filter(Boolean).join("\\n");
+        ].filter(Boolean).join("\n");
       }));
-      groundedPrompt += "\\n\\nVERIFIED NPM PACKAGE DOCUMENTATION (retrieved from registry.npmjs.org; use version and API details from this source):\\n" + docs.join("\\n\\n");
+      groundedPrompt += "\n\nVERIFIED NPM PACKAGE DOCUMENTATION (retrieved from registry.npmjs.org; use version and API details from this source):\n" + docs.join("\n\n");
     }
     const agentData = { ...data, prompt: groundedPrompt };
     const { runAgent, runAgentPlan, runAgentChat } = await import("./agent.server");
