@@ -3892,7 +3892,7 @@ export function CodeAgent() {
                         <Sparkles className="mr-1 h-3 w-3" /> Prettier {formatOnSave ? "On" : "Off"}
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => void runProjectTypecheck()} disabled={typecheckBusy} className="h-7 px-2 text-[10px] text-slate-400" title="Run TypeScript diagnostics in the connected Linux workspace">
-                        {typecheckBusy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <CheckCircle2 className="mr-1 h-3 w-3" />} Typecheck
+                        {typecheckBusy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Zap className="mr-1 h-3 w-3" />} Typecheck
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => setPackagesOpen(true)} className="h-7 px-2 text-[10px] text-slate-400">
                         <Plus className="mr-1 h-3 w-3" /> Packages
