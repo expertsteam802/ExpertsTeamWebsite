@@ -441,6 +441,31 @@ async function compressReferenceImage(file: File): Promise<ReferenceImage> {
   }
 }
 
+async function optimizeImportedImage(file: File): Promise<File> {
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size < 500_000) return file;
+  let bitmap: ImageBitmap | null = null;
+  try {
+    bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && file.type === "image/png") return file;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) return file;
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, file.type, file.type === "image/jpeg" ? 0.84 : file.type === "image/webp" ? 0.82 : undefined),
+    );
+    if (!blob || blob.type !== file.type || blob.size >= file.size * 0.97) return file;
+    return new File([blob], file.name, { type: file.type, lastModified: file.lastModified });
+  } catch {
+    return file;
+  } finally {
+    bitmap?.close();
+  }
+}
+
 const fileIcon = (name: string) => {
   if (name.endsWith(".css")) return "text-sky-400";
   if (name.endsWith(".html")) return "text-orange-400";
@@ -1893,7 +1918,18 @@ export function CodeAgent() {
       toast.error("No supported source files or binary assets were imported.");
       return;
     }
-    if (!window.confirm("Import " + imported + " file(s) into this project? Existing paths will be replaced.")) return;
+    if (!window.confirm("Import " + imported + " file(s) into this project? Existing paths will be replaced. Large JPEG, PNG and WebP assets will be optimized when this can reduce their size without changing file paths.")) return;
+
+    let imageBytesSaved = 0;
+    for (let index = 0; index < binaryFiles.length; index++) {
+      const asset = binaryFiles[index]!;
+      if (!asset.mimeType.startsWith("image/")) continue;
+      const optimized = await optimizeImportedImage(asset.file);
+      if (optimized !== asset.file) {
+        imageBytesSaved += asset.file.size - optimized.size;
+        binaryFiles[index] = { ...asset, file: optimized };
+      }
+    }
 
     try {
       if (!binaryFiles.length) {
@@ -1990,7 +2026,7 @@ export function CodeAgent() {
       setActiveFile(Object.keys(nextFiles).find((path) => !Object.prototype.hasOwnProperty.call(files, path)) ?? Object.keys(nextFiles)[0] ?? "index.html");
       setDirty(false);
       setPreviewKey((value) => value + 1);
-      toast.success("Imported and auto-saved " + imported + " file(s)" + (skipped ? " · " + skipped + " skipped" : "") + (binaryFiles.length ? " · " + binaryFiles.length + " binary assets" : "") + ".");
+      toast.success("Imported and auto-saved " + imported + " file(s)" + (skipped ? " · " + skipped + " skipped" : "") + (binaryFiles.length ? " · " + binaryFiles.length + " binary assets" : "") + (imageBytesSaved > 0 ? " · optimized images by " + (imageBytesSaved / 1_000_000).toFixed(2) + " MB" : "") + ".");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Imported files could not be saved.");
     }
