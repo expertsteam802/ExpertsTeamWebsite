@@ -2467,6 +2467,7 @@ export function CodeAgent() {
         data: {
           prompt: agentPrompt,
           modelTier,
+          groundPackages,
           files,
           history: messages.slice(-8).map((message) => ({ ...message, content: message.content.slice(-3000) })),
           referenceImages,

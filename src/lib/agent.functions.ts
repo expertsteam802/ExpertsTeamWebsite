@@ -79,7 +79,9 @@ export const runCodingAgent = createServerFn({ method: "POST" })
           signal: AbortSignal.timeout(10000),
         });
         if (!response.ok) throw new Error("Could not retrieve npm documentation for " + packageName + " (HTTP " + response.status + ").");
-        const metadata = await response.json() as {
+        const rawMetadata = await response.text();
+        if (rawMetadata.length > 2_000_000) throw new Error("The npm package metadata is too large to safely ground this request.");
+        const metadata = JSON.parse(rawMetadata) as {
           name?: string;
           description?: string;
           "dist-tags"?: { latest?: string };
