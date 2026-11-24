@@ -490,7 +490,7 @@ export function CodeAgent() {
       return;
     }
     const color = /^#[0-9a-f]{6}$/i.test(visualColorDraft) ? visualColorDraft : "#3b82f6";
-    const rule = "\n\n/* ExpertsTeam visual edit */\n" + selector + " {\n  color: " + color + ";\n  font-size: " + fontSize + "px;\n}\n";
+    const rule = "\n\n/* ExpertsTeam visual edit */\n" + selector + " {\n  color: " + color + ";\n  font-size: " + fontSize + "px;\n  font-weight: " + visualWeightDraft + ";\n}\n";
     nextFiles[cssPath] = (nextFiles[cssPath] ?? "") + rule;
     setFiles(nextFiles);
     setAutoSaveStatus("saved");
@@ -3218,7 +3218,7 @@ export function CodeAgent() {
                           </select>
                         </label>
                         <div className="mt-3 flex items-center justify-between gap-2">
-                          <button type="button" onClick={() => { const item = selectedPreviewElement; setPrompt("Edit this selected element in my project.\\nSelector: " + item.selector + "\\nTag: " + item.tag + "\\nCurrent text: " + item.text + "\\nCurrent HTML: " + item.outerHTML + "\\nCurrent styles: " + JSON.stringify(item.styles) + "\\nMake the requested changes only to this element and preserve the rest of the page."); setSelectedPreviewElement(null); switchPanel("chat"); }} className="rounded-lg border border-slate-700 px-2.5 py-2 text-[10px] font-medium text-slate-300 hover:bg-slate-700">Ask AI</button>
+                          <button type="button" onClick={() => { const item = selectedPreviewElement; setPrompt("Edit this selected element in my project.\nSelector: " + item.selector + "\nTag: " + item.tag + "\nCurrent text: " + item.text + "\nCurrent HTML: " + item.outerHTML + "\nCurrent styles: " + JSON.stringify(item.styles) + "\nMake the requested changes only to this element and preserve the rest of the page."); setSelectedPreviewElement(null); switchPanel("chat"); }} className="rounded-lg border border-slate-700 px-2.5 py-2 text-[10px] font-medium text-slate-300 hover:bg-slate-700">Ask AI</button>
                           <button type="button" onClick={applyVisualElementEdits} className="rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-semibold text-white hover:bg-blue-500">Apply edits</button>
                         </div>
                         <p className="mt-2 text-[9px] leading-4 text-slate-500">Direct source edits; no AI credits. Ambiguous text changes are blocked.</p>
