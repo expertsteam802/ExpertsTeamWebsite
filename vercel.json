@@ -82,5 +82,11 @@
       "permanent": true
     }
   ],
-  "installCommand": "npm install --no-audit --no-fund"
+  "installCommand": "npm install --no-audit --no-fund",
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "**": false
+    }
+  }
 }
