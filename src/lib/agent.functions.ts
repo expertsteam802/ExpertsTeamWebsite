@@ -81,6 +81,35 @@ export const runCodingAgent = createServerFn({ method: "POST" })
     return result;
   });
 
+export const runAgentSelfHeal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z.object({
+      projectId: z.string().uuid(),
+      error: z.object({
+        message: z.string().trim().min(1).max(3000),
+        stack: z.string().max(5000).optional(),
+        file: z.string().max(500).optional(),
+        line: z.number().int().positive().max(1_000_000).optional(),
+      }),
+      files: z.record(z.string().max(512), z.string().max(1_000_000))
+        .refine((files) => Object.keys(files).length <= 18, "Too many files for automatic repair.")
+        .refine((files) => Object.values(files).reduce((sum, value) => sum + value.length, 0) <= 180_000, "Project context exceeds the repair limit."),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: project, error: projectError } = await context.supabase
+      .from("agent_projects")
+      .select("id")
+      .eq("id", data.projectId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (projectError) throw new Error(projectError.message);
+    if (!project) throw new Error("This project is unavailable or you do not have permission to repair it.");
+    const { runAgentSelfHeal: repair } = await import("./agent.server");
+    return repair({ error: data.error, files: data.files });
+  });
+
 export const importGitHubProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
