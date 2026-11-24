@@ -394,12 +394,11 @@ export async function runAgent(
         handoffNotes.push(parsed.message.slice(0, 1200));
       }
 
-      if (
-        parsed.complete &&
-        candidate?.finishReason !== "MAX_TOKENS" &&
-        Object.keys(completedFiles).length > 0
-      ) {
-        return { message: latestMessage, files: repairMissingStylesheetImports(completedFiles) };
+      if (parsed.complete && candidate?.finishReason !== "MAX_TOKENS") {
+        const lockNote = blockedLockedFiles.size
+          ? " AI changes were skipped for locked files: " + [...blockedLockedFiles].join(", ") + "."
+          : "";
+        return { message: latestMessage + lockNote, files: repairMissingStylesheetImports(completedFiles) };
       }
       if (candidate?.finishReason === "MAX_TOKENS") {
         agentOutputBudget = Math.max(2048, Math.floor(agentOutputBudget / 2));
@@ -629,8 +628,10 @@ export async function runAgentSelfHeal(input: {
   error: { message: string; stack?: string; file?: string; line?: number };
   files: Record<string, string>;
 }) {
+  const lockedFilePaths = getLockedProjectFiles(input.files);
   const safeFiles = Object.entries(input.files)
     .filter(([name]) => {
+      if (lockedFilePaths.has(name)) return false;
       const parts = name.split("/");
       return isSafeProjectPath(name) && !parts.some((part) =>
         part === ".env" || part.startsWith(".env.") ||
