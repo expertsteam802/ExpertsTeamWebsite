@@ -115,6 +115,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "theme-color", content: "#0b1627" },
       // YouTube requires a Referer header for embedded playback (error 153).
       { name: "referrer", content: "strict-origin-when-cross-origin" },
       { title: "ExpertsTeam | AI, Software & Technology Solutions" },
@@ -153,6 +154,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "icon", type: "image/svg+xml", sizes: "any", href: "/favicon.svg?v=20261121-3" },
       { rel: "shortcut icon", href: "/favicon.svg?v=20261121-3" },
       { rel: "apple-touch-icon", href: "/favicon.svg?v=20261121-3" },
@@ -289,6 +291,13 @@ function RootComponent() {
 
 function RootContent() {
   const currentPathname = useRouterState({ select: (state) => state.location.pathname });
+
+  useEffect(() => {
+    if (!window.isSecureContext || !("serviceWorker" in navigator)) return;
+    void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error: unknown) => {
+      console.warn("[ExpertsTeam PWA] Service worker registration failed:", error);
+    });
+  }, []);
   const siteSettings = useSiteSettings();
   const isPublishedApp = currentPathname.startsWith("/apps/");
   const [aiChatOpen, setAiChatOpen] = useState(false);

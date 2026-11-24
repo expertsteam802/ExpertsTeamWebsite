@@ -5,6 +5,9 @@ import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
 import { MyLeadOfferwall } from "@/components/mylead-offerwall";
+import { CreditRewardsPanel } from "@/components/credit-rewards-panel";
+import { UnifiedOfferwallPanel } from "@/components/unified-offerwall-panel";
+import { CreditTopupPanel } from "@/components/credit-topup-panel";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
@@ -130,6 +133,12 @@ function EarnCreditsPage() {
             </Card>
           </div>
         </section>
+
+        <CreditRewardsPanel />
+
+        <CreditTopupPanel />
+
+        <UnifiedOfferwallPanel />
 
         <MyLeadOfferwall />
 

@@ -770,6 +770,38 @@ export const startAgentPreview = createServerFn({ method: "POST" })
     const files = await loadProjectSourceFiles(context.supabase, data.projectId, context.userId);
     if (!Object.keys(files).length) throw new Error("This project has no saved source files to preview.");
     await assertBuilderResourcePolicy(context.supabase, context.userId, files);
+    const resourceLimits = await getBuilderResourceLimits(context.supabase, context.userId);
+    const { data: savedAssets, error: assetQueryError } = await context.supabase
+      .from("agent_project_assets")
+      .select("file_path,storage_path,mime_type,sha256")
+      .eq("project_id", data.projectId)
+      .eq("user_id", context.userId);
+    if (assetQueryError) throw new Error("Could not load the project's saved binary assets: " + assetQueryError.message);
+    const binaryAssets: { filePath: string; buffer: Buffer; mimeType: string; sha256: string }[] = [];
+    for (const asset of savedAssets ?? []) {
+      const { data: blob, error: downloadError } = await context.supabase.storage
+        .from("builder-project-assets")
+        .download(asset.storage_path);
+      if (downloadError || !blob) throw new Error("Could not restore " + asset.file_path + ": " + (downloadError?.message ?? "asset is missing"));
+      binaryAssets.push({
+        filePath: asset.file_path,
+        buffer: Buffer.from(await blob.arrayBuffer()),
+        mimeType: asset.mime_type,
+        sha256: asset.sha256,
+      });
+    }
+    const totalBinaryBytes = binaryAssets.reduce((sum, asset) => sum + asset.buffer.byteLength, 0);
+    const totalTextBytes = Object.values(files).reduce((sum, value) => sum + Buffer.byteLength(value, "utf8"), 0);
+    const totalFiles = Object.keys(files).length + binaryAssets.length;
+    if (resourceLimits.maxFiles > 0 && totalFiles > resourceLimits.maxFiles) {
+      throw new Error("The project exceeds the administrator-configured file-count limit of " + resourceLimits.maxFiles + ".");
+    }
+    if (resourceLimits.maxProjectMb > 0 && totalTextBytes + totalBinaryBytes > resourceLimits.maxProjectMb * 1_000_000) {
+      throw new Error("The project exceeds the administrator-configured project-size limit of " + resourceLimits.maxProjectMb + " MB.");
+    }
+    if (resourceLimits.maxFileMb > 0 && [...Object.values(files).map((value) => Buffer.byteLength(value, "utf8")), ...binaryAssets.map((asset) => asset.buffer.byteLength)].some((size) => size > resourceLimits.maxFileMb * 1_000_000)) {
+      throw new Error("A project file exceeds the administrator-configured per-file limit of " + resourceLimits.maxFileMb + " MB.");
+    }
     const { loadProjectPublicEnvironment } = await import("./project-secrets.server");
     // Supabase generated types do not yet include the project-secrets migration tables.
     const projectEnvironment = await loadProjectPublicEnvironment(
@@ -779,7 +811,7 @@ export const startAgentPreview = createServerFn({ method: "POST" })
       data.projectId,
     );
     const { startDaytonaProjectPreview } = await import("./daytona-terminal.server");
-    return startDaytonaProjectPreview(data.projectId, files, projectEnvironment);
+    return startDaytonaProjectPreview(data.projectId, files, projectEnvironment, binaryAssets);
   });
 
 const terminalStartRequest = z
@@ -864,7 +896,24 @@ export const startAgentTerminal = createServerFn({ method: "POST" })
 const publishRequest = z.object({
   projectId: z.string().uuid(),
   slug: z.string().regex(/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/),
+  environment: z.enum(["production", "staging"]).default("production"),
 });
+
+export const getAgentProjectPortForwardUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z.object({
+      projectId: z.string().uuid(),
+      sandboxName: z.string().min(20).max(80),
+      port: z.number().int().min(1).max(65535),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const { assertDaytonaTerminalSandboxName, getDaytonaProjectPortForwardUrl } = await import("./daytona-terminal.server");
+    const sandboxName = assertDaytonaTerminalSandboxName(context.userId, data.sandboxName);
+    return getDaytonaProjectPortForwardUrl(sandboxName, data.port);
+  });
 
 export const stopAgentTerminal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -993,6 +1042,10 @@ export const publishAgentProject = createServerFn({ method: "POST" })
     if (startError) throw new Error("Could not start the app publishing job.");
 
     try {
+      const reservedSubdomains = new Set(["www", "api", "admin", "auth", "mail", "status", "cdn", "assets"]);
+      if (data.environment === "production" && process.env["PUBLIC_APP_DOMAIN"] && reservedSubdomains.has(data.slug)) {
+        throw new Error("That slug is reserved for a system subdomain. Choose another project URL.");
+      }
       const { loadProjectPublicEnvironment } = await import("./project-secrets.server");
       const projectEnvironment = await loadProjectPublicEnvironment(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1009,40 +1062,79 @@ export const publishAgentProject = createServerFn({ method: "POST" })
         context.supabase,
         projectEnvironment,
       );
-      const { data: saved, error: saveError } = await context.supabase
-        .from("agent_projects")
-        .update({
-          published: true,
-          slug: data.slug,
-          deployment_url: result.url,
-          thumbnail_url: (await context.supabase
+
+      const appUrl = (process.env["APP_URL"] || "https://expertsteam.giize.com").replace(/\/$/, "");
+      let publicUrl: string;
+      if (data.environment === "staging") {
+        publicUrl = appUrl + "/staging/" + encodeURIComponent(data.slug);
+      } else {
+        const configuredDomain = process.env["PUBLIC_APP_DOMAIN"]?.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
+        if (configuredDomain) {
+          const domainUrl = new URL("https://" + configuredDomain);
+          if (domainUrl.pathname !== "/" || domainUrl.search || domainUrl.hash) throw new Error("PUBLIC_APP_DOMAIN must contain only a hostname.");
+          publicUrl = "https://" + data.slug + "." + domainUrl.hostname;
+        } else {
+          publicUrl = appUrl + "/apps/" + encodeURIComponent(data.slug);
+        }
+      }
+
+      const { data: deploymentId, error: recordError } = await context.supabase.rpc("record_agent_project_deployment", {
+        p_project_id: data.projectId,
+        p_slug: data.slug,
+        p_environment: data.environment,
+        p_release_id: result.releaseId,
+        p_deployment_url: result.url,
+        p_public_url: publicUrl,
+        p_file_count: result.fileCount,
+      });
+      if (recordError || !deploymentId) {
+        throw new Error(recordError?.message || "The app was built, but its deployment history could not be saved.");
+      }
+
+      const { error: buildLogError } = await context.supabase.from("agent_project_build_logs").insert({
+        project_id: data.projectId,
+        user_id: context.userId,
+        environment: data.environment,
+        status: "success",
+        release_id: result.releaseId,
+        message: "Published " + data.environment + " release " + result.releaseId + " with " + result.fileCount + " files.",
+      });
+      if (buildLogError) console.warn("[ExpertsTeam deployment] Could not save build log:", buildLogError.message);
+
+      if (data.environment === "production") {
+        const { data: existing } = await context.supabase
+          .from("agent_projects")
+          .select("thumbnail_url")
+          .eq("id", data.projectId)
+          .eq("user_id", context.userId)
+          .maybeSingle();
+        if (!existing?.thumbnail_url) {
+          await context.supabase
             .from("agent_projects")
-            .select("thumbnail_url")
+            .update({
+              thumbnail_url: "https://image.thum.io/get/width/1200/crop/675/noanimate/maxAge/24/" + publicUrl,
+            })
             .eq("id", data.projectId)
-            .eq("user_id", context.userId)
-            .maybeSingle()).data?.thumbnail_url ??
-            `https://image.thum.io/get/width/1200/crop/675/noanimate/maxAge/24/https://expertsteam.giize.com/apps/${encodeURIComponent(data.slug)}`,
-          last_build_status: "success",
-          last_build_at: new Date().toISOString(),
-        })
-        .eq("id", data.projectId)
-        .eq("user_id", context.userId)
-        .select("id")
-        .maybeSingle();
-      if (saveError)
-        throw new Error("The app was built, but its published URL could not be saved.");
-      if (!saved) throw new Error("The app was built, but the project is no longer available.");
-      return {
-        ...result,
-        // Public project links must use the agreed first-party path route, never wildcard subdomains.
-        publicUrl: `https://expertsteam.giize.com/apps/${encodeURIComponent(data.slug)}`,
-      };
+            .eq("user_id", context.userId);
+        }
+      }
+
+      return { ...result, publicUrl, deploymentId, environment: data.environment };
     } catch (error) {
       await context.supabase
         .from("agent_projects")
         .update({ last_build_status: "failed", last_build_at: new Date().toISOString() })
         .eq("id", data.projectId)
         .eq("user_id", context.userId);
+      await context.supabase.from("agent_project_build_logs").insert({
+        project_id: data.projectId,
+        user_id: context.userId,
+        environment: data.environment,
+        status: "failed",
+        message: (error instanceof Error ? error.message : String(error)).slice(0, 4000),
+      }).then(({ error: logError }) => {
+        if (logError) console.warn("[ExpertsTeam deployment] Could not save failure log:", logError.message);
+      });
       throw error;
     }
   });

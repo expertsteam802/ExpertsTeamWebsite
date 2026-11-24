@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -39,6 +40,8 @@ function documentWithAssetBase(html: string, deploymentUrl: string) {
 
 function LiveApp() {
   const { slug } = Route.useParams();
+  const lastView = useRef("");
+  const lastError = useRef("");
   const { data, isLoading, error } = useQuery({
     queryKey: ["public-live-app", slug],
     enabled: Boolean(slug),
@@ -63,6 +66,18 @@ function LiveApp() {
       return { ...data, document: documentWithAssetBase(html, data.deployment_url) };
     },
   });
+
+  useEffect(() => {
+    if (!data?.document || lastView.current === slug) return;
+    lastView.current = slug;
+    void supabase.rpc("record_public_project_event", { p_slug: slug, p_event_type: "view", p_route_path: "/" });
+  }, [data?.document, slug]);
+
+  useEffect(() => {
+    if (!error || lastError.current === slug) return;
+    lastError.current = slug;
+    void supabase.rpc("record_public_project_event", { p_slug: slug, p_event_type: "error", p_route_path: "/" });
+  }, [error, slug]);
 
   return (
     <main className="min-h-screen w-screen overflow-hidden bg-white text-slate-900">

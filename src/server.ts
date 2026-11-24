@@ -44,11 +44,55 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
+async function rewritePublishedHost(request: Request): Promise<Request> {
+  if (request.method !== "GET" && request.method !== "HEAD") return request;
+  const url = new URL(request.url);
+  const hostname = url.hostname.toLowerCase();
+  const configuredDomain = process.env["PUBLIC_APP_DOMAIN"]?.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
+  if (configuredDomain) {
+    try {
+      const domain = new URL("https://" + configuredDomain);
+      if (domain.pathname === "/" && !domain.search && !domain.hash) {
+        const suffix = "." + domain.hostname;
+        if (hostname.endsWith(suffix)) {
+          const slug = hostname.slice(0, -suffix.length);
+          const reserved = new Set(["www", "api", "admin", "auth", "mail", "status", "cdn", "assets"]);
+          if (!slug.includes(".") && !reserved.has(slug) && /^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(slug)) {
+            url.pathname = "/apps/" + slug;
+            return new Request(url, request);
+          }
+        }
+        if (hostname === domain.hostname) return request;
+      }
+    } catch {
+      // An invalid PUBLIC_APP_DOMAIN disables first-party subdomain rewriting.
+    }
+  }
+
+  if (!process.env["NETLIFY_SITE_ID"]) return request;
+  const appUrl = process.env["APP_URL"] || "https://expertsteam.giize.com";
+  try {
+    if (hostname === new URL(appUrl).hostname.toLowerCase()) return request;
+  } catch {
+    // Continue with verified custom-domain lookup.
+  }
+  const { data: customDomain, error } = await supabaseAdmin
+    .from("agent_project_domains")
+    .select("slug")
+    .eq("domain", hostname)
+    .eq("status", "active")
+    .maybeSingle();
+  if (error || !customDomain || !/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(customDomain.slug)) return request;
+  url.pathname = "/apps/" + customDomain.slug;
+  return new Request(url, request);
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const handler = await getServerEntry();
-      const response = await handler.fetch(request, env, ctx);
+      const routedRequest = await rewritePublishedHost(request);
+      const response = await handler.fetch(routedRequest, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);

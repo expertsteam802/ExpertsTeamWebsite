@@ -30,6 +30,8 @@ import { toast } from "sonner";
 import { PageShell } from "@/components/layout/page-shell";
 import { AdminApiUsagePanel } from "@/components/admin-platform-panels";
 import { AdminCpaPanel } from "@/components/admin-cpa-panel";
+import { AdminCreditTopupsPanel } from "@/components/admin-credit-topups-panel";
+import { AdminSupabaseBackupsPanel } from "@/components/admin-supabase-backups-panel";
 import { FileGrid, type CommunityFile } from "@/components/file-grid";
 import { UploadDialog } from "@/components/upload-dialog";
 import { Button } from "@/components/ui/button";
@@ -886,6 +888,12 @@ function AdminPage() {
                   <Database className="h-4 w-4" /> Supabase API usage
                 </TabsTrigger>
                 <TabsTrigger
+                  value="backups"
+                  className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+                >
+                  <HardDrive className="h-4 w-4" /> Database backups
+                </TabsTrigger>
+                <TabsTrigger
                   value="sessions"
                   className="w-full justify-start gap-3 rounded-xl px-3 py-3 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
                 >
@@ -1738,6 +1746,9 @@ function AdminPage() {
                 </div>
               </TabsContent>
 
+              <TabsContent value="backups" className="mt-0 space-y-4">
+                <AdminSupabaseBackupsPanel />
+              </TabsContent>
               <TabsContent value="sessions" className="mt-0">
                 <Card className="divide-y divide-border p-0">
                   {(sessions ?? []).map((event) => (
@@ -1766,6 +1777,7 @@ function AdminPage() {
 
               <TabsContent value="cpa-rewards" className="mt-0 space-y-4">
                 <AdminCpaPanel />
+                <AdminCreditTopupsPanel />
               </TabsContent>
 
               <TabsContent value="payments" className="mt-0 space-y-4">

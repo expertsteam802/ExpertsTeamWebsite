@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_project_analytics_daily: {
+        Row: {
+          day: string
+          errors: number
+          project_id: string
+          updated_at: string
+          views: number
+        }
+        Insert: {
+          day: string
+          errors?: number
+          project_id: string
+          updated_at?: string
+          views?: number
+        }
+        Update: {
+          day?: string
+          errors?: number
+          project_id?: string
+          updated_at?: string
+          views?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_analytics_daily_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_project_asset_staging: {
         Row: {
           created_at: string
@@ -102,6 +134,47 @@ export type Database = {
           },
         ]
       }
+      agent_project_build_logs: {
+        Row: {
+          created_at: string
+          environment: string
+          id: string
+          message: string
+          project_id: string
+          release_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          environment: string
+          id?: string
+          message?: string
+          project_id: string
+          release_id?: string | null
+          status: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          environment?: string
+          id?: string
+          message?: string
+          project_id?: string
+          release_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_build_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_project_checkpoints: {
         Row: {
           created_at: string
@@ -143,6 +216,165 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_project_deployments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deployment_url: string
+          environment: string
+          file_count: number
+          id: string
+          is_current: boolean
+          project_id: string
+          public_url: string
+          release_id: string
+          slug: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deployment_url: string
+          environment: string
+          file_count?: number
+          id?: string
+          is_current?: boolean
+          project_id: string
+          public_url: string
+          release_id: string
+          slug: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deployment_url?: string
+          environment?: string
+          file_count?: number
+          id?: string
+          is_current?: boolean
+          project_id?: string
+          public_url?: string
+          release_id?: string
+          slug?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_deployments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_project_domains: {
+        Row: {
+          created_at: string
+          dns_target: string
+          domain: string
+          id: string
+          netlify_added: boolean
+          project_id: string
+          slug: string
+          ssl_ready: boolean
+          status: string
+          updated_at: string
+          user_id: string
+          verification_host: string
+          verification_token: string
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          dns_target: string
+          domain: string
+          id?: string
+          netlify_added?: boolean
+          project_id: string
+          slug: string
+          ssl_ready?: boolean
+          status?: string
+          updated_at?: string
+          user_id: string
+          verification_host: string
+          verification_token: string
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          dns_target?: string
+          domain?: string
+          id?: string
+          netlify_added?: boolean
+          project_id?: string
+          slug?: string
+          ssl_ready?: boolean
+          status?: string
+          updated_at?: string
+          user_id?: string
+          verification_host?: string
+          verification_token?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_domains_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_project_env_vars: {
+        Row: {
+          auth_tag: string
+          created_at: string
+          encrypted_value: string
+          id: string
+          key: string
+          nonce: string
+          project_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auth_tag: string
+          created_at?: string
+          encrypted_value: string
+          id?: string
+          key: string
+          nonce: string
+          project_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auth_tag?: string
+          created_at?: string
+          encrypted_value?: string
+          id?: string
+          key?: string
+          nonce?: string
+          project_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_env_vars_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "agent_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -262,6 +494,189 @@ export type Database = {
             foreignKeyName: "agent_project_runs_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_project_staging_access: {
+        Row: {
+          password_hash: string
+          password_salt: string
+          project_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          password_hash: string
+          password_salt: string
+          project_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          password_hash?: string
+          password_salt?: string
+          project_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_staging_access_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_project_uptime_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          created_at: string
+          event_type: string
+          id: string
+          message: string
+          project_id: string
+          user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          message: string
+          project_id: string
+          user_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          message?: string
+          project_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_uptime_alerts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_project_uptime_checks: {
+        Row: {
+          checked_at: string | null
+          created_at: string
+          deployment_id: string
+          error_message: string | null
+          id: string
+          project_id: string
+          request_id: number
+          response_time_ms: number | null
+          status: string
+          status_code: number | null
+          timed_out: boolean
+          url: string
+          user_id: string
+        }
+        Insert: {
+          checked_at?: string | null
+          created_at?: string
+          deployment_id: string
+          error_message?: string | null
+          id?: string
+          project_id: string
+          request_id: number
+          response_time_ms?: number | null
+          status?: string
+          status_code?: number | null
+          timed_out?: boolean
+          url: string
+          user_id: string
+        }
+        Update: {
+          checked_at?: string | null
+          created_at?: string
+          deployment_id?: string
+          error_message?: string | null
+          id?: string
+          project_id?: string
+          request_id?: number
+          response_time_ms?: number | null
+          status?: string
+          status_code?: number | null
+          timed_out?: boolean
+          url?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_uptime_checks_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "agent_project_deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_project_uptime_checks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_project_uptime_settings: {
+        Row: {
+          consecutive_failures: number
+          consecutive_successes: number
+          enabled: boolean
+          failure_threshold: number
+          last_alert_at: string | null
+          last_checked_at: string | null
+          last_state: string
+          project_id: string
+          recovery_threshold: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          consecutive_failures?: number
+          consecutive_successes?: number
+          enabled?: boolean
+          failure_threshold?: number
+          last_alert_at?: string | null
+          last_checked_at?: string | null
+          last_state?: string
+          project_id: string
+          recovery_threshold?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          consecutive_failures?: number
+          consecutive_successes?: number
+          enabled?: boolean
+          failure_threshold?: number
+          last_alert_at?: string | null
+          last_checked_at?: string | null
+          last_state?: string
+          project_id?: string
+          recovery_threshold?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_uptime_settings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
             referencedRelation: "agent_projects"
             referencedColumns: ["id"]
           },
@@ -882,6 +1297,225 @@ export type Database = {
         }
         Relationships: []
       }
+      creator_tips: {
+        Row: {
+          amount: number
+          created_at: string
+          creator_id: string
+          id: string
+          message: string
+          sender_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          creator_id: string
+          id?: string
+          message?: string
+          sender_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          creator_id?: string
+          id?: string
+          message?: string
+          sender_id?: string
+        }
+        Relationships: []
+      }
+      credit_daily_streaks: {
+        Row: {
+          current_streak: number
+          last_claim_date: string | null
+          longest_streak: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          current_streak?: number
+          last_claim_date?: string | null
+          longest_streak?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          current_streak?: number
+          last_claim_date?: string | null
+          longest_streak?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      credit_debts: {
+        Row: {
+          amount: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      credit_referral_codes: {
+        Row: {
+          code: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      credit_referrals: {
+        Row: {
+          created_at: string
+          id: string
+          referral_code: string
+          referred_user_id: string
+          referrer_id: string
+          reward_credits: number
+          rewarded_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          referral_code: string
+          referred_user_id: string
+          referrer_id: string
+          reward_credits?: number
+          rewarded_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          referral_code?: string
+          referred_user_id?: string
+          referrer_id?: string
+          reward_credits?: number
+          rewarded_at?: string | null
+        }
+        Relationships: []
+      }
+      credit_topup_orders: {
+        Row: {
+          amount: number
+          checkout_url: string | null
+          created_at: string
+          credits_per_unit: number
+          credits_requested: number
+          currency: string
+          id: string
+          paid_at: string | null
+          payment_note: string
+          payment_reference: string | null
+          provider: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          stripe_checkout_session_id: string | null
+          stripe_event_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          checkout_url?: string | null
+          created_at?: string
+          credits_per_unit: number
+          credits_requested: number
+          currency: string
+          id?: string
+          paid_at?: string | null
+          payment_note?: string
+          payment_reference?: string | null
+          provider: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_event_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          checkout_url?: string | null
+          created_at?: string
+          credits_per_unit?: number
+          credits_requested?: number
+          currency?: string
+          id?: string
+          paid_at?: string | null
+          payment_note?: string
+          payment_reference?: string | null
+          provider?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_event_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      credit_topup_rates: {
+        Row: {
+          credits_per_unit: number
+          currency: string
+          id: string
+          is_enabled: boolean
+          max_amount: number
+          min_amount: number
+          payment_instructions: string
+          provider: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          credits_per_unit: number
+          currency: string
+          id?: string
+          is_enabled?: boolean
+          max_amount?: number
+          min_amount?: number
+          payment_instructions?: string
+          provider: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          credits_per_unit?: number
+          currency?: string
+          id?: string
+          is_enabled?: boolean
+          max_amount?: number
+          min_amount?: number
+          payment_instructions?: string
+          provider?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       developer_vault_items: {
         Row: {
           created_at: string
@@ -1234,6 +1868,146 @@ export type Database = {
           },
         ]
       }
+      mylead_postback_events: {
+        Row: {
+          country_code: string | null
+          cpa_conversion_id: string | null
+          created_at: string
+          currency: string | null
+          destination_program_id: string | null
+          destination_program_name: string | null
+          goal_id: string | null
+          goal_name: string | null
+          id: string
+          lead_ip: unknown
+          payout: number | null
+          payout_decimal: number | null
+          player_id: string
+          processed_at: string
+          program_id: string | null
+          program_name: string | null
+          raw_received_at: string
+          status: string
+          transaction_id: string
+          updated_at: string
+          virtual_amount: number
+        }
+        Insert: {
+          country_code?: string | null
+          cpa_conversion_id?: string | null
+          created_at?: string
+          currency?: string | null
+          destination_program_id?: string | null
+          destination_program_name?: string | null
+          goal_id?: string | null
+          goal_name?: string | null
+          id?: string
+          lead_ip?: unknown
+          payout?: number | null
+          payout_decimal?: number | null
+          player_id: string
+          processed_at?: string
+          program_id?: string | null
+          program_name?: string | null
+          raw_received_at?: string
+          status: string
+          transaction_id: string
+          updated_at?: string
+          virtual_amount?: number
+        }
+        Update: {
+          country_code?: string | null
+          cpa_conversion_id?: string | null
+          created_at?: string
+          currency?: string | null
+          destination_program_id?: string | null
+          destination_program_name?: string | null
+          goal_id?: string | null
+          goal_name?: string | null
+          id?: string
+          lead_ip?: unknown
+          payout?: number | null
+          payout_decimal?: number | null
+          player_id?: string
+          processed_at?: string
+          program_id?: string | null
+          program_name?: string | null
+          raw_received_at?: string
+          status?: string
+          transaction_id?: string
+          updated_at?: string
+          virtual_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mylead_postback_events_cpa_conversion_id_fkey"
+            columns: ["cpa_conversion_id"]
+            isOneToOne: false
+            referencedRelation: "cpa_conversions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offerwall_provider_events: {
+        Row: {
+          country_code: string | null
+          created_at: string
+          credited_amount: number
+          debt_paid_amount: number
+          event_id: string
+          id: string
+          offer_id: string | null
+          offer_name: string | null
+          provider: string
+          raw_event: Json
+          revenue_usd: number | null
+          reversed_amount: number
+          reward_credits: number
+          source_ip: unknown
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          country_code?: string | null
+          created_at?: string
+          credited_amount?: number
+          debt_paid_amount?: number
+          event_id: string
+          id?: string
+          offer_id?: string | null
+          offer_name?: string | null
+          provider: string
+          raw_event?: Json
+          revenue_usd?: number | null
+          reversed_amount?: number
+          reward_credits: number
+          source_ip?: unknown
+          status: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          country_code?: string | null
+          created_at?: string
+          credited_amount?: number
+          debt_paid_amount?: number
+          event_id?: string
+          id?: string
+          offer_id?: string | null
+          offer_name?: string | null
+          provider?: string
+          raw_event?: Json
+          revenue_usd?: number | null
+          reversed_amount?: number
+          reward_credits?: number
+          source_ip?: unknown
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       personal_vault_files: {
         Row: {
           created_at: string
@@ -1269,6 +2043,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      plugin_audit_logs: {
+        Row: {
+          action: string
+          connection_id: string | null
+          created_at: string
+          details: Json
+          id: number
+          provider: string
+          resource: string | null
+          success: boolean
+          user_id: string
+        }
+        Insert: {
+          action: string
+          connection_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: never
+          provider: string
+          resource?: string | null
+          success?: boolean
+          user_id: string
+        }
+        Update: {
+          action?: string
+          connection_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: never
+          provider?: string
+          resource?: string | null
+          success?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plugin_audit_logs_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "user_plugin_connections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -1628,6 +2446,110 @@ export type Database = {
         }
         Relationships: []
       }
+      user_credit_balances: {
+        Row: {
+          ai_credits: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_credits?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_credits?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_plugin_connections: {
+        Row: {
+          connected_at: string
+          created_at: string
+          display_name: string
+          id: string
+          last_used_at: string | null
+          provider: string
+          provider_account_id: string | null
+          provider_username: string | null
+          scopes: string[]
+          secret_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connected_at?: string
+          created_at?: string
+          display_name: string
+          id?: string
+          last_used_at?: string | null
+          provider: string
+          provider_account_id?: string | null
+          provider_username?: string | null
+          scopes?: string[]
+          secret_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connected_at?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          last_used_at?: string | null
+          provider?: string
+          provider_account_id?: string | null
+          provider_username?: string | null
+          scopes?: string[]
+          secret_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_plugin_permissions: {
+        Row: {
+          actions: string[]
+          connection_id: string
+          id: string
+          project_id: string | null
+          require_approval_for: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actions?: string[]
+          connection_id: string
+          id?: string
+          project_id?: string | null
+          require_approval_for?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actions?: string[]
+          connection_id?: string
+          id?: string
+          project_id?: string | null
+          require_approval_for?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_plugin_permissions_connection_owner_fkey"
+            columns: ["connection_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "user_plugin_connections"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1838,6 +2760,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      acknowledge_agent_project_uptime_alert: {
+        Args: { p_alert_id: string }
+        Returns: boolean
+      }
       admin_api_usage_summary: {
         Args: { p_since?: string }
         Returns: {
@@ -1854,24 +2780,66 @@ export type Database = {
         Args: { p_approve: boolean; p_conversion_id: string; p_note?: string }
         Returns: number
       }
+      admin_review_credit_topup: {
+        Args: { p_approve: boolean; p_note?: string; p_order_id: string }
+        Returns: Json
+      }
       admin_review_subscription_request: {
         Args: { p_approve: boolean; p_request_id: string }
         Returns: undefined
       }
       can_use_guest_ai_credit: { Args: { p_ip_hash: string }; Returns: boolean }
+      claim_daily_credit_streak: { Args: never; Returns: Json }
+      claim_eligible_referral_bonus: { Args: never; Returns: Json }
       claim_free_ai_credits: { Args: never; Returns: number }
+      complete_stripe_credit_topup: {
+        Args: {
+          p_checkout_session_id: string
+          p_event_id: string
+          p_order_id: string
+        }
+        Returns: Json
+      }
       consume_ai_credit: { Args: never; Returns: number }
+      consume_ai_credits: {
+        Args: { p_amount: number; p_description?: string }
+        Returns: number
+      }
       consume_guest_ai_credit: { Args: { p_ip_hash: string }; Returns: boolean }
+      create_credit_topup_order: {
+        Args: {
+          p_amount: number
+          p_currency: string
+          p_payment_note?: string
+          p_payment_reference?: string
+          p_provider: string
+        }
+        Returns: Json
+      }
+      delete_user_plugin_connection: {
+        Args: { p_connection_id: string; p_user_id: string }
+        Returns: boolean
+      }
       delete_user_supabase_connection: {
         Args: { p_connection_id: string }
         Returns: boolean
       }
+      dispatch_agent_project_uptime_checks: { Args: never; Returns: number }
       finalize_agent_project_file_staging: {
         Args: { p_import_id: string; p_project_id: string }
         Returns: number
       }
       finalize_agent_project_workspace_staging: {
         Args: { p_import_id: string; p_project_id: string }
+        Returns: Json
+      }
+      get_my_credit_referral_code: { Args: never; Returns: string }
+      get_user_plugin_connection_secret: {
+        Args: { p_connection_id: string; p_user_id: string }
+        Returns: Json
+      }
+      get_user_plugin_oauth_secret: {
+        Args: { p_provider: string; p_user_id: string }
         Returns: Json
       }
       get_user_supabase_connection_secret: {
@@ -1886,8 +2854,61 @@ export type Database = {
         Returns: boolean
       }
       is_workspace_member: { Args: { _user_id: string }; Returns: boolean }
+      process_agent_project_uptime_responses: { Args: never; Returns: number }
       process_cpa_grip_conversion: {
         Args: { p_provider_event_id?: string; p_tracking_id: string }
+        Returns: Json
+      }
+      process_mylead_offerwall_postback: {
+        Args: {
+          p_country_code?: string
+          p_currency?: string
+          p_destination_program_id?: string
+          p_destination_program_name?: string
+          p_goal_id?: string
+          p_goal_name?: string
+          p_lead_ip?: unknown
+          p_payout?: number
+          p_payout_decimal?: number
+          p_player_id: string
+          p_program_id?: string
+          p_program_name?: string
+          p_status: string
+          p_transaction_id: string
+          p_virtual_amount: number
+        }
+        Returns: Json
+      }
+      process_offerwall_provider_event: {
+        Args: {
+          p_country_code?: string
+          p_event_id: string
+          p_offer_id?: string
+          p_offer_name?: string
+          p_provider: string
+          p_raw_event?: Json
+          p_revenue_usd?: number
+          p_reward_credits: number
+          p_source_ip?: unknown
+          p_status: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      record_agent_project_deployment: {
+        Args: {
+          p_deployment_url: string
+          p_environment: string
+          p_file_count: number
+          p_project_id: string
+          p_public_url: string
+          p_release_id: string
+          p_slug: string
+        }
+        Returns: string
+      }
+      record_public_project_event: {
+        Args: { p_event_type: string; p_route_path?: string; p_slug: string }
         Returns: Json
       }
       record_video_view: { Args: { p_video_id: string }; Returns: undefined }
@@ -1895,6 +2916,10 @@ export type Database = {
       replace_agent_project_files: {
         Args: { p_files: Json; p_project_id: string }
         Returns: number
+      }
+      rollback_agent_project_deployment: {
+        Args: { p_deployment_id: string; p_project_id: string }
+        Returns: Json
       }
       save_user_supabase_connection: {
         Args: {
@@ -1906,6 +2931,15 @@ export type Database = {
         }
         Returns: Json
       }
+      set_agent_project_uptime_settings: {
+        Args: {
+          p_enabled: boolean
+          p_failure_threshold?: number
+          p_project_id: string
+          p_recovery_threshold?: number
+        }
+        Returns: Json
+      }
       start_cpa_offer: {
         Args: { p_offer_id: string }
         Returns: {
@@ -1913,6 +2947,22 @@ export type Database = {
           tracking_id: string
           tracking_parameter: string
         }[]
+      }
+      store_plugin_oauth_connection: {
+        Args: {
+          p_display_name: string
+          p_provider: string
+          p_provider_account_id: string
+          p_provider_username: string
+          p_scopes: string[]
+          p_token_payload: Json
+          p_user_id: string
+        }
+        Returns: string
+      }
+      tip_creator_by_username: {
+        Args: { p_amount: number; p_message?: string; p_username: string }
+        Returns: Json
       }
     }
     Enums: {

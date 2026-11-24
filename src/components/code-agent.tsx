@@ -64,6 +64,10 @@ import "@xterm/xterm/css/xterm.css";
 import { toast } from "sonner";
 
 import { AgentPromptLibrary } from "@/components/agent-prompt-library";
+import { DeploymentHistoryPanel } from "@/components/deployment-history-panel";
+import { CustomDomainPanel } from "@/components/custom-domain-panel";
+import { CronBuilderPanel } from "@/components/cron-builder-panel";
+import { MonacoEditor, type MonacoEditorHandle } from "@/components/monaco-editor";
 import { MyLeadOfferwall } from "@/components/mylead-offerwall";
 import { ProjectEnvironmentPanel } from "@/components/project-environment-panel";
 import { SupabaseDatabasePanel } from "@/components/supabase-database-panel";
@@ -84,6 +88,7 @@ import {
   publishAgentProject,
   runCodingAgent,
   runAgentTerminalCommand,
+  getAgentProjectPortForwardUrl,
   runAgentSelfHeal,
   startAgentTerminal,
   stopAgentTerminal,
@@ -92,6 +97,7 @@ import {
   startAgentPreview,
   stopAgentPreview,
 } from "@/lib/agent.functions";
+import { setStagingPassword } from "@/lib/deployment.functions";
 import { buildSrcDocWithConsole, STARTER_FILES, type ProjectFiles } from "@/lib/sandbox";
 import { deleteProjectFile, loadProjectFiles, saveProjectFile, saveProjectFiles } from "@/lib/project-files";
 type Message = { role: "user" | "assistant"; content: string };
@@ -435,6 +441,31 @@ async function compressReferenceImage(file: File): Promise<ReferenceImage> {
   }
 }
 
+async function optimizeImportedImage(file: File): Promise<File> {
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size < 500_000) return file;
+  let bitmap: ImageBitmap | null = null;
+  try {
+    bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && file.type === "image/png") return file;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) return file;
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, file.type, file.type === "image/jpeg" ? 0.84 : file.type === "image/webp" ? 0.82 : undefined),
+    );
+    if (!blob || blob.type !== file.type || blob.size >= file.size * 0.97) return file;
+    return new File([blob], file.name, { type: file.type, lastModified: file.lastModified });
+  } catch {
+    return file;
+  } finally {
+    bitmap?.close();
+  }
+}
+
 const fileIcon = (name: string) => {
   if (name.endsWith(".css")) return "text-sky-400";
   if (name.endsWith(".html")) return "text-orange-400";
@@ -486,6 +517,7 @@ export function CodeAgent() {
   const queryClient = useQueryClient();
   const runCodeAgent = useServerFn(runCodingAgent);
   const runTerminalCommand = useServerFn(runAgentTerminalCommand);
+  const forwardProjectPort = useServerFn(getAgentProjectPortForwardUrl);
   const repairRuntimeError = useServerFn(runAgentSelfHeal);
   const beginGithubOAuth = useServerFn(beginGitHubPluginOAuth);
   const push = useServerFn(pushProjectToGithub);
@@ -572,11 +604,13 @@ export function CodeAgent() {
   const projectFileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<Panel>("preview");
+  const [splitTerminalOpen, setSplitTerminalOpen] = useState(false);
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile" | "custom">("desktop");
   const [customViewportWidth, setCustomViewportWidth] = useState(1024);
   const [themePreset, setThemePreset] = useState("Brand");
   const [fontPreset, setFontPreset] = useState("Inter");
   const [logs, setLogs] = useState<{ type: string; message: string }[]>([]);
+  const [consoleFilter, setConsoleFilter] = useState<"all" | "network" | "errors">("all");
   const [selfHealBusy, setSelfHealBusy] = useState(false);
   const [selfHealJustApplied, setSelfHealJustApplied] = useState(false);
   const [selfHealAttempts, setSelfHealAttempts] = useState(0);
@@ -606,6 +640,7 @@ export function CodeAgent() {
   const [sidebarWidth, setSidebarWidth] = useState(248);
   const [projectFilter, setProjectFilter] = useState("");
   const [fileFilter, setFileFilter] = useState("");
+  const [draggedFilePath, setDraggedFilePath] = useState<string | null>(null);
   const [assistantWidth, setAssistantWidth] = useState(420);
   useEffect(() => {
     if (window.matchMedia("(max-width: 767px)").matches) {
@@ -663,6 +698,16 @@ export function CodeAgent() {
   const [typecheckBusy, setTypecheckBusy] = useState(false);
   const [typecheckOutput, setTypecheckOutput] = useState("");
   const [typecheckDiagnostics, setTypecheckDiagnostics] = useState<{ path: string; line: number; column: number; code: string; message: string }[]>([]);
+  const [webhookTesterOpen, setWebhookTesterOpen] = useState(false);
+  const [webhookTestUrl, setWebhookTestUrl] = useState("");
+  const [webhookTestMethod, setWebhookTestMethod] = useState<"GET" | "POST" | "PUT" | "PATCH" | "DELETE">("POST");
+  const [webhookTestBody, setWebhookTestBody] = useState('{\n  "event": "experts.webhook.test",\n  "test": true\n}');
+  const [webhookTestOutput, setWebhookTestOutput] = useState("");
+  const [webhookTestBusy, setWebhookTestBusy] = useState(false);
+  const [portForwardOpen, setPortForwardOpen] = useState(false);
+  const [portForwardPort, setPortForwardPort] = useState("3000");
+  const [portForwardUrl, setPortForwardUrl] = useState("");
+  const [portForwardBusy, setPortForwardBusy] = useState(false);
   const [completionsOpen, setCompletionsOpen] = useState(false);
   const [enabledEditorPacks, setEnabledEditorPacks] = useState<string[]>(["react", "html", "css"]);
   const [projectNameEditing, setProjectNameEditing] = useState(false);
@@ -863,14 +908,16 @@ export function CodeAgent() {
   const terminalContainerRef = useRef<HTMLDivElement>(null);
   const legacyTerminalContainerRef = useRef<HTMLDivElement>(null);
   const legacyTerminalRef = useRef<XTerm | null>(null);
+  const splitTerminalContainerRef = useRef<HTMLDivElement>(null);
+  const splitTerminalRef = useRef<XTerm | null>(null);
   const terminalSocketRef = useRef<WebSocket | null>(null);
   const terminalLastActivityRef = useRef(Date.now());
   const terminalRecoveryFilesRef = useRef<ProjectFiles>(files);
-  const terminalRecoveryInProgressRef = useRef(false);
   const terminalSessionClosingRef = useRef(new Set<string>());
   const xtermRef = useRef<XTerm | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const editorRef = useRef<EditorView | null>(null);
+  const monacoEditorRef = useRef<MonacoEditorHandle | null>(null);
   const filterProjectTree = (nodes: ProjectTreeNode[], query: string): ProjectTreeNode[] => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return nodes;
@@ -896,7 +943,18 @@ export function CodeAgent() {
             <button
               type="button"
               onClick={() => setExpandedFolders((current) => ({ ...current, [node.path]: !(current[node.path] ?? depth === 0) }))}
-              className="flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-[11px] font-medium text-slate-300 hover:bg-white/[0.05] hover:text-white"
+              onDragOver={(event) => {
+                if (!draggedFilePath) return;
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                const sourcePath = event.dataTransfer.getData("text/plain") || draggedFilePath;
+                if (sourcePath) moveFileToFolder(sourcePath, node.path);
+                setDraggedFilePath(null);
+              }}
+              className={`flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-[11px] font-medium ${draggedFilePath ? "border border-dashed border-cyan-400/40 bg-cyan-400/[0.06] text-cyan-100" : "text-slate-300 hover:bg-white/[0.05] hover:text-white"}`}
               style={{ paddingLeft: 8 + depth * 14 }}
               aria-expanded={isOpen}
             >
@@ -913,8 +971,15 @@ export function CodeAgent() {
         <div key={path} className={`group flex items-center rounded-lg ${path === activeFile ? "bg-white/[0.07]" : "hover:bg-white/[0.04]"}`}>
           <button
             type="button"
+            draggable
+            onDragStart={(event) => {
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData("text/plain", path);
+              setDraggedFilePath(path);
+            }}
+            onDragEnd={() => setDraggedFilePath(null)}
             onClick={() => { setActiveFile(path); switchPanel("code"); }}
-            className={`flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-1 text-left text-xs ${path === activeFile ? "text-white" : "text-slate-400"}`}
+            className={`flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-1 text-left text-xs ${draggedFilePath === path ? "opacity-40" : ""} ${path === activeFile ? "text-white" : "text-slate-400"}`}
             style={{ paddingLeft: 26 + depth * 14 }}
           >
             <FileCode2 className={`h-3.5 w-3.5 shrink-0 ${fileIcon(path)}`} />
@@ -1129,6 +1194,58 @@ export function CodeAgent() {
     };
   }, [panel, terminalConnection]);
 
+  // A second WebSocket creates an independent bash process in the same Daytona workspace.
+  useEffect(() => {
+    const container = splitTerminalContainerRef.current;
+    if (panel !== "terminal" || !splitTerminalOpen || !terminalConnection || !container) return;
+    const terminal = new XTerm({
+      cursorBlink: true, cursorStyle: "bar", convertEol: true, scrollback: 5000,
+      fontSize: 12, lineHeight: 1.2, smoothScrollDuration: 0,
+      fontFamily: '"Cascadia Code", "Fira Code", Consolas, Menlo, monospace',
+      theme: { background: "#050a12", foreground: "#dbeafe", cursor: "#34d399", selectionBackground: "#164e63" },
+    });
+    const fit = new FitAddon();
+    terminal.loadAddon(fit);
+    terminal.open(container);
+    splitTerminalRef.current = terminal;
+    container.style.width = "100%";
+    container.style.height = "100%";
+    requestAnimationFrame(() => {
+      if (container.clientWidth > 1 && container.clientHeight > 1) fit.fit();
+      terminal.focus();
+    });
+    const socket = new WebSocket(terminalConnection.url, ["experts-terminal-plain", terminalConnection.token]);
+    socket.binaryType = "arraybuffer";
+    socket.onopen = () => {
+      terminal.writeln("\r\nConnected to an independent shell in this project workspace.");
+      socket.send("\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
+      terminal.focus();
+    };
+    socket.onmessage = (event) => {
+      if (typeof event.data === "string") terminal.write(event.data);
+      else if (event.data instanceof ArrayBuffer) terminal.write(new Uint8Array(event.data));
+    };
+    socket.onerror = () => terminal.writeln("\r\n[Second shell connection error]");
+    const input = terminal.onData((value) => { if (socket.readyState === WebSocket.OPEN) socket.send(value); });
+    const resize = terminal.onResize(({ cols, rows }) => {
+      if (socket.readyState === WebSocket.OPEN) socket.send("\u0000" + JSON.stringify({ type: "resize", cols, rows }));
+    });
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        fit.fit();
+        if (socket.readyState === WebSocket.OPEN) socket.send("\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
+      });
+    });
+    observer.observe(container);
+    return () => {
+      window.cancelAnimationFrame(frame); observer.disconnect();
+      input.dispose(); resize.dispose(); socket.close(); terminal.dispose();
+      if (splitTerminalRef.current === terminal) splitTerminalRef.current = null;
+    };
+  }, [panel, splitTerminalOpen, terminalConnection]);
+
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["agent-projects", user?.id],
     enabled: !!user,
@@ -1161,12 +1278,16 @@ export function CodeAgent() {
         setGlobalSearchOpen(true);
       } else if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "k" && panel === "code") {
         event.preventDefault();
-        const selection = editorRef.current?.state.selection.main;
-        if (!selection || selection.from === selection.to) {
+        const monacoSelection = monacoEditorRef.current?.getSelectionText();
+        const codeMirrorSelection = editorRef.current?.state.selection.main;
+        const selectedCode = monacoSelection ?? (codeMirrorSelection && codeMirrorSelection.from !== codeMirrorSelection.to
+          ? editorRef.current?.state.sliceDoc(codeMirrorSelection.from, codeMirrorSelection.to)
+          : null);
+        if (!selectedCode) {
           toast.info("Select a code block in the editor first, then press Ctrl/Cmd+K.");
           return;
         }
-        setInlineEditSelection(editorRef.current?.state.sliceDoc(selection.from, selection.to).slice(0, 12000) ?? "");
+        setInlineEditSelection(selectedCode.slice(0, 12000));
         setInlineEditPrompt("");
         setInlineEditOpen(true);
       } else if (event.key === "F1") {
@@ -1389,87 +1510,6 @@ export function CodeAgent() {
     }, 5 * 60 * 1000);
     return () => window.clearInterval(heartbeat);
   }, [terminalConnection?.sandboxName, terminalConnection?.projectId, terminalConnection?.provider, projectId, refreshTerminal]);
-
-  // Rotate the disposable Linux VM before Vercel's 45-minute Hobby limit.
-  // Project files are synced first; Kilo starts fresh in the replacement VM.
-  // An active CLI process cannot survive a provider VM replacement.
-  useEffect(() => {
-    const session = terminalConnection;
-    const userId = user?.id;
-    if (!session || session.projectId !== projectId || !userId || session.provider === "daytona") return;
-    let cancelled = false;
-    let retryTimer: number | undefined;
-
-    const recoverSession = async () => {
-      if (terminalRecoveryInProgressRef.current || cancelled) return;
-      terminalRecoveryInProgressRef.current = true;
-      try {
-        let recoveryFiles: ProjectFiles;
-        try {
-          const synced = await syncTerminalFiles({
-            data: { projectId: session.projectId, sandboxName: session.sandboxName },
-          });
-          recoveryFiles = synced.files;
-          await saveProjectFiles(session.projectId, userId, recoveryFiles);
-          const { error } = await supabase.from("agent_projects")
-            .update({ updated_at: new Date().toISOString() })
-            .eq("id", session.projectId).eq("user_id", userId);
-          if (error) throw error;
-        } catch {
-          if (cancelled) return;
-          // The VM may already have expired. Restore this exact project from Supabase,
-          // never from whichever project's editor happens to be selected now.
-          const { data, error } = await supabase
-            .from("agent_projects")
-            .select("files")
-            .eq("id", session.projectId)
-            .eq("user_id", userId)
-            .maybeSingle();
-          if (error) throw error;
-          recoveryFiles = await loadProjectFiles(session.projectId);
-          if (!Object.keys(recoveryFiles).length && data?.files && typeof data.files === "object" && !Array.isArray(data.files)) {
-            recoveryFiles = data.files as unknown as ProjectFiles;
-          }
-          if (!Object.keys(recoveryFiles).length) throw new Error("The saved project files could not be recovered.");
-        }
-        if (cancelled) return;
-        if (projectId === session.projectId) {
-          terminalRecoveryFilesRef.current = recoveryFiles;
-          setFiles(recoveryFiles);
-          setDirty(false);
-        }
-
-        const replacement = await connectTerminal({
-          data: {
-            projectId: session.projectId,
-            username: terminalUsername,
-            cli: session.cli,
-          },
-        });
-        if (cancelled) {
-          void stopTerminal({ data: { sandboxName: replacement.sandboxName } }).catch(() => undefined);
-          return;
-        }
-
-        terminalSessionClosingRef.current.add(session.sandboxName);
-        setTerminalConnection({ ...replacement, projectId: session.projectId });
-        setTerminalReady(false);
-        void stopTerminal({ data: { sandboxName: session.sandboxName } }).catch(() => undefined);
-      } catch {
-        // Retry quietly. If the old VM expired, restore from the saved project record.
-        if (!cancelled) retryTimer = window.setTimeout(recoverSession, 60_000);
-      } finally {
-        terminalRecoveryInProgressRef.current = false;
-      }
-    };
-
-    const timer = window.setTimeout(recoverSession, 30 * 60 * 1000);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
-    };
-  }, [terminalConnection?.sandboxName, terminalConnection?.projectId, projectId, user?.id, connectTerminal, syncTerminalFiles, stopTerminal, terminalUsername]);
 
   // Keep the Daytona preview session warm and recover it after an idle stop.
   // The server checks whether the dev server is already healthy, so this does not
@@ -1815,56 +1855,182 @@ export function CodeAgent() {
 
   async function importLocalProjectFiles(selectedFiles: FileList | File[]) {
     const incoming = Array.from(selectedFiles);
-    if (!incoming.length) return;
+    if (!incoming.length || !user) return;
     const nextFiles: ProjectFiles = { ...files };
-    let totalBytes = Object.values(nextFiles).reduce((sum, value) => sum + new Blob([value]).size, 0);
+    const binaryFiles: Array<{ path: string; file: File; mimeType: string }> = [];
     let imported = 0;
     let skipped = 0;
+    const mimeByExtension: Record<string, string> = {
+      png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp",
+      ico: "image/x-icon", svg: "image/svg+xml", pdf: "application/pdf", zip: "application/zip",
+      gz: "application/gzip", woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf", otf: "font/otf",
+      mp4: "video/mp4", mp3: "audio/mpeg", wav: "audio/wav", mov: "video/quicktime",
+      avi: "video/x-msvideo", wasm: "application/wasm",
+    };
+    const safePath = (value: string) => {
+      const path = value.replace(/\\/g, "/").replace(/^\/+/, "");
+      return path && path.length <= 1024 && !path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) && !/(^|\/)\.env($|\.)/i.test(path)
+        ? path
+        : "";
+    };
+
     for (const file of incoming) {
       const relativePath = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
       if (relativePath.toLowerCase().endsWith(".zip")) {
-        if (file.size > 100 * 1024 * 1024) { skipped += 1; continue; }
         try {
           const extracted = await extractZipTextFiles(file);
           skipped += extracted.skipped;
           for (const entry of extracted.files) {
-            const path = entry.path.replace(/^\/+/, "");
-            if (!path || path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) || /(^|\/)\.env($|\.)/i.test(path) || entry.sizeBytes > 25 * 1024 * 1024 || totalBytes + entry.sizeBytes > 100 * 1024 * 1024 || (Object.keys(nextFiles).length >= 2_000 && nextFiles[path] === undefined)) { skipped += 1; continue; }
+            const path = safePath(entry.path);
+            if (!path) { skipped += 1; continue; }
             nextFiles[path] = entry.content;
-            totalBytes += entry.sizeBytes;
+            imported += 1;
+          }
+          for (const entry of extracted.assets) {
+            const path = safePath(entry.path);
+            if (!path) { skipped += 1; continue; }
+            const buffer = new ArrayBuffer(entry.data.byteLength);
+            new Uint8Array(buffer).set(entry.data);
+            binaryFiles.push({ path, file: new File([buffer], path, { type: entry.mimeType }), mimeType: entry.mimeType });
+            delete nextFiles[path];
             imported += 1;
           }
         } catch { skipped += 1; }
         continue;
       }
-      const path = relativePath.replace(/\\/g, "/").replace(/^\/+/, "");
-      if (!path || path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) || /(^|\/)\.env($|\.)/i.test(path) || file.size > 25 * 1024 * 1024 || totalBytes + file.size > 100 * 1024 * 1024 || (Object.keys(nextFiles).length >= 2_000 && nextFiles[path] === undefined)) { skipped += 1; continue; }
-      const textLike = file.type.startsWith("text/") || /\.(?:[cm]?[jt]sx?|json|css|scss|html?|md|mdx|xml|ya?ml|toml|ini|py|java|c|h|cpp|cs|go|rs|php|sql|sh|bat|ps1|svg|txt|env\.example)$/i.test(path);
-      if (!textLike) { skipped += 1; continue; }
+      const path = safePath(relativePath);
+      if (!path) { skipped += 1; continue; }
+      const textLike = file.type.startsWith("text/") || /\\.(?:[cm]?[jt]sx?|json|css|scss|html?|md|mdx|xml|ya?ml|toml|ini|py|java|c|h|cpp|cs|go|rs|php|sql|sh|bat|ps1|svg|txt|env\\.example)$/i.test(path);
       try {
-        nextFiles[path] = await file.text();
-        totalBytes += file.size;
+        if (textLike) {
+          nextFiles[path] = await file.text();
+        } else {
+          const extension = path.split(".").at(-1)?.toLowerCase() ?? "";
+          const mimeType = file.type || mimeByExtension[extension] || "application/octet-stream";
+          binaryFiles.push({ path, file, mimeType });
+          delete nextFiles[path];
+        }
         imported += 1;
       } catch { skipped += 1; }
     }
+
     if (!imported) {
-      toast.error("No supported text/source files were imported. Use a ZIP for a project folder; binary files are not stored as source text.");
+      toast.error("No supported source files or binary assets were imported.");
       return;
     }
-    if (!window.confirm("Import " + imported + " file(s) into this project? Existing paths will be replaced.")) return;
+    if (!window.confirm("Import " + imported + " file(s) into this project? Existing paths will be replaced. Large JPEG, PNG and WebP assets will be optimized when this can reduce their size without changing file paths.")) return;
+
+    let imageBytesSaved = 0;
+    for (let index = 0; index < binaryFiles.length; index++) {
+      const asset = binaryFiles[index]!;
+      if (!asset.mimeType.startsWith("image/")) continue;
+      const optimized = await optimizeImportedImage(asset.file);
+      if (optimized !== asset.file) {
+        imageBytesSaved += asset.file.size - optimized.size;
+        binaryFiles[index] = { ...asset, file: optimized };
+      }
+    }
+
     try {
-      await persist({ files: nextFiles });
+      if (!binaryFiles.length) {
+        await persist({ files: nextFiles });
+      } else {
+        // Create a project first when this is a new workspace; existing projects
+        // stage the complete tree so text files and binary assets finalize together.
+        const activeProjectId = projectId ?? await persist({ files: nextFiles });
+        const { data: oldAssets, error: oldAssetsError } = await supabase
+          .from("agent_project_assets")
+          .select("file_path,storage_path,mime_type,size_bytes,sha256")
+          .eq("project_id", activeProjectId)
+          .eq("user_id", user.id);
+        if (oldAssetsError) throw oldAssetsError;
+
+        const importId = crypto.randomUUID();
+        const replacedPaths = new Set([...Object.keys(nextFiles), ...binaryFiles.map((asset) => asset.path)]);
+        const retainedAssets = (oldAssets ?? []).filter((asset) => !replacedPaths.has(asset.file_path));
+        const retainedStoragePaths = new Set(retainedAssets.map((asset) => asset.storage_path));
+        const uploadedPaths: string[] = [];
+        try {
+          const stagedAssets = [
+            ...retainedAssets.map((asset) => ({
+              import_id: importId,
+              project_id: activeProjectId,
+              user_id: user.id,
+              file_path: asset.file_path,
+              storage_path: asset.storage_path,
+              mime_type: asset.mime_type,
+              size_bytes: asset.size_bytes,
+              sha256: asset.sha256,
+            })),
+          ];
+          for (const asset of binaryFiles) {
+            const buffer = await asset.file.arrayBuffer();
+            const digest = await crypto.subtle.digest("SHA-256", buffer);
+            const sha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+            const storagePath = user.id + "/" + activeProjectId + "/" + importId + "/" + asset.path;
+            const { error: uploadError } = await supabase.storage.from("builder-project-assets").upload(
+              storagePath,
+              new Blob([buffer], { type: asset.mimeType }),
+              { contentType: asset.mimeType, cacheControl: "31536000", upsert: false },
+            );
+            if (uploadError) throw new Error("Could not upload " + asset.path + ": " + uploadError.message);
+            uploadedPaths.push(storagePath);
+            stagedAssets.push({
+              import_id: importId,
+              project_id: activeProjectId,
+              user_id: user.id,
+              file_path: asset.path,
+              storage_path: storagePath,
+              mime_type: asset.mimeType,
+              size_bytes: asset.file.size,
+              sha256,
+            });
+          }
+
+          for (let offset = 0; offset < stagedAssets.length; offset += 50) {
+            const { error } = await supabase.from("agent_project_asset_staging").insert(stagedAssets.slice(offset, offset + 50));
+            if (error) throw new Error("Could not stage binary assets: " + error.message);
+          }
+          const textRows = Object.entries(nextFiles).map(([filePath, content]) => ({
+            import_id: importId,
+            project_id: activeProjectId,
+            user_id: user.id,
+            file_path: filePath,
+            content,
+          }));
+          for (let offset = 0; offset < textRows.length; offset += 100) {
+            const { error } = await supabase.from("agent_project_file_staging").insert(textRows.slice(offset, offset + 100));
+            if (error) throw new Error("Could not stage source files: " + error.message);
+          }
+          if (!textRows.length && !stagedAssets.length) throw new Error("There are no project files to finalize.");
+          const { error: finalizeError } = await supabase.rpc("finalize_agent_project_workspace_staging", {
+            p_project_id: activeProjectId,
+            p_import_id: importId,
+          });
+          if (finalizeError) throw new Error("Could not finalize imported project assets: " + finalizeError.message);
+
+          const oldPaths = (oldAssets ?? []).map((asset) => asset.storage_path).filter((storagePath) => !retainedStoragePaths.has(storagePath) && !uploadedPaths.includes(storagePath));
+          if (oldPaths.length) {
+            const { error: cleanupError } = await supabase.storage.from("builder-project-assets").remove(oldPaths);
+            if (cleanupError) console.warn("[ExpertsTeam] Previous binary asset cleanup is pending:", cleanupError.message);
+          }
+        } catch (error) {
+          await supabase.from("agent_project_asset_staging").delete().eq("import_id", importId).eq("project_id", activeProjectId).eq("user_id", user.id);
+          await supabase.from("agent_project_file_staging").delete().eq("import_id", importId).eq("project_id", activeProjectId).eq("user_id", user.id);
+          if (uploadedPaths.length) await supabase.storage.from("builder-project-assets").remove(uploadedPaths);
+          throw error;
+        }
+      }
+
+      setFiles(nextFiles);
+      setActiveFile(Object.keys(nextFiles).find((path) => !Object.prototype.hasOwnProperty.call(files, path)) ?? Object.keys(nextFiles)[0] ?? "index.html");
+      setDirty(false);
+      setPreviewKey((value) => value + 1);
+      toast.success("Imported and auto-saved " + imported + " file(s)" + (skipped ? " · " + skipped + " skipped" : "") + (binaryFiles.length ? " · " + binaryFiles.length + " binary assets" : "") + (imageBytesSaved > 0 ? " · optimized images by " + (imageBytesSaved / 1_000_000).toFixed(2) + " MB" : "") + ".");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Imported files could not be saved.");
-      return;
     }
-    setFiles(nextFiles);
-    setActiveFile(Object.keys(nextFiles).find((path) => !Object.prototype.hasOwnProperty.call(files, path)) ?? Object.keys(nextFiles)[0] ?? "index.html");
-    setDirty(false);
-    setPreviewKey((value) => value + 1);
-    toast.success("Imported and auto-saved " + imported + " file(s)" + (skipped ? " · " + skipped + " skipped" : "") + ".");
   }
-
 
   function downloadActiveFile() {
     const content = files[activeFile];
@@ -1898,6 +2064,88 @@ export function CodeAgent() {
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     toast.success("Project files exported");
+  }
+
+  async function createPortForward() {
+    if (!projectId || !terminalConnection?.sandboxName || terminalConnection.projectId !== projectId) {
+      toast.info("Connect this project's Daytona terminal before forwarding a port.");
+      return;
+    }
+    const port = Number(portForwardPort);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      toast.error("Enter a valid TCP port between 1 and 65535.");
+      return;
+    }
+    setPortForwardBusy(true);
+    setPortForwardUrl("");
+    try {
+      const result = await forwardProjectPort({
+        data: { projectId, sandboxName: terminalConnection.sandboxName, port },
+      });
+      setPortForwardUrl(result.url);
+      toast.success("Port " + port + " is forwarded.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not forward this port.");
+    } finally {
+      setPortForwardBusy(false);
+    }
+  }
+
+  async function runWebhookTest() {
+    if (!projectId || !terminalConnection?.sandboxName || terminalConnection.projectId !== projectId) {
+      toast.info("Connect this project's Daytona terminal before sending a test request.");
+      return;
+    }
+    let target: URL;
+    try {
+      target = new URL(webhookTestUrl.trim());
+    } catch {
+      toast.error("Enter a valid HTTPS endpoint URL.");
+      return;
+    }
+    const allowedOrigins = [runtimeUrl, publishedUrl].filter(Boolean).flatMap((value) => {
+      try { return [new URL(value!).origin]; } catch { return []; }
+    });
+    if (target.protocol !== "https:" || target.username || target.password || !allowedOrigins.includes(target.origin)) {
+      toast.error("For safety, the tester only sends HTTPS requests to this project's current preview or published origin.");
+      return;
+    }
+    if (webhookTestMethod !== "GET") {
+      try { JSON.parse(webhookTestBody); } catch {
+        toast.error("The test payload must be valid JSON.");
+        return;
+      }
+    }
+    const quote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
+    const bytes = new TextEncoder().encode(webhookTestBody);
+    const encodedBody = btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""));
+    const writeOut = "'\\nHTTP_STATUS:%{http_code}\\n'";
+    const command = webhookTestMethod === "GET"
+      ? "curl --silent --show-error --max-time 20 --request GET --write-out " + writeOut + " " + quote(target.toString())
+      : "printf '%s' " + quote(encodedBody) + " | base64 -d | curl --silent --show-error --max-time 20 --request " +
+        quote(webhookTestMethod) + " --header 'Content-Type: application/json' --data-binary @- --write-out " +
+        writeOut + " " + quote(target.toString());
+    setWebhookTestBusy(true);
+    setWebhookTestOutput("Sending request from the project's Daytona workspace…");
+    try {
+      const result = await runTerminalCommand({
+        data: { projectId, sandboxName: terminalConnection.sandboxName, command },
+      });
+      const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
+      setWebhookTestOutput((output || "(The endpoint returned an empty response.)").slice(0, 12000));
+      const statusCode = Number(output.match(/HTTP_STATUS:(\\d{3})/)?.[1] ?? 0);
+      if (result.exitCode === 0 && statusCode >= 200 && statusCode < 400) {
+        toast.success("Webhook test returned HTTP " + statusCode + ".");
+      } else {
+        toast.warning(statusCode ? "Webhook test returned HTTP " + statusCode + "." : "Webhook test request failed. Review the response below.");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Webhook test failed.";
+      setWebhookTestOutput(message);
+      toast.error(message);
+    } finally {
+      setWebhookTestBusy(false);
+    }
   }
 
   async function runProjectTypecheck() {
@@ -1939,6 +2187,10 @@ export function CodeAgent() {
     setOpenFileTabs((tabs) => tabs.includes(diagnostic.path) ? tabs : [...tabs, diagnostic.path].slice(-8));
     switchPanel("code");
     requestAnimationFrame(() => {
+      if (monacoEditorRef.current) {
+        monacoEditorRef.current.revealLine(diagnostic.line);
+        return;
+      }
       const editor = editorRef.current;
       if (!editor) return;
       const line = Math.min(diagnostic.line, editor.state.doc.lines);
@@ -2183,11 +2435,24 @@ export function CodeAgent() {
         toast.error("Choose a URL slug with 3–60 characters, using letters, numbers and hyphens.");
         return;
       }
-      const result = await publish({ data: { projectId: activeProjectId, slug } });
+      const requestedEnvironment = window.prompt("Deploy to which environment? Enter production or staging.", "production");
+      if (requestedEnvironment === null) return;
+      const environment = requestedEnvironment.trim().toLowerCase();
+      if (environment !== "production" && environment !== "staging") {
+        toast.error("Choose production or staging.");
+        return;
+      }
+      if (environment === "staging") {
+        const stagingPassword = window.prompt("Set or confirm the staging password (at least 8 characters).");
+        if (stagingPassword === null) return;
+        await setStagingPassword({ data: { projectId: activeProjectId, password: stagingPassword } });
+      }
+      const result = await publish({ data: { projectId: activeProjectId, slug, environment } });
       await queryClient.invalidateQueries({ queryKey: ["agent-projects", user?.id] });
+      await queryClient.invalidateQueries({ queryKey: ["agent-project-deployments", activeProjectId] });
       const url = result.publicUrl;
       setPublishedUrl(url);
-      toast.success("Your app is built and published", {
+      toast.success(environment === "staging" ? "Your password-protected staging app is published" : "Your production app is published", {
         action: {
           label: "Open app",
           onClick: () => window.open(url, "_blank", "noopener,noreferrer"),
@@ -3099,7 +3364,7 @@ export function CodeAgent() {
   }
 
   function expandSlashCommand(value: string) {
-    const match = value.match(/^\/(fix|refactor|seo|responsive|explain|test|docs|svg|auth|api|pwa|payments)(?:\s+([\s\S]*))?$/i);
+    const match = value.match(/^\/(fix|refactor|seo|responsive|explain|test|docs|svg|auth|api|pwa|payments|optimize)(?:\s+([\s\S]*))?$/i);
     if (!match) return value;
     const command = match[1]!.toLowerCase();
     const detail = match[2]?.trim() ?? "";
@@ -3116,6 +3381,7 @@ export function CodeAgent() {
       api: "Scaffold a production-ready server-side API route or Supabase Edge Function for this request. Validate inputs, authenticate and authorize callers, handle errors, add rate limits where appropriate, and keep secrets server-side.",
       pwa: "Make this app installable as a Progressive Web App. Add a valid web app manifest, service worker with safe update behavior, install metadata, offline fallback, and app icon assets. Do not cache private authenticated API responses.",
       payments: "Scaffold secure payment adapters for Stripe, MTN Mobile Money, and Airtel Money as applicable. Keep credentials server-side, verify webhook signatures, implement idempotency, and use clearly named environment placeholders. Do not claim payment providers are connected until credentials and merchant accounts are configured.",
+      optimize: "Profile the production build before changing code. Identify the largest JavaScript chunks, duplicate dependencies, render-blocking assets, oversized images, and unnecessary client-side work. Apply safe code splitting, lazy loading, tree-shaking, responsive modern image formats, explicit image dimensions, and caching where supported. Preserve behavior and accessibility, avoid adding paid services, then run the production build and report before/after bundle and asset sizes.",
     };
     return [detail, instructions[command]].filter(Boolean).join("\n\n");
   }
@@ -3400,6 +3666,11 @@ export function CodeAgent() {
   );
 
   function insertEditorSnippet(value: string) {
+    if (monacoEditorRef.current) {
+      monacoEditorRef.current.replaceSelection(value);
+      setCompletionsOpen(false);
+      return;
+    }
     const editor = editorRef.current;
     if (!editor) return;
     const { from, to } = editor.state.selection.main;
@@ -3611,7 +3882,7 @@ export function CodeAgent() {
           ref={projectFileInputRef}
           type="file"
           multiple
-          accept=".zip,.txt,.md,.mdx,.html,.htm,.css,.scss,.js,.jsx,.ts,.tsx,.json,.xml,.yaml,.yml,.toml,.ini,.py,.java,.c,.h,.cpp,.cs,.go,.rs,.php,.sql,.sh,.bat,.ps1,.svg,.env.example"
+          accept="*/*"
           className="hidden"
           onChange={(event) => { if (event.target.files?.length) void importLocalProjectFiles(event.target.files); event.target.value = ""; }}
         />
@@ -3629,6 +3900,22 @@ export function CodeAgent() {
           <Button type="button" size="sm" variant="outline" onClick={() => setCreditsOfferwallOpen(true)} className="h-8 border-amber-300/25 bg-amber-300/[0.08] px-3 text-[10px] font-semibold text-amber-100 hover:bg-amber-300/[0.14]" title="Earn free AI credits"><Coins className="mr-1 h-3.5 w-3.5" />{displayedCredits} · Earn Free</Button>
           <Button type="button" size="sm" variant="outline" onClick={() => setEnvironmentPanelOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700"><Settings2 className="mr-1.5 h-3.5 w-3.5" />DB &amp; Auth</Button>
           <Button type="button" size="sm" variant="outline" onClick={() => setGithubOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700"><Github className="mr-1.5 h-3.5 w-3.5" />GitHub</Button>
+          {projectId && <DeploymentHistoryPanel projectId={projectId} />}
+          {projectId && <CustomDomainPanel projectId={projectId} />}
+          <Button type="button" size="sm" variant="outline" onClick={() => {
+            setPortForwardUrl("");
+            setPortForwardOpen(true);
+          }} className="h-8 border-slate-700 bg-slate-800/70 px-2.5 text-[10px] text-slate-200 hover:border-cyan-500/50 hover:bg-slate-700" title="Expose another port from this Daytona workspace">
+            <ExternalLink className="mr-1 h-3.5 w-3.5" />Forward port
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => {
+            setWebhookTestUrl((runtimeUrl || publishedUrl || "") + "/api/webhook");
+            setWebhookTestOutput("");
+            setWebhookTesterOpen(true);
+          }} className="h-8 border-slate-700 bg-slate-800/70 px-2.5 text-[10px] text-slate-200 hover:border-cyan-500/50 hover:bg-slate-700" title="Send a test request to this project's preview or published API route">
+            <Zap className="mr-1 h-3.5 w-3.5" />Webhook test
+          </Button>
+          <CronBuilderPanel />
           <Button type="button" size="sm" onClick={() => void publishProject()} disabled={publishing} className="h-8 bg-blue-600 px-3 text-[11px] font-semibold text-white hover:bg-blue-500">{publishing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />}Deploy ↑</Button>
         </div>
         {publishedUrl && (
@@ -3816,15 +4103,6 @@ export function CodeAgent() {
               >
                 <Github className="mr-1.5 h-3.5 w-3.5" /> GitHub
               </Button>
-              <a
-                href="https://vercel.com/new"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-3 text-xs font-medium text-slate-200 transition hover:border-white/20 hover:bg-white/[0.08]"
-                title="Import your GitHub repository into Vercel and configure automatic deployments"
-              >
-                <ExternalLink className="h-3.5 w-3.5" /> Vercel
-              </a>
               <Button
                 size="sm"
                 onClick={() => void publishProject()}
@@ -4120,9 +4398,13 @@ export function CodeAgent() {
                         {activeFileLocked ? "Unlock" : "Lock file"}
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => {
-                        const selection = editorRef.current?.state.selection.main;
-                        if (!selection || selection.from === selection.to) { toast.info("Select code first, then press Ctrl/Cmd+K."); return; }
-                        setInlineEditSelection(editorRef.current?.state.sliceDoc(selection.from, selection.to).slice(0, 12000) ?? "");
+                        const monacoSelection = monacoEditorRef.current?.getSelectionText();
+                        const codeMirrorSelection = editorRef.current?.state.selection.main;
+                        const selectedCode = monacoSelection ?? (codeMirrorSelection && codeMirrorSelection.from !== codeMirrorSelection.to
+                          ? editorRef.current?.state.sliceDoc(codeMirrorSelection.from, codeMirrorSelection.to)
+                          : null);
+                        if (!selectedCode) { toast.info("Select code first, then press Ctrl/Cmd+K."); return; }
+                        setInlineEditSelection(selectedCode.slice(0, 12000));
                         setInlineEditPrompt("");
                         setInlineEditOpen(true);
                       }} className="h-7 px-2 text-[10px] text-slate-400" title="AI edit selected code · Ctrl/Cmd+K">
@@ -4235,30 +4517,50 @@ export function CodeAgent() {
                         )}
                       </div>
                     )}
+                    <div className="flex h-7 shrink-0 items-center gap-1 overflow-hidden border-b border-white/[0.06] bg-[#080f1b] px-3 text-[10px] text-slate-500">
+                      {activeFile.split("/").map((segment, index, parts) => (
+                        <span key={index} className={index === parts.length - 1 ? "truncate text-slate-200" : "shrink-0"}>
+                          {index > 0 && <span className="mr-1 text-slate-700">/</span>}{segment}
+                        </span>
+                      ))}
+                    </div>
                     <div className="min-h-0 min-w-0 flex-1 overflow-auto text-sm">
-                      <CodeMirror
+                      <MonacoEditor
                         value={files[activeFile] ?? ""}
-                        height="100%"
-                        theme={oneDark}
-                        extensions={editorExtensions}
-                        onCreateEditor={(view) => {
-                          editorRef.current = view;
-                        }}
-                        onChange={(value) => updateFile(value)}
+                        filePath={activeFile}
                         editable={Boolean(activeFile)}
-                        basicSetup={{
-                          lineNumbers: true,
-                          foldGutter: true,
-                          highlightActiveLine: true,
-                          highlightActiveLineGutter: true,
-                          bracketMatching: true,
-                          autocompletion: true,
-                          closeBrackets: true,
-                          indentOnInput: true,
-                          tabSize: 2,
+                        onChange={updateFile}
+                        onEditorReady={(editor) => {
+                          monacoEditorRef.current = editor;
+                          if (editor) editorRef.current = null;
                         }}
                         className="h-full min-h-full text-[13px]"
-                        placeholder="Select a file to start editing…"
+                        fallback={
+                          <CodeMirror
+                            value={files[activeFile] ?? ""}
+                            height="100%"
+                            theme={oneDark}
+                            extensions={editorExtensions}
+                            onCreateEditor={(view) => {
+                              editorRef.current = view;
+                            }}
+                            onChange={(value) => updateFile(value)}
+                            editable={Boolean(activeFile)}
+                            basicSetup={{
+                              lineNumbers: true,
+                              foldGutter: true,
+                              highlightActiveLine: true,
+                              highlightActiveLineGutter: true,
+                              bracketMatching: true,
+                              autocompletion: true,
+                              closeBrackets: true,
+                              indentOnInput: true,
+                              tabSize: 2,
+                            }}
+                            className="h-full min-h-full text-[13px]"
+                            placeholder="Select a file to start editing…"
+                          />
+                        }
                       />
                     </div>
                   </div>
@@ -4271,9 +4573,15 @@ export function CodeAgent() {
                 <div className="flex min-h-0 flex-1 flex-col bg-[#050a12]">
                   <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] px-4">
                     <span className="flex items-center gap-2 text-xs text-slate-300"><TerminalSquare className="h-3.5 w-3.5 text-emerald-300" /> Original Linux terminal</span>
-                    <span className="text-[10px] text-slate-500">Independent shell · same project workspace</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-500">Independent shell · same project workspace</span>
+                      <button type="button" onClick={() => setSplitTerminalOpen((open) => !open)} aria-pressed={splitTerminalOpen} className={splitTerminalOpen ? "rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2 py-1 text-[9px] text-cyan-200" : "rounded-md border border-slate-700 px-2 py-1 text-[9px] text-slate-400 hover:text-white"}>{splitTerminalOpen ? "Close split" : "Split terminal"}</button>
+                    </div>
                   </div>
-                  <div ref={legacyTerminalContainerRef} className="min-h-0 flex-1 overflow-hidden px-3 py-3" />
+                  <div className={splitTerminalOpen ? "flex min-h-0 flex-1 divide-x divide-slate-800 overflow-hidden" : "min-h-0 flex-1 overflow-hidden"}>
+                    <div ref={legacyTerminalContainerRef} className={splitTerminalOpen ? "min-h-0 w-1/2 overflow-hidden px-2 py-3" : "min-h-0 h-full w-full overflow-hidden px-3 py-3"} />
+                    {splitTerminalOpen && <div className="min-h-0 w-1/2 overflow-hidden px-2 py-3"><div ref={splitTerminalContainerRef} className="h-full w-full overflow-hidden" /></div>}
+                  </div>
                 </div>
               )}
               {panel === "console" && (
@@ -4281,11 +4589,16 @@ export function CodeAgent() {
                   <div className="flex h-10 items-center justify-between border-b border-white/[0.07] px-4">
                     <span className="flex items-center gap-2 text-xs text-slate-300">
                       <Terminal className="h-3.5 w-3.5 text-cyan-300" />
-                      Browser console
+                      Browser console &amp; network
                     </span>
                     <div className="flex items-center gap-2">
                       <button type="button" onClick={() => setAutoHealEnabled((enabled) => !enabled)} aria-pressed={autoHealEnabled} className={autoHealEnabled ? "rounded-md border border-emerald-300/20 bg-emerald-300/[0.06] px-2 py-1 text-[9px] text-emerald-200" : "rounded-md border border-slate-700 px-2 py-1 text-[9px] text-slate-500"} title="Automatically attempt guarded zero-credit repairs when preview errors appear">{autoHealEnabled ? "Auto-fix on" : "Auto-fix off"}</button>
-                      <span className="text-[10px] text-slate-600">Preview logs only</span>
+                      <div className="flex items-center gap-1 rounded-md border border-slate-800 p-0.5">
+                        {(["all", "errors", "network"] as const).map((filter) => (
+                          <button key={filter} type="button" onClick={() => setConsoleFilter(filter)} aria-pressed={consoleFilter === filter} className={consoleFilter === filter ? "rounded bg-slate-700 px-2 py-1 text-[9px] font-semibold text-white" : "rounded px-2 py-1 text-[9px] text-slate-500 hover:text-slate-200"}>{filter === "all" ? "All" : filter === "errors" ? "Errors" : "Network"}</button>
+                        ))}
+                      </div>
+                      <button type="button" onClick={() => setLogs([])} className="rounded-md border border-slate-800 px-2 py-1 text-[9px] text-slate-500 hover:text-slate-200">Clear</button>
                       {logs.some((entry) => entry.type === "error") && (
                         <button
                           type="button"
@@ -4310,7 +4623,7 @@ export function CodeAgent() {
                         </p>
                       </div>
                     )}
-                    {logs.map((log, index) => (
+                    {logs.filter((log) => consoleFilter === "all" || (consoleFilter === "network" ? log.type === "network" : log.type === "error" || log.type === "warn")).map((log, index) => (
                       <div
                         key={index}
                         className={`border-b border-white/[0.05] py-2 ${
@@ -5064,6 +5377,46 @@ export function CodeAgent() {
             </div>
           </div>
           <p className="text-[9px] leading-4 text-slate-500">Package installs run in your connected Linux workspace and sync the updated manifest back into this project.</p>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={portForwardOpen} onOpenChange={setPortForwardOpen}>
+        <DialogContent className="max-w-lg border-slate-700 bg-[#0b1320] text-white">
+          <DialogHeader><DialogTitle>Daytona port forwarding</DialogTitle></DialogHeader>
+          <p className="text-xs leading-5 text-slate-400">Expose a development server or service running on another TCP port in this project's Daytona workspace. Start the service in the terminal first.</p>
+          <div className="space-y-1.5">
+            <Label htmlFor="port-forward-number" className="text-slate-300">Local workspace port</Label>
+            <Input id="port-forward-number" type="number" min="1" max="65535" value={portForwardPort} onChange={(event) => setPortForwardPort(event.target.value)} className="border-slate-700 bg-[#080e19] font-mono text-white" />
+          </div>
+          <div className="flex justify-end">
+            <Button type="button" onClick={() => void createPortForward()} disabled={portForwardBusy || !terminalConnection || terminalConnection.projectId !== projectId}>
+              {portForwardBusy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />}
+              {portForwardBusy ? "Forwarding…" : "Forward port"}
+            </Button>
+          </div>
+          {portForwardUrl && <div className="space-y-2 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.06] p-3">
+            <p className="text-xs font-semibold text-emerald-200">Port {portForwardPort} is exposed</p>
+            <a href={portForwardUrl} target="_blank" rel="noopener noreferrer" className="block break-all text-xs text-emerald-100 underline underline-offset-2">{portForwardUrl}</a>
+            <Button type="button" size="sm" variant="outline" onClick={() => void navigator.clipboard.writeText(portForwardUrl).then(() => toast.success("Forwarded URL copied.")).catch(() => toast.error("Could not copy the URL."))}>Copy URL</Button>
+          </div>}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={webhookTesterOpen} onOpenChange={setWebhookTesterOpen}>
+        <DialogContent className="max-w-2xl border-slate-700 bg-[#0b1320] text-white">
+          <DialogHeader><DialogTitle>Webhook / API route tester</DialogTitle></DialogHeader>
+          <p className="text-xs leading-5 text-slate-400">Send a real test request from this project's Daytona workspace. Requests are restricted to the current preview or published HTTPS origin. Use a test endpoint that does not trigger live payments or production side effects.</p>
+          <div className="grid gap-3 sm:grid-cols-[1fr_130px]">
+            <div className="space-y-1.5"><Label htmlFor="webhook-test-url" className="text-slate-300">Endpoint URL</Label><Input id="webhook-test-url" value={webhookTestUrl} onChange={(event) => setWebhookTestUrl(event.target.value)} placeholder="https://your-preview.example/api/webhook" className="border-slate-700 bg-[#080e19] font-mono text-xs text-white" /></div>
+            <div className="space-y-1.5"><Label htmlFor="webhook-test-method" className="text-slate-300">Method</Label><select id="webhook-test-method" value={webhookTestMethod} onChange={(event) => setWebhookTestMethod(event.target.value as typeof webhookTestMethod)} className="h-10 w-full rounded-md border border-slate-700 bg-[#080e19] px-3 text-sm text-white"><option>POST</option><option>GET</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></div>
+          </div>
+          {webhookTestMethod !== "GET" && <div className="space-y-1.5"><Label htmlFor="webhook-test-body" className="text-slate-300">JSON payload</Label><Textarea id="webhook-test-body" rows={7} value={webhookTestBody} onChange={(event) => setWebhookTestBody(event.target.value)} className="border-slate-700 bg-[#080e19] font-mono text-xs text-white" /></div>}
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] text-slate-500">Requires an active Daytona terminal for this project.</p>
+            <Button type="button" onClick={() => void runWebhookTest()} disabled={webhookTestBusy || !webhookTestUrl.trim() || !terminalConnection || terminalConnection.projectId !== projectId}>
+              {webhookTestBusy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Zap className="mr-1.5 h-3.5 w-3.5" />}
+              {webhookTestBusy ? "Sending…" : "Send test request"}
+            </Button>
+          </div>
+          {webhookTestOutput && <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-black/40 p-3 text-[10px] leading-5 text-cyan-100">{webhookTestOutput}</pre>}
         </DialogContent>
       </Dialog>
       <Dialog open={inlineEditOpen} onOpenChange={setInlineEditOpen}>

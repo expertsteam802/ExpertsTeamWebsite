@@ -1,0 +1,12 @@
+{
+  "name": "ExpertsTeam — AI & Software Studio",
+  "short_name": "ExpertsTeam",
+  "description": "Build, preview and manage projects with ExpertsTeam.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#07111f",
+  "theme_color": "#0b1627",
+  "icons": [{"src":"/agent-mark.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}

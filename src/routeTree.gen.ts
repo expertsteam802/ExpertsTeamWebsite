@@ -37,6 +37,13 @@ import { Route as AuthenticatedConnectionsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedCreatorRouteImport } from './routes/_authenticated/creator'
 import { Route as AppsSlugRouteImport } from './routes/apps.$slug'
 import { Route as ApiAiStreamRouteImport } from './routes/api.ai.stream'
+import { Route as ApiOfferwallToroxPostbackRouteImport } from './routes/api.offerwall.torox.postback'
+import { Route as ApiOfferwallAdgatePostbackRouteImport } from './routes/api.offerwall.adgate.postback'
+import { Route as ApiOfferwallCpxPostbackRouteImport } from './routes/api.offerwall.cpx.postback'
+import { Route as ApiOfferwallLootablyPostbackRouteImport } from './routes/api.offerwall.lootably.postback'
+import { Route as ApiOfferwallGeoRouteImport } from './routes/api.offerwall.geo'
+import { Route as ApiStripeCreditsWebhookRouteImport } from './routes/api.stripe.credits.webhook'
+import { Route as StagingSlugRouteImport } from './routes/staging.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -177,6 +184,41 @@ const ApiAiStreamRoute = ApiAiStreamRouteImport.update({
   path: '/api/ai/stream',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOfferwallToroxPostbackRoute = ApiOfferwallToroxPostbackRouteImport.update({
+  id: '/api/offerwall/torox/postback',
+  path: '/api/offerwall/torox/postback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOfferwallAdgatePostbackRoute = ApiOfferwallAdgatePostbackRouteImport.update({
+  id: '/api/offerwall/adgate/postback',
+  path: '/api/offerwall/adgate/postback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOfferwallCpxPostbackRoute = ApiOfferwallCpxPostbackRouteImport.update({
+  id: '/api/offerwall/cpx/postback',
+  path: '/api/offerwall/cpx/postback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOfferwallLootablyPostbackRoute = ApiOfferwallLootablyPostbackRouteImport.update({
+  id: '/api/offerwall/lootably/postback',
+  path: '/api/offerwall/lootably/postback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOfferwallGeoRoute = ApiOfferwallGeoRouteImport.update({
+  id: '/api/offerwall/geo',
+  path: '/api/offerwall/geo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStripeCreditsWebhookRoute = ApiStripeCreditsWebhookRouteImport.update({
+  id: '/api/stripe/credits/webhook',
+  path: '/api/stripe/credits/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StagingSlugRoute = StagingSlugRouteImport.update({
+  id: '/staging/$slug',
+  path: '/staging/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -206,6 +248,13 @@ export interface FileRoutesByFullPath {
   '/connections': typeof AuthenticatedConnectionsRoute
   '/apps/$slug': typeof AppsSlugRoute
   '/api/ai/stream': typeof ApiAiStreamRoute
+  '/api/offerwall/torox/postback': typeof ApiOfferwallToroxPostbackRoute
+  '/api/offerwall/adgate/postback': typeof ApiOfferwallAdgatePostbackRoute
+  '/api/offerwall/cpx/postback': typeof ApiOfferwallCpxPostbackRoute
+  '/api/offerwall/lootably/postback': typeof ApiOfferwallLootablyPostbackRoute
+  '/api/offerwall/geo': typeof ApiOfferwallGeoRoute
+  '/api/stripe/credits/webhook': typeof ApiStripeCreditsWebhookRoute
+  '/staging/$slug': typeof StagingSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -266,6 +315,13 @@ export interface FileRoutesById {
   '/_authenticated/creator': typeof AuthenticatedCreatorRoute
   '/apps/$slug': typeof AppsSlugRoute
   '/api/ai/stream': typeof ApiAiStreamRoute
+  '/api/offerwall/torox/postback': typeof ApiOfferwallToroxPostbackRoute
+  '/api/offerwall/adgate/postback': typeof ApiOfferwallAdgatePostbackRoute
+  '/api/offerwall/cpx/postback': typeof ApiOfferwallCpxPostbackRoute
+  '/api/offerwall/lootably/postback': typeof ApiOfferwallLootablyPostbackRoute
+  '/api/offerwall/geo': typeof ApiOfferwallGeoRoute
+  '/api/stripe/credits/webhook': typeof ApiStripeCreditsWebhookRoute
+  '/staging/$slug': typeof StagingSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -297,6 +353,13 @@ export interface FileRouteTypes {
     | '/connections'
     | '/apps/$slug'
     | '/api/ai/stream'
+    | '/api/offerwall/torox/postback'
+    | '/api/offerwall/adgate/postback'
+    | '/api/offerwall/cpx/postback'
+    | '/api/offerwall/lootably/postback'
+    | '/api/offerwall/geo'
+    | '/api/stripe/credits/webhook'
+    | '/staging/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -326,6 +389,13 @@ export interface FileRouteTypes {
     | '/connections'
     | '/apps/$slug'
     | '/api/ai/stream'
+    | '/api/offerwall/torox/postback'
+    | '/api/offerwall/adgate/postback'
+    | '/api/offerwall/cpx/postback'
+    | '/api/offerwall/lootably/postback'
+    | '/api/offerwall/geo'
+    | '/api/stripe/credits/webhook'
+    | '/staging/$slug'
   id:
     | '__root__'
     | '/'
@@ -354,6 +424,13 @@ export interface FileRouteTypes {
     | '/_authenticated/creator'
     | '/apps/$slug'
     | '/api/ai/stream'
+    | '/api/offerwall/torox/postback'
+    | '/api/offerwall/adgate/postback'
+    | '/api/offerwall/cpx/postback'
+    | '/api/offerwall/lootably/postback'
+    | '/api/offerwall/geo'
+    | '/api/stripe/credits/webhook'
+    | '/staging/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -380,6 +457,13 @@ export interface RootRouteChildren {
   VideosRoute: typeof VideosRoute
   AppsSlugRoute: typeof AppsSlugRoute
   ApiAiStreamRoute: typeof ApiAiStreamRoute
+  ApiOfferwallToroxPostbackRoute: typeof ApiOfferwallToroxPostbackRoute
+  ApiOfferwallAdgatePostbackRoute: typeof ApiOfferwallAdgatePostbackRoute
+  ApiOfferwallCpxPostbackRoute: typeof ApiOfferwallCpxPostbackRoute
+  ApiOfferwallLootablyPostbackRoute: typeof ApiOfferwallLootablyPostbackRoute
+  ApiOfferwallGeoRoute: typeof ApiOfferwallGeoRoute
+  ApiStripeCreditsWebhookRoute: typeof ApiStripeCreditsWebhookRoute
+  StagingSlugRoute: typeof StagingSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -580,6 +664,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAiStreamRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/offerwall/torox/postback': {
+      id: '/api/offerwall/torox/postback'
+      path: '/api/offerwall/torox/postback'
+      fullPath: '/api/offerwall/torox/postback'
+      preLoaderRoute: typeof ApiOfferwallToroxPostbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/offerwall/adgate/postback': {
+      id: '/api/offerwall/adgate/postback'
+      path: '/api/offerwall/adgate/postback'
+      fullPath: '/api/offerwall/adgate/postback'
+      preLoaderRoute: typeof ApiOfferwallAdgatePostbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/offerwall/cpx/postback': {
+      id: '/api/offerwall/cpx/postback'
+      path: '/api/offerwall/cpx/postback'
+      fullPath: '/api/offerwall/cpx/postback'
+      preLoaderRoute: typeof ApiOfferwallCpxPostbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/offerwall/lootably/postback': {
+      id: '/api/offerwall/lootably/postback'
+      path: '/api/offerwall/lootably/postback'
+      fullPath: '/api/offerwall/lootably/postback'
+      preLoaderRoute: typeof ApiOfferwallLootablyPostbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/offerwall/geo': {
+      id: '/api/offerwall/geo'
+      path: '/api/offerwall/geo'
+      fullPath: '/api/offerwall/geo'
+      preLoaderRoute: typeof ApiOfferwallGeoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stripe/credits/webhook': {
+      id: '/api/stripe/credits/webhook'
+      path: '/api/stripe/credits/webhook'
+      fullPath: '/api/stripe/credits/webhook'
+      preLoaderRoute: typeof ApiStripeCreditsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/staging/$slug': {
+      id: '/staging/$slug'
+      path: '/staging/$slug'
+      fullPath: '/staging/$slug'
+      preLoaderRoute: typeof StagingSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -625,6 +758,13 @@ const rootRouteChildren: RootRouteChildren = {
   VideosRoute: VideosRoute,
   AppsSlugRoute: AppsSlugRoute,
   ApiAiStreamRoute: ApiAiStreamRoute,
+  ApiOfferwallToroxPostbackRoute: ApiOfferwallToroxPostbackRoute,
+  ApiOfferwallAdgatePostbackRoute: ApiOfferwallAdgatePostbackRoute,
+  ApiOfferwallCpxPostbackRoute: ApiOfferwallCpxPostbackRoute,
+  ApiOfferwallLootablyPostbackRoute: ApiOfferwallLootablyPostbackRoute,
+  ApiOfferwallGeoRoute: ApiOfferwallGeoRoute,
+  ApiStripeCreditsWebhookRoute: ApiStripeCreditsWebhookRoute,
+  StagingSlugRoute: StagingSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

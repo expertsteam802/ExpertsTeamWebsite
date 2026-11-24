@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { manageSupabaseDatabase } from "@/lib/supabase-database.functions";
+import { WebhookTesterPanel } from "@/components/webhook-tester-panel";
+import { StorageBucketPanel } from "@/components/storage-bucket-panel";
 import { runCodingAgent } from "@/lib/agent.functions";
 
 
@@ -356,7 +358,10 @@ export function SupabaseDatabasePanel({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-6xl overflow-hidden border-slate-700 bg-[#0b1320] p-0 text-white">
         <DialogHeader className="border-b border-slate-800 px-5 py-4">
-          <DialogTitle className="flex items-center gap-2"><Database className="h-4 w-4 text-cyan-300" /> Supabase Database</DialogTitle>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <DialogTitle className="flex items-center gap-2"><Database className="h-4 w-4 text-cyan-300" /> Supabase Database</DialogTitle>
+            <div className="flex items-center gap-2"><StorageBucketPanel projectRef={projectRef} /><WebhookTesterPanel /></div>
+          </div>
           <p className="text-[10px] text-slate-500">{projectRef ? "Connected project · " + projectRef : "Select a connected Supabase project in the Builder first."}</p>
         </DialogHeader>
         {!projectRef ? (

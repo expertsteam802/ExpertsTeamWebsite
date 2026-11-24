@@ -4,14 +4,30 @@ export type ImportedZipTextFile = {
   sizeBytes: number;
 };
 
+export type ImportedZipBinaryFile = {
+  path: string;
+  data: Uint8Array;
+  mimeType: string;
+  sizeBytes: number;
+};
+
 export type ZipTextImportResult = {
   files: ImportedZipTextFile[];
+  assets: ImportedZipBinaryFile[];
   skipped: number;
 };
 
 const SUPPORTED_TEXT_FILE =
   /\.(html?|css|[cm]?[jt]sx?|json|jsonc|md|mdx|txt|ya?ml|toml|py|sql|sh|xml|svg|vue|svelte|go|rs|java|kt|swift|c|h|cpp|hpp|cs|php|rb|ipynb|graphql|prisma|env\.(example|template))$/i;
 const SUPPORTED_BASENAMES = new Set(["dockerfile", "makefile", "procfile", "readme", "license"]);
+const SUPPORTED_BINARY_FILE = /\.(?:png|jpe?g|gif|webp|ico|pdf|zip|gz|woff2?|ttf|otf|mp4|mp3|wav|mov|avi|wasm)$/i;
+const BINARY_MIME: Record<string, string> = {
+  png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp",
+  ico: "image/x-icon", pdf: "application/pdf", zip: "application/zip", gz: "application/gzip",
+  woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf", otf: "font/otf",
+  mp4: "video/mp4", mp3: "audio/mpeg", wav: "audio/wav", mov: "video/quicktime",
+  avi: "video/x-msvideo", wasm: "application/wasm",
+};
 const SKIPPED_DIRECTORIES = new Set([
   ".git",
   "node_modules",
@@ -41,7 +57,7 @@ function safeArchivePath(rawPath: string): string | null {
   ) {
     return null;
   }
-  return SUPPORTED_TEXT_FILE.test(safe) || SUPPORTED_BASENAMES.has(basename) ? safe : null;
+  return SUPPORTED_TEXT_FILE.test(safe) || SUPPORTED_BASENAMES.has(basename) || SUPPORTED_BINARY_FILE.test(safe) ? safe : null;
 }
 
 async function inflateRaw(compressed: Uint8Array, maxOutputBytes: number): Promise<Uint8Array> {
@@ -67,7 +83,7 @@ async function inflateRaw(compressed: Uint8Array, maxOutputBytes: number): Promi
       total += value.byteLength;
       if (total > maxOutputBytes) {
         await reader.cancel();
-        throw new Error("A ZIP source file expands beyond the 25 MB per-file import limit.");
+        throw new Error("The ZIP archive exceeds the remaining 100 MB expanded-source budget.");
       }
       chunks.push(value);
     }
@@ -85,8 +101,7 @@ async function inflateRaw(compressed: Uint8Array, maxOutputBytes: number): Promi
 
 export async function extractZipTextFiles(blob: Blob): Promise<ZipTextImportResult> {
   const maxArchiveBytes = 100 * 1024 * 1024;
-  const maxFileBytes = 25 * 1024 * 1024;
-  const maxTotalTextBytes = 100 * 1024 * 1024;
+  const maxTotalBytes = 100 * 1024 * 1024;
   const maxFiles = 2_000;
 
   if (blob.size > maxArchiveBytes) {
@@ -126,10 +141,11 @@ export async function extractZipTextFiles(blob: Blob): Promise<ZipTextImportResu
     throw new Error("This ZIP archive has an invalid or excessive file directory.");
   }
 
-  const decoder = new TextDecoder("utf-8");
+  const decoder = new TextDecoder("utf-8", { fatal: true });
   const files: ImportedZipTextFile[] = [];
+  const assets: ImportedZipBinaryFile[] = [];
   let skipped = 0;
-  let totalTextBytes = 0;
+  let totalBytes = 0;
   let offset = centralOffset;
 
   for (let index = 0; index < totalEntries; index += 1) {
@@ -152,11 +168,11 @@ export async function extractZipTextFiles(blob: Blob): Promise<ZipTextImportResu
 
     if (!rawName || rawName.endsWith("/")) continue;
     const safePath = safeArchivePath(rawName);
-    if (!safePath || (flags & 0x0001) !== 0 || uncompressedSize > maxFileBytes) {
+    if (!safePath || (flags & 0x0001) !== 0 || uncompressedSize > maxTotalBytes - totalBytes) {
       skipped += 1;
       continue;
     }
-    if (files.length >= maxFiles || totalTextBytes + uncompressedSize > maxTotalTextBytes) {
+    if (files.length + assets.length >= maxFiles || totalBytes + uncompressedSize > maxTotalBytes) {
       skipped += 1;
       continue;
     }
@@ -181,26 +197,44 @@ export async function extractZipTextFiles(blob: Blob): Promise<ZipTextImportResu
     if (method === 0) {
       expanded = compressed.slice();
     } else {
-      expanded = await inflateRaw(compressed, maxFileBytes);
+      expanded = await inflateRaw(compressed, maxTotalBytes - totalBytes);
     }
-    if (expanded.byteLength !== uncompressedSize || expanded.subarray(0, Math.min(1024, expanded.length)).includes(0)) {
+    if (expanded.byteLength !== uncompressedSize) {
       skipped += 1;
       continue;
     }
-    const content = decoder.decode(expanded);
-    files.push({ path: safePath, content, sizeBytes: expanded.byteLength });
-    totalTextBytes += expanded.byteLength;
+    const extension = safePath.split(".").at(-1)?.toLowerCase() ?? "";
+    const binary = SUPPORTED_BINARY_FILE.test(safePath) || expanded.subarray(0, Math.min(1024, expanded.length)).includes(0);
+    if (binary) {
+      assets.push({
+        path: safePath,
+        data: expanded,
+        mimeType: BINARY_MIME[extension] ?? "application/octet-stream",
+        sizeBytes: expanded.byteLength,
+      });
+    } else {
+      try {
+        const content = decoder.decode(expanded);
+        files.push({ path: safePath, content, sizeBytes: expanded.byteLength });
+      } catch {
+        skipped += 1;
+        continue;
+      }
+    }
+    totalBytes += expanded.byteLength;
   }
 
-  if (!files.length) return { files, skipped };
+  if (!files.length && !assets.length) return { files, assets, skipped };
 
-  const firstParts = files[0].path.split("/");
+  const allPaths = [...files.map((file) => file.path), ...assets.map((asset) => asset.path)];
+  const firstParts = allPaths[0].split("/");
   if (firstParts.length > 1) {
     const commonRoot = firstParts[0];
-    if (files.every((file) => file.path.startsWith(commonRoot + "/"))) {
+    if (allPaths.every((filePath) => filePath.startsWith(commonRoot + "/"))) {
       for (const file of files) file.path = file.path.slice(commonRoot.length + 1);
+      for (const asset of assets) asset.path = asset.path.slice(commonRoot.length + 1);
     }
   }
 
-  return { files, skipped };
+  return { files, assets, skipped };
 }

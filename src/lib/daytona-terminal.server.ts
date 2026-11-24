@@ -77,6 +77,22 @@ export function assertDaytonaTerminalSandboxName(userId: string, name: string) {
   if (name !== stable && !isLegacy) throw new Error("This terminal session does not belong to the signed-in account.");
   return name;
 }
+export async function getDaytonaProjectPortForwardUrl(sandboxName: string, port: number) {
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error("Choose a valid TCP port between 1 and 65535.");
+  }
+  const sandbox = await client().api.get(sandboxName);
+  if (["stopped", "archived"].includes(String(sandbox.state ?? "").toLowerCase())) {
+    await sandbox.start(120);
+  }
+  const preview = await sandbox.getPreviewLink(port);
+  const url = new URL(preview.url);
+  if (url.protocol !== "https:" || !url.hostname) {
+    throw new Error("Daytona returned an invalid port-forwarding URL.");
+  }
+  return { url: url.toString(), port };
+}
+
 
 async function findSandboxByName(api: DaytonaApi, name: string): Promise<DaytonaSandbox | undefined> {
   for await (const sandbox of api.list()) {
@@ -281,11 +297,19 @@ export async function startDaytonaProjectPreview(
   projectId: string,
   sourceFiles: AgentProjectFiles,
   projectEnvironment: Record<string, string> = {},
+  binaryAssets: Array<{ filePath: string; buffer: Buffer; mimeType: string; sha256: string }> = [],
 ) {
   const entries = Object.entries(sourceFiles);
-  if (!entries.length) throw new Error("Add project files before starting the preview.");
-  if (entries.some(([filePath]) => !safePreviewPath(filePath))) {
+  if (!entries.length && !binaryAssets.length) throw new Error("Add project files before starting the preview.");
+  if (entries.some(([filePath]) => !safePreviewPath(filePath)) || binaryAssets.some((asset) => !safePreviewPath(asset.filePath))) {
     throw new Error("The project contains an invalid file path.");
+  }
+  const allPaths = new Set(entries.map(([filePath]) => filePath));
+  for (const asset of binaryAssets) {
+    if (allPaths.has(asset.filePath)) throw new Error("A project path is duplicated between text files and binary assets: " + asset.filePath);
+    allPaths.add(asset.filePath);
+    const digest = createHash("sha256").update(asset.buffer).digest("hex");
+    if (digest !== asset.sha256) throw new Error("The saved binary asset checksum is invalid: " + asset.filePath);
   }
   const { api } = client();
   const name = previewSandboxName(projectId);
@@ -298,18 +322,23 @@ export async function startDaytonaProjectPreview(
     const oldText = await readText(sandbox, path.join(workdir, PREVIEW_META_FILE));
     let oldManifest: Record<string, string> = {};
     try { oldManifest = oldText ? JSON.parse(oldText) as Record<string, string> : {}; } catch { oldManifest = {}; }
-    const nextManifest = Object.fromEntries(entries.map(([filePath, content]) => [filePath, createHash("sha256").update(content).digest("hex")]));
+    const nextManifest: Record<string, string> = Object.fromEntries(entries.map(([filePath, content]) => [filePath, createHash("sha256").update(content).digest("hex")]));
+    for (const asset of binaryAssets) nextManifest[asset.filePath] = asset.sha256;
     const publicEnvironmentHash = createHash("sha256").update(JSON.stringify(projectEnvironment)).digest("hex");
     const environmentChanged = oldManifest["__experts_public_environment__"] !== publicEnvironmentHash;
     nextManifest["__experts_public_environment__"] = publicEnvironmentHash;
-    const removed = Object.keys(oldManifest).filter((filePath) => filePath !== "__experts_public_environment__" && !(filePath in sourceFiles));
+    const removed = Object.keys(oldManifest).filter((filePath) => filePath !== "__experts_public_environment__" && !allPaths.has(filePath));
     if (removed.length) await command(sandbox, "rm -rf -- " + removed.map((filePath) => shellQuote(path.join(workdir, filePath))).join(" "), workdir, undefined, 45);
     const changed = entries.filter(([filePath]) => oldManifest[filePath] !== nextManifest[filePath]);
-    if (changed.length) {
-      const dirs = [...new Set(changed.map(([filePath]) => path.dirname(path.join(workdir, filePath))))];
+    const changedAssets = binaryAssets.filter((asset) => oldManifest[asset.filePath] !== nextManifest[asset.filePath]);
+    if (changed.length || changedAssets.length) {
+      const dirs = [...new Set([...changed.map(([filePath]) => path.dirname(path.join(workdir, filePath))), ...changedAssets.map((asset) => path.dirname(path.join(workdir, asset.filePath)))])];
       await command(sandbox, "mkdir -p " + dirs.map(shellQuote).join(" "), workdir, undefined, 30);
       for (const [filePath, content] of changed) {
         await sandbox.fs.uploadFile(Buffer.from(content, "utf8"), path.join(workdir, filePath));
+      }
+      for (const asset of changedAssets) {
+        await sandbox.fs.uploadFile(asset.buffer, path.join(workdir, asset.filePath));
       }
     }
     await sandbox.fs.uploadFile(Buffer.from(JSON.stringify(nextManifest), "utf8"), path.join(workdir, PREVIEW_META_FILE));
