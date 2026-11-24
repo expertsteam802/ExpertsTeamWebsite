@@ -23,6 +23,7 @@ const codingRequest = z
   .object({
     prompt: z.string().trim().min(1).max(100_000),
     mode: z.enum(["build", "plan", "chat"]).optional().default("build"),
+    modelTier: z.enum(["fast", "balanced", "architect"]).optional().default("fast"),
     files: z.record(z.string().max(512), z.string().max(10_000_000)),
     history: z
       .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(3000) }))
@@ -63,9 +64,10 @@ export const runCodingAgent = createServerFn({ method: "POST" })
       _role: "admin",
     });
     if (roleError) throw new Error(roleError.message);
-    if (!isAdmin && profile.ai_credits < 1)
+    const creditCost = data.modelTier === "architect" ? 3 : data.modelTier === "balanced" ? 2 : 1;
+    if (!isAdmin && data.mode !== "chat" && profile.ai_credits < creditCost)
       throw new Error(
-        "You have no AI credits remaining. Visit Earn AI Credits to complete a partner offer.",
+        `This model requires ${creditCost} AI credits. Earn more credits from partner offers or choose Fast.`,
       );
     if (data.mode !== "chat") await assertBuilderResourcePolicy(context.supabase, context.userId, data.files, data.prompt);
     const { runAgent, runAgentPlan, runAgentChat } = await import("./agent.server");
@@ -75,8 +77,11 @@ export const runCodingAgent = createServerFn({ method: "POST" })
         ? await runAgentChat(data)
         : await runAgent(data);
     if (!isAdmin && data.mode !== "chat") {
-      const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
-      if (creditError) throw new Error(creditError.message);
+      const { error: creditError } = await (context.supabase as any).rpc("consume_ai_credits", {
+        p_amount: creditCost,
+        p_description: `Agent ${data.mode ?? "build"} · ${data.modelTier ?? "fast"} model`,
+      });
+      if (creditError) throw new Error(creditError.message || "Could not deduct model credits.");
     }
     return result;
   });
