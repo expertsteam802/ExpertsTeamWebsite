@@ -3792,7 +3792,7 @@ export function CodeAgent() {
                         Autocomplete
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => setFormatOnSave((enabled) => !enabled)} className={formatOnSave ? "h-7 px-2 text-[10px] text-emerald-300" : "h-7 px-2 text-[10px] text-slate-500"} title="Prettier formats supported source files on manual Save (Ctrl/Cmd+S)">
-                        <WandSparkles className="mr-1 h-3 w-3" /> Prettier {formatOnSave ? "On" : "Off"}
+                        <Sparkles className="mr-1 h-3 w-3" /> Prettier {formatOnSave ? "On" : "Off"}
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => setPackagesOpen(true)} className="h-7 px-2 text-[10px] text-slate-400">
                         <Plus className="mr-1 h-3 w-3" /> Packages
