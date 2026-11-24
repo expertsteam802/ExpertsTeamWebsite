@@ -3328,7 +3328,7 @@ export function CodeAgent() {
   }
 
   function expandSlashCommand(value: string) {
-    const match = value.match(/^\/(fix|refactor|seo|responsive|explain|test|docs|svg|auth|api|pwa|payments)(?:\s+([\s\S]*))?$/i);
+    const match = value.match(/^\/(fix|refactor|seo|responsive|explain|test|docs|svg|auth|api|pwa|payments|optimize)(?:\s+([\s\S]*))?$/i);
     if (!match) return value;
     const command = match[1]!.toLowerCase();
     const detail = match[2]?.trim() ?? "";
@@ -3345,6 +3345,7 @@ export function CodeAgent() {
       api: "Scaffold a production-ready server-side API route or Supabase Edge Function for this request. Validate inputs, authenticate and authorize callers, handle errors, add rate limits where appropriate, and keep secrets server-side.",
       pwa: "Make this app installable as a Progressive Web App. Add a valid web app manifest, service worker with safe update behavior, install metadata, offline fallback, and app icon assets. Do not cache private authenticated API responses.",
       payments: "Scaffold secure payment adapters for Stripe, MTN Mobile Money, and Airtel Money as applicable. Keep credentials server-side, verify webhook signatures, implement idempotency, and use clearly named environment placeholders. Do not claim payment providers are connected until credentials and merchant accounts are configured.",
+      optimize: "Profile the production build before changing code. Identify the largest JavaScript chunks, duplicate dependencies, render-blocking assets, oversized images, and unnecessary client-side work. Apply safe code splitting, lazy loading, tree-shaking, responsive modern image formats, explicit image dimensions, and caching where supported. Preserve behavior and accessibility, avoid adding paid services, then run the production build and report before/after bundle and asset sizes.",
     };
     return [detail, instructions[command]].filter(Boolean).join("\n\n");
   }
