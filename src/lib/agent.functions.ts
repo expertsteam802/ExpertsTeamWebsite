@@ -770,6 +770,7 @@ export const startAgentPreview = createServerFn({ method: "POST" })
     const files = await loadProjectSourceFiles(context.supabase, data.projectId, context.userId);
     if (!Object.keys(files).length) throw new Error("This project has no saved source files to preview.");
     await assertBuilderResourcePolicy(context.supabase, context.userId, files);
+    const resourceLimits = await getBuilderResourceLimits(context.supabase, context.userId);
     const { data: savedAssets, error: assetQueryError } = await context.supabase
       .from("agent_project_assets")
       .select("file_path,storage_path,mime_type,sha256")
@@ -788,6 +789,18 @@ export const startAgentPreview = createServerFn({ method: "POST" })
         mimeType: asset.mime_type,
         sha256: asset.sha256,
       });
+    }
+    const totalBinaryBytes = binaryAssets.reduce((sum, asset) => sum + asset.buffer.byteLength, 0);
+    const totalTextBytes = Object.values(files).reduce((sum, value) => sum + Buffer.byteLength(value, "utf8"), 0);
+    const totalFiles = Object.keys(files).length + binaryAssets.length;
+    if (resourceLimits.maxFiles > 0 && totalFiles > resourceLimits.maxFiles) {
+      throw new Error("The project exceeds the administrator-configured file-count limit of " + resourceLimits.maxFiles + ".");
+    }
+    if (resourceLimits.maxProjectMb > 0 && totalTextBytes + totalBinaryBytes > resourceLimits.maxProjectMb * 1_000_000) {
+      throw new Error("The project exceeds the administrator-configured project-size limit of " + resourceLimits.maxProjectMb + " MB.");
+    }
+    if (resourceLimits.maxFileMb > 0 && [...Object.values(files).map((value) => Buffer.byteLength(value, "utf8")), ...binaryAssets.map((asset) => asset.buffer.byteLength)].some((size) => size > resourceLimits.maxFileMb * 1_000_000)) {
+      throw new Error("A project file exceeds the administrator-configured per-file limit of " + resourceLimits.maxFileMb + " MB.");
     }
     const { loadProjectPublicEnvironment } = await import("./project-secrets.server");
     // Supabase generated types do not yet include the project-secrets migration tables.
