@@ -595,6 +595,72 @@ jobs:
 `;
 
 
+/** Low-cost, no-user-credit runtime repair. Returns only changed existing files. */
+export async function runAgentSelfHeal(input: {
+  error: { message: string; stack?: string; file?: string; line?: number };
+  files: Record<string, string>;
+}) {
+  const safeFiles = Object.entries(input.files)
+    .filter(([name]) =>
+      isSafeProjectPath(name) &&
+      !/(^|\\/)\\.env(?:$|\\.)|(^|\\/)(?:secrets?\\.|credentials?\\.)|node_modules|(^|\\/)dist\\//i.test(name)
+    )
+    .sort((a, b) => {
+      const priority = (name: string) => /(^|\\/)(package\\.json|index\\.html|src\\/main|src\\/App|src\\/index\\.css)/i.test(name) ? 0 : 1;
+      return priority(a[0]) - priority(b[0]);
+    })
+    .slice(0, 18);
+  const total = safeFiles.reduce((sum, [, content]) => sum + Buffer.byteLength(content, "utf8"), 0);
+  if (!safeFiles.length || total > 180_000) {
+    throw new Error("This project is too large for an automatic runtime repair. Use Build mode to fix it safely.");
+  }
+  const errorText = [
+    "Runtime error: " + input.error.message.slice(0, 3000),
+    input.error.file ? "File: " + input.error.file.slice(0, 500) : "",
+    Number.isFinite(input.error.line) ? "Line: " + input.error.line : "",
+    input.error.stack ? "Stack:\\n" + input.error.stack.slice(0, 5000) : "",
+  ].filter(Boolean).join("\\n");
+  const context = safeFiles.map(([name, content]) => "--- " + name + " ---\\n" + content).join("\\n\\n");
+  const systemPrompt = [
+    "You are the ExpertsTeam runtime self-repair specialist.",
+    "Fix only the specific runtime error supplied. Make the smallest safe correction possible.",
+    "Return one valid JSON object only: {\"message\":\"short explanation\",\"files\":{\"existing/path\":\"complete replacement content\"}}.",
+    "Only return files that already exist in the supplied project. Never create files, delete files, change package dependencies, add network calls, or rewrite unrelated features.",
+    "Never return secrets, environment files, credentials, binary assets, or internal tool configuration.",
+    "If the error cannot be confidently fixed from the supplied context, return {\"message\":\"Manual review required\",\"files\":{}}.",
+    "Do not claim the repair was tested or verified."
+  ].join("\\n");
+  const response = await generateGeminiContent({
+    systemInstruction: { parts: [{ text: systemPrompt }] },
+    contents: [{ role: "user", parts: [{ text: errorText + "\\n\\nPROJECT FILES:\\n" + context }] }],
+    generationConfig: { maxOutputTokens: 3600, responseMimeType: "application/json" },
+  });
+  const raw = response.candidates?.[0]?.content?.parts?.filter((part) => !part.thought).map((part) => part.text ?? "").join("").trim();
+  if (!raw) throw new Error("The repair model did not return a patch.");
+  let parsed: { message?: string; files?: Record<string, unknown> };
+  try {
+    parsed = JSON.parse(raw) as typeof parsed;
+  } catch {
+    throw new Error("The repair model returned an invalid patch. No project files were changed.");
+  }
+  if (!parsed.files || typeof parsed.files !== "object" || Array.isArray(parsed.files)) {
+    throw new Error("The repair model returned no valid file patch.");
+  }
+  const allowed = new Map(safeFiles);
+  const changed: Record<string, string> = {};
+  for (const [filePath, value] of Object.entries(parsed.files)) {
+    if (!isSafeProjectPath(filePath) || !allowed.has(filePath) || typeof value !== "string") {
+      throw new Error("The repair model attempted to modify an unsupported file. No changes were applied.");
+    }
+    if (value.length > 1_000_000) throw new Error("A proposed repair is too large.");
+    if (value !== allowed.get(filePath)) changed[filePath] = value;
+  }
+  return {
+    message: typeof parsed.message === "string" ? parsed.message.slice(0, 800) : "Runtime repair prepared.",
+    files: changed,
+  };
+}
+
 /** Conversational Agent response. This path is read-only: it never returns file patches or invokes a terminal. */
 export async function runAgentChat(
   { prompt, files, history }: AgentInput,
