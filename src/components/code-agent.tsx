@@ -2704,48 +2704,7 @@ export function CodeAgent() {
               <span className={dirty ? "rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold text-amber-200" : "rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200"}>
                 {dirty ? (autoSaveStatus === "saving" ? "Saving…" : autoSaveStatus === "error" ? "Save failed" : "Unsaved") : "✓ Saved"}
               </span>
-              <select
-                aria-label="Project Supabase backend"
-                title="Use your own Supabase project for this app's browser data and storage."
-                value={cloudConnectionId ?? ""}
-                onChange={async (event) => {
-                  const nextConnectionId = event.target.value || null;
-                  try {
-                    const activeProjectId = projectId ?? await persist();
-                    const { error } = await supabase.from("agent_projects")
-                      .update({ cloud_connection_id: nextConnectionId })
-                      .eq("id", activeProjectId).eq("user_id", user.id);
-                    if (error) throw error;
-                    setCloudConnectionId(nextConnectionId);
-                    await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
-                    toast.success(nextConnectionId ? "This app will use your connected Supabase project in preview and builds." : "External Supabase connection removed from this app.");
-                  } catch (error) {
-                    toast.error(error instanceof Error ? error.message : "Could not update this project's backend.");
-                  }
-                }}
-                className="h-7 max-w-[190px] rounded-lg border border-white/10 bg-[#0b1320] px-2 text-[11px] text-slate-300"
-              >
-                <option value="">Use no connected Supabase project</option>
-                {cloudConnections.map((connection) => (
-                  <option key={connection.id} value={connection.id}>{connection.display_name} · {connection.project_ref}</option>
-                ))}
-              </select>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-7 border-white/10 bg-[#0b1320] px-2 text-[11px] text-slate-300 hover:bg-white/10"
-                onClick={async () => {
-                  try {
-                    if (!projectId) await persist();
-                    setEnvironmentPanelOpen(true);
-                  } catch (error) {
-                    toast.error(error instanceof Error ? error.message : "Could not save this project.");
-                  }
-                }}
-              >
-                <Settings2 className="mr-1 h-3 w-3" /> Environment
-              </Button>
+>
             </div>
           </div>
         </div>
@@ -2761,19 +2720,23 @@ export function CodeAgent() {
             event.target.value = "";
           }}
         />
-        <div className="flex items-center gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={() => setCreditsOfferwallOpen(true)} className="h-8 border-amber-300/25 bg-amber-300/[0.08] px-3 text-xs font-semibold text-amber-100 hover:bg-amber-300/[0.14]" title="Earn free AI credits from verified partner offers">
-            <Coins className="mr-1.5 h-3.5 w-3.5" /> {profile?.ai_credits ?? 0} credits <span className="ml-1 text-amber-200/80">· Earn free</span>
+        <div className="et-studio-header-center flex min-w-0 items-center justify-center gap-2">
+          <Button type="button" size="sm" onClick={() => void runProject()} disabled={runtimeBusy} className="h-8 shrink-0 bg-emerald-500 px-3 text-[11px] font-semibold text-white hover:bg-emerald-400">
+            {runtimeBusy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Play className="mr-1.5 h-3.5 w-3.5" />}{runtimeBusy ? "Starting…" : "Run"}
           </Button>
-          <a href="/" className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-slate-300 transition hover:border-cyan-300/30 hover:bg-cyan-300/10 hover:text-cyan-100" title="Return to the ExpertsTeam website">
-            <ExternalLink className="h-3.5 w-3.5" /> Back to website
-          </a>
-          <span className="hidden text-xs text-slate-500 sm:inline">Workspace</span>
-          <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] text-slate-400">
-            {dirty ? (autoSaveStatus === "saving" ? "Saving changes…" : autoSaveStatus === "error" ? "Auto-save failed" : "Changes not saved") : "All changes saved"}
-          </span>
+          <div className="flex h-8 items-center gap-0.5 rounded-lg border border-slate-700/80 bg-[#0B0F17] p-0.5" role="tablist" aria-label="Workbench view">
+            {([["preview", Eye, "Preview"], ["code", Code2, "<> Code"], ["terminal", TerminalSquare, ">_ Terminal"]] as const).map(([value, Icon, label]) => (
+              <button key={value} type="button" role="tab" aria-selected={panel === value} onClick={() => switchPanel(value)} className={`flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[10px] font-medium transition ${panel === value ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:bg-white/5 hover:text-slate-100"}`}><Icon className="h-3 w-3" />{label}</button>
+            ))}
+          </div>
         </div>
         <div className="et-studio-header-actions">
+            <Coins className="mr-1.5 h-3.5 w-3.5" /> {profile?.ai_credits ?? 0} credits <span className="ml-1 text-amber-200/80">· Earn free</span>
+          </Button>
+          
+        </div>
+        <div className="et-studio-header-actions">
+          <Button type="button" size="sm" variant="outline" onClick={() => setCreditsOfferwallOpen(true)} className="h-8 border-amber-300/25 bg-amber-300/[0.08] px-3 text-[10px] font-semibold text-amber-100 hover:bg-amber-300/[0.14]" title="Earn free AI credits"><Coins className="mr-1 h-3.5 w-3.5" />{profile?.ai_credits ?? 0} · Earn Free</Button>
           <Button type="button" size="sm" variant="outline" onClick={() => setEnvironmentPanelOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700">
             <Settings2 className="mr-1.5 h-3.5 w-3.5" /> DB &amp; Auth
           </Button>
@@ -2800,9 +2763,9 @@ export function CodeAgent() {
         className={`expert-agent-workspace-grid grid min-h-0 flex-1 grid-cols-1 overflow-hidden ${sidebarOpen ? "lg:grid-cols-[var(--sidebar-width)_5px_minmax(0,1fr)]" : "lg:grid-cols-1"}`}
         style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
       >
-        {/* Left sidebar */}
-        {sidebarOpen && <button type="button" className="expert-agent-mobile-backdrop" onClick={() => setSidebarOpen(false)} aria-label="Close project explorer" />}
-        {sidebarOpen && (
+        {/* Project files remain accessible from the Code workspace; keep the canvas free of a wide explorer column. */}
+        {false && sidebarOpen && <button type="button" className="expert-agent-mobile-backdrop" onClick={() => setSidebarOpen(false)} aria-label="Close project explorer" />}
+        {false && sidebarOpen && (
           <aside className="expert-agent-sidebar expert-agent-sidebar-drawer flex min-h-0 flex-col overflow-hidden border-b border-white/[0.08] bg-[#0b1320] lg:border-b-0 lg:border-r">
             <div className="flex items-center justify-between px-4 pb-3 pt-4">
               <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
@@ -2874,25 +2837,15 @@ export function CodeAgent() {
             </div>
           </aside>
         )}
-        {sidebarOpen && (
-          <div
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Resize project sidebar"
-            onPointerDown={(event) => beginPanelResize(event, "sidebar")}
-            className="hidden cursor-col-resize bg-white/[0.04] transition-colors hover:bg-cyan-400/40 lg:block"
-          />
-        )}
+        {false && sidebarOpen && <div role="separator" aria-label="Resize project sidebar" />}
 
         {/* Centre and assistant area */}
         <nav className="et-studio-activity-rail" aria-label="Studio tools">
           <button type="button" onClick={() => { setAssistantOpen(true); setAgentPanelMode("chat"); }} title="AI Agent Chat" aria-label="AI Agent Chat"><Bot /></button>
           <button type="button" onClick={() => setVersionHistoryOpen(true)} title="Version history and checkpoints" aria-label="Version history"><History /></button>
-          <button type="button" onClick={() => setEnvironmentPanelOpen(true)} title="Database, secrets and environment" aria-label="Database and secrets"><Settings2 /></button>
-          <a href="/community" title="Community and Showcase" aria-label="Community and Showcase"><Sparkles /></a>
-          <div className="et-studio-activity-spacer" />
-          <a href="/learn" title="Learn to Code" aria-label="Learn to Code"><ExternalLink /></a>
-          <button type="button" onClick={() => setEnvironmentPanelOpen(true)} title="Studio settings and help" aria-label="Studio settings"><Settings2 /></button>
+          <button type="button" onClick={() => setEnvironmentPanelOpen(true)} title="Database and secrets" aria-label="Database and secrets"><Settings2 /></button>
+          <a href="/community" title="Community Remix and Showcase" aria-label="Community Remix"><Sparkles /></a>
+          <button type="button" onClick={() => setEnvironmentPanelOpen(true)} title="Studio settings and help" aria-label="Studio settings"><MoreHorizontal /></button>
         </nav>
         <main className="expert-agent-stage flex min-h-0 min-w-0 flex-col overflow-hidden">
           {/* Toolbar */}
@@ -3414,7 +3367,7 @@ export function CodeAgent() {
 
             {/* AI panel */}
             <aside className={`${assistantOpen ? "flex" : "hidden"} expert-agent-assistant expert-agent-assistant-drawer min-h-0 min-w-0 flex-col overflow-hidden border-t border-white/[0.08] bg-[#080f1b] xl:border-l xl:border-t-0`}>
-              <div className="flex h-14 shrink-0 items-center justify-between border-b border-white/[0.08] px-4">
+              <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/[0.08] px-4">
                 <div className="flex min-w-0 items-center gap-2">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400/20 to-blue-500/20 text-cyan-200">
                     <Sparkles className="h-4 w-4" />
@@ -3425,23 +3378,11 @@ export function CodeAgent() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="rounded-full border border-blue-400/25 bg-gradient-to-r from-blue-400/15 to-cyan-300/10 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-cyan-100">Expert 1.0</span>
+                  <button type="button" onClick={() => document.getElementById("et-agent-plan-details")?.scrollIntoView({behavior:"smooth",block:"nearest"})} className="rounded-md border border-slate-700 px-2.5 py-1.5 text-[10px] font-medium text-slate-300 hover:bg-white/5">Plan &amp; Architecture</button>
                   <button type="button" onClick={() => setAssistantOpen(false)} className="expert-agent-mobile-close rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Close builder panel"><X className="h-4 w-4" /></button>
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-1 border-b border-white/[0.07] bg-[#091321] px-3 py-2">
-                <span className="rounded-md bg-cyan-400/15 px-3 py-1.5 text-[10px] font-semibold text-cyan-100">Agent</span>
-              </div>
-              <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/[0.07] bg-[#0a1422] px-3 py-2">
-                <div className="flex min-w-0 items-center gap-2 text-[10px] text-slate-400">
-                  <span className="max-w-[150px] truncate">{name}</span>
-                  <span className="text-slate-600">·</span>
-                  <span className="text-cyan-200">{"ExpertsTeam workspace terminal"}</span>
-                </div>
-                <span className={`rounded-full border px-2 py-1 text-[9px] font-semibold ${CLOUD_SANDBOX_ENABLED ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200" : "border-amber-400/20 bg-amber-400/10 text-amber-200"}`}>
-                  {CLOUD_SANDBOX_ENABLED ? (terminalReady ? "Connected" : "Not connected") : "Temporarily unavailable"}
-                </span>
-              </div>
+              <div className="hidden" aria-hidden="true" />
               {agentPanelMode === "chat" ? (
                 <>
                   <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-live="polite">
@@ -3475,7 +3416,7 @@ export function CodeAgent() {
                       <span className="text-[10px] font-semibold text-blue-300">Restore →</span>
                     </button>
                     {planDraft && (
-                      <details open className="rounded-xl border border-blue-400/25 bg-blue-500/[0.07] p-3">
+                      <details id="et-agent-plan-details" open className="rounded-xl border border-blue-400/25 bg-blue-500/[0.07] p-3">
                         <summary className="cursor-pointer list-none text-[11px] font-semibold text-blue-100">Plan &amp; Architecture <span className="ml-2 font-normal text-slate-400">Review before building</span></summary>
                         <div className="mt-3 space-y-2">
                           {planDraft.split("\n").map((line, index) => line.trim() && !/^#{1,4}\s/.test(line) ? (
@@ -3518,19 +3459,22 @@ export function CodeAgent() {
                   </div>
                   {referenceImages.length > 0 && <div className="flex shrink-0 flex-wrap gap-2 border-t border-white/[0.06] px-3 pt-2">{referenceImages.map((image) => <span key={image.name} className="rounded-md bg-white/5 px-2 py-1 text-[10px] text-slate-300">{image.name}</span>)}</div>}
                   <div className="shrink-0 border-t border-white/[0.08] bg-[#0a1422] p-3">
-                    <div className="rounded-2xl border border-white/10 bg-[#0c1727] p-2 focus-within:border-cyan-400/40">
-                      <Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendPrompt(); } }} placeholder="Ask ExpertAI anything…" className="min-h-[76px] resize-none border-0 bg-transparent text-xs text-white shadow-none focus-visible:ring-0" disabled={busy} />
-                      <div className="flex items-center justify-between gap-2 px-1 pt-2">
-                        <div className="flex items-center gap-1">
+                    <div className="rounded-xl border border-slate-700 bg-[#0B0F17] p-2 shadow-[0_-8px_30px_rgba(0,0,0,.16)] focus-within:border-blue-400/50">
+                      <div className="relative">
+                        <Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendPrompt(); } }} placeholder="Ask ExpertAI anything..." className="min-h-[72px] max-h-40 resize-y border-0 bg-transparent pb-10 pr-14 text-xs leading-5 text-white shadow-none focus-visible:ring-0" disabled={busy} />
+                        <button type="button" onClick={() => void sendPrompt()} disabled={!prompt.trim() || busy} className="absolute bottom-2 right-2 inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[10px] font-semibold text-white shadow-lg hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-3.5 w-3.5" />{busy ? "Working" : "Send"}</button>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/60 px-1 pt-2">
+                        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                           <AgentPromptLibrary currentPrompt={prompt} onUse={setPrompt} />
                           <button type="button" onClick={() => setAgentMode((mode) => mode === "plan" ? "build" : "plan")} disabled={busy} className={agentMode === "plan" ? "rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-2.5 py-2 text-[10px] font-semibold text-emerald-200" : "rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}>{agentMode === "plan" ? "Plan mode on" : "Plan first"}</button>
                           <button type="button" onClick={() => { setSelectedPreviewElement(null); setVisualSelectMode(true); switchPanel("preview"); }} disabled={busy} aria-pressed={visualSelectMode} className={visualSelectMode ? "inline-flex items-center gap-1.5 rounded-lg border border-blue-400/40 bg-blue-400/15 px-2.5 py-2 text-[10px] font-semibold text-blue-200" : "inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}><MousePointer2 className="h-3 w-3" /> Select Element</button>
                           <button type="button" onClick={() => { setTutorMode((enabled) => !enabled); }} disabled={busy} aria-pressed={tutorMode} className={tutorMode ? "rounded-lg border border-blue-300/30 bg-blue-300/10 px-2.5 py-2 text-[10px] font-semibold text-blue-200" : "rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}>Tutor Mode</button>
                           <input ref={referenceInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={(event) => { void attachReferenceImages(event.target.files); event.currentTarget.value = ""; }} />
                           <button type="button" onClick={() => referenceInputRef.current?.click()} disabled={busy} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white disabled:opacity-40" title="Attach visual references"><ImagePlus className="h-3 w-3" /> Attach</button>
-                          <span className="rounded-lg border border-blue-400/20 bg-blue-400/10 px-2.5 py-2 text-[10px] font-semibold text-blue-200">Expert 1.0</span>
+                          <span className="rounded-lg border border-blue-400/20 bg-blue-400/10 px-2.5 py-1.5 text-[10px] font-semibold text-blue-200">Expert 1.0</span>
                         </div>
-                        <button type="button" onClick={() => void sendPrompt()} disabled={!prompt.trim() || busy} className="inline-flex items-center gap-2 rounded-xl bg-cyan-400 px-3 py-2 text-[10px] font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-3.5 w-3.5" /> {busy ? "Working" : agentMode === "plan" ? "Create plan" : "Build"}</button>
+                        <span className="text-[9px] text-slate-500">{agentMode === "plan" ? "Plan mode" : "Build mode"}</span>
                       </div>
                     </div>
                     <p className="mt-2 text-center text-[9px] text-slate-600">Usage display shows your remaining ExpertsTeam AI credits.</p>
