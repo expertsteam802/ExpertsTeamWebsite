@@ -77,6 +77,7 @@ import {
   importGitHubProject,
   publishAgentProject,
   runAgentTerminalPrompt,
+  runCodingAgent,
   startAgentTerminal,
   stopAgentTerminal,
   syncAgentTerminalFiles,
@@ -317,6 +318,7 @@ export function CodeAgent() {
     .slice(0, 39) || "user";
   const queryClient = useQueryClient();
   const runCliPrompt = useServerFn(runAgentTerminalPrompt);
+  const runCodeAgent = useServerFn(runCodingAgent);
   const beginGithubOAuth = useServerFn(beginGitHubPluginOAuth);
   const push = useServerFn(pushProjectToGithub);
   const listGithubRepos = useServerFn(listGitHubRepositories);
@@ -2157,9 +2159,12 @@ export function CodeAgent() {
     if (CODING_AGENT_UNDER_DEVELOPMENT) return;
     const text = (promptOverride ?? prompt).trim();
     if (!text || busy) return;
+
+    // Planning can still use the optional interactive CLI, but normal Build
+    // requests go straight to the same server-side Kilo Gateway as ExpertAI.
     const session = terminalConnection;
-    if (!session || session.projectId !== projectId) {
-      toast.info("Your selected coding CLI is still connecting. Try sending again in a moment.");
+    if (modeOverride === "plan" && (!session || session.projectId !== projectId)) {
+      toast.info("Connect the optional CLI to use Plan mode. Build mode works directly through Kilo.");
       void openTerminalRef.current();
       return;
     }
@@ -2178,27 +2183,24 @@ export function CodeAgent() {
     try {
       const activeProjectId = projectId ?? (await persist());
       if (modeOverride === "build") await saveCheckpoint(`Before: ${text.slice(0, 96)}`);
-      const conversationContext = messages.slice(-8).map((message) =>
-        (message.role === "user" ? "USER: " : "ASSISTANT: ") + message.content.slice(-1800)
-      ).join("\n\n");
-      const cliPrompt = modeOverride === "plan"
-        ? text
-        : conversationContext
-          ? "Continue this ExpertsTeam Agent conversation. Use the existing project files as the source of truth.\n\n" +
-            conversationContext + "\n\nUSER: " + text
-          : text;
-      const result = await runCliPrompt({
-        data: {
-          projectId: activeProjectId,
-          sandboxName: session.sandboxName,
-          cli: session.cli,
-          mode: modeOverride,
-          prompt: cliPrompt,
-          referenceImages,
-        },
-      });
-      setReferenceImages([]);
+
       if (modeOverride === "plan") {
+        const conversationContext = messages.slice(-8).map((message) =>
+          (message.role === "user" ? "USER: " : "ASSISTANT: ") + message.content.slice(-1800)
+        ).join("\n\n");
+        const result = await runCliPrompt({
+          data: {
+            projectId: activeProjectId,
+            sandboxName: session!.sandboxName,
+            cli: session!.cli,
+            mode: "plan",
+            prompt: conversationContext
+              ? "Continue this ExpertsTeam Agent conversation.\n\n" + conversationContext + "\n\nUSER: " + text
+              : text,
+            referenceImages,
+          },
+        });
+        setReferenceImages([]);
         const planMessage = "Plan ready for your review. No project files were changed.\n\n" + result.message;
         const finalMessages: Message[] = [...nextMessages, { role: "assistant", content: planMessage }];
         setPlanDraft(result.message);
@@ -2208,18 +2210,32 @@ export function CodeAgent() {
         await queryClient.invalidateQueries({ queryKey: ["profile"] });
         return;
       }
+
+      // Kilo receives the current project source and recent Agent conversation.
+      // Its response is a file patch: omitted files stay untouched, null deletes.
+      const result = await runCodeAgent({
+        data: {
+          prompt: text,
+          files,
+          history: messages.slice(-8),
+          referenceImages,
+        },
+      });
+      setReferenceImages([]);
       setPlanDraft(null);
+
       const updatedFiles: ProjectFiles = { ...files };
       const changed: string[] = [];
       for (const [path, content] of Object.entries(result.files)) {
-        if (files[path] !== content) changed.push(path);
-        updatedFiles[path] = String(content);
-      }
-      for (const path of Object.keys(files)) {
-        if (!(path in result.files)) {
-          delete updatedFiles[path];
-          changed.push(path);
+        if (content === null) {
+          if (Object.prototype.hasOwnProperty.call(updatedFiles, path)) {
+            delete updatedFiles[path];
+            changed.push(path);
+          }
+          continue;
         }
+        if (updatedFiles[path] !== content) changed.push(path);
+        updatedFiles[path] = content;
       }
 
       const answer = `${result.message}${changed.length ? `\n\nUpdated files:\n${changed.map((path) => `- ${path}`).join("\n")}` : ""}`;
@@ -2236,10 +2252,12 @@ export function CodeAgent() {
         }
         setPreviewKey((value) => value + 1);
       }
+      // Persist the complete resulting project tree and conversation before
+      // reporting success, so Explorer, editor and preview share saved files.
       await persist({ files: updatedFiles, messages: finalMessages });
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
     } catch (error) {
-      const detail = error instanceof Error ? error.message : "The connected coding CLI could not complete that request.";
+      const detail = error instanceof Error ? error.message : "Kilo could not complete that request.";
       const failedMessages: Message[] = [
         ...nextMessages,
         { role: "assistant", content: `I couldn't finish that change.\n\n${detail}` },
