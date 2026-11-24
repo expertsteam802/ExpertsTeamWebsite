@@ -310,7 +310,7 @@ export async function runAgent(
       "- Do not repeat files already supplied unless fixing a specific inconsistency.\n" +
       "Experts Routing collaboration: each round is a separate expert handoff. Review prior decisions, share a concise progress summary, and continue from the last complete file. The current role is: " +
       collaborationRole +
-      "\nDo not claim completion while required screens, files, tests or interactions remain.";
+      "\nDo not claim completion while required screens, files, tests or interactions remain. Never claim tests, builds, runtime behavior, browser verification, or deployment were executed unless an actual tool result in this run proves it. When you only generated or saved source files, say implementation was written and clearly state that runtime verification remains outstanding.";
 
     const startAt = round % providerSequence.length;
     const rotatedProviders = [
@@ -616,7 +616,7 @@ export async function runAgentChat(
   const response = await generateGeminiContent({
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents: [
-      ...history.slice(-10).map((message) => ({
+      ...history.slice(-8).map((message) => ({
         role: message.role === "assistant" ? ("model" as const) : ("user" as const),
         parts: [{ text: message.content.slice(-2200) }],
       })),
