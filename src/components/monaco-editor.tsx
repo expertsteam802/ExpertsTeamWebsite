@@ -132,9 +132,12 @@ export function MonacoEditor({
   const editorRef = useRef<MonacoEditorInstance | null>(null);
   const onChangeRef = useRef(onChange);
   const onEditorReadyRef = useRef(onEditorReady);
-  const initialValueRef = useRef(value);
-  const initialFilePathRef = useRef(filePath);
-  const initialEditableRef = useRef(editable);
+  const valueRef = useRef(value);
+  const filePathRef = useRef(filePath);
+  const editableRef = useRef(editable);
+  valueRef.current = value;
+  filePathRef.current = filePath;
+  editableRef.current = editable;
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   onChangeRef.current = onChange;
@@ -146,8 +149,8 @@ export function MonacoEditor({
     void loadMonaco().then((monaco) => {
       if (cancelled || !containerRef.current) return;
       const editor = monaco.editor.create(containerRef.current, {
-        value: initialValueRef.current,
-        language: languageForPath(initialFilePathRef.current),
+        value: valueRef.current,
+        language: languageForPath(filePathRef.current),
         theme: "vs-dark",
         automaticLayout: true,
         minimap: { enabled: true, renderCharacters: false, scale: 0.75 },
@@ -158,7 +161,7 @@ export function MonacoEditor({
         scrollBeyondLastLine: false,
         smoothScrolling: true,
         bracketPairColorization: { enabled: true },
-        readOnly: !initialEditableRef.current,
+        readOnly: !editableRef.current,
         padding: { top: 10, bottom: 10 },
       });
       editorRef.current = editor;

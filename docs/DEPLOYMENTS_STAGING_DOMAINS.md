@@ -54,4 +54,4 @@ The Studio toolbar includes a visual cron builder for common schedules and custo
 
 ## Uptime alerts
 
-The ExpertsTeam Supabase project enables `pg_cron` and `pg_net`. Production uptime monitoring can be enabled per project from Deploy history. A scheduled job checks the current published storage release every five minutes; a second job processes HTTP responses every minute. Owners can set consecutive failure and recovery thresholds and acknowledge down/recovered alerts in Studio. Checks are retained for 30 days. Alerts are currently in-app; email delivery is not enabled by this migration.
+The ExpertsTeam Supabase project enables `pg_cron` and `pg_net`. Production uptime monitoring can be enabled per project from Deploy history. A scheduled job checks the current published application URL every five minutes; a second job processes HTTP responses every minute. Owners can set consecutive failure and recovery thresholds and acknowledge down/recovered alerts in Studio. Checks are retained for 30 days. Alerts are currently in-app; email delivery is not enabled by this migration.

@@ -112,7 +112,7 @@ export function UptimeAlertsPanel({ projectId }: { projectId: string }) {
         <p className="text-xs font-semibold text-slate-200">Uptime monitoring</p>
       </div>
       <p className="mb-3 text-[10px] leading-4 text-slate-400">
-        Production assets are checked every 5 minutes. Alerts appear after the configured consecutive-failure threshold.
+        The published production URL is checked every 5 minutes. Alerts appear after the configured consecutive-failure threshold.
       </p>
       <div className="mb-3 grid grid-cols-2 gap-2">
         <label className="space-y-1 text-[10px] text-slate-400">

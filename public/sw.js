@@ -1,10 +1,5 @@
 const CACHE_NAME = "expertsteam-shell-v1";
-const PRECACHE_URLS = [
-  "/offline.html",
-  "/agent-mark.svg",
-  "/favicon.svg",
-  "/manifest.webmanifest",
-];
+const PRECACHE_URLS = ["/offline.html", "/agent-mark.svg", "/favicon.svg", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -44,9 +39,7 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request).catch(
-        async () => (await caches.match("/offline.html")) || Response.error(),
-      ),
+      fetch(request).catch(async () => (await caches.match("/offline.html")) || Response.error()),
     );
     return;
   }
@@ -58,9 +51,7 @@ self.addEventListener("fetch", (event) => {
           .then((response) => {
             if (response.ok) {
               const copy = response.clone();
-              void caches
-                .open(CACHE_NAME)
-                .then((cache) => cache.put(request, copy));
+              void caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
             }
             return response;
           })

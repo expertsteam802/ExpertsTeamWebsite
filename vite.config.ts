@@ -28,11 +28,7 @@ export default defineConfig({
             if (id.includes("recharts")) return "vendor-charts";
             if (id.includes("lucide-react")) return "vendor-icons";
             if (id.includes("@radix-ui/")) return "vendor-ui";
-            if (
-              id.includes("react-dom") ||
-              id.includes("/react/") ||
-              id.includes("scheduler")
-            ) {
+            if (id.includes("react-dom") || id.includes("/react/") || id.includes("scheduler")) {
               return "vendor-react";
             }
           },
