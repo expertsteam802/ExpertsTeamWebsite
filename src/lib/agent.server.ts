@@ -595,6 +595,48 @@ jobs:
 `;
 
 
+/** Conversational Agent response. This path is read-only: it never returns file patches or invokes a terminal. */
+export async function runAgentChat(
+  { prompt, files, history }: AgentInput,
+) {
+  const selectedFiles = Object.entries(files)
+    .filter(([name]) => !/node_modules|(^|\\/)dist\\//i.test(name))
+    .slice(0, 12);
+  const projectContext = selectedFiles.map(([name, content]) =>
+    "--- " + name + " ---\\n" + content.slice(0, 1800)
+  ).join("\\n\\n").slice(0, 12000);
+  const systemPrompt = [
+    "You are ExpertsTeam Agent, a helpful, technically capable coding partner.",
+    "This is conversational chat mode. Answer greetings, questions, explanations, and follow-up discussion naturally.",
+    "Do not create, edit, delete, or claim to have changed project files. Do not invoke a terminal, CLI, shell, or remote sandbox.",
+    "If the user asks to implement a change, explain briefly that Build mode is the correct action rather than pretending it was implemented.",
+    "Use the project context only to answer accurately. Never claim that tests, builds, deployments, or commands were run.",
+    "Be direct, concise, friendly, and honest. Represent ExpertsTeam as a serious software and AI product company."
+  ].join("\\n");
+  const response = await generateGeminiContent({
+    systemInstruction: { parts: [{ text: systemPrompt }] },
+    contents: [
+      ...history.slice(-10).map((message) => ({
+        role: message.role === "assistant" ? ("model" as const) : ("user" as const),
+        parts: [{ text: message.content.slice(-2200) }],
+      })),
+      {
+        role: "user" as const,
+        parts: [{
+          text: "USER MESSAGE:\\n" + prompt + "\\n\\nCURRENT PROJECT CONTEXT (read-only):\\n" + (projectContext || "(empty project)")
+        }]
+      }
+    ],
+    generationConfig: { maxOutputTokens: 1200 },
+  });
+  const message = response.candidates?.[0]?.content?.parts
+    ?.filter((part) => !part.thought)
+    .map((part) => part.text ?? "")
+    .join("").trim();
+  if (!message) throw new Error("ExpertsTeam Agent could not generate a reply. Please try again.");
+  return { message, files: {} as Record<string, string | null>, mode: "chat" as const };
+}
+
 /** Kilo-only planning pass. It reads the saved project snapshot but never returns file mutations. */
 export async function runAgentPlan(
   { prompt, files, history, referenceImage, referenceImages: suppliedReferenceImages }: AgentInput,
