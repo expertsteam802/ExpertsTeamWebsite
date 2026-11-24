@@ -276,6 +276,65 @@ export type Database = {
           },
         ]
       }
+      agent_project_domains: {
+        Row: {
+          created_at: string
+          dns_target: string
+          domain: string
+          id: string
+          netlify_added: boolean
+          project_id: string
+          slug: string
+          ssl_ready: boolean
+          status: string
+          updated_at: string
+          user_id: string
+          verification_host: string
+          verification_token: string
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          dns_target: string
+          domain: string
+          id?: string
+          netlify_added?: boolean
+          project_id: string
+          slug: string
+          ssl_ready?: boolean
+          status?: string
+          updated_at?: string
+          user_id: string
+          verification_host: string
+          verification_token: string
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          dns_target?: string
+          domain?: string
+          id?: string
+          netlify_added?: boolean
+          project_id?: string
+          slug?: string
+          ssl_ready?: boolean
+          status?: string
+          updated_at?: string
+          user_id?: string
+          verification_host?: string
+          verification_token?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_domains_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_project_env_vars: {
         Row: {
           auth_tag: string

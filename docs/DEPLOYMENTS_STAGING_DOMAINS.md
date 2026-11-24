@@ -23,9 +23,23 @@ When `PUBLIC_APP_DOMAIN` is absent, production continues to use the safe path UR
 
 - `APP_URL`: canonical ExpertsTeam app origin, e.g. `https://expertsteam.giize.com`.
 - `PUBLIC_APP_DOMAIN`: optional hostname only (no scheme or path) for wildcard project subdomains.
+- `NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`, and `NETLIFY_SITE_HOSTNAME`: required for the custom-domain workflow. `NETLIFY_SITE_HOSTNAME` is the site's assigned `.netlify.app` hostname.
+- `NETLIFY_LOAD_BALANCER_IPS`: optional comma-separated A-record targets; defaults to `75.2.60.5` for standard Netlify external DNS.
 
 The wildcard DNS record and wildcard TLS certificate must be configured in the hosting provider before enabling subdomain publishing. The code does not create DNS records or certificates automatically.
 
 ## Traffic and build diagnostics
 
 Published-app loads and load failures are aggregated by project and UTC day. The Studio history menu shows the last 30 days of views and load errors, plus the latest successful or failed build log entries. Analytics stores aggregate counts only; it does not store visitor IP addresses or full user-agent strings.
+
+## Custom domains
+
+The Studio's Custom domains panel supports domain ownership verification, Netlify domain-alias registration, DNS checks and SSL provisioning.
+
+1. Add the domain in the panel.
+2. Create the displayed TXT record at the displayed verification host.
+3. Point a subdomain with a CNAME to the site's `NETLIFY_SITE_HOSTNAME`. For an apex/root domain, use an ALIAS/ANAME to `apex-loadbalancer.netlify.com` or the Netlify A-record target shown by the hosting dashboard.
+4. Select Verify DNS / SSL. The server verifies the TXT token before calling the Netlify API, then checks the DNS target and triggers SSL provisioning.
+5. Once the record is active, requests for that hostname are rewritten to the matching published project.
+
+Netlify requires DNS to point to its infrastructure before it can issue a certificate. SSL may remain pending while DNS propagates; retry verification after the DNS records are visible. See [Netlify's API guide for adding domains](https://developers.netlify.com/guides/adding-your-domain-using-netlify-api/) and [HTTPS/SSL documentation](https://docs.netlify.com/manage/domains/secure-domains-with-https/https-ssl/).
