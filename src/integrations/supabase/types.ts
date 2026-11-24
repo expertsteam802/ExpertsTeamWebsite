@@ -147,6 +147,50 @@ export type Database = {
           },
         ]
       }
+      agent_project_env_vars: {
+        Row: {
+          auth_tag: string
+          created_at: string
+          encrypted_value: string
+          id: string
+          key: string
+          nonce: string
+          project_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auth_tag: string
+          created_at?: string
+          encrypted_value: string
+          id?: string
+          key: string
+          nonce: string
+          project_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auth_tag?: string
+          created_at?: string
+          encrypted_value?: string
+          id?: string
+          key?: string
+          nonce?: string
+          project_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_env_vars_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_project_file_staging: {
         Row: {
           content: string
@@ -882,6 +926,105 @@ export type Database = {
         }
         Relationships: []
       }
+      creator_tips: {
+        Row: {
+          amount: number
+          created_at: string
+          creator_id: string
+          id: string
+          message: string
+          sender_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          creator_id: string
+          id?: string
+          message?: string
+          sender_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          creator_id?: string
+          id?: string
+          message?: string
+          sender_id?: string
+        }
+        Relationships: []
+      }
+      credit_daily_streaks: {
+        Row: {
+          current_streak: number
+          last_claim_date: string | null
+          longest_streak: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          current_streak?: number
+          last_claim_date?: string | null
+          longest_streak?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          current_streak?: number
+          last_claim_date?: string | null
+          longest_streak?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      credit_referral_codes: {
+        Row: {
+          code: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      credit_referrals: {
+        Row: {
+          created_at: string
+          id: string
+          referral_code: string
+          referred_user_id: string
+          referrer_id: string
+          reward_credits: number
+          rewarded_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          referral_code: string
+          referred_user_id: string
+          referrer_id: string
+          reward_credits?: number
+          rewarded_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          referral_code?: string
+          referred_user_id?: string
+          referrer_id?: string
+          reward_credits?: number
+          rewarded_at?: string | null
+        }
+        Relationships: []
+      }
       developer_vault_items: {
         Row: {
           created_at: string
@@ -1234,6 +1377,86 @@ export type Database = {
           },
         ]
       }
+      mylead_postback_events: {
+        Row: {
+          country_code: string | null
+          cpa_conversion_id: string | null
+          created_at: string
+          currency: string | null
+          destination_program_id: string | null
+          destination_program_name: string | null
+          goal_id: string | null
+          goal_name: string | null
+          id: string
+          lead_ip: unknown
+          payout: number | null
+          payout_decimal: number | null
+          player_id: string
+          processed_at: string
+          program_id: string | null
+          program_name: string | null
+          raw_received_at: string
+          status: string
+          transaction_id: string
+          updated_at: string
+          virtual_amount: number
+        }
+        Insert: {
+          country_code?: string | null
+          cpa_conversion_id?: string | null
+          created_at?: string
+          currency?: string | null
+          destination_program_id?: string | null
+          destination_program_name?: string | null
+          goal_id?: string | null
+          goal_name?: string | null
+          id?: string
+          lead_ip?: unknown
+          payout?: number | null
+          payout_decimal?: number | null
+          player_id: string
+          processed_at?: string
+          program_id?: string | null
+          program_name?: string | null
+          raw_received_at?: string
+          status: string
+          transaction_id: string
+          updated_at?: string
+          virtual_amount?: number
+        }
+        Update: {
+          country_code?: string | null
+          cpa_conversion_id?: string | null
+          created_at?: string
+          currency?: string | null
+          destination_program_id?: string | null
+          destination_program_name?: string | null
+          goal_id?: string | null
+          goal_name?: string | null
+          id?: string
+          lead_ip?: unknown
+          payout?: number | null
+          payout_decimal?: number | null
+          player_id?: string
+          processed_at?: string
+          program_id?: string | null
+          program_name?: string | null
+          raw_received_at?: string
+          status?: string
+          transaction_id?: string
+          updated_at?: string
+          virtual_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mylead_postback_events_cpa_conversion_id_fkey"
+            columns: ["cpa_conversion_id"]
+            isOneToOne: false
+            referencedRelation: "cpa_conversions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personal_vault_files: {
         Row: {
           created_at: string
@@ -1269,6 +1492,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      plugin_audit_logs: {
+        Row: {
+          action: string
+          connection_id: string | null
+          created_at: string
+          details: Json
+          id: number
+          provider: string
+          resource: string | null
+          success: boolean
+          user_id: string
+        }
+        Insert: {
+          action: string
+          connection_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: never
+          provider: string
+          resource?: string | null
+          success?: boolean
+          user_id: string
+        }
+        Update: {
+          action?: string
+          connection_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: never
+          provider?: string
+          resource?: string | null
+          success?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plugin_audit_logs_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "user_plugin_connections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -1628,6 +1895,110 @@ export type Database = {
         }
         Relationships: []
       }
+      user_credit_balances: {
+        Row: {
+          ai_credits: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_credits?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_credits?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_plugin_connections: {
+        Row: {
+          connected_at: string
+          created_at: string
+          display_name: string
+          id: string
+          last_used_at: string | null
+          provider: string
+          provider_account_id: string | null
+          provider_username: string | null
+          scopes: string[]
+          secret_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connected_at?: string
+          created_at?: string
+          display_name: string
+          id?: string
+          last_used_at?: string | null
+          provider: string
+          provider_account_id?: string | null
+          provider_username?: string | null
+          scopes?: string[]
+          secret_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connected_at?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          last_used_at?: string | null
+          provider?: string
+          provider_account_id?: string | null
+          provider_username?: string | null
+          scopes?: string[]
+          secret_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_plugin_permissions: {
+        Row: {
+          actions: string[]
+          connection_id: string
+          id: string
+          project_id: string | null
+          require_approval_for: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actions?: string[]
+          connection_id: string
+          id?: string
+          project_id?: string | null
+          require_approval_for?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actions?: string[]
+          connection_id?: string
+          id?: string
+          project_id?: string | null
+          require_approval_for?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_plugin_permissions_connection_owner_fkey"
+            columns: ["connection_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "user_plugin_connections"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1859,9 +2230,19 @@ export type Database = {
         Returns: undefined
       }
       can_use_guest_ai_credit: { Args: { p_ip_hash: string }; Returns: boolean }
+      claim_daily_credit_streak: { Args: never; Returns: Json }
+      claim_eligible_referral_bonus: { Args: never; Returns: Json }
       claim_free_ai_credits: { Args: never; Returns: number }
       consume_ai_credit: { Args: never; Returns: number }
+      consume_ai_credits: {
+        Args: { p_amount: number; p_description?: string }
+        Returns: number
+      }
       consume_guest_ai_credit: { Args: { p_ip_hash: string }; Returns: boolean }
+      delete_user_plugin_connection: {
+        Args: { p_connection_id: string; p_user_id: string }
+        Returns: boolean
+      }
       delete_user_supabase_connection: {
         Args: { p_connection_id: string }
         Returns: boolean
@@ -1872,6 +2253,15 @@ export type Database = {
       }
       finalize_agent_project_workspace_staging: {
         Args: { p_import_id: string; p_project_id: string }
+        Returns: Json
+      }
+      get_my_credit_referral_code: { Args: never; Returns: string }
+      get_user_plugin_connection_secret: {
+        Args: { p_connection_id: string; p_user_id: string }
+        Returns: Json
+      }
+      get_user_plugin_oauth_secret: {
+        Args: { p_provider: string; p_user_id: string }
         Returns: Json
       }
       get_user_supabase_connection_secret: {
@@ -1888,6 +2278,26 @@ export type Database = {
       is_workspace_member: { Args: { _user_id: string }; Returns: boolean }
       process_cpa_grip_conversion: {
         Args: { p_provider_event_id?: string; p_tracking_id: string }
+        Returns: Json
+      }
+      process_mylead_offerwall_postback: {
+        Args: {
+          p_country_code?: string
+          p_currency?: string
+          p_destination_program_id?: string
+          p_destination_program_name?: string
+          p_goal_id?: string
+          p_goal_name?: string
+          p_lead_ip?: unknown
+          p_payout?: number
+          p_payout_decimal?: number
+          p_player_id: string
+          p_program_id?: string
+          p_program_name?: string
+          p_status: string
+          p_transaction_id: string
+          p_virtual_amount: number
+        }
         Returns: Json
       }
       record_video_view: { Args: { p_video_id: string }; Returns: undefined }
@@ -1913,6 +2323,22 @@ export type Database = {
           tracking_id: string
           tracking_parameter: string
         }[]
+      }
+      store_plugin_oauth_connection: {
+        Args: {
+          p_display_name: string
+          p_provider: string
+          p_provider_account_id: string
+          p_provider_username: string
+          p_scopes: string[]
+          p_token_payload: Json
+          p_user_id: string
+        }
+        Returns: string
+      }
+      tip_creator_by_username: {
+        Args: { p_amount: number; p_message?: string; p_username: string }
+        Returns: Json
       }
     }
     Enums: {

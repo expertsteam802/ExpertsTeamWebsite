@@ -105,7 +105,13 @@ function AuthPage() {
             returnTo.searchParams.set("next", getPostAuthPath());
             return returnTo.toString();
           })(),
-          data: { username: username.trim(), display_name: username.trim() },
+          data: {
+            username: username.trim(),
+            display_name: username.trim(),
+            ...(new URLSearchParams(window.location.search).get("ref")?.trim()
+              ? { referral_code: new URLSearchParams(window.location.search).get("ref")!.trim().toUpperCase() }
+              : {}),
+          },
         },
       });
       if (error) throw error;
