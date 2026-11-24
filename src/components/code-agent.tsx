@@ -3085,7 +3085,7 @@ export function CodeAgent() {
                           className={visualSelectMode ? "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-cyan-300/40 bg-cyan-300/15 px-2 text-[10px] font-semibold text-cyan-100" : "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 text-[10px] font-semibold text-slate-300 hover:border-cyan-300/30 hover:text-cyan-100"}
                           title={runtimeUrl ? "Select an element in the cloud Vite preview" : "Select an element in the local preview"}
                         >
-                          <MousePointer2 className="h-3.5 w-3.5" /> {visualSelectMode ? "Selecting…" : "Select element"}
+                          <MousePointer2 className="h-3.5 w-3.5" /> {visualSelectMode ? "Visual Edit: ON" : "Visual Edit: OFF"}
                         </button>
                       )}
                       <button
@@ -3388,10 +3388,11 @@ export function CodeAgent() {
                         <div className="flex items-center gap-1">
                           <AgentPromptLibrary currentPrompt={prompt} onUse={setPrompt} />
                           <button type="button" onClick={() => setAgentMode((mode) => mode === "plan" ? "build" : "plan")} disabled={busy} className={agentMode === "plan" ? "rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-2.5 py-2 text-[10px] font-semibold text-emerald-200" : "rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}>{agentMode === "plan" ? "Plan mode on" : "Plan first"}</button>
-                          <button type="button" onClick={() => setTutorMode((enabled) => !enabled)} disabled={busy} aria-pressed={tutorMode} className={tutorMode ? "rounded-lg border border-blue-300/30 bg-blue-300/10 px-2.5 py-2 text-[10px] font-semibold text-blue-200" : "rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}>Tutor {tutorMode ? "on" : "off"}</button>
+                          <button type="button" onClick={() => { setSelectedPreviewElement(null); setVisualSelectMode(true); switchPanel("preview"); }} disabled={busy} aria-pressed={visualSelectMode} className={visualSelectMode ? "inline-flex items-center gap-1.5 rounded-lg border border-blue-400/40 bg-blue-400/15 px-2.5 py-2 text-[10px] font-semibold text-blue-200" : "inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}><MousePointer2 className="h-3 w-3" /> Select Element</button>
+                          <button type="button" onClick={() => { setTutorMode((enabled) => !enabled); }} disabled={busy} aria-pressed={tutorMode} className={tutorMode ? "rounded-lg border border-blue-300/30 bg-blue-300/10 px-2.5 py-2 text-[10px] font-semibold text-blue-200" : "rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}>Tutor Mode</button>
                           <input ref={referenceInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={(event) => { void attachReferenceImages(event.target.files); event.currentTarget.value = ""; }} />
-                          <button type="button" onClick={() => referenceInputRef.current?.click()} disabled={busy} className="rounded-lg p-2 text-slate-400 hover:bg-white/5 hover:text-cyan-200 disabled:opacity-40" title="Attach visual references"><ImagePlus className="h-4 w-4" /></button>
-                          <span className="text-[9px] text-slate-600">Enter to send · Shift+Enter for new line</span>
+                          <button type="button" onClick={() => referenceInputRef.current?.click()} disabled={busy} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white disabled:opacity-40" title="Attach visual references"><ImagePlus className="h-3 w-3" /> Attach</button>
+                          <span className="rounded-lg border border-blue-400/20 bg-blue-400/10 px-2.5 py-2 text-[10px] font-semibold text-blue-200">Expert 1.0</span>
                         </div>
                         <button type="button" onClick={() => void sendPrompt()} disabled={!prompt.trim() || busy} className="inline-flex items-center gap-2 rounded-xl bg-cyan-400 px-3 py-2 text-[10px] font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-3.5 w-3.5" /> {busy ? "Working" : agentMode === "plan" ? "Create plan" : "Build"}</button>
                       </div>
