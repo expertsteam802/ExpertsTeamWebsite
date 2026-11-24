@@ -2180,9 +2180,10 @@ export function CodeAgent() {
     setMessages(nextMessages);
     setPrompt("");
     setBusy(true);
+    let activeProjectId: string | null = projectId;
 
     try {
-      const activeProjectId = projectId ?? (await persist());
+      activeProjectId = activeProjectId ?? (await persist());
       if (modeOverride === "build") await saveCheckpoint(`Before: ${text.slice(0, 96)}`, activeProjectId);
 
       if (modeOverride === "plan") {
@@ -2266,7 +2267,7 @@ export function CodeAgent() {
       setMessages(failedMessages);
       setTypingMessageIndex(failedMessages.length - 1);
       toast.error(detail);
-      await persist({ messages: failedMessages }, activeProjectId).catch(() => undefined);
+      await persist({ messages: failedMessages }, activeProjectId ?? undefined).catch(() => undefined);
     } finally {
       setBusy(false);
     }
