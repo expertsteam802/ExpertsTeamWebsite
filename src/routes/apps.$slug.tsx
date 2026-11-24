@@ -89,12 +89,12 @@ function LiveApp() {
             className="fixed inset-0 h-screen w-screen border-0 bg-white"
           />
           <a
-          href="/ai"
-          className="fixed bottom-4 right-4 z-50 inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-slate-950/90 px-3.5 py-2.5 text-xs font-semibold text-white shadow-xl shadow-slate-950/20 backdrop-blur transition hover:border-cyan-200/60 hover:bg-slate-900"
-          aria-label="Built with ExpertsTeam. Start building your own app."
-        >
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-400/15 text-cyan-200">⚡</span>
-          <span>Built with ExpertsTeam</span>
+            href="/ai"
+            className="fixed bottom-4 right-4 z-50 inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-slate-950/90 px-3.5 py-2.5 text-xs font-semibold text-white shadow-xl shadow-slate-950/20 backdrop-blur transition hover:border-cyan-200/60 hover:bg-slate-900"
+            aria-label="Built with ExpertsTeam. Start building your own app."
+          >
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-400/15 text-cyan-200">⚡</span>
+            <span>Built with ExpertsTeam</span>
             <span className="text-cyan-200">· Build yours</span>
           </a>
         </>
