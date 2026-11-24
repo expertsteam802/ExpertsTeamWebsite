@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Database, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { Database, Download, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -246,6 +246,36 @@ export function SupabaseDatabasePanel({
     }
   }
 
+  function exportVisibleRowsAsSql() {
+    if (!activeTable || !rows.length) {
+      toast.info("Load some rows before exporting SQL.");
+      return;
+    }
+    const quoteIdentifier = (value: string) => '"' + value.replace(/"/g, '""') + '"';
+    const sqlValue = (value: unknown) => {
+      if (value === null || value === undefined) return "NULL";
+      if (typeof value === "number") return Number.isFinite(value) ? String(value) : "NULL";
+      if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
+      const textValue = typeof value === "object" ? JSON.stringify(value) : String(value);
+      return "'" + textValue.replace(/'/g, "''") + "'";
+    };
+    const columns = Object.keys(rows[0] ?? {});
+    const sql = rows.map((row) =>
+      "INSERT INTO " + quoteIdentifier(activeTable.table_schema) + "." + quoteIdentifier(activeTable.table_name) +
+      " (" + columns.map(quoteIdentifier).join(", ") + ") VALUES (" + columns.map((column) => sqlValue(row[column])).join(", ") + ");"
+    ).join("\n") + "\n";
+    const blob = new Blob([sql], { type: "application/sql;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = activeTable.table_name + "_visible_rows.sql";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+    toast.success("Exported " + rows.length + " visible rows as SQL. This is not a full database backup.");
+  }
+
   async function saveRow() {
     if (!projectRef || !activeTable || !editorMode) return;
     let values: RowData;
@@ -360,7 +390,8 @@ export function SupabaseDatabasePanel({
                       <Button size="icon" variant="outline" className="h-8 w-8 border-slate-700" onClick={() => void loadRows(activeTable, filter)} disabled={busy}><Search className="h-3 w-3" /></Button>
                     </div>
                     <Button size="sm" onClick={beginInsert} disabled={busy} className="h-8 text-[10px]"><Plus className="mr-1 h-3 w-3" /> Add row</Button>
-                    <Button size="sm" variant="outline" onClick={() => { setMigrationPrompt(""); setMigrationSql(""); setMigrationOpen(true); }} className="h-8 border-slate-700 text-[10px]">SQL Migration</Button>
+                    <Button size="sm" variant="outline" onClick={() => void generateSeedData()} disabled={busy || seedGenerating || !projectId} className="h-8 border-slate-700 text-[10px]">{seedGenerating ? "Generating…" : "AI Seed"}</Button>
+                    <Button size="sm" variant="outline" onClick={exportVisibleRowsAsSql} disabled={!rows.length} className="h-8 border-slate-700 text-[10px]"><Download className="mr-1 h-3 w-3" /> SQL</Button>
                   </div>
                   <div className="border-b border-slate-800 px-3 py-2 text-[9px] text-slate-500">{columns.map((column) => column.column_name + (column.is_primary_key ? " · PK" : "")).join("  ·  ")}</div>
                   {editorMode && (
