@@ -396,6 +396,7 @@ export function CodeAgent() {
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [logs, setLogs] = useState<{ type: string; message: string }[]>([]);
   const [selfHealBusy, setSelfHealBusy] = useState(false);
+  const [selfHealJustApplied, setSelfHealJustApplied] = useState(false);
   const [selfHealAttempts, setSelfHealAttempts] = useState(0);
   const [previewKey, setPreviewKey] = useState(0);
   const [githubOpen, setGithubOpen] = useState(false);
@@ -1641,6 +1642,7 @@ export function CodeAgent() {
       return;
     }
     setSelfHealBusy(true);
+    setSelfHealJustApplied(false);
     setSelfHealAttempts((count) => count + 1);
     try {
       await saveCheckpoint("Before free runtime repair");
@@ -1658,6 +1660,7 @@ export function CodeAgent() {
       setPreviewKey((key) => key + 1);
       setLogs([]);
       setSelfHealAttempts(0);
+      setSelfHealJustApplied(true);
       await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
       toast.success("Free runtime repair applied. Review the preview to confirm the result.");
     } catch (error) {
@@ -3455,6 +3458,16 @@ export function CodeAgent() {
                         </div>
                       </div>
                     ))}
+                    {selfHealJustApplied && (
+                      <div className="flex items-center justify-between gap-2 rounded-lg border border-emerald-400/25 bg-emerald-400/[0.08] px-3 py-2">
+                        <span className="flex items-center gap-2 text-[10px] font-semibold text-emerald-200"><span className="grid h-5 w-5 place-items-center rounded-full bg-emerald-400/15">✓</span>Free Auto-Fix Applied</span>
+                        <span className="text-[9px] text-emerald-100/70">Review preview</span>
+                      </div>
+                    )}
+                    <button type="button" onClick={() => setVersionHistoryOpen(true)} className="flex w-full items-center justify-between rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-2 text-left hover:border-blue-400/30">
+                      <span className="flex items-center gap-2 text-[10px] text-slate-300"><History className="h-3.5 w-3.5 text-blue-300" /> Latest checkpoint</span>
+                      <span className="text-[10px] font-semibold text-blue-300">Restore →</span>
+                    </button>
                     {planDraft && (
                       <details open className="rounded-xl border border-blue-400/25 bg-blue-500/[0.07] p-3">
                         <summary className="cursor-pointer list-none text-[11px] font-semibold text-blue-100">Plan &amp; Architecture <span className="ml-2 font-normal text-slate-400">Review before building</span></summary>
