@@ -78,6 +78,7 @@ import {
   importGitHubProject,
   publishAgentProject,
   runCodingAgent,
+  runAgentSelfHeal,
   startAgentTerminal,
   stopAgentTerminal,
   syncAgentTerminalFiles,
@@ -318,6 +319,7 @@ export function CodeAgent() {
     .slice(0, 39) || "user";
   const queryClient = useQueryClient();
   const runCodeAgent = useServerFn(runCodingAgent);
+  const repairRuntimeError = useServerFn(runAgentSelfHeal);
   const beginGithubOAuth = useServerFn(beginGitHubPluginOAuth);
   const push = useServerFn(pushProjectToGithub);
   const listGithubRepos = useServerFn(listGitHubRepositories);
@@ -391,6 +393,8 @@ export function CodeAgent() {
   const lightMode = siteTheme === "light";
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [logs, setLogs] = useState<{ type: string; message: string }[]>([]);
+  const [selfHealBusy, setSelfHealBusy] = useState(false);
+  const [selfHealAttempts, setSelfHealAttempts] = useState(0);
   const [previewKey, setPreviewKey] = useState(0);
   const [githubOpen, setGithubOpen] = useState(false);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
@@ -1118,10 +1122,13 @@ export function CodeAgent() {
         return;
       }
       if (!data?.__agentConsole) return;
+      const logType = data.type ?? "log";
+      const logMessage = data.message ?? "";
       setLogs((current) => [
         ...current.slice(-199),
-        { type: data.type ?? "log", message: data.message ?? "" },
+        { type: logType, message: logMessage },
       ]);
+      if (logType === "error") setPanel("console");
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
@@ -1557,6 +1564,48 @@ export function CodeAgent() {
   function switchPanel(nextPanel: Panel) {
     setPanel(nextPanel);
     setPanelMotionPhase((phase) => phase === 0 ? 1 : 0);
+  }
+
+  async function attemptRuntimeSelfHeal() {
+    if (!user || !projectId) {
+      toast.info("Save this project before using automatic repair.");
+      return;
+    }
+    if (selfHealBusy) return;
+    if (selfHealAttempts >= 3) {
+      toast.error("Automatic repair paused after three attempts. Review the error manually before retrying.");
+      return;
+    }
+    const latestError = [...logs].reverse().find((entry) => entry.type === "error" && entry.message.trim());
+    if (!latestError) {
+      toast.info("No runtime error is available to repair.");
+      return;
+    }
+    setSelfHealBusy(true);
+    setSelfHealAttempts((count) => count + 1);
+    try {
+      await saveCheckpoint("Before free runtime repair");
+      const repairFiles = Object.fromEntries(Object.entries(files).filter(([path]) => !isInternalAgentWorkspaceFile(path)).slice(0, 18));
+      const result = await repairRuntimeError({
+        data: { projectId, error: { message: latestError.message.slice(0, 3000) }, files: repairFiles },
+      });
+      if (!Object.keys(result.files).length) {
+        toast.warning(result.message || "The repair model could not safely identify a fix. No files were changed.");
+        return;
+      }
+      const nextFiles = { ...files, ...result.files };
+      await saveProjectFiles(projectId, user.id, nextFiles);
+      setFiles(nextFiles);
+      setPreviewKey((key) => key + 1);
+      setLogs([]);
+      setSelfHealAttempts(0);
+      await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
+      toast.success("Free runtime repair applied. Review the preview to confirm the result.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Automatic repair failed. Your previous files were preserved.");
+    } finally {
+      setSelfHealBusy(false);
+    }
   }
 
   async function saveProjectThumbnailUrl() {
