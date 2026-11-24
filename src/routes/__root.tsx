@@ -13,7 +13,6 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Bot } from "lucide-react";
 
 import { ChrisAiChat } from "@/components/chris-ai";
-import { SiteTextEditor } from "@/components/site-text-editor";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/hooks/use-theme";
@@ -347,7 +346,6 @@ function RootContent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <Toaster richColors position="top-center" />
-      <SiteTextEditor />
 
       {!isPublishedApp &&
         (aiChatOpen ? (
