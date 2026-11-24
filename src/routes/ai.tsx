@@ -1,5 +1,39 @@
-import { useEffect, useState, type ComponentType } from "react";
+import { Component, useEffect, useState, type ComponentType, type ErrorInfo, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+
+class StudioRenderBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("[ExpertsTeam Studio] Render failed:", error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+          <p className="text-sm font-semibold text-foreground">ExpertsTeam Studio hit a rendering error.</p>
+          <p className="max-w-2xl break-words text-xs text-muted-foreground">{this.state.error.message}</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="rounded-lg border border-border px-4 py-2 text-xs font-medium hover:bg-muted"
+          >
+            Reload Studio
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export const Route = createFileRoute("/ai")({
   head: () => ({
@@ -44,7 +78,7 @@ function AiPage() {
         <div aria-hidden="true" className="et-ai-cinematic-atmosphere pointer-events-none absolute inset-0" />
         <div className="relative h-full min-h-0 overflow-hidden">
           {Studio ? (
-            <Studio />
+            <StudioRenderBoundary><Studio /></StudioRenderBoundary>
           ) : loadFailed ? (
             <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
               ExpertsTeam Studio could not load. Refresh the page to try again.
