@@ -21,6 +21,8 @@ import {
   CopyPlus,
   ImagePlus,
   Loader2,
+  Lock,
+  Unlock,
   Maximize2,
   Minimize2,
   Mic,
@@ -376,6 +378,15 @@ export function CodeAgent() {
         : next;
     });
   }, [activeFile, files]);
+  const lockedFilePaths = useMemo(() => {
+    try {
+      const parsed: unknown = JSON.parse(files[".experts-locks.json"] ?? "[]");
+      return new Set(Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string" && files[value] !== undefined) : []);
+    } catch {
+      return new Set<string>();
+    }
+  }, [files]);
+  const activeFileLocked = lockedFilePaths.has(activeFile);
   const projectFileTree = useMemo(() => buildProjectFileTree(Object.keys(files).filter((filePath) => !isInternalAgentWorkspaceFile(filePath))), [files]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [typingMessageIndex, setTypingMessageIndex] = useState<number | null>(null);
@@ -1846,6 +1857,28 @@ export function CodeAgent() {
 
 
 
+  async function toggleActiveFileLock() {
+    if (!activeFile || files[activeFile] === undefined) return;
+    const nextLocked = new Set(lockedFilePaths);
+    if (nextLocked.has(activeFile)) nextLocked.delete(activeFile);
+    else nextLocked.add(activeFile);
+    const nextFiles: ProjectFiles = {
+      ...files,
+      ".experts-locks.json": JSON.stringify([...nextLocked].sort(), null, 2),
+    };
+    setFiles(nextFiles);
+    setDirty(true);
+    try {
+      await persist({ files: nextFiles });
+      setDirty(false);
+      toast.success(nextLocked.has(activeFile) ? "AI edits locked for " + activeFile : "AI edits unlocked for " + activeFile);
+    } catch (error) {
+      setFiles(files);
+      setDirty(false);
+      toast.error(error instanceof Error ? error.message : "Could not update the file lock.");
+    }
+  }
+
   // Keep files edited by Kilo/OpenCode in the terminal reflected in the editor
   // and saved project record. Manual editor changes take priority while dirty.
   useEffect(() => {
@@ -3250,6 +3283,17 @@ export function CodeAgent() {
                       {activeFile || "Select a file"}
                     </span>
                     <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => void toggleActiveFileLock()}
+                        disabled={!activeFile || files[activeFile] === undefined}
+                        title={activeFileLocked ? "Allow AI edits to this file" : "Prevent AI from editing this file"}
+                        className={activeFileLocked ? "h-7 px-2 text-[10px] text-amber-300" : "h-7 px-2 text-[10px] text-slate-400"}
+                      >
+                        {activeFileLocked ? <Unlock className="mr-1 h-3 w-3" /> : <Lock className="mr-1 h-3 w-3" />}
+                        {activeFileLocked ? "Unlock" : "Lock file"}
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"

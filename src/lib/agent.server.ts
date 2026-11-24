@@ -97,6 +97,21 @@ export function repairMissingStylesheetImports<T extends Record<string, string |
   return files as T;
 }
 
+function getLockedProjectFiles(files: Record<string, string>) {
+  const locked = new Set<string>([".experts-locks.json"]);
+  try {
+    const parsed: unknown = JSON.parse(files[".experts-locks.json"] ?? "[]");
+    if (Array.isArray(parsed)) {
+      for (const value of parsed) {
+        if (typeof value === "string" && isSafeProjectPath(value) && files[value] !== undefined) locked.add(value);
+      }
+    }
+  } catch {
+    // Invalid lock metadata is ignored; the metadata file itself remains protected.
+  }
+  return locked;
+}
+
 function isSafeProjectPath(path: string): boolean {
   const normalized = path.replace(/\\/g, "/");
   return (
@@ -221,7 +236,8 @@ export async function runAgent(
       "Use up to three PNG, JPG or WebP references, with a combined size under 8 MB.",
     );
   if (cleanPrompt.length > 100_000) throw new Error("That request exceeds the 100,000-character transport safety envelope.");
-  const entries = Object.entries(files);
+  const lockedFilePaths = getLockedProjectFiles(files);
+  const entries = Object.entries(files).filter(([filePath]) => filePath !== ".experts-locks.json");
   if (entries.length > 2_000 || entries.some(([path, content]) => !isSafeProjectPath(path) || Buffer.byteLength(content, "utf8") > 10_000_000)) {
     throw new Error("One or more project files exceed the 10 MB per-file safety envelope or have an invalid path.");
   }
@@ -270,6 +286,7 @@ export async function runAgent(
   const providerSequence = ["kilo"];
   const completedFiles: Record<string, string | null> = {};
   const handoffNotes: string[] = [];
+  const blockedLockedFiles = new Set<string>();
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
   let agentOutputBudget = 8192;
@@ -368,7 +385,10 @@ export async function runAgent(
           .map((part) => part.text ?? "")
           .join("") ?? "";
       const parsed = parseAgentFiles(responseText);
-      for (const [path, content] of Object.entries(parsed.files)) completedFiles[path] = content;
+      for (const [path, content] of Object.entries(parsed.files)) {
+        if (lockedFilePaths.has(path)) blockedLockedFiles.add(path);
+        else completedFiles[path] = content;
+      }
       if (parsed.message) {
         latestMessage = parsed.message;
         handoffNotes.push(parsed.message.slice(0, 1200));
