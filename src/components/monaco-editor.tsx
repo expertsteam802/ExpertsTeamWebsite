@@ -23,12 +23,22 @@ interface MonacoSelection {
   endColumn: number;
 }
 interface MonacoModel {
+  uri: unknown;
   getValueInRange(range: MonacoSelection): string;
 }
+interface MonacoMarker {
+  severity: number;
+  message: string;
+  startLineNumber: number;
+  startColumn: number;
+}
+
 interface MonacoApi {
   editor: {
     create(container: HTMLElement, options: Record<string, unknown>): MonacoEditorInstance;
     setModelLanguage(model: unknown, language: string): void;
+    getModelMarkers(filter: { resource?: unknown }): MonacoMarker[];
+    onDidChangeMarkers(listener: (resources: unknown[]) => void): { dispose(): void };
   };
 }
 type MonacoAmdRequire = ((modules: string[], callback: () => void) => void) & {
@@ -140,12 +150,14 @@ export function MonacoEditor({
   editableRef.current = editable;
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<MonacoMarker[]>([]);
   onChangeRef.current = onChange;
   onEditorReadyRef.current = onEditorReady;
 
   useEffect(() => {
     let cancelled = false;
     let changeSubscription: { dispose(): void } | null = null;
+    let markerSubscription: { dispose(): void } | null = null;
     void loadMonaco().then((monaco) => {
       if (cancelled || !containerRef.current) return;
       const editor = monaco.editor.create(containerRef.current, {
@@ -183,7 +195,17 @@ export function MonacoEditor({
           editor.focus();
         },
       });
-      changeSubscription = editor.onDidChangeModelContent(() => onChangeRef.current(editor.getValue()));
+      const refreshDiagnostics = () => {
+        const model = editor.getModel();
+        if (!model) return;
+        setDiagnostics(monaco.editor.getModelMarkers({ resource: model.uri }).slice(0, 30));
+      };
+      markerSubscription = monaco.editor.onDidChangeMarkers(refreshDiagnostics);
+      changeSubscription = editor.onDidChangeModelContent(() => {
+        onChangeRef.current(editor.getValue());
+        window.setTimeout(refreshDiagnostics, 0);
+      });
+      refreshDiagnostics();
       setLoaded(true);
     }).catch((error: unknown) => {
       if (!cancelled) {
@@ -194,6 +216,7 @@ export function MonacoEditor({
     return () => {
       cancelled = true;
       changeSubscription?.dispose();
+      markerSubscription?.dispose();
       editorRef.current?.dispose();
       editorRef.current = null;
       onEditorReadyRef.current?.(null);
@@ -219,6 +242,22 @@ export function MonacoEditor({
     <div className={className + " relative min-h-0 min-w-0"}>
       <div ref={containerRef} className={loaded ? "h-full min-h-0 w-full" : "hidden"} />
       {!loaded && <div className="h-full min-h-0 w-full">{fallback}</div>}
+      {loaded && diagnostics.length > 0 && (
+        <div className="absolute bottom-1 left-2 right-2 z-10 flex max-h-20 flex-wrap gap-1 overflow-auto rounded-md border border-slate-700/80 bg-slate-950/95 p-1.5 shadow-lg">
+          {diagnostics.slice(0, 4).map((diagnostic, index) => (
+            <button key={diagnostic.startLineNumber + ":" + diagnostic.startColumn + ":" + index} type="button" onClick={() => {
+              const editor = editorRef.current;
+              if (!editor) return;
+              editor.revealLineInCenter(diagnostic.startLineNumber);
+              editor.setPosition({ lineNumber: diagnostic.startLineNumber, column: diagnostic.startColumn });
+              editor.focus();
+            }} className={diagnostic.severity === 8 ? "max-w-full truncate rounded px-1.5 py-0.5 text-left text-[9px] text-rose-200 hover:bg-rose-400/10" : "max-w-full truncate rounded px-1.5 py-0.5 text-left text-[9px] text-amber-200 hover:bg-amber-400/10"} title={diagnostic.message}>
+              {diagnostic.severity === 8 ? "Error" : "Warning"} · L{diagnostic.startLineNumber}: {diagnostic.message}
+            </button>
+          ))}
+          <span className="self-center px-1 text-[9px] text-slate-500">{diagnostics.length} editor diagnostic{diagnostics.length === 1 ? "" : "s"}</span>
+        </div>
+      )}
       {failed && <span className="sr-only">Monaco is unavailable; CodeMirror is active.</span>}
     </div>
   );
