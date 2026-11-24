@@ -4352,6 +4352,12 @@ export function CodeAgent() {
                   </div>
                   {referenceImages.length > 0 && <div className="flex shrink-0 flex-wrap gap-2 border-t border-white/[0.06] px-3 pt-2">{referenceImages.map((image) => <span key={image.name} className="rounded-md bg-white/5 px-2 py-1 text-[10px] text-slate-300">{image.name}</span>)}</div>}
                   <div className="shrink-0 border-t border-white/[0.08] bg-[#0a1422] p-3 px-3">
+                    {displayedCredits < 3 && !isAdmin && (
+                      <div className="mb-2 flex items-center justify-between gap-3 rounded-lg border border-amber-300/20 bg-amber-300/[0.06] px-3 py-2">
+                        <span className="min-w-0 text-[10px] leading-4 text-amber-100/90">Low balance · {displayedCredits} AI credits left. Earn more with partner offers.</span>
+                        <button type="button" onClick={() => setCreditsOfferwallOpen(true)} className="shrink-0 rounded-md bg-amber-300/15 px-2.5 py-1.5 text-[10px] font-semibold text-amber-100 hover:bg-amber-300/25">Earn credits</button>
+                      </div>
+                    )}
                     <div className="rounded-xl border border-slate-700 bg-[#0B0F17] p-2 shadow-[0_-8px_30px_rgba(0,0,0,.16)] focus-within:border-blue-400/50">
                       <div className="relative">
                         <Textarea value={prompt} onChange={(event) => { setPrompt(event.target.value); event.target.style.height = "auto"; event.target.style.height = Math.min(event.target.scrollHeight, 160) + "px"; }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendPrompt(); } }} placeholder="Ask ExpertAI anything..." className="min-h-[72px] max-h-40 resize-y border-0 bg-transparent pb-10 pr-14 text-xs leading-5 text-white shadow-none focus-visible:ring-0" disabled={busy} />
