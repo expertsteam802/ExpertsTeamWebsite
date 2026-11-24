@@ -106,6 +106,16 @@ export const runAgentSelfHeal = createServerFn({ method: "POST" })
       .maybeSingle();
     if (projectError) throw new Error(projectError.message);
     if (!project) throw new Error("This project is unavailable or you do not have permission to repair it.");
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count, error: attemptsError } = await context.supabase
+      .from("agent_project_checkpoints")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", data.projectId)
+      .eq("user_id", context.userId)
+      .eq("name", "Before free runtime repair")
+      .gte("created_at", since);
+    if (attemptsError) throw new Error(attemptsError.message);
+    if ((count ?? 0) >= 3) throw new Error("This project has reached its three free automatic repair attempts for the last 24 hours. Review the error manually or use Build mode.");
     const { runAgentSelfHeal: repair } = await import("./agent.server");
     return repair({ error: data.error, files: data.files });
   });
