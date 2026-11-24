@@ -383,6 +383,7 @@ export function CodeAgent() {
   const [agentMode, setAgentMode] = useState<"build" | "plan">("build");
   const [tutorMode, setTutorMode] = useState(false);
   const [planDraft, setPlanDraft] = useState<string | null>(null);
+  const [planPanelOpen, setPlanPanelOpen] = useState(true);
   const [planChecklist, setPlanChecklist] = useState<Record<number, boolean>>({});
   const [latestFileDiffs, setLatestFileDiffs] = useState<Array<{ path: string; before: string; after: string }>>([]);
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
@@ -2704,7 +2705,6 @@ export function CodeAgent() {
               <span className={dirty ? "rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold text-amber-200" : "rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200"}>
                 {dirty ? (autoSaveStatus === "saving" ? "Saving…" : autoSaveStatus === "error" ? "Save failed" : "Unsaved") : "✓ Saved"}
               </span>
->
             </div>
           </div>
         </div>
@@ -3339,7 +3339,7 @@ export function CodeAgent() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => document.getElementById("et-agent-plan-details")?.scrollIntoView({behavior:"smooth",block:"nearest"})} className="rounded-md border border-slate-700 px-2.5 py-1.5 text-[10px] font-medium text-slate-300 hover:bg-white/5">Plan &amp; Architecture</button>
+                  <button type="button" onClick={() => setPlanPanelOpen((open) => !open)} aria-expanded={planPanelOpen} className="rounded-md border border-slate-700 px-2.5 py-1.5 text-[10px] font-medium text-slate-300 hover:bg-white/5">Plan &amp; Architecture <ChevronDown className={`ml-1 inline h-3 w-3 transition-transform ${planPanelOpen ? "rotate-180" : ""}`} /></button>
                   <button type="button" onClick={() => setAssistantOpen(false)} className="expert-agent-mobile-close rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Close builder panel"><X className="h-4 w-4" /></button>
                 </div>
               </div>
@@ -3377,7 +3377,7 @@ export function CodeAgent() {
                       <span className="text-[10px] font-semibold text-blue-300">Restore →</span>
                     </button>
                     {planDraft && (
-                      <details id="et-agent-plan-details" open className="rounded-xl border border-blue-400/25 bg-blue-500/[0.07] p-3">
+                      <details id="et-agent-plan-details" open={planPanelOpen} onToggle={(event) => setPlanPanelOpen(event.currentTarget.open)} className="rounded-xl border border-blue-400/25 bg-blue-500/[0.07] p-3">
                         <summary className="cursor-pointer list-none text-[11px] font-semibold text-blue-100">Plan &amp; Architecture <span className="ml-2 font-normal text-slate-400">Review before building</span></summary>
                         <div className="mt-3 space-y-2">
                           {planDraft.split("\n").map((line, index) => line.trim() && !/^#{1,4}\s/.test(line) ? (
