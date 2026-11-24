@@ -600,11 +600,11 @@ export async function runAgentChat(
   { prompt, files, history }: AgentInput,
 ) {
   const selectedFiles = Object.entries(files)
-    .filter(([name]) => !/node_modules|(^|\\/)dist\\//i.test(name))
+    .filter(([name]) => !/node_modules|(^|\/)dist\//i.test(name))
     .slice(0, 12);
   const projectContext = selectedFiles.map(([name, content]) =>
-    "--- " + name + " ---\\n" + content.slice(0, 1800)
-  ).join("\\n\\n").slice(0, 12000);
+    "--- " + name + " ---\n" + content.slice(0, 1800)
+  ).join("\n\n").slice(0, 12000);
   const systemPrompt = [
     "You are ExpertsTeam Agent, a helpful, technically capable coding partner.",
     "This is conversational chat mode. Answer greetings, questions, explanations, and follow-up discussion naturally.",
@@ -612,7 +612,7 @@ export async function runAgentChat(
     "If the user asks to implement a change, explain briefly that Build mode is the correct action rather than pretending it was implemented.",
     "Use the project context only to answer accurately. Never claim that tests, builds, deployments, or commands were run.",
     "Be direct, concise, friendly, and honest. Represent ExpertsTeam as a serious software and AI product company."
-  ].join("\\n");
+  ].join("\n");
   const response = await generateGeminiContent({
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents: [
@@ -623,7 +623,7 @@ export async function runAgentChat(
       {
         role: "user" as const,
         parts: [{
-          text: "USER MESSAGE:\\n" + prompt + "\\n\\nCURRENT PROJECT CONTEXT (read-only):\\n" + (projectContext || "(empty project)")
+          text: "USER MESSAGE:\n" + prompt + "\n\nCURRENT PROJECT CONTEXT (read-only):\n" + (projectContext || "(empty project)")
         }]
       }
     ],
