@@ -556,31 +556,6 @@ export function CodeAgent() {
     }
   }, [files]);
   const activeFileLocked = lockedFilePaths.has(activeFile);
-  const globalSearch = useMemo(() => {
-    const query = globalSearchQuery.trim();
-    if (!query) return { results: [] as { path: string; line: number; text: string }[], error: "" };
-    let pattern: RegExp;
-    try {
-      const source = globalSearchRegex ? query : query.replace(/[.*+?^$()|[\]\\]/g, "\\  const projectFileTree = useMemo(() => buildProjectFileTree(Object.keys(files).filter((filePath) => !isInternalAgentWorkspaceFile(filePath))), [files]);");
-      pattern = new RegExp(source, "gi");
-    } catch (error) {
-      return { results: [] as { path: string; line: number; text: string }[], error: error instanceof Error ? error.message : "Invalid regular expression." };
-    }
-    const results: { path: string; line: number; text: string }[] = [];
-    for (const [filePath, content] of Object.entries(files)) {
-      if (isInternalAgentWorkspaceFile(filePath)) continue;
-      const lines = content.split("\n");
-      for (let index = 0; index < lines.length; index++) {
-        pattern.lastIndex = 0;
-        if (pattern.test(lines[index] ?? "")) {
-          results.push({ path: filePath, line: index + 1, text: (lines[index] ?? "").trim().slice(0, 240) });
-          if (results.length >= 300) return { results, error: "" };
-        }
-      }
-    }
-    return { results, error: "" };
-  }, [files, globalSearchQuery, globalSearchRegex]);
-
   const projectFileTree = useMemo(() => buildProjectFileTree(Object.keys(files).filter((filePath) => !isInternalAgentWorkspaceFile(filePath))), [files]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [typingMessageIndex, setTypingMessageIndex] = useState<number | null>(null);
@@ -652,6 +627,30 @@ export function CodeAgent() {
   const [globalSearchQuery, setGlobalSearchQuery] = useState("");
   const [globalReplaceQuery, setGlobalReplaceQuery] = useState("");
   const [globalSearchRegex, setGlobalSearchRegex] = useState(false);
+  const globalSearch = useMemo(() => {
+    const query = globalSearchQuery.trim();
+    if (!query) return { results: [] as { path: string; line: number; text: string }[], error: "" };
+    let pattern: RegExp;
+    try {
+      const source = globalSearchRegex ? query : query.replace(/[.*+?^$()|[\]\\]/g, "\\  const projectFileTree = useMemo(() => buildProjectFileTree(Object.keys(files).filter((filePath) => !isInternalAgentWorkspaceFile(filePath))), [files]);");
+      pattern = new RegExp(source, "gi");
+    } catch (error) {
+      return { results: [] as { path: string; line: number; text: string }[], error: error instanceof Error ? error.message : "Invalid regular expression." };
+    }
+    const results: { path: string; line: number; text: string }[] = [];
+    for (const [filePath, content] of Object.entries(files)) {
+      if (isInternalAgentWorkspaceFile(filePath)) continue;
+      const lines = content.split("\n");
+      for (let index = 0; index < lines.length; index++) {
+        pattern.lastIndex = 0;
+        if (pattern.test(lines[index] ?? "")) {
+          results.push({ path: filePath, line: index + 1, text: (lines[index] ?? "").trim().slice(0, 240) });
+          if (results.length >= 300) return { results, error: "" };
+        }
+      }
+    }
+    return { results, error: "" };
+  }, [files, globalSearchQuery, globalSearchRegex]);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [inlineEditOpen, setInlineEditOpen] = useState(false);
   const [inlineEditPrompt, setInlineEditPrompt] = useState("");
