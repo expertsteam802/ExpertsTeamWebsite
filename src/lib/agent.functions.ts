@@ -22,6 +22,7 @@ const referenceImageSchema = z.object({
 const codingRequest = z
   .object({
     prompt: z.string().trim().min(1).max(100_000),
+    mode: z.enum(["build", "plan"]).optional().default("build"),
     files: z.record(z.string().max(512), z.string().max(10_000_000)),
     history: z
       .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(3000) }))
@@ -67,8 +68,8 @@ export const runCodingAgent = createServerFn({ method: "POST" })
         "You have no AI credits remaining. Visit Earn AI Credits to complete a partner offer.",
       );
     await assertBuilderResourcePolicy(context.supabase, context.userId, data.files, data.prompt);
-    const { runAgent } = await import("./agent.server");
-    const result = await runAgent(data);
+    const { runAgent, runAgentPlan } = await import("./agent.server");
+    const result = data.mode === "plan" ? await runAgentPlan(data) : await runAgent(data);
     if (!isAdmin) {
       const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
       if (creditError) throw new Error(creditError.message);
