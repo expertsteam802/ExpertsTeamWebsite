@@ -24,6 +24,7 @@ const codingRequest = z
     prompt: z.string().trim().min(1).max(100_000),
     mode: z.enum(["build", "plan", "chat"]).optional().default("build"),
     modelTier: z.enum(["fast", "balanced", "architect"]).optional().default("fast"),
+    groundPackages: z.array(z.string().trim().min(1).max(214).regex(/^(?:@[a-z0-9._-]+\\/)?[a-z0-9][a-z0-9._-]*$/i)).max(3).optional().default([]),
     files: z.record(z.string().max(512), z.string().max(10_000_000)),
     history: z
       .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(3000) }))
@@ -70,12 +71,35 @@ export const runCodingAgent = createServerFn({ method: "POST" })
         `This model requires ${creditCost} AI credits. Earn more credits from partner offers or choose Fast.`,
       );
     if (data.mode !== "chat") await assertBuilderResourcePolicy(context.supabase, context.userId, data.files, data.prompt);
+    let groundedPrompt = data.prompt;
+    if (data.groundPackages.length) {
+      const docs = await Promise.all(data.groundPackages.map(async (packageName) => {
+        const response = await fetch("https://registry.npmjs.org/" + encodeURIComponent(packageName), {
+          headers: { Accept: "application/vnd.npm.install-v1+json" },
+          signal: AbortSignal.timeout(10000),
+        });
+        if (!response.ok) throw new Error("Could not retrieve npm documentation for " + packageName + " (HTTP " + response.status + ").");
+        const metadata = await response.json() as {
+          name?: string;
+          description?: string;
+          "dist-tags"?: { latest?: string };
+          readme?: string;
+        };
+        return [
+          "### " + (metadata.name ?? packageName) + " · " + (metadata["dist-tags"]?.latest ?? "latest"),
+          metadata.description ?? "",
+          (metadata.readme ?? "No README was published in the npm registry.").slice(0, 12000),
+        ].filter(Boolean).join("\\n");
+      }));
+      groundedPrompt += "\\n\\nVERIFIED NPM PACKAGE DOCUMENTATION (retrieved from registry.npmjs.org; use version and API details from this source):\\n" + docs.join("\\n\\n");
+    }
+    const agentData = { ...data, prompt: groundedPrompt };
     const { runAgent, runAgentPlan, runAgentChat } = await import("./agent.server");
     const result = data.mode === "plan"
-      ? await runAgentPlan(data)
+      ? await runAgentPlan(agentData)
       : data.mode === "chat"
-        ? await runAgentChat(data)
-        : await runAgent(data);
+        ? await runAgentChat(agentData)
+        : await runAgent(agentData);
     if (!isAdmin && data.mode !== "chat") {
       const consumeCredits = context.supabase.rpc as unknown as (
         functionName: string,

@@ -2354,6 +2354,7 @@ export function CodeAgent() {
       responsive: "Audit the full app at desktop, tablet, and mobile widths. Fix overflow, clipped content, touch targets, and layout breakpoints without removing features.",
       explain: "Explain the relevant project architecture and code in clear steps. Do not modify files.",
       test: "Add or improve meaningful automated tests for the requested behavior, then inspect related code for likely regressions. Do not claim tests ran unless verified.",
+      docs: "Use the live npm registry documentation supplied with this request to verify current package versions, installation steps, and APIs before changing code.",
     };
     return [detail, instructions[command]].filter(Boolean).join("\n\n");
   }
@@ -2393,6 +2394,8 @@ export function CodeAgent() {
     if (CODING_AGENT_UNDER_DEVELOPMENT) return;
     const text = (promptOverride ?? prompt).trim();
     if (!text || busy) return;
+    const docsCommand = text.match(/^\\/docs\\s+(.+)$/i);
+    const groundPackages = docsCommand ? docsCommand[1]!.split(/[\\s,]+/).filter(Boolean).slice(0, 3) : [];
     const expandedPrompt = pinMentionedContext(expandSlashCommand(text));
     const agentPrompt = tutorMode
       ? expandedPrompt + "\n\nTutor Mode is enabled: after implementing this request, include a concise beginner-friendly explanation of the important files and concepts changed, one practical next exercise, and a relevant link to https://expertsteam.giize.com/learn. Do not claim a lesson was completed."
@@ -2418,6 +2421,7 @@ export function CodeAgent() {
           data: {
             mode: "chat",
             modelTier,
+            groundPackages,
             prompt: agentPrompt,
             files,
             history: messages.slice(-8).map((message) => ({ ...message, content: message.content.slice(-3000) })),
