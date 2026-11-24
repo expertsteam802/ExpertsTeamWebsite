@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 
@@ -34,6 +35,25 @@ function parseAmount(value: string): number {
   return amount;
 }
 
+
+function verifyMyLeadHmac(request: Request, params: URLSearchParams): boolean {
+  const secret = process.env["MYLEAD_POSTBACK_SECRET"];
+  const required = process.env["MYLEAD_REQUIRE_HMAC"] === "true";
+  if (!secret) return !required;
+  const provided = (request.headers.get("x-mylead-signature") ?? params.get("signature") ?? "").replace(/^sha256=/i, "").trim();
+  if (!/^[0-9a-f]{64}$/i.test(provided)) return false;
+  // Configure the provider to sign this exact canonical payload with HMAC-SHA256.
+  const canonical = [
+    params.get("transaction_id") ?? "",
+    params.get("player_id") ?? "",
+    (params.get("status") ?? "").toLowerCase(),
+    params.get("virtual_amount") ?? "0",
+  ].join("|");
+  const expected = createHmac("sha256", secret).update(canonical, "utf8").digest();
+  const actual = Buffer.from(provided, "hex");
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
 async function handleMyLeadPostback(request: Request): Promise<Response> {
   if (request.method !== "GET") {
     return Response.json({ ok: false, error: "GET only." }, { status: 405 });
@@ -66,6 +86,10 @@ async function handleMyLeadPostback(request: Request): Promise<Response> {
       { ok: false, error: error instanceof Error ? error.message : "Invalid postback." },
       { status: 400 },
     );
+  }
+
+  if (!verifyMyLeadHmac(request, params)) {
+    return Response.json({ ok: false, error: "Invalid postback signature." }, { status: 401 });
   }
 
   const supabaseUrl = process.env["SUPABASE_URL"] ?? process.env["VITE_SUPABASE_URL"];
