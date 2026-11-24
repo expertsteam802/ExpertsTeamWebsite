@@ -67,7 +67,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
-import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import { extractZipTextFiles } from "@/lib/zip-text-import";
 import { beginGitHubPluginOAuth } from "@/lib/plugin-oauth.functions";
@@ -391,8 +390,6 @@ export function CodeAgent() {
   const projectFileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<Panel>("preview");
-  const { theme: siteTheme } = useTheme();
-  const lightMode = siteTheme === "light";
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [logs, setLogs] = useState<{ type: string; message: string }[]>([]);
   const [selfHealBusy, setSelfHealBusy] = useState(false);
@@ -2636,7 +2633,7 @@ export function CodeAgent() {
   }
 
   return (
-    <div className={`expert-agent-shell not-prose relative flex h-full min-h-0 w-full flex-col overflow-hidden ${lightMode ? "expert-agent-light" : "bg-[#080e19] text-slate-100"}`}>
+    <div className="expert-agent-shell not-prose relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#0B0F17] text-slate-100">
       <style>{`@keyframes et-agent-character-fade { from { opacity: 0; filter: blur(1px); } to { opacity: 1; filter: blur(0); } } .et-agent-character { display: inline; animation: et-agent-character-fade 180ms ease-out both; }`}</style>
       {showConnectionCinematic && (
         <div className="et-ai-link-cinematic absolute inset-0 z-[100] flex items-center justify-center overflow-hidden" role="status" aria-live="polite">
@@ -3308,7 +3305,7 @@ export function CodeAgent() {
                       <CodeMirror
                         value={files[activeFile] ?? ""}
                         height="100%"
-                        theme={lightMode ? "light" : oneDark}
+                        theme={oneDark}
                         extensions={editorExtensions}
                         onCreateEditor={(view) => {
                           editorRef.current = view;
