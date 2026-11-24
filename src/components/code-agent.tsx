@@ -2692,6 +2692,15 @@ export function CodeAgent() {
                   {name}
                 </button>
               )}
+              <select
+                aria-label="Switch project"
+                value={projectId ?? ""}
+                onChange={(event) => { const selected = projects.find((project) => project.id === event.target.value); if (selected) void openProject(selected); }}
+                className="et-studio-project-switcher h-7 max-w-[170px] rounded-md border border-slate-700 bg-[#0B0F17] px-2 text-[10px] text-slate-200"
+              >
+                <option value="">New project · {name}</option>
+                {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+              </select>
               <span className={dirty ? "rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold text-amber-200" : "rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200"}>
                 {dirty ? (autoSaveStatus === "saving" ? "Saving…" : autoSaveStatus === "error" ? "Save failed" : "Unsaved") : "✓ Saved"}
               </span>
