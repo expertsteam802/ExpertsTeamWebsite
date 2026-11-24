@@ -294,6 +294,7 @@ export function SupabaseDatabasePanel({
   }
 
   return (
+    <>
     <Dialog open={migrationOpen} onOpenChange={setMigrationOpen}>
       <DialogContent className="max-w-3xl border-slate-700 bg-[#0b1320] text-white">
         <DialogHeader><DialogTitle>AI SQL Migration</DialogTitle></DialogHeader>
@@ -377,5 +378,6 @@ export function SupabaseDatabasePanel({
         )}
       </DialogContent>
     </Dialog>
+    </>
   );
 }
