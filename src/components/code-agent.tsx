@@ -496,7 +496,10 @@ export function CodeAgent() {
   const projectFileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<Panel>("preview");
-  const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
+  const [device, setDevice] = useState<"desktop" | "tablet" | "mobile" | "custom">("desktop");
+  const [customViewportWidth, setCustomViewportWidth] = useState(1024);
+  const [themePreset, setThemePreset] = useState("Brand");
+  const [fontPreset, setFontPreset] = useState("Inter");
   const [logs, setLogs] = useState<{ type: string; message: string }[]>([]);
   const [selfHealBusy, setSelfHealBusy] = useState(false);
   const [selfHealJustApplied, setSelfHealJustApplied] = useState(false);
@@ -560,6 +563,9 @@ export function CodeAgent() {
   const [visualColorDraft, setVisualColorDraft] = useState("#3b82f6");
   const [visualFontSizeDraft, setVisualFontSizeDraft] = useState("16");
   const [visualWeightDraft, setVisualWeightDraft] = useState("400");
+  const [visualPaddingDraft, setVisualPaddingDraft] = useState("0");
+  const [visualMarginDraft, setVisualMarginDraft] = useState("0");
+  const [visualRadiusDraft, setVisualRadiusDraft] = useState("0");
   useEffect(() => {
     if (!selectedPreviewElement) return;
     setVisualTextDraft(selectedPreviewElement.text);
@@ -569,7 +575,78 @@ export function CodeAgent() {
     else setVisualColorDraft("#3b82f6");
     setVisualFontSizeDraft(String(Math.round(Number.parseFloat(selectedPreviewElement.styles.fontSize ?? "16") || 16)));
     setVisualWeightDraft(selectedPreviewElement.styles.fontWeight === "700" || selectedPreviewElement.styles.fontWeight === "bold" ? "700" : selectedPreviewElement.styles.fontWeight === "600" || selectedPreviewElement.styles.fontWeight === "semibold" ? "600" : "400");
+    setVisualPaddingDraft(String(Math.min(64, Math.max(0, Number.parseFloat(selectedPreviewElement.styles.padding ?? "0") || 0))));
+    setVisualMarginDraft(String(Math.min(64, Math.max(0, Number.parseFloat(selectedPreviewElement.styles.margin ?? "0") || 0))));
+    setVisualRadiusDraft(String(Math.min(48, Math.max(0, Number.parseFloat(selectedPreviewElement.styles.borderRadius ?? "0") || 0))));
   }, [selectedPreviewElement]);
+  function applyGlobalTheme(themeName: string) {
+    const palettes: Record<string, { background: string; text: string; panel: string; accent: string; border: string }> = {
+      Light: { background: "#f8fafc", text: "#0f172a", panel: "#ffffff", accent: "#2563eb", border: "#e2e8f0" },
+      Dark: { background: "#0b1220", text: "#e2e8f0", panel: "#111827", accent: "#38bdf8", border: "#334155" },
+      Cyberpunk: { background: "#0a0618", text: "#f5e8ff", panel: "#180d2b", accent: "#e879f9", border: "#713f8a" },
+      Minimal: { background: "#ffffff", text: "#202124", panel: "#f8fafc", accent: "#111827", border: "#e5e7eb" },
+      Brand: { background: "#071425", text: "#eaf3ff", panel: "#10243b", accent: "#3b82f6", border: "#1e3a5f" },
+    };
+    const palette = palettes[themeName];
+    const cssPath = Object.keys(files).find((path) => /(^|\/)(index|global|app)\.css$/i.test(path)) ?? Object.keys(files).find((path) => /\.css$/i.test(path));
+    if (!palette || !cssPath) {
+      toast.error("Add a project CSS file before applying a global theme.");
+      return;
+    }
+    const start = "/* EXPERTSTEAM THEME START */";
+    const end = "/* EXPERTSTEAM THEME END */";
+    let source = files[cssPath] ?? "";
+    const startAt = source.indexOf(start);
+    const endAt = startAt >= 0 ? source.indexOf(end, startAt) : -1;
+    if (startAt >= 0 && endAt >= 0) source = source.slice(0, startAt) + source.slice(endAt + end.length);
+    const block = [
+      start,
+      ":root { --et-bg: " + palette.background + "; --et-text: " + palette.text + "; --et-panel: " + palette.panel + "; --et-accent: " + palette.accent + "; --et-border: " + palette.border + "; }",
+      "body { background-color: var(--et-bg) !important; color: var(--et-text) !important; }",
+      "a { color: var(--et-accent); }",
+      "button, [role='button'] { border-color: var(--et-border); }",
+      end,
+    ].join("\n");
+    const nextFiles = { ...files, [cssPath]: source + "\n\n" + block + "\n" };
+    setFiles(nextFiles);
+    setDirty(true);
+    setThemePreset(themeName);
+    toast.success(themeName + " theme written to " + cssPath + ".");
+  }
+
+  function applyGoogleFont(fontName: string) {
+    const fonts: Record<string, string> = {
+      Inter: "Inter:wght@400;500;600;700",
+      Roboto: "Roboto:wght@400;500;700",
+      Poppins: "Poppins:wght@400;500;600;700",
+      Montserrat: "Montserrat:wght@400;500;600;700",
+      "Open Sans": "Open+Sans:wght@400;500;600;700",
+    };
+    const family = fonts[fontName];
+    const cssPath = Object.keys(files).find((path) => /\.css$/i.test(path));
+    const htmlPath = Object.keys(files).find((path) => /(^|\/)index\.html$/i.test(path)) ?? "index.html";
+    if (!family || !cssPath) {
+      toast.error("A project CSS file is required to apply a Google Font.");
+      return;
+    }
+    const link = '<link id="experts-google-font" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=' + family + '&display=swap">';
+    let html = files[htmlPath] ?? "<!doctype html><html><head></head><body><div id=\"root\"></div><script type=\"module\" src=\"/src/main.tsx\"></script></body></html>";
+    if (/<link[^>]*id=["']experts-google-font["'][^>]*>/i.test(html)) {
+      html = html.replace(/<link[^>]*id=["']experts-google-font["'][^>]*>/i, link);
+    } else if (/<head[^>]*>/i.test(html)) {
+      html = html.replace(/<head[^>]*>/i, (head) => head + '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' + link);
+    } else {
+      html = link + html;
+    }
+    const css = (files[cssPath] ?? "").replace(/\/\* EXPERTSTEAM FONT START \*\/[\s\S]*?\/\* EXPERTSTEAM FONT END \*\//g, "");
+    const fontRule = "/* EXPERTSTEAM FONT START */\nbody { font-family: '" + fontName + "', sans-serif !important; }\n/* EXPERTSTEAM FONT END */\n";
+    const nextFiles = { ...files, [htmlPath]: html, [cssPath]: css + "\n" + fontRule };
+    setFiles(nextFiles);
+    setDirty(true);
+    setFontPreset(fontName);
+    toast.success(fontName + " font applied. Preview requires network access to Google Fonts.");
+  }
+
   function applyVisualElementEdits() {
     const selected = selectedPreviewElement;
     if (!selected) return;
@@ -603,7 +680,10 @@ export function CodeAgent() {
       return;
     }
     const color = /^#[0-9a-f]{6}$/i.test(visualColorDraft) ? visualColorDraft : "#3b82f6";
-    const rule = "\n\n/* ExpertsTeam visual edit */\n" + selector + " {\n  color: " + color + ";\n  font-size: " + fontSize + "px;\n  font-weight: " + visualWeightDraft + ";\n}\n";
+    const padding = Math.min(64, Math.max(0, Number(visualPaddingDraft) || 0));
+    const margin = Math.min(64, Math.max(0, Number(visualMarginDraft) || 0));
+    const radius = Math.min(48, Math.max(0, Number(visualRadiusDraft) || 0));
+    const rule = "\n\n/* ExpertsTeam visual edit */\n" + selector + " {\n  color: " + color + ";\n  font-size: " + fontSize + "px;\n  font-weight: " + visualWeightDraft + ";\n  padding: " + padding + "px;\n  margin: " + margin + "px;\n  border-radius: " + radius + "px;\n}\n";
     nextFiles[cssPath] = (nextFiles[cssPath] ?? "") + rule;
     setFiles(nextFiles);
     setAutoSaveStatus("saved");
@@ -3428,11 +3508,24 @@ export function CodeAgent() {
                       <button type="button" onClick={() => void copyTextToSystemClipboard(runtimeUrl || publishedUrl || `https://expertsteam.giize.com/apps/${activeProjectSlug || "your-project"}`).then(() => toast.success("App URL copied")).catch(() => toast.error("Could not copy URL"))} className="rounded p-1.5 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Copy app URL"><Copy className="h-3.5 w-3.5" /></button>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
-                      {(!runtimeUrl || remoteVisualSelectSupported) && <button type="button" onClick={() => { setSelectedPreviewElement(null); setVisualSelectMode((enabled) => !enabled); }} className={visualSelectMode ? "inline-flex h-7 items-center gap-1 rounded-md border border-blue-400/40 bg-blue-400/15 px-2 text-[10px] font-semibold text-blue-200" : "inline-flex h-7 items-center gap-1 rounded-md border border-slate-700 px-2 text-[10px] font-semibold text-slate-300 hover:bg-white/5"} title="Click elements to edit them"><MousePointer2 className="h-3 w-3" />Visual Edit</button>}
-                      {([["desktop", Monitor], ["tablet", Tablet], ["mobile", Smartphone]] as const).map(([value, Icon]) => <button key={value} type="button" onClick={() => setDevice(value)} className={device === value ? "rounded-md bg-slate-700 p-1.5 text-white" : "rounded-md p-1.5 text-slate-400 hover:bg-white/5"} aria-label={`${value} viewport`}><Icon className="h-3.5 w-3.5" /></button>)}
+                                            <select aria-label="Global theme preset" value={themePreset} onChange={(event) => applyGlobalTheme(event.target.value)} className="h-7 max-w-[92px] rounded-md border border-slate-700 bg-[#0B0F17] px-1.5 text-[10px] text-slate-300">
+                        {["Brand", "Light", "Dark", "Cyberpunk", "Minimal"].map((value) => <option key={value}>{value}</option>)}
+                      </select>
+                      <select aria-label="Google font preset" value={fontPreset} onChange={(event) => applyGoogleFont(event.target.value)} className="h-7 max-w-[92px] rounded-md border border-slate-700 bg-[#0B0F17] px-1.5 text-[10px] text-slate-300">
+                        {["Inter", "Roboto", "Poppins", "Montserrat", "Open Sans"].map((value) => <option key={value}>{value}</option>)}
+                      </select>
+{(!runtimeUrl || remoteVisualSelectSupported) && <button type="button" onClick={() => { setSelectedPreviewElement(null); setVisualSelectMode((enabled) => !enabled); }} className={visualSelectMode ? "inline-flex h-7 items-center gap-1 rounded-md border border-blue-400/40 bg-blue-400/15 px-2 text-[10px] font-semibold text-blue-200" : "inline-flex h-7 items-center gap-1 rounded-md border border-slate-700 px-2 text-[10px] font-semibold text-slate-300 hover:bg-white/5"} title="Click elements to edit them"><MousePointer2 className="h-3 w-3" />Visual Edit</button>}
+                      {([["desktop", Monitor], ["tablet", Tablet], ["mobile", Smartphone]] as const).map(([value, Icon]) => <button key={value} type="button" onClick={() => setDevice(value)} className={device === value ? "rounded-md bg-slate-700 p-1.5 text-white" : "rounded-md p-1.5 text-slate-400 hover:bg-white/5"} aria-label={`${value} viewport`}><Icon className="h-3.5 w-3.5" /></button>)}<button type="button" onClick={() => setDevice("custom")} className={device === "custom" ? "rounded-md bg-slate-700 px-2 py-1.5 text-[10px] text-white" : "rounded-md px-2 py-1.5 text-[10px] text-slate-400 hover:bg-white/5"} aria-label="Custom viewport width">Custom</button>
                       <button type="button" onClick={() => setPreviewExpanded((expanded) => !expanded)} className="rounded-md p-1.5 text-slate-400 hover:bg-white/10 hover:text-white" aria-label={previewExpanded ? "Exit fullscreen preview" : "Fullscreen preview"} title="Fullscreen preview">{previewExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}</button>
                     </div>
                   </div>
+                  {device === "custom" && (
+                    <div className="flex shrink-0 items-center gap-3 border-b border-white/[0.07] bg-[#0a111d] px-3 py-2">
+                      <span className="text-[10px] text-slate-400">Viewport width</span>
+                      <input type="range" min="320" max="1600" step="10" value={customViewportWidth} onChange={(event) => setCustomViewportWidth(Number(event.target.value))} className="min-w-0 flex-1 accent-blue-500" />
+                      <span className="w-16 text-right font-mono text-[10px] text-cyan-200">{customViewportWidth}px</span>
+                    </div>
+                  )}
                   {runtimeUrl && (
                     <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.07] bg-[#0a111d] px-3 py-2">
                       <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Preview URL</span>
@@ -3468,7 +3561,7 @@ export function CodeAgent() {
                       className="h-full min-h-0 max-w-full rounded-lg border border-slate-300/20 bg-white shadow-2xl"
                       style={{
                         width:
-                          device === "desktop" ? "100%" : device === "tablet" ? "768px" : "375px",
+                          device === "desktop" ? "100%" : device === "tablet" ? "768px" : device === "mobile" ? "375px" : customViewportWidth + "px",
                       }}
                     />
                     {selectedPreviewElement && (
@@ -3492,6 +3585,15 @@ export function CodeAgent() {
                             <option value="400">Regular</option><option value="600">Semibold</option><option value="700">Bold</option>
                           </select>
                         </label>
+                        <div className="mt-3 space-y-2 border-t border-slate-700/80 pt-3">
+                          {([["Padding", visualPaddingDraft, setVisualPaddingDraft, 64], ["Margin", visualMarginDraft, setVisualMarginDraft, 64], ["Radius", visualRadiusDraft, setVisualRadiusDraft, 48]] as const).map(([label, value, setter, max]) => (
+                            <label key={label} className="flex items-center gap-2 text-[10px] text-slate-300">
+                              <span className="w-14 shrink-0">{label}</span>
+                              <input type="range" min="0" max={max} value={value} onChange={(event) => setter(event.target.value)} className="min-w-0 flex-1 accent-blue-500" />
+                              <span className="w-8 text-right font-mono text-slate-500">{value}px</span>
+                            </label>
+                          ))}
+                        </div>
                         <div className="mt-3 flex items-center justify-between gap-2">
                           <button type="button" onClick={() => { const item = selectedPreviewElement; setPrompt("Edit this selected element in my project.\nSelector: " + item.selector + "\nTag: " + item.tag + "\nCurrent text: " + item.text + "\nCurrent HTML: " + item.outerHTML + "\nCurrent styles: " + JSON.stringify(item.styles) + "\nMake the requested changes only to this element and preserve the rest of the page."); setSelectedPreviewElement(null); switchPanel("chat"); }} className="rounded-lg border border-slate-700 px-2.5 py-2 text-[10px] font-medium text-slate-300 hover:bg-slate-700">Ask AI</button>
                           <button type="button" onClick={applyVisualElementEdits} className="rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-semibold text-white hover:bg-blue-500">Apply edits</button>
