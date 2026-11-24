@@ -4,6 +4,7 @@ import { generateGeminiContent } from "./gemini.server";
 
 type AgentInput = {
   prompt: string;
+  modelTier?: "fast" | "balanced" | "architect";
   files: Record<string, string>;
   history: { role: "user" | "assistant"; content: string }[];
   referenceImage?: {
@@ -196,10 +197,11 @@ function parseAgentFiles(text: string): {
 }
 
 export async function runAgent(
-  { prompt, files, history, referenceImage, referenceImages: suppliedReferenceImages }: AgentInput,
+  { prompt, files, history, referenceImage, referenceImages: suppliedReferenceImages, modelTier = "fast" }: AgentInput,
   apiKey?: string,
 ) {
   const cleanPrompt = prompt.trim();
+
   if (!cleanPrompt) throw new Error("Tell the agent what to build.");
   const visualReferences = suppliedReferenceImages?.length
     ? suppliedReferenceImages
@@ -350,6 +352,11 @@ export async function runAgent(
         },
         apiKey,
         rotatedProviders,
+        modelTier === "architect"
+          ? (process.env["KILO_ARCHITECT_MODEL"] || "anthropic/claude-sonnet-4")
+          : modelTier === "balanced"
+            ? (process.env["KILO_BALANCED_MODEL"] || "openai/gpt-4o")
+            : (process.env["KILO_FAST_MODEL"] || "kilo-auto/free"),
       );
 
       const candidate = response.candidates?.[0];
@@ -706,7 +713,7 @@ export async function runAgentChat(
 
 /** Kilo-only planning pass. It reads the saved project snapshot but never returns file mutations. */
 export async function runAgentPlan(
-  { prompt, files, history, referenceImage, referenceImages: suppliedReferenceImages }: AgentInput,
+  { prompt, files, history, referenceImage, referenceImages: suppliedReferenceImages, modelTier = "fast" }: AgentInput,
 ) {
   const visualReferences = suppliedReferenceImages?.length
     ? suppliedReferenceImages
@@ -749,7 +756,11 @@ export async function runAgentPlan(
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents,
     generationConfig: { maxOutputTokens: 3000 },
-  });
+  }, undefined, undefined, modelTier === "architect"
+    ? (process.env["KILO_ARCHITECT_MODEL"] || "anthropic/claude-sonnet-4")
+    : modelTier === "balanced"
+      ? (process.env["KILO_BALANCED_MODEL"] || "openai/gpt-4o")
+      : (process.env["KILO_FAST_MODEL"] || "kilo-auto/free"));
   const message = response.candidates?.[0]?.content?.parts
     ?.filter((part) => !part.thought)
     .map((part) => part.text ?? "")
