@@ -2750,8 +2750,8 @@ export function CodeAgent() {
         style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
       >
         {/* Project files remain accessible from the Code workspace; keep the canvas free of a wide explorer column. */}
-        {false && sidebarOpen && <button type="button" className="expert-agent-mobile-backdrop" onClick={() => setSidebarOpen(false)} aria-label="Close project explorer" />}
-        {false && sidebarOpen && (
+        {sidebarOpen && !sidebarOpen && <button type="button" className="expert-agent-mobile-backdrop" onClick={() => setSidebarOpen(false)} aria-label="Close project explorer" />}
+        {sidebarOpen && !sidebarOpen && (
           <aside className="expert-agent-sidebar expert-agent-sidebar-drawer flex min-h-0 flex-col overflow-hidden border-b border-white/[0.08] bg-[#0b1320] lg:border-b-0 lg:border-r">
             <div className="flex items-center justify-between px-4 pb-3 pt-4">
               <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
@@ -2823,7 +2823,7 @@ export function CodeAgent() {
             </div>
           </aside>
         )}
-        {false && sidebarOpen && <div role="separator" aria-label="Resize project sidebar" />}
+        {sidebarOpen && !sidebarOpen && <div role="separator" aria-label="Resize project sidebar" />}
 
         {/* Centre and assistant area */}
         <nav className="et-studio-activity-rail" aria-label="Studio tools">
