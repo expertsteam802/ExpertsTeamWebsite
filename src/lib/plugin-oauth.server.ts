@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
 export type PluginOAuthState = {
   provider: "github" | "supabase";
@@ -14,24 +14,46 @@ function stateSecret(): string {
   return value;
 }
 
+function stateEncryptionKey(): Buffer {
+  return createHash("sha256").update(stateSecret()).digest();
+}
+
 export function createPluginOAuthState(provider: PluginOAuthState["provider"], userId: string, codeVerifier?: string): string {
   const payload: PluginOAuthState = {
-    provider, userId, issuedAt: Date.now(), nonce: randomBytes(24).toString("base64url"),
+    provider,
+    userId,
+    issuedAt: Date.now(),
+    nonce: randomBytes(24).toString("base64url"),
     ...(codeVerifier ? { codeVerifier } : {}),
   };
-  const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  const signature = createHmac("sha256", stateSecret()).update(encoded).digest("base64url");
-  return encoded + "." + signature;
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", stateEncryptionKey(), iv);
+  const ciphertext = Buffer.concat([cipher.update(JSON.stringify(payload), "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return ["v1", iv.toString("base64url"), tag.toString("base64url"), ciphertext.toString("base64url")].join(".");
 }
 
 export function verifyPluginOAuthState(value: string, expectedProvider: PluginOAuthState["provider"]): PluginOAuthState {
-  const [encoded, signature] = value.split(".");
-  if (!encoded || !signature) throw new Error("OAuth state is invalid.");
-  const expected = createHmac("sha256", stateSecret()).update(encoded).digest();
-  const actual = Buffer.from(signature, "base64url");
-  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) throw new Error("OAuth state signature is invalid.");
-  const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")) as PluginOAuthState;
-  if (payload.provider !== expectedProvider || !payload.userId || !payload.nonce || Date.now() - payload.issuedAt > 10 * 60 * 1000 || payload.issuedAt > Date.now() + 30_000) {
+  const parts = value.split(".");
+  if (parts.length !== 4 || parts[0] !== "v1") throw new Error("OAuth state is invalid.");
+  const [, encodedIv, encodedTag, encodedCiphertext] = parts;
+  if (!encodedIv || !encodedTag || !encodedCiphertext) throw new Error("OAuth state is invalid.");
+
+  let payload: PluginOAuthState;
+  try {
+    const iv = Buffer.from(encodedIv, "base64url");
+    const tag = Buffer.from(encodedTag, "base64url");
+    const ciphertext = Buffer.from(encodedCiphertext, "base64url");
+    if (iv.length !== 12 || tag.length !== 16 || ciphertext.length === 0) throw new Error("Invalid encrypted state.");
+    const decipher = createDecipheriv("aes-256-gcm", stateEncryptionKey(), iv);
+    decipher.setAuthTag(tag);
+    const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+    payload = JSON.parse(plaintext.toString("utf8")) as PluginOAuthState;
+  } catch {
+    throw new Error("OAuth state is invalid or has been tampered with.");
+  }
+
+  if (payload.provider !== expectedProvider || !payload.userId || !payload.nonce || !Number.isFinite(payload.issuedAt) || Date.now() - payload.issuedAt > 10 * 60 * 1000 || payload.issuedAt > Date.now() + 30_000) {
     throw new Error("OAuth request expired or does not match this provider. Please connect again.");
   }
   return payload;
