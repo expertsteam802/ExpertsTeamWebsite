@@ -67,7 +67,7 @@ async function inflateRaw(compressed: Uint8Array, maxOutputBytes: number): Promi
       total += value.byteLength;
       if (total > maxOutputBytes) {
         await reader.cancel();
-        throw new Error("A ZIP source file expands beyond the 10 MB per-file import limit.");
+        throw new Error("A ZIP source file expands beyond the 25 MB per-file import limit.");
       }
       chunks.push(value);
     }
@@ -85,12 +85,12 @@ async function inflateRaw(compressed: Uint8Array, maxOutputBytes: number): Promi
 
 export async function extractZipTextFiles(blob: Blob): Promise<ZipTextImportResult> {
   const maxArchiveBytes = 100 * 1024 * 1024;
-  const maxFileBytes = 10 * 1024 * 1024;
-  const maxTotalTextBytes = 25 * 1024 * 1024;
+  const maxFileBytes = 25 * 1024 * 1024;
+  const maxTotalTextBytes = 100 * 1024 * 1024;
   const maxFiles = 2_000;
 
   if (blob.size > maxArchiveBytes) {
-    throw new Error("ZIP archives must be 100 MB or smaller to import into ExpertsAI Agent.");
+    throw new Error("ZIP archives must be 100 MB or smaller to import into ExpertsTeam Studio.");
   }
   const bytes = new Uint8Array(await blob.arrayBuffer());
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
