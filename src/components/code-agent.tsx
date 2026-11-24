@@ -2155,7 +2155,7 @@ export function CodeAgent() {
   }
 
   function isAgentBuildRequest(value: string) {
-    return /\\b(build|create|make|implement|add|remove|delete|fix|change|update|refactor|debug|design|generate|write code|develop|integrate|connect|deploy|publish|test|run|install|upgrade|migrate|optimi[sz]e|redesign|rebuild)\\b/i.test(value);
+    return /\b(build|create|make|implement|add|remove|delete|fix|change|update|refactor|debug|design|generate|write code|develop|integrate|connect|deploy|publish|test|run|install|upgrade|migrate|optimi[sz]e|redesign|rebuild)\b/i.test(value);
   }
 
   async function sendPrompt(modeOverride: "build" | "plan" = agentMode, promptOverride?: string) {
