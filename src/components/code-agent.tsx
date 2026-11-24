@@ -81,6 +81,7 @@ import {
   importGitHubProject,
   publishAgentProject,
   runCodingAgent,
+  runAgentTerminalCommand,
   runAgentSelfHeal,
   startAgentTerminal,
   stopAgentTerminal,
@@ -385,6 +386,7 @@ export function CodeAgent() {
     .slice(0, 39) || "user";
   const queryClient = useQueryClient();
   const runCodeAgent = useServerFn(runCodingAgent);
+  const runTerminalCommand = useServerFn(runAgentTerminalCommand);
   const repairRuntimeError = useServerFn(runAgentSelfHeal);
   const beginGithubOAuth = useServerFn(beginGitHubPluginOAuth);
   const push = useServerFn(pushProjectToGithub);
@@ -548,6 +550,11 @@ export function CodeAgent() {
   const [renameFileFrom, setRenameFileFrom] = useState<string | null>(null);
   const [renameFileName, setRenameFileName] = useState("");
   const [extensionsOpen, setExtensionsOpen] = useState(false);
+  const [packagesOpen, setPackagesOpen] = useState(false);
+  const [packageSearchQuery, setPackageSearchQuery] = useState("");
+  const [packageSearchResults, setPackageSearchResults] = useState<{ name: string; version: string; description: string }[]>([]);
+  const [packageSearchBusy, setPackageSearchBusy] = useState(false);
+  const [packageInstallBusy, setPackageInstallBusy] = useState<string | null>(null);
   const [completionsOpen, setCompletionsOpen] = useState(false);
   const [enabledEditorPacks, setEnabledEditorPacks] = useState<string[]>(["react", "html", "css"]);
   const [projectNameEditing, setProjectNameEditing] = useState(false);
@@ -1697,6 +1704,72 @@ export function CodeAgent() {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     toast.success("Project files exported");
   }
+
+  async function searchNpmPackages() {
+    const query = packageSearchQuery.trim();
+    if (!query) return;
+    setPackageSearchBusy(true);
+    try {
+      const response = await fetch("https://registry.npmjs.org/-/v1/search?text=" + encodeURIComponent(query) + "&size=8", {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!response.ok) throw new Error("npm registry search failed (HTTP " + response.status + ").");
+      const payload = await response.json() as { objects?: { package?: { name?: string; version?: string; description?: string } }[] };
+      setPackageSearchResults((payload.objects ?? []).flatMap((item) => {
+        const entry = item.package;
+        if (!entry?.name || !entry.version) return [];
+        return [{ name: entry.name, version: entry.version, description: (entry.description ?? "").slice(0, 220) }];
+      }));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not search npm packages.");
+    } finally {
+      setPackageSearchBusy(false);
+    }
+  }
+
+  async function changeNpmPackage(packageName: string, version: string, action: "install" | "remove" = "install") {
+    if (!projectId || !terminalConnection?.sandboxName) {
+      toast.info("Connect the project's Linux terminal once before managing npm packages.");
+      return;
+    }
+    if (!/^(?:@[a-z0-9._-]+\/)?[a-z0-9][a-z0-9._-]*$/i.test(packageName) || (action === "install" && !/^[0-9][0-9A-Za-z.+-]*$/.test(version))) {
+      toast.error("The package name or version is invalid.");
+      return;
+    }
+    const operationKey = action + ":" + packageName;
+    setPackageInstallBusy(operationKey);
+    try {
+      await persist({ files });
+      const command = action === "install"
+        ? "npm install --save " + packageName + "@" + version
+        : "npm uninstall " + packageName;
+      const result = await runTerminalCommand({
+        data: { projectId, sandboxName: terminalConnection.sandboxName, command },
+      });
+      if (result.exitCode !== 0) throw new Error(result.stdout || "npm returned a non-zero exit code.");
+      const synced = await syncTerminalFiles({ data: { projectId, sandboxName: terminalConnection.sandboxName } });
+      await persist({ files: synced.files });
+      setFiles(synced.files);
+      setDirty(false);
+      setPreviewKey((key) => key + 1);
+      await queryClient.invalidateQueries({ queryKey: ["agent-projects", user?.id] });
+      toast.success(action === "install" ? "Installed " + packageName + "@" + version : "Removed " + packageName + ".");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The npm operation failed.");
+    } finally {
+      setPackageInstallBusy(null);
+    }
+  }
+
+  const installedNpmPackages = useMemo(() => {
+    try {
+      const manifest = JSON.parse(files["package.json"] ?? "{}") as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+      return Object.entries({ ...(manifest.dependencies ?? {}), ...(manifest.devDependencies ?? {}) }).sort(([left], [right]) => left.localeCompare(right));
+    } catch {
+      return [];
+    }
+  }, [files]);
 
   async function downloadProjectZip() {
     try {
@@ -3659,6 +3732,9 @@ export function CodeAgent() {
                       >
                         Autocomplete
                       </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setPackagesOpen(true)} className="h-7 px-2 text-[10px] text-slate-400">
+                        <Plus className="mr-1 h-3 w-3" /> Packages
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -4502,6 +4578,40 @@ export function CodeAgent() {
       </Dialog>
 
       {/* New file dialog */}
+      <Dialog open={packagesOpen} onOpenChange={setPackagesOpen}>
+        <DialogContent className="max-w-2xl border-slate-700 bg-[#0b1320] text-white">
+          <DialogHeader><DialogTitle>npm Package Manager</DialogTitle></DialogHeader>
+          <div className="flex gap-2">
+            <Input value={packageSearchQuery} onChange={(event) => setPackageSearchQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void searchNpmPackages(); }} placeholder="Search npm packages…" className="border-slate-700 bg-[#080e19] text-white" />
+            <Button onClick={() => void searchNpmPackages()} disabled={!packageSearchQuery.trim() || packageSearchBusy}>{packageSearchBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search</Button>
+          </div>
+          <div className="max-h-64 space-y-2 overflow-auto">
+            {packageSearchResults.map((item) => (
+              <div key={item.name} className="flex items-center gap-3 rounded-lg border border-slate-800 bg-[#080e19] p-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-mono text-xs text-cyan-200">{item.name} <span className="text-slate-500">v{item.version}</span></p>
+                  <p className="mt-1 line-clamp-2 text-[10px] text-slate-400">{item.description}</p>
+                </div>
+                <Button size="sm" onClick={() => void changeNpmPackage(item.name, item.version)} disabled={packageInstallBusy !== null} className="h-7 px-2 text-[10px]">{packageInstallBusy === "install:" + item.name ? <Loader2 className="h-3 w-3 animate-spin" /> : "Install"}</Button>
+              </div>
+            ))}
+            {!packageSearchResults.length && <p className="py-5 text-center text-xs text-slate-500">Search the live npm registry to find packages and versions.</p>}
+          </div>
+          <div className="border-t border-slate-800 pt-3">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Installed in package.json · {installedNpmPackages.length}</p>
+            <div className="max-h-40 space-y-1 overflow-auto">
+              {installedNpmPackages.map(([packageName, version]) => (
+                <div key={packageName} className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-white/[0.03]">
+                  <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-slate-300">{packageName} <span className="text-slate-500">{version}</span></span>
+                  <button type="button" onClick={() => void changeNpmPackage(packageName, version, "remove")} disabled={packageInstallBusy !== null} className="rounded px-2 py-1 text-[9px] text-rose-300 hover:bg-rose-400/10 disabled:opacity-40">Remove</button>
+                </div>
+              ))}
+              {!installedNpmPackages.length && <p className="text-[10px] text-slate-500">No package dependencies found.</p>}
+            </div>
+          </div>
+          <p className="text-[9px] leading-4 text-slate-500">Package installs run in your connected Linux workspace and sync the updated manifest back into this project.</p>
+        </DialogContent>
+      </Dialog>
       <Dialog open={inlineEditOpen} onOpenChange={setInlineEditOpen}>
         <DialogContent className="max-w-2xl border-slate-700 bg-[#0b1320] text-white">
           <DialogHeader><DialogTitle>AI edit selected code</DialogTitle></DialogHeader>
