@@ -603,15 +603,15 @@ export async function runAgentPlan(
     ? suppliedReferenceImages
     : referenceImage ? [referenceImage] : [];
   const selectedFiles = Object.entries(files)
-    .filter(([name]) => !/node_modules|(^|\\/)dist\\//i.test(name))
+    .filter(([name]) => !/node_modules|(^|\/)dist\//i.test(name))
     .sort((left, right) => {
-      const priority = (name: string) => /^(package\\.json|index\\.html|vite\\.config|src\\/main|src\\/App|src\\/index\\.css)/i.test(name) ? 0 : 1;
+      const priority = (name: string) => /^(package\.json|index\.html|vite\.config|src\/main|src\/App|src\/index\.css)/i.test(name) ? 0 : 1;
       return priority(left[0]) - priority(right[0]);
     })
     .slice(0, 28);
   const projectContext = selectedFiles.map(([name, content]) =>
-    "--- " + name + " ---\\n" + content.slice(0, 4500)
-  ).join("\\n\\n").slice(0, 28000);
+    "--- " + name + " ---\n" + content.slice(0, 4500)
+  ).join("\n\n").slice(0, 28000);
   const systemPrompt = [
     "You are the planning mode of the ExpertsTeam coding agent.",
     "Use the Kilo Gateway only. You do not have or need a terminal, CLI, remote sandbox, or external project workspace.",
@@ -620,7 +620,7 @@ export async function runAgentPlan(
     "Be specific: affected files, components/routes, data flow, dependencies, risks, ordered implementation steps, and verification checks.",
     "Preserve existing architecture and unrelated functionality. If the project context is incomplete, state the assumptions.",
     "Keep the plan concise and actionable."
-  ].join("\\n");
+  ].join("\n");
   const contents = [
     ...history.slice(-8).map((message) => ({
       role: message.role === "assistant" ? ("model" as const) : ("user" as const),
@@ -629,7 +629,7 @@ export async function runAgentPlan(
     {
       role: "user" as const,
       parts: [
-        { text: "LATEST REQUEST:\\n" + prompt + "\\n\\nCURRENT PROJECT FILES:\\n" + (projectContext || "(empty project)") },
+        { text: "LATEST REQUEST:\n" + prompt + "\n\nCURRENT PROJECT FILES:\n" + (projectContext || "(empty project)") },
         ...visualReferences.map((image) => ({
           inlineData: { mimeType: image.mimeType, data: image.data },
         })),
