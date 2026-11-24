@@ -605,7 +605,7 @@ export async function runAgentSelfHeal(input: {
       const parts = name.split("/");
       return isSafeProjectPath(name) && !parts.some((part) =>
         part === ".env" || part.startsWith(".env.") ||
-        /^(?:secrets?|credentials?)(?:\\.|$)/i.test(part) ||
+        part.toLowerCase().startsWith("secret") || part.toLowerCase().startsWith("credential") ||
         ["node_modules", "dist", ".git", ".experts-terminal"].includes(part)
       );
     })
