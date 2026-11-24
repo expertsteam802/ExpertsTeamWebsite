@@ -380,6 +380,7 @@ export function CodeAgent() {
   const [agentPanelMode, setAgentPanelMode] = useState<"chat" | "terminal" | "chats">("chat");
   const [prompt, setPrompt] = useState("");
   const [agentMode, setAgentMode] = useState<"build" | "plan">("build");
+  const [tutorMode, setTutorMode] = useState(false);
   const [planDraft, setPlanDraft] = useState<string | null>(null);
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
   const referenceInputRef = useRef<HTMLInputElement>(null);
@@ -2165,6 +2166,9 @@ export function CodeAgent() {
     if (CODING_AGENT_UNDER_DEVELOPMENT) return;
     const text = (promptOverride ?? prompt).trim();
     if (!text || busy) return;
+    const agentPrompt = tutorMode
+      ? text + "\n\nTutor Mode is enabled: after implementing this request, include a concise beginner-friendly explanation of the important files and concepts changed, one practical next exercise, and a relevant link to https://expertsteam.giize.com/learn. Do not claim a lesson was completed."
+      : text;
 
     // Both Plan and Build use the server-side Kilo Gateway; neither needs a CLI sandbox.
     const planPrefix = "Plan ready for your review. No project files were changed.\n\n";
@@ -2185,7 +2189,7 @@ export function CodeAgent() {
         const result = await runCodeAgent({
           data: {
             mode: "chat",
-            prompt: text,
+            prompt: agentPrompt,
             files,
             history: messages.slice(-10).map((message) => ({ ...message, content: message.content.slice(-3000) })),
           },
@@ -2205,7 +2209,7 @@ export function CodeAgent() {
         const result = await runCodeAgent({
           data: {
             mode: "plan",
-            prompt: text,
+            prompt: agentPrompt,
             files,
             history: messages.slice(-8).map((message) => ({ ...message, content: message.content.slice(-3000) })),
             referenceImages,
@@ -2226,7 +2230,7 @@ export function CodeAgent() {
       // Its response is a file patch: omitted files stay untouched, null deletes.
       const result = await runCodeAgent({
         data: {
-          prompt: text,
+          prompt: agentPrompt,
           files,
           history: messages.slice(-8).map((message) => ({ ...message, content: message.content.slice(-3000) })),
           referenceImages,
@@ -3301,6 +3305,7 @@ export function CodeAgent() {
                         <div className="flex items-center gap-1">
                           <AgentPromptLibrary currentPrompt={prompt} onUse={setPrompt} />
                           <button type="button" onClick={() => setAgentMode((mode) => mode === "plan" ? "build" : "plan")} disabled={busy} className={agentMode === "plan" ? "rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-2.5 py-2 text-[10px] font-semibold text-emerald-200" : "rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}>{agentMode === "plan" ? "Plan mode on" : "Plan first"}</button>
+                          <button type="button" onClick={() => setTutorMode((enabled) => !enabled)} disabled={busy} aria-pressed={tutorMode} className={tutorMode ? "rounded-lg border border-blue-300/30 bg-blue-300/10 px-2.5 py-2 text-[10px] font-semibold text-blue-200" : "rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}>Tutor {tutorMode ? "on" : "off"}</button>
                           <input ref={referenceInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={(event) => { void attachReferenceImages(event.target.files); event.currentTarget.value = ""; }} />
                           <button type="button" onClick={() => referenceInputRef.current?.click()} disabled={busy} className="rounded-lg p-2 text-slate-400 hover:bg-white/5 hover:text-cyan-200 disabled:opacity-40" title="Attach visual references"><ImagePlus className="h-4 w-4" /></button>
                           <span className="text-[9px] text-slate-600">Enter to send · Shift+Enter for new line</span>
