@@ -57,7 +57,6 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { toast } from "sonner";
 
-import { ChrisAiChat } from "@/components/chris-ai";
 import { AgentPromptLibrary } from "@/components/agent-prompt-library";
 import { ProjectEnvironmentPanel } from "@/components/project-environment-panel";
 import { Button } from "@/components/ui/button";
@@ -3230,9 +3229,7 @@ export function CodeAgent() {
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1 border-b border-white/[0.07] bg-[#091321] px-3 py-2">
-                <button type="button" onClick={() => setAgentPanelMode("chat")} className={`rounded-md px-3 py-1.5 text-[10px] font-semibold transition ${agentPanelMode === "chat" ? "bg-cyan-400/15 text-cyan-100" : "text-slate-500 hover:bg-white/5 hover:text-slate-200"}`}>Agent</button>
-                <button type="button" onClick={() => setAgentPanelMode("chats")} className={`rounded-md px-3 py-1.5 text-[10px] font-semibold transition ${agentPanelMode === "chats" ? "bg-cyan-400/15 text-cyan-100" : "text-slate-500 hover:bg-white/5 hover:text-slate-200"}`}>AI Chats</button>
-                <button type="button" onClick={() => { setAgentPanelMode("terminal"); if (!terminalReady) void openTerminal(); }} className={`rounded-md px-3 py-1.5 text-[10px] font-semibold transition ${agentPanelMode === "terminal" ? "bg-cyan-400/15 text-cyan-100" : "text-slate-500 hover:bg-white/5 hover:text-slate-200"}`}>Terminal</button>
+                <span className="rounded-md bg-cyan-400/15 px-3 py-1.5 text-[10px] font-semibold text-cyan-100">Agent</span>
               </div>
               <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/[0.07] bg-[#0a1422] px-3 py-2">
                 <div className="flex min-w-0 items-center gap-2 text-[10px] text-slate-400">
@@ -3244,11 +3241,7 @@ export function CodeAgent() {
                   {CLOUD_SANDBOX_ENABLED ? (terminalReady ? "Connected" : "Not connected") : "Temporarily unavailable"}
                 </span>
               </div>
-              {agentPanelMode === "chats" ? (
-                <div className="min-h-0 flex-1 overflow-hidden">
-                  <ChrisAiChat compact />
-                </div>
-              ) : agentPanelMode === "chat" ? (
+              {agentPanelMode === "chat" ? (
                 <>
                   <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-live="polite">
                     {messages.length === 0 ? (
