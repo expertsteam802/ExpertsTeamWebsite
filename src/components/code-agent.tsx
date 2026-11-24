@@ -3009,63 +3009,282 @@ export function CodeAgent() {
                 </button>
               )}
               {panel === "code" && (
-                <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-[#080e19]">
-                  <aside className="expert-agent-code-explorer flex w-[220px] min-w-[220px] shrink-0 flex-col overflow-hidden border-r border-[#1E293B] bg-[#0b1320]">
-                    <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] px-3">
-                      <span className="flex items-center gap-2 text-[11px] font-semibold text-slate-200"><Folder className="h-3.5 w-3.5 text-amber-300" />Files</span>
-                      <button type="button" onClick={() => setNewFileOpen(true)} className="rounded-md p-1.5 text-slate-400 hover:bg-white/10 hover:text-cyan-200" aria-label="New file" title="New file"><FilePlus2 className="h-3.5 w-3.5" /></button>
+                <>
+                  <button
+                    onClick={() => {
+                      void copyTextToSystemClipboard(files[activeFile] ?? "")
+                        .then(() => toast.success("Active file copied"))
+                        .catch((error) => toast.error(error instanceof Error ? error.message : "Could not copy file."));
+                    }}
+                    className="rounded-lg p-2 text-slate-500 hover:bg-white/5 hover:text-white"
+                    aria-label="Copy active file to computer clipboard"
+                    title="Copy active file"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={downloadActiveFile}
+                    className="rounded-lg p-2 text-slate-500 hover:bg-white/5 hover:text-white"
+                    aria-label="Download active file to computer"
+                    title="Download active file"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </button>
+                </>
+              )}
+
+              <button
+                onClick={() => { if (window.matchMedia("(max-width: 767px)").matches) setAssistantOpen(true); else setAssistantOpen((value) => !value); }}
+                className={`ml-1 rounded-lg p-2 ${
+                  assistantOpen ? "bg-cyan-400/10 text-cyan-200" : "text-slate-500 hover:bg-white/5"
+                }`}
+                aria-label="Toggle ExpertAI builder"
+              >
+                <Bot className="h-4 w-4" /><span className="hidden text-[10px] font-semibold lg:inline">Agent</span>
+              </button>
+              {panel !== "preview" && (
+                <button
+                  type="button"
+                  onClick={() => setPanelExpanded((value) => !value)}
+                  className="ml-1 rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-cyan-200"
+                  aria-label={panelExpanded ? "Restore workspace panel" : "Expand workspace panel"}
+                  title={panelExpanded ? "Restore panel" : "Expand panel vertically and horizontally"}
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Work area */}
+          <div
+            className={`grid min-h-0 flex-1 grid-cols-1 overflow-hidden ${assistantOpen ? "xl:grid-cols-[minmax(0,1fr)_5px_var(--assistant-width)]" : "xl:grid-cols-1"}`}
+            style={{ "--assistant-width": `${assistantWidth}px` } as CSSProperties}
+          >
+            <section
+              style={{ animation: panel === "terminal" ? (panelMotionPhase ? "expertTerminalRevealB 1050ms cubic-bezier(.16,1,.3,1) both" : "expertTerminalRevealA 1050ms cubic-bezier(.16,1,.3,1) both") : (panelMotionPhase ? "expertStudioTabB 420ms cubic-bezier(.2,.8,.2,1) both" : "expertStudioTabA 420ms cubic-bezier(.2,.8,.2,1) both") }}
+              className={
+                previewExpanded && panel === "preview"
+                  ? "expert-agent-canvas fixed inset-x-0 top-0 z-[100] flex h-[100dvh] min-h-0 min-w-0 flex-col overflow-hidden bg-[#080e19] shadow-2xl"
+                  : panelExpanded && panel !== "preview"
+                    ? "expert-agent-canvas fixed inset-0 z-[110] flex h-[100dvh] min-h-0 min-w-0 flex-col overflow-hidden bg-[#080e19] shadow-2xl"
+                    : "expert-agent-canvas relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#080e19]"
+              }
+            >
+              {panel === "preview" && (
+                <>
+                  <div className="expert-agent-preview-subbar flex h-9 shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-slate-900/60 px-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${runtimeUrl ? "bg-emerald-400" : "bg-amber-400"}`} />
+                      <span className="truncate rounded-md border border-slate-700/70 bg-[#0B0F17] px-2 py-1 font-mono text-[10px] text-slate-300">{runtimeUrl || publishedUrl || `expertsteam.giize.com/apps/${activeProjectSlug || "your-project"}`}</span>
+                      <button type="button" onClick={() => void copyTextToSystemClipboard(runtimeUrl || publishedUrl || `https://expertsteam.giize.com/apps/${activeProjectSlug || "your-project"}`).then(() => toast.success("App URL copied")).catch(() => toast.error("Could not copy URL"))} className="rounded p-1.5 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Copy app URL"><Copy className="h-3.5 w-3.5" /></button>
                     </div>
-                    <div className="p-2">
-                      <input type="search" value={fileFilter} onChange={(event) => setFileFilter(event.target.value)} placeholder="Filter files…" aria-label="Filter project files" className="h-8 w-full rounded-md border border-white/10 bg-[#080e19] px-2 text-[10px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-cyan-400/40" />
-                    </div>
-                    <div className="expert-agent-file-tree min-h-0 flex-1 overflow-y-auto px-2 pb-3">
-                      {visibleProjectFileTree.length ? renderProjectTree(visibleProjectFileTree) : <p className="px-2 py-3 text-[10px] text-slate-500">{fileFilter.trim() ? "No files match your search." : "No project files yet."}</p>}
-                    </div>
-                    <button type="button" onClick={() => setNewFileOpen(true)} className="m-2 inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/[0.03] text-[10px] font-medium text-slate-300 hover:border-cyan-400/30 hover:bg-cyan-400/[0.06] hover:text-cyan-100"><Plus className="h-3 w-3" />New File</button>
-                  </aside>
-                  <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                    <div className="expert-agent-editor-tabs flex h-10 shrink-0 items-end gap-1 overflow-x-auto border-b border-white/[0.07] bg-[#0d1520] px-2" role="tablist" aria-label="Open project files">
-                      {openFileTabs.map((filePath) => (
-                        <div key={filePath} className={`group flex h-8 max-w-56 shrink-0 items-center gap-1 rounded-t-md border border-b-0 px-2 ${activeFile === filePath ? "border-white/10 bg-[#182538] text-slate-100" : "border-transparent text-slate-500 hover:bg-white/[0.04] hover:text-slate-200"}`}>
-                          <button type="button" role="tab" aria-selected={activeFile === filePath} onClick={() => setActiveFile(filePath)} className="flex min-w-0 items-center gap-2 text-[11px]">
-                            <File className={`h-3 w-3 shrink-0 ${fileIcon(filePath)}`} />
-                            <span className="truncate">{filePath.split("/").at(-1)}</span>
-                          </button>
-                          <button type="button" onClick={() => closeEditorTab(filePath)} disabled={openFileTabs.length <= 1} className="rounded p-0.5 text-slate-500 opacity-100 transition hover:bg-white/10 hover:text-white sm:opacity-0 sm:group-hover:opacity-100 disabled:pointer-events-none" aria-label={`Close ${filePath}`}>
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-[#080e19]">
-                      {completionsOpen && (
-                        <div className="absolute right-3 top-3 z-20 w-64 overflow-hidden rounded-lg border border-slate-700 bg-[#111c2c] shadow-2xl">
-                          <div className="border-b border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Built-in completions · Ctrl+Space</div>
-                          {availableEditorSnippets.map((snippet) => (
-                            <button key={snippet.label} type="button" onClick={() => insertEditorSnippet(snippet.value)} className="block w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-cyan-400/10">
-                              {snippet.label}<span className="ml-2 text-[10px] text-slate-500">{snippet.pack}</span>
-                            </button>
-                          ))}
-                          {!availableEditorSnippets.length && <p className="px-3 py-3 text-xs text-slate-500">Enable a matching snippet pack in Extensions.</p>}
-                        </div>
-                      )}
-                      <div className="min-h-0 min-w-0 flex-1 overflow-auto text-sm">
-                        <CodeMirror
-                          value={files[activeFile] ?? ""}
-                          height="100%"
-                          theme={oneDark}
-                          extensions={editorExtensions}
-                          onCreateEditor={(view) => { editorRef.current = view; }}
-                          onChange={(value) => updateFile(value)}
-                          editable={Boolean(activeFile)}
-                          basicSetup={{ lineNumbers: true, foldGutter: true, highlightActiveLine: true, highlightActiveLineGutter: true, bracketMatching: true, autocompletion: true, closeBrackets: true, indentOnInput: true, tabSize: 2 }}
-                          className="h-full min-h-full text-[13px]"
-                          placeholder="Select a file to start editing…"
-                        />
-                      </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {(!runtimeUrl || remoteVisualSelectSupported) && <button type="button" onClick={() => { setSelectedPreviewElement(null); setVisualSelectMode((enabled) => !enabled); }} className={visualSelectMode ? "inline-flex h-7 items-center gap-1 rounded-md border border-blue-400/40 bg-blue-400/15 px-2 text-[10px] font-semibold text-blue-200" : "inline-flex h-7 items-center gap-1 rounded-md border border-slate-700 px-2 text-[10px] font-semibold text-slate-300 hover:bg-white/5"} title="Click elements to edit them"><MousePointer2 className="h-3 w-3" />Visual Edit</button>}
+                      {([["desktop", Monitor], ["tablet", Tablet], ["mobile", Smartphone]] as const).map(([value, Icon]) => <button key={value} type="button" onClick={() => setDevice(value)} className={device === value ? "rounded-md bg-slate-700 p-1.5 text-white" : "rounded-md p-1.5 text-slate-400 hover:bg-white/5"} aria-label={`${value} viewport`}><Icon className="h-3.5 w-3.5" /></button>)}
+                      <button type="button" onClick={() => setPreviewExpanded((expanded) => !expanded)} className="rounded-md p-1.5 text-slate-400 hover:bg-white/10 hover:text-white" aria-label={previewExpanded ? "Exit fullscreen preview" : "Fullscreen preview"} title="Fullscreen preview">{previewExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}</button>
                     </div>
                   </div>
-                </div>
+                  {runtimeUrl && (
+                    <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.07] bg-[#0a111d] px-3 py-2">
+                      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Preview URL</span>
+                      <input
+                        aria-label="Preview address"
+                        value={previewAddress || runtimeUrl}
+                        onChange={(event) => setPreviewAddress(event.target.value)}
+                        onKeyDown={(event) => { if (event.key === "Enter") navigatePreview(); }}
+                        className="h-8 min-w-0 flex-1 rounded-md border border-white/10 bg-black/30 px-2 text-xs text-cyan-100 outline-none"
+                      />
+                      <Button size="sm" variant="ghost" className="h-8 shrink-0 px-2 text-slate-300" onClick={navigatePreview}>Go</Button>
+                      <Button size="sm" variant="ghost" className="h-8 shrink-0 px-2 text-slate-300" onClick={() => void navigator.clipboard.writeText(previewAddress || runtimeUrl).then(() => toast.success("Preview URL copied")).catch(() => toast.error("Could not copy the preview URL"))}>
+                        <Copy className="mr-1 h-3.5 w-3.5" /> Copy
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-8 shrink-0 px-2 text-slate-300" onClick={() => window.open(previewAddress || runtimeUrl, "_blank", "noopener,noreferrer")}>
+                        <ExternalLink className="mr-1 h-3.5 w-3.5" /> Open
+                      </Button>
+                    </div>
+                  )}
+                  <div className="relative flex min-h-0 flex-1 items-stretch justify-center overflow-hidden bg-[#111a29] p-2 sm:p-3">
+                    <iframe
+                      ref={iframeRef}
+                      key={previewKey}
+                      title="ExpertsTeam project preview"
+                      onLoad={() => { if (!runtimeUrl || remoteVisualSelectSupported) iframeRef.current?.contentWindow?.postMessage({ __agentVisualSelect: true, enabled: visualSelectMode }, "*"); }}
+                      src={runtimeUrl ? previewAddress || runtimeUrl : undefined}
+                      srcDoc={runtimeUrl ? undefined : srcDoc}
+                      sandbox={
+                        runtimeUrl
+                          ? "allow-scripts allow-forms allow-modals allow-popups allow-same-origin allow-downloads"
+                          : "allow-scripts allow-forms allow-modals allow-popups"
+                      }
+                      className="h-full min-h-0 max-w-full rounded-lg border border-slate-300/20 bg-white shadow-2xl"
+                      style={{
+                        width:
+                          device === "desktop" ? "100%" : device === "tablet" ? "768px" : "375px",
+                      }}
+                    />
+                    {selectedPreviewElement && (
+                      <div className="et-visual-property-popover" role="dialog" aria-label="Visual element properties">
+                        <div className="flex items-center justify-between gap-3 border-b border-slate-700/80 pb-2">
+                          <div className="min-w-0"><p className="text-[11px] font-semibold text-slate-100">Edit {selectedPreviewElement.tag}</p><p className="truncate font-mono text-[9px] text-slate-400">{selectedPreviewElement.selector}</p></div>
+                          <button type="button" onClick={() => setSelectedPreviewElement(null)} className="rounded-md p-1 text-slate-400 hover:bg-slate-700 hover:text-white" aria-label="Close visual editor"><X className="h-3.5 w-3.5" /></button>
+                        </div>
+                        <label className="block pt-2 text-[10px] font-medium text-slate-300">Text content</label>
+                        <textarea value={visualTextDraft} onChange={(event) => setVisualTextDraft(event.target.value)} rows={2} className="mt-1 w-full resize-y rounded-lg border border-slate-700 bg-[#0B0F17] px-2.5 py-2 text-[11px] text-slate-100 outline-none focus:border-blue-500" />
+                        <div className="mt-2 grid grid-cols-2 gap-3">
+                          <label className="block text-[10px] font-medium text-slate-300">Text color
+                            <div className="mt-1 flex h-9 items-center gap-2 rounded-lg border border-slate-700 bg-[#0B0F17] px-2"><input aria-label="Text color" type="color" value={visualColorDraft} onChange={(event) => setVisualColorDraft(event.target.value)} className="h-6 w-7 cursor-pointer border-0 bg-transparent p-0" /><span className="font-mono text-[10px] text-slate-400">{visualColorDraft}</span></div>
+                          </label>
+                          <label className="block text-[10px] font-medium text-slate-300">Font size
+                            <div className="mt-1 flex h-9 items-center rounded-lg border border-slate-700 bg-[#0B0F17] px-2"><input aria-label="Font size in pixels" type="number" min="8" max="96" value={visualFontSizeDraft} onChange={(event) => setVisualFontSizeDraft(event.target.value)} className="w-full bg-transparent text-[11px] text-slate-100 outline-none" /><span className="text-[10px] text-slate-500">px</span></div>
+                          </label>
+                        </div>
+                        <label className="mt-2 block text-[10px] font-medium text-slate-300">Style
+                          <select value={visualWeightDraft} onChange={(event) => setVisualWeightDraft(event.target.value)} className="mt-1 h-9 w-full rounded-lg border border-slate-700 bg-[#0B0F17] px-2 text-[11px] text-slate-100 outline-none focus:border-blue-500">
+                            <option value="400">Regular</option><option value="600">Semibold</option><option value="700">Bold</option>
+                          </select>
+                        </label>
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <button type="button" onClick={() => { const item = selectedPreviewElement; setPrompt("Edit this selected element in my project.\nSelector: " + item.selector + "\nTag: " + item.tag + "\nCurrent text: " + item.text + "\nCurrent HTML: " + item.outerHTML + "\nCurrent styles: " + JSON.stringify(item.styles) + "\nMake the requested changes only to this element and preserve the rest of the page."); setSelectedPreviewElement(null); switchPanel("chat"); }} className="rounded-lg border border-slate-700 px-2.5 py-2 text-[10px] font-medium text-slate-300 hover:bg-slate-700">Ask AI</button>
+                          <button type="button" onClick={applyVisualElementEdits} className="rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-semibold text-white hover:bg-blue-500">Apply edits</button>
+                        </div>
+                        <p className="mt-2 text-[9px] leading-4 text-slate-500">Direct source edits; no AI credits. Ambiguous text changes are blocked.</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {panel === "code" && (
+                <>
+                  <div className="flex h-10 items-center justify-between gap-2 border-b border-white/[0.07] px-4">
+                    <span className="flex min-w-0 items-center gap-2 truncate text-xs text-slate-300">
+                      <File className={`h-3.5 w-3.5 ${fileIcon(activeFile)}`} />
+                      {activeFile || "Select a file"}
+                    </span>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setCompletionsOpen((value) => !value)}
+                        className="h-7 px-2 text-[10px] text-slate-400"
+                      >
+                        Autocomplete
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setExtensionsOpen(true)}
+                        className="h-7 px-2 text-[10px] text-slate-400"
+                      >
+                        <Settings2 className="mr-1 h-3 w-3" /> Extensions
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+                    <aside className="expert-agent-code-explorer flex w-[220px] min-w-[220px] shrink-0 flex-col overflow-hidden border-r border-[#1E293B] bg-[#0b1320]">
+                      <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] px-3">
+                        <span className="flex items-center gap-2 text-[11px] font-semibold text-slate-200">
+                          <Folder className="h-3.5 w-3.5 text-amber-300" />
+                          Files
+                        </span>
+                        <button type="button" onClick={() => setNewFileOpen(true)} className="rounded-md p-1.5 text-slate-400 hover:bg-white/10 hover:text-cyan-200" aria-label="New file" title="New file">
+                          <FilePlus2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <div className="p-2">
+                        <input type="search" value={fileFilter} onChange={(event) => setFileFilter(event.target.value)} placeholder="Filter files…" aria-label="Filter project files" className="h-8 w-full rounded-md border border-white/10 bg-[#080e19] px-2 text-[10px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-cyan-400/40" />
+                      </div>
+                      <div className="expert-agent-file-tree min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+                        {visibleProjectFileTree.length ? (
+                          renderProjectTree(visibleProjectFileTree)
+                        ) : (
+                          <p className="px-2 py-3 text-[10px] text-slate-500">
+                            {fileFilter.trim() ? "No files match your search." : "No project files yet."}
+                          </p>
+                        )}
+                      </div>
+                      <button type="button" onClick={() => setNewFileOpen(true)} className="m-2 inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/[0.03] text-[10px] font-medium text-slate-300 hover:border-cyan-400/30 hover:bg-cyan-400/[0.06] hover:text-cyan-100">
+                        <Plus className="h-3 w-3" />
+                        New File
+                      </button>
+                    </aside>
+                    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                  <div className="expert-agent-editor-tabs flex h-10 shrink-0 items-end gap-1 overflow-x-auto border-b border-white/[0.07] bg-[#0d1520] px-2" role="tablist" aria-label="Open project files">
+                    {openFileTabs.map((filePath) => (
+                      <div key={filePath} className={`group flex h-8 max-w-56 shrink-0 items-center gap-1 rounded-t-md border border-b-0 px-2 ${activeFile === filePath ? "border-white/10 bg-[#182538] text-slate-100" : "border-transparent text-slate-500 hover:bg-white/[0.04] hover:text-slate-200"}`}>
+                        <button type="button" role="tab" aria-selected={activeFile === filePath} onClick={() => setActiveFile(filePath)} className="flex min-w-0 items-center gap-2 text-[11px]">
+                          <File className={`h-3 w-3 shrink-0 ${fileIcon(filePath)}`} />
+                          <span className="truncate">{filePath.split("/").at(-1)}</span>
+                        </button>
+                        <button type="button" onClick={() => closeEditorTab(filePath)} disabled={openFileTabs.length <= 1} className="rounded p-0.5 text-slate-500 opacity-100 transition hover:bg-white/10 hover:text-white sm:opacity-0 sm:group-hover:opacity-100 disabled:pointer-events-none" aria-label={`Close ${filePath}`}>
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="relative flex min-h-0 flex-1 overflow-hidden bg-[#080e19]">
+                    <div className="select-none border-r border-white/[0.06] px-3 py-3 text-right font-mono text-xs leading-6 text-slate-600">
+                      {Array.from(
+                        { length: Math.max(1, (files[activeFile] ?? "").split("\n").length) },
+                        (_, index) => (
+                          <div key={index}>{index + 1}</div>
+                        ),
+                      )}
+                    </div>
+                    {completionsOpen && (
+                      <div className="absolute right-3 top-3 z-20 w-64 overflow-hidden rounded-lg border border-slate-700 bg-[#111c2c] shadow-2xl">
+                        <div className="border-b border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          Built-in completions · Ctrl+Space
+                        </div>
+                        {availableEditorSnippets.map((snippet) => (
+                          <button
+                            key={snippet.label}
+                            type="button"
+                            onClick={() => insertEditorSnippet(snippet.value)}
+                            className="block w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-cyan-400/10"
+                          >
+                            {snippet.label}
+                            <span className="ml-2 text-[10px] text-slate-500">{snippet.pack}</span>
+                          </button>
+                        ))}
+                        {!availableEditorSnippets.length && (
+                          <p className="px-3 py-3 text-xs text-slate-500">
+                            Enable a matching snippet pack in Extensions.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    <div className="min-h-0 min-w-0 flex-1 overflow-auto text-sm">
+                      <CodeMirror
+                        value={files[activeFile] ?? ""}
+                        height="100%"
+                        theme={oneDark}
+                        extensions={editorExtensions}
+                        onCreateEditor={(view) => {
+                          editorRef.current = view;
+                        }}
+                        onChange={(value) => updateFile(value)}
+                        editable={Boolean(activeFile)}
+                        basicSetup={{
+                          lineNumbers: true,
+                          foldGutter: true,
+                          highlightActiveLine: true,
+                          highlightActiveLineGutter: true,
+                          bracketMatching: true,
+                          autocompletion: true,
+                          closeBrackets: true,
+                          indentOnInput: true,
+                          tabSize: 2,
+                        }}
+                        className="h-full min-h-full text-[13px]"
+                        placeholder="Select a file to start editing…"
+                      />
+                    </div>
+                  </div>
+                    </div>
+                  </div>
+                </>
               )}
 
               {panel === "terminal" && (
@@ -3648,6 +3867,10 @@ export function CodeAgent() {
           background:#0F1623!important;box-shadow:none!important;overflow:hidden!important;
         }
         .expert-agent-stage .expert-agent-assistant.hidden { display:none!important; }
+        .expert-agent-stage [aria-label="Resize ExpertAI panel"] {
+          display:block!important;grid-column:3!important;grid-row:1!important;width:5px!important;min-width:5px!important;
+          cursor:col-resize!important;background:#1E293B!important;border:0!important;
+        }
         .expert-agent-workspace-grid:has(.expert-agent-assistant.hidden) { grid-template-columns:48px minmax(0,1fr)!important; }
         .expert-agent-workspace-grid:has(.expert-agent-assistant.hidden) .expert-agent-canvas { grid-column:2!important; }
         .expert-agent-assistant > div:first-child {
@@ -3693,6 +3916,7 @@ export function CodeAgent() {
             position:fixed!important;z-index:92!important;inset:48px 0 0 48px!important;width:auto!important;height:auto!important;
             grid-column:auto!important;border-left:1px solid #1E293B!important;
           }
+          .expert-agent-stage [aria-label="Resize ExpertAI panel"] { display:none!important; }
           .expert-agent-preview-subbar { gap:4px!important;padding-inline:6px!important; }
           .expert-agent-preview-subbar > div:last-child { gap:0!important; }
           .expert-agent-preview-subbar button { padding:5px!important; }
