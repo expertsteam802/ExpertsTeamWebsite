@@ -77,7 +77,11 @@ export const runCodingAgent = createServerFn({ method: "POST" })
         ? await runAgentChat(data)
         : await runAgent(data);
     if (!isAdmin && data.mode !== "chat") {
-      const { error: creditError } = await (context.supabase as any).rpc("consume_ai_credits", {
+      const consumeCredits = context.supabase.rpc as unknown as (
+        functionName: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ error: { message: string } | null }>;
+      const { error: creditError } = await consumeCredits("consume_ai_credits", {
         p_amount: creditCost,
         p_description: `Agent ${data.mode ?? "build"} · ${data.modelTier ?? "fast"} model`,
       });
