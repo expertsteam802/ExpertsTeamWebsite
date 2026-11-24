@@ -104,6 +104,68 @@ function isInternalAgentWorkspaceFile(filePath: string) {
     filePath === ".config/kilo/kilo.jsonc";
 }
 
+function crc32(bytes: Uint8Array) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function createStoredZip(entries: { path: string; data: Uint8Array }[]) {
+  if (entries.length > 65_535) throw new Error("This project contains too many files for a standard ZIP archive.");
+  const encoder = new TextEncoder();
+  const localParts: BlobPart[] = [];
+  const centralParts: Uint8Array[] = [];
+  let localOffset = 0;
+  let centralSize = 0;
+
+  for (const entry of entries) {
+    const name = encoder.encode(entry.path);
+    if (name.length > 65_535 || entry.data.byteLength > 0xffffffff) throw new Error("A project file is too large for a standard ZIP archive.");
+    const checksum = crc32(entry.data);
+    const local = new Uint8Array(30 + name.length);
+    const localView = new DataView(local.buffer);
+    localView.setUint32(0, 0x04034b50, true);
+    localView.setUint16(4, 20, true);
+    localView.setUint16(6, 0x0800, true);
+    localView.setUint16(8, 0, true);
+    localView.setUint32(14, checksum, true);
+    localView.setUint32(18, entry.data.byteLength, true);
+    localView.setUint32(22, entry.data.byteLength, true);
+    localView.setUint16(26, name.length, true);
+    local.set(name, 30);
+    localParts.push(local, entry.data);
+
+    const central = new Uint8Array(46 + name.length);
+    const centralView = new DataView(central.buffer);
+    centralView.setUint32(0, 0x02014b50, true);
+    centralView.setUint16(4, 20, true);
+    centralView.setUint16(6, 20, true);
+    centralView.setUint16(8, 0x0800, true);
+    centralView.setUint16(10, 0, true);
+    centralView.setUint32(16, checksum, true);
+    centralView.setUint32(20, entry.data.byteLength, true);
+    centralView.setUint32(24, entry.data.byteLength, true);
+    centralView.setUint16(28, name.length, true);
+    centralView.setUint32(42, localOffset, true);
+    central.set(name, 46);
+    centralParts.push(central);
+    localOffset += local.byteLength + entry.data.byteLength;
+    centralSize += central.byteLength;
+  }
+
+  const end = new Uint8Array(22);
+  const endView = new DataView(end.buffer);
+  endView.setUint32(0, 0x06054b50, true);
+  endView.setUint16(8, entries.length, true);
+  endView.setUint16(10, entries.length, true);
+  endView.setUint32(12, centralSize, true);
+  endView.setUint32(16, localOffset, true);
+  return new Blob([...localParts, ...centralParts, end], { type: "application/zip" });
+}
+
 function buildProjectFileTree(filePaths: string[]): ProjectTreeNode[] {
   const root: ProjectTreeNode[] = [];
   for (const filePath of filePaths) {
@@ -1539,6 +1601,44 @@ export function CodeAgent() {
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     toast.success("Project files exported");
+  }
+
+  async function downloadProjectZip() {
+    try {
+      const encoder = new TextEncoder();
+      const archive = new Map<string, Uint8Array>();
+      for (const [filePath, content] of Object.entries(files)) {
+        if (isInternalAgentWorkspaceFile(filePath)) continue;
+        archive.set(filePath, encoder.encode(content));
+      }
+      if (user && projectId) {
+        const { data: assets, error } = await supabase
+          .from("agent_project_assets")
+          .select("file_path,storage_path")
+          .eq("project_id", projectId)
+          .eq("user_id", user.id);
+        if (error) throw error;
+        for (const asset of assets ?? []) {
+          if (isInternalAgentWorkspaceFile(asset.file_path)) continue;
+          const { data, error: downloadError } = await supabase.storage.from("builder-project-assets").download(asset.storage_path);
+          if (downloadError || !data) throw new Error("Could not export " + asset.file_path + ": " + (downloadError?.message ?? "asset missing"));
+          archive.set(asset.file_path, new Uint8Array(await data.arrayBuffer()));
+        }
+      }
+      if (!archive.size) throw new Error("There are no project files to export.");
+      const blob = createStoredZip([...archive.entries()].map(([path, data]) => ({ path, data })));
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = (name.trim() || "expertsteam-project").replace(/[^a-z0-9-_]+/gi, "-") + ".zip";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+      toast.success("Exported " + archive.size + " project file(s) as ZIP.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not export project ZIP.");
+    }
   }
 
   function navigatePreview() {
@@ -3241,6 +3341,14 @@ export function CodeAgent() {
                     title="Download active file"
                   >
                     <Download className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => void downloadProjectZip()}
+                    className="rounded-lg p-2 text-slate-500 hover:bg-white/5 hover:text-white"
+                    aria-label="Export project ZIP"
+                    title="Export clean project ZIP"
+                  >
+                    <Archive className="h-3.5 w-3.5" />
                   </button>
                 </>
               )}
