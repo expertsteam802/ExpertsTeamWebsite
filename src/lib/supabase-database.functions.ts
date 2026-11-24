@@ -158,6 +158,7 @@ function rowsFrom(result: QueryResult): Record<string, unknown>[] {
     const object = result as Record<string, unknown>;
     if (Array.isArray(object.rows)) return object.rows.filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object");
     if (Array.isArray(object.data)) return object.data.filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object");
+    if (Array.isArray(object.result)) return object.result.filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object");
   }
   return [];
 }
