@@ -660,7 +660,7 @@ export function CodeAgent() {
     if (!query) return { results: [] as { path: string; line: number; text: string }[], error: "" };
     let pattern: RegExp;
     try {
-      const source = globalSearchRegex ? query : query.replace(/[.*+?^$()|[\]\\]/g, "\\  const projectFileTree = useMemo(() => buildProjectFileTree(Object.keys(files).filter((filePath) => !isInternalAgentWorkspaceFile(filePath))), [files]);");
+      const source = globalSearchRegex ? query : query.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
       pattern = new RegExp(source, "gi");
     } catch (error) {
       return { results: [] as { path: string; line: number; text: string }[], error: error instanceof Error ? error.message : "Invalid regular expression." };
