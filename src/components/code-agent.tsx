@@ -75,7 +75,6 @@ import {
   listGitHubRepositories,
   importGitHubProject,
   publishAgentProject,
-  runAgentTerminalPrompt,
   runCodingAgent,
   startAgentTerminal,
   stopAgentTerminal,
@@ -316,7 +315,6 @@ export function CodeAgent() {
     .replace(/[^a-zA-Z0-9_-]/g, "")
     .slice(0, 39) || "user";
   const queryClient = useQueryClient();
-  const runCliPrompt = useServerFn(runAgentTerminalPrompt);
   const runCodeAgent = useServerFn(runCodingAgent);
   const beginGithubOAuth = useServerFn(beginGitHubPluginOAuth);
   const push = useServerFn(pushProjectToGithub);
@@ -2156,6 +2154,10 @@ export function CodeAgent() {
     void persist({ messages: updatedMessages }).catch(() => undefined);
   }
 
+  function isAgentBuildRequest(value: string) {
+    return /\\b(build|create|make|implement|add|remove|delete|fix|change|update|refactor|debug|design|generate|write code|develop|integrate|connect|deploy|publish|test|run|install|upgrade|migrate|optimi[sz]e|redesign|rebuild)\\b/i.test(value);
+  }
+
   async function sendPrompt(modeOverride: "build" | "plan" = agentMode, promptOverride?: string) {
     if (CODING_AGENT_UNDER_DEVELOPMENT) return;
     const text = (promptOverride ?? prompt).trim();
@@ -2175,6 +2177,24 @@ export function CodeAgent() {
     let activeProjectId: string | null = projectId;
 
     try {
+      // Ordinary conversation must never create a checkpoint, touch files, or start a terminal.
+      if (modeOverride === "build" && !isAgentBuildRequest(text) && referenceImages.length === 0) {
+        const result = await runCodeAgent({
+          data: {
+            mode: "chat",
+            prompt: text,
+            files,
+            history: messages.slice(-10).map((message) => ({ ...message, content: message.content.slice(-3000) })),
+          },
+        });
+        const finalMessages: Message[] = [...nextMessages, { role: "assistant", content: result.message }];
+        setMessages(finalMessages);
+        setTypingMessageIndex(finalMessages.length - 1);
+        await persist({ messages: finalMessages }, activeProjectId ?? undefined);
+        await queryClient.invalidateQueries({ queryKey: ["profile"] });
+        return;
+      }
+
       activeProjectId = activeProjectId ?? (await persist());
       if (modeOverride === "build") await saveCheckpoint(`Before: ${text.slice(0, 96)}`, activeProjectId);
 
