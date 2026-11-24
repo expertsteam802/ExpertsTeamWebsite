@@ -2162,15 +2162,7 @@ export function CodeAgent() {
     const text = (promptOverride ?? prompt).trim();
     if (!text || busy) return;
 
-    // Planning can still use the optional interactive CLI, but normal Build
-    // requests go straight to the same server-side Kilo Gateway as ExpertAI.
-    const session = terminalConnection;
-    if (modeOverride === "plan" && (!session || session.projectId !== projectId)) {
-      toast.info("Connect the optional CLI to use Plan mode. Build mode works directly through Kilo.");
-      void openTerminalRef.current();
-      return;
-    }
-
+    // Both Plan and Build use the server-side Kilo Gateway; neither needs a CLI sandbox.
     const planPrefix = "Plan ready for your review. No project files were changed.\n\n";
     const conversationMessages = modeOverride === "build"
       ? messages.map((message) => message.role === "assistant" && message.content.startsWith(planPrefix)
@@ -2188,23 +2180,17 @@ export function CodeAgent() {
       if (modeOverride === "build") await saveCheckpoint(`Before: ${text.slice(0, 96)}`, activeProjectId);
 
       if (modeOverride === "plan") {
-        const conversationContext = messages.slice(-8).map((message) =>
-          (message.role === "user" ? "USER: " : "ASSISTANT: ") + message.content.slice(-1800)
-        ).join("\n\n");
-        const result = await runCliPrompt({
+        const result = await runCodeAgent({
           data: {
-            projectId: activeProjectId,
-            sandboxName: session!.sandboxName,
-            cli: session!.cli,
             mode: "plan",
-            prompt: conversationContext
-              ? "Continue this ExpertsTeam Agent conversation.\n\n" + conversationContext + "\n\nUSER: " + text
-              : text,
+            prompt: text,
+            files,
+            history: messages.slice(-8).map((message) => ({ ...message, content: message.content.slice(-3000) })),
             referenceImages,
           },
         });
         setReferenceImages([]);
-        const planMessage = "Plan ready for your review. No project files were changed.\n\n" + result.message;
+        const planMessage = "Plan ready for your review. No project files were changed.\\n\\n" + result.message;
         const finalMessages: Message[] = [...nextMessages, { role: "assistant", content: planMessage }];
         setPlanDraft(result.message);
         setMessages(finalMessages);
