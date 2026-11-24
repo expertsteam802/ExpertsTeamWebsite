@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { isIP } from "node:net";
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 
@@ -10,11 +11,15 @@ const MYLEAD_IPS = new Set(
 );
 
 function getSourceIp(request: Request): string {
-  // The hosting platform supplies the connecting client IP in x-forwarded-for. Use
-  // the first address only; never trust a query-string IP supplied by the caller.
-  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const real = request.headers.get("x-real-ip")?.trim();
-  return (real || forwarded || "").replace(/^::ffff:/, "");
+  // Prefer platform-set client IP headers; never trust the callback's query-string IP.
+  const headers = request.headers;
+  const platformIp =
+    headers.get("cf-connecting-ip")?.trim() ||
+    headers.get("x-nf-client-connection-ip")?.trim() ||
+    headers.get("x-real-ip")?.trim();
+  const forwarded = headers.get("x-forwarded-for")?.split(",").map((value) => value.trim()).filter(Boolean);
+  const candidate = (platformIp || forwarded?.at(-1) || "").replace(/^::ffff:/, "");
+  return isIP(candidate) ? candidate : "";
 }
 
 function readRequired(params: URLSearchParams, name: string, max = 200): string {

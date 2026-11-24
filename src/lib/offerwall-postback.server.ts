@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { isIP } from "node:net";
 import { createClient } from "@supabase/supabase-js";
 
@@ -7,12 +7,13 @@ type EventStatus = "pending" | "approved" | "reversed";
 
 function sourceIp(request: Request): string {
   const headers = request.headers;
-  const candidate =
+  const platformIp =
     headers.get("cf-connecting-ip")?.trim() ||
-    headers.get("x-real-ip")?.trim() ||
-    headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    "";
-  return candidate.replace(/^::ffff:/, "");
+    headers.get("x-nf-client-connection-ip")?.trim() ||
+    headers.get("x-real-ip")?.trim();
+  const forwarded = headers.get("x-forwarded-for")?.split(",").map((value) => value.trim()).filter(Boolean);
+  const candidate = (platformIp || forwarded?.at(-1) || "").replace(/^::ffff:/, "");
+  return isIP(candidate) ? candidate : "";
 }
 
 function allowedIp(ip: string, configured: string, required: boolean): boolean {
@@ -26,6 +27,18 @@ function safeHexEqual(expected: string, provided: string): boolean {
   const left = Buffer.from(expected, "hex");
   const right = Buffer.from(provided, "hex");
   return left.length === right.length && timingSafeEqual(left, right);
+}
+
+function verifyAdGateSignature(request: Request, params: URLSearchParams): boolean {
+  const secret = process.env["ADGATE_POSTBACK_SECRET"]?.trim();
+  const requiredSignature = process.env["ADGATE_REQUIRE_HMAC"] === "true";
+  if (!secret) return !requiredSignature;
+  const provided = (request.headers.get("x-adgate-signature") ?? params.get("signature") ?? "").replace(/^sha256=/i, "").trim();
+  if (!/^[0-9a-f]{64}$/i.test(provided)) return false;
+  const canonical = [params.get("conversion_id") ?? "", params.get("s1") ?? "", (params.get("state") ?? "").toLowerCase(), params.get("points") ?? ""].join("|");
+  const expected = createHmac("sha256", secret).update(canonical, "utf8").digest();
+  const actual = Buffer.from(provided, "hex");
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
 function required(params: URLSearchParams, key: string, max = 200): string {
@@ -148,6 +161,7 @@ export async function handleAdGatePostback(request: Request): Promise<Response> 
     const status: EventStatus = state === "rejected" ? "reversed" : state === "pending" ? "pending" : state === "approved" ? "approved" : (() => { throw new Error("Unsupported AdGate state."); })();
     const ip = sourceIp(request);
     if (!allowedIp(ip, process.env["ADGATE_ALLOWED_IPS"] ?? "", true)) return new Response("0", { status: 403 });
+    if (!verifyAdGateSignature(request, params)) return new Response("0", { status: 401 });
     await processEvent({
       provider: "adgate", eventId, userId, status, credits: creditAmount(points, "ADGATE_CREDITS_PER_UNIT"),
       revenue: Math.abs(Number(params.get("payout") ?? 0)) || undefined,
@@ -187,7 +201,7 @@ export async function handleCpxPostback(request: Request): Promise<Response> {
     if (!safeHexEqual(expected, provided)) return new Response("0", { status: 401 });
     const ip = sourceIp(request);
     const allowed = process.env["CPX_ALLOWED_IPS"] ?? "";
-    if (allowed.trim() && !allowedIp(ip, allowed, true)) return new Response("0", { status: 403 });
+    if (!allowedIp(ip, allowed, true)) return new Response("0", { status: 403 });
     const status: EventStatus = statusValue === "1" ? "approved" : statusValue === "2" ? "reversed" : (() => { throw new Error("Unsupported CPX status."); })();
     await processEvent({
       provider: "cpx", eventId, userId, status, credits: creditAmount(amount, "CPX_CREDITS_PER_UNIT"),
@@ -204,6 +218,8 @@ export async function handleCpxPostback(request: Request): Promise<Response> {
 
 export async function handleLootablyPostback(request: Request): Promise<Response> {
   try {
+    const requestIp = sourceIp(request);
+    if (!allowedIp(requestIp, process.env["LOOTABLY_ALLOWED_IPS"] ?? "", true)) return new Response("0", { status: 403 });
     let eventId = "";
     let userId = "";
     let status: EventStatus = "approved";
@@ -228,7 +244,7 @@ export async function handleLootablyPostback(request: Request): Promise<Response
       offerId = String(data["offerID"] ?? "");
       offerName = String(data["offerName"] ?? "");
       country = String(data["countryCode"] ?? "");
-      ip = String(data["ip"] ?? "");
+      ip = String(data["ip"] ?? requestIp);
       status = event === "approved" ? "approved" : event === "rejected" ? "reversed" : event === "pending" ? "pending" : (() => { throw new Error("Unsupported Lootably webhook event."); })();
       raw = { event, offerID: offerId, offerName, placementID: String(data["placementID"] ?? "") };
     } else if (request.method === "GET") {

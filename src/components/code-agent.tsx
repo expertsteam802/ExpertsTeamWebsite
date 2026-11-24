@@ -607,6 +607,7 @@ export function CodeAgent() {
   const [themePreset, setThemePreset] = useState("Brand");
   const [fontPreset, setFontPreset] = useState("Inter");
   const [logs, setLogs] = useState<{ type: string; message: string }[]>([]);
+  const [consoleFilter, setConsoleFilter] = useState<"all" | "network" | "errors">("all");
   const [selfHealBusy, setSelfHealBusy] = useState(false);
   const [selfHealJustApplied, setSelfHealJustApplied] = useState(false);
   const [selfHealAttempts, setSelfHealAttempts] = useState(0);
@@ -4341,11 +4342,16 @@ export function CodeAgent() {
                   <div className="flex h-10 items-center justify-between border-b border-white/[0.07] px-4">
                     <span className="flex items-center gap-2 text-xs text-slate-300">
                       <Terminal className="h-3.5 w-3.5 text-cyan-300" />
-                      Browser console
+                      Browser console &amp; network
                     </span>
                     <div className="flex items-center gap-2">
                       <button type="button" onClick={() => setAutoHealEnabled((enabled) => !enabled)} aria-pressed={autoHealEnabled} className={autoHealEnabled ? "rounded-md border border-emerald-300/20 bg-emerald-300/[0.06] px-2 py-1 text-[9px] text-emerald-200" : "rounded-md border border-slate-700 px-2 py-1 text-[9px] text-slate-500"} title="Automatically attempt guarded zero-credit repairs when preview errors appear">{autoHealEnabled ? "Auto-fix on" : "Auto-fix off"}</button>
-                      <span className="text-[10px] text-slate-600">Preview logs only</span>
+                      <div className="flex items-center gap-1 rounded-md border border-slate-800 p-0.5">
+                        {(["all", "errors", "network"] as const).map((filter) => (
+                          <button key={filter} type="button" onClick={() => setConsoleFilter(filter)} aria-pressed={consoleFilter === filter} className={consoleFilter === filter ? "rounded bg-slate-700 px-2 py-1 text-[9px] font-semibold text-white" : "rounded px-2 py-1 text-[9px] text-slate-500 hover:text-slate-200"}>{filter === "all" ? "All" : filter === "errors" ? "Errors" : "Network"}</button>
+                        ))}
+                      </div>
+                      <button type="button" onClick={() => setLogs([])} className="rounded-md border border-slate-800 px-2 py-1 text-[9px] text-slate-500 hover:text-slate-200">Clear</button>
                       {logs.some((entry) => entry.type === "error") && (
                         <button
                           type="button"
@@ -4370,7 +4376,7 @@ export function CodeAgent() {
                         </p>
                       </div>
                     )}
-                    {logs.map((log, index) => (
+                    {logs.filter((log) => consoleFilter === "all" || (consoleFilter === "network" ? log.type === "network" : log.type === "error" || log.type === "warn")).map((log, index) => (
                       <div
                         key={index}
                         className={`border-b border-white/[0.05] py-2 ${

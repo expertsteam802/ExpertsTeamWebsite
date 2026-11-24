@@ -9,9 +9,9 @@ Set these as server-only deployment environment variables:
 | Provider | Required server variables | Optional |
 |---|---|---|
 | Torox | `TOROX_PLACEMENT_ID`, `TOROX_APP_TOKEN` | `TOROX_CREDITS_PER_UNIT`, `TOROX_ALLOWED_IPS` |
-| AdGate Rewards | `ADGATE_ALLOWED_IPS` | `ADGATE_CREDITS_PER_UNIT` |
-| CPX Research | `CPX_APP_ID`, `CPX_APP_SECRET`, `CPX_POSTBACK_SECRET` | `CPX_POSTBACK_HASH_MODE`, `CPX_ALLOWED_IPS`, `CPX_CREDITS_PER_UNIT` |
-| Lootably | `LOOTABLY_WEBHOOK_SECRET` or `LOOTABLY_POSTBACK_SECRET` | `LOOTABLY_CREDITS_PER_UNIT` |
+| AdGate Rewards | `ADGATE_ALLOWED_IPS` | `ADGATE_POSTBACK_SECRET`, `ADGATE_REQUIRE_HMAC`, `ADGATE_CREDITS_PER_UNIT` |
+| CPX Research | `CPX_APP_ID`, `CPX_APP_SECRET`, `CPX_POSTBACK_SECRET`, `CPX_ALLOWED_IPS` | `CPX_POSTBACK_HASH_MODE`, `CPX_CREDITS_PER_UNIT` |
+| Lootably | `LOOTABLY_WEBHOOK_SECRET` or `LOOTABLY_POSTBACK_SECRET`, `LOOTABLY_ALLOWED_IPS` | `LOOTABLY_CREDITS_PER_UNIT` |
 
 All `*_CREDITS_PER_UNIT` values default to `1`. Set an explicit conversion factor for each placement after checking the partner's reward currency and the ExpertsTeam credit economics. The server rejects non-positive or excessive conversion factors and rewards.
 
@@ -38,9 +38,11 @@ Configure these HTTPS endpoints in each publisher dashboard:
 Security behavior:
 
 - Torox signatures use its documented MD5 value `oid-user_id-app-token`; the callback IP allowlist includes Torox's published `44.212.211.226` address and can be extended with `TOROX_ALLOWED_IPS`.
-- AdGate does not provide a signed callback in its basic integration. Configure `ADGATE_ALLOWED_IPS` with the exact source IPs supplied in the AdGate publisher dashboard. The endpoint fails closed if this allowlist is missing.
-- CPX's callback hash format can vary by publisher dashboard setup. The default `CPX_POSTBACK_HASH_MODE=md5_trans_id_secret` checks `MD5(trans_id-CPX_POSTBACK_SECRET)`; `md5_user_trans_id_secret` checks `MD5(user_id-trans_id-CPX_POSTBACK_SECRET)`. Confirm the exact callback hash with CPX's publisher dashboard and run its postback tester before enabling real rewards. Unknown modes fail closed.
-- Lootably Conversion Webhooks validate the `x-lootably-webhook-secret` header. The legacy GET postback validates SHA-256 of `userID + ip + revenue + currencyReward + postback secret`.
+- AdGate requires `ADGATE_ALLOWED_IPS` from its publisher dashboard and fails closed if the allowlist is missing. If `ADGATE_POSTBACK_SECRET` is configured, callbacks must also include HMAC-SHA256 over `conversion_id|s1|state|points` in `x-adgate-signature` (or `signature`). Set `ADGATE_REQUIRE_HMAC=true` to require a signature even before a secret is added.
+- CPX requires `CPX_ALLOWED_IPS` and a valid provider hash. The default `CPX_POSTBACK_HASH_MODE=md5_trans_id_secret` checks `MD5(trans_id-CPX_POSTBACK_SECRET)`; `md5_user_trans_id_secret` checks `MD5(user_id-trans_id-CPX_POSTBACK_SECRET)`. Confirm the exact callback hash with CPX's publisher dashboard and run its postback tester before enabling real rewards. Unknown modes fail closed.
+- Lootably requires `LOOTABLY_ALLOWED_IPS`. Conversion Webhooks validate the `x-lootably-webhook-secret` header; the legacy GET postback validates SHA-256 of `userID + ip + revenue + currencyReward + postback secret`.
+- MyLead's separate `/api/mylead/postback` endpoint enforces `MYLEAD_ALLOWED_IPS` and can require HMAC-SHA256 using `MYLEAD_POSTBACK_SECRET` and `MYLEAD_REQUIRE_HMAC=true`.
+- IP allowlists use validated platform client-IP headers; IP values in provider query parameters are treated only as event metadata.
 
 Every accepted callback is processed by a service-role-only database function. Provider event IDs are unique per network. Duplicate callbacks do not double-credit. Reversals remove available credits; any amount already spent is recorded as credit debt and blocks further AI usage until future rewards clear it. The user ledger records awards and deductions.
 
