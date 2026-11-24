@@ -384,6 +384,7 @@ export function CodeAgent() {
   const [agentMode, setAgentMode] = useState<"build" | "plan">("build");
   const [tutorMode, setTutorMode] = useState(false);
   const [planDraft, setPlanDraft] = useState<string | null>(null);
+  const [planChecklist, setPlanChecklist] = useState<Record<number, boolean>>({});
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
   const referenceInputRef = useRef<HTMLInputElement>(null);
   const projectFileInputRef = useRef<HTMLInputElement>(null);
@@ -3445,6 +3446,23 @@ export function CodeAgent() {
                         </div>
                       </div>
                     ))}
+                    {planDraft && (
+                      <details open className="rounded-xl border border-blue-400/25 bg-blue-500/[0.07] p-3">
+                        <summary className="cursor-pointer list-none text-[11px] font-semibold text-blue-100">Plan &amp; Architecture <span className="ml-2 font-normal text-slate-400">Review before building</span></summary>
+                        <div className="mt-3 space-y-2">
+                          {planDraft.split("\n").map((line, index) => line.trim() && !/^#{1,4}\s/.test(line) ? (
+                            <label key={index} className="flex items-start gap-2 text-[10px] leading-5 text-slate-300">
+                              <input type="checkbox" checked={Boolean(planChecklist[index])} onChange={(event) => setPlanChecklist((current) => ({ ...current, [index]: event.target.checked }))} className="mt-1 accent-blue-500" />
+                              <span>{line.replace(/^[-*]\s*/, "").replace(/^\d+[.)]\s*/, "")}</span>
+                            </label>
+                          ) : null)}
+                        </div>
+                        <div className="mt-3 flex justify-end gap-2 border-t border-blue-400/15 pt-3">
+                          <button type="button" onClick={dismissPlanDraft} className="rounded-lg px-2.5 py-1.5 text-[10px] text-slate-400 hover:bg-white/5">Discard</button>
+                          <button type="button" onClick={() => { const approved = planDraft; setPlanDraft(null); setPlanChecklist({}); setAgentMode("build"); void sendPrompt("build", "Implement this approved plan. Follow the steps in order and verify the result:\n\n" + approved); }} disabled={busy} className="rounded-lg bg-blue-600 px-3 py-1.5 text-[10px] font-semibold text-white disabled:opacity-40">Implement plan</button>
+                        </div>
+                      </details>
+                    )}
                     {busy && <div className="flex items-center gap-2 px-2 py-2 text-xs text-cyan-200"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Working on your project…</div>}
                     <div ref={agentChatEndRef} />
                   </div>
