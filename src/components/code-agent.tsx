@@ -4178,7 +4178,9 @@ export function CodeAgent() {
                             ? "text-red-300"
                             : log.type === "warn"
                               ? "text-amber-300"
-                              : "text-slate-300"
+                              : log.type === "network"
+                                ? "text-cyan-200"
+                                : "text-slate-300"
                         }`}
                       >
                         <span className="mr-2 text-slate-600">[{log.type}]</span>
