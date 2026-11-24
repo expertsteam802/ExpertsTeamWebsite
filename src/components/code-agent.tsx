@@ -23,6 +23,7 @@ import {
   Loader2,
   Maximize2,
   Minimize2,
+  Mic,
   MousePointer2,
   Monitor,
   MoreHorizontal,
@@ -88,6 +89,7 @@ import {
 import { buildSrcDocWithConsole, STARTER_FILES, type ProjectFiles } from "@/lib/sandbox";
 import { deleteProjectFile, loadProjectFiles, saveProjectFile, saveProjectFiles } from "@/lib/project-files";
 type Message = { role: "user" | "assistant"; content: string };
+type BrowserSpeechRecognition = { lang: string; interimResults: boolean; onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onerror: (() => void) | null; onend: (() => void) | null; start: () => void; stop: () => void };
 type ProjectTreeNode = { name: string; path: string; folder: boolean; children: ProjectTreeNode[] };
 
 function isInternalAgentWorkspaceFile(filePath: string) {
@@ -380,6 +382,8 @@ export function CodeAgent() {
   const agentChatEndRef = useRef<HTMLDivElement>(null);
   const [agentPanelMode, setAgentPanelMode] = useState<"chat" | "terminal" | "chats">("chat");
   const [prompt, setPrompt] = useState("");
+  const [voiceListening, setVoiceListening] = useState(false);
+  const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const [agentMode, setAgentMode] = useState<"build" | "plan">("build");
   const [modelTier, setModelTier] = useState<"fast" | "balanced" | "architect">("fast");
   const [tutorMode, setTutorMode] = useState(false);
@@ -2267,6 +2271,76 @@ export function CodeAgent() {
     }
   }
 
+  function toggleVoicePrompt() {
+    if (voiceListening) {
+      speechRecognitionRef.current?.stop();
+      setVoiceListening(false);
+      return;
+    }
+    const speechWindow = window as unknown as {
+      SpeechRecognition?: new () => BrowserSpeechRecognition;
+      webkitSpeechRecognition?: new () => BrowserSpeechRecognition;
+    };
+    const SpeechRecognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.info("Voice input is not supported in this browser. Try Chrome or Edge.");
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = navigator.language || "en-US";
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results).map((result) => result[0]?.transcript ?? "").join(" ").trim();
+      if (transcript) setPrompt((current) => [current.trim(), transcript].filter(Boolean).join(current.trim() ? " " : ""));
+    };
+    recognition.onerror = () => {
+      setVoiceListening(false);
+      toast.error("Voice input stopped. Check microphone permission and try again.");
+    };
+    recognition.onend = () => setVoiceListening(false);
+    speechRecognitionRef.current = recognition;
+    try {
+      recognition.start();
+      setVoiceListening(true);
+    } catch {
+      setVoiceListening(false);
+      toast.error("Could not start voice input. Check microphone permission.");
+    }
+  }
+
+  function expandSlashCommand(value: string) {
+    const match = value.match(/^\\/(fix|refactor|seo|responsive|explain|test)(?:\\s+([\\s\\S]*))?$/i);
+    if (!match) return value;
+    const command = match[1]!.toLowerCase();
+    const detail = match[2]?.trim() ?? "";
+    const instructions: Record<string, string> = {
+      fix: "Diagnose the latest runtime or build error using the supplied logs and project files. Make the smallest safe fix and preserve unrelated behavior.",
+      refactor: "Refactor the requested area for maintainability, clarity, and performance while preserving every existing behavior and public interface.",
+      seo: "Audit and implement production SEO: metadata, canonical URLs, Open Graph, Twitter cards, structured data, sitemap, robots rules, and accessible semantic markup.",
+      responsive: "Audit the full app at desktop, tablet, and mobile widths. Fix overflow, clipped content, touch targets, and layout breakpoints without removing features.",
+      explain: "Explain the relevant project architecture and code in clear steps. Do not modify files.",
+      test: "Add or improve meaningful automated tests for the requested behavior, then inspect related code for likely regressions. Do not claim tests ran unless verified.",
+    };
+    return [detail, instructions[command]].filter(Boolean).join("\\n\\n");
+  }
+
+  function pinMentionedContext(value: string) {
+    const mentions = [...value.matchAll(/@([a-zA-Z0-9_./-]+)/g)].map((match) => match[1]!.replace(/\\/$/, ""));
+    if (!mentions.length) return value;
+    const pinned = new Set<string>();
+    for (const mention of mentions) {
+      if (mention.toLowerCase() === "docs") {
+        for (const filePath of Object.keys(files)) if (filePath === "README.md" || filePath.startsWith("docs/")) pinned.add(filePath);
+      } else {
+        for (const filePath of Object.keys(files)) {
+          if (filePath === mention || filePath.startsWith(mention + "/")) pinned.add(filePath);
+        }
+      }
+    }
+    if (!pinned.size) return value;
+    return value + "\\n\\nPINNED PROJECT CONTEXT (prioritize these exact paths):\\n" + [...pinned].slice(0, 40).join("\\n");
+  }
+
   function dismissPlanDraft() {
     const planPrefix = "Plan ready for your review. No project files were changed.\n\n";
     const updatedMessages = messages.map((message) => message.role === "assistant" && message.content.startsWith(planPrefix)
@@ -2285,9 +2359,10 @@ export function CodeAgent() {
     if (CODING_AGENT_UNDER_DEVELOPMENT) return;
     const text = (promptOverride ?? prompt).trim();
     if (!text || busy) return;
+    const expandedPrompt = pinMentionedContext(expandSlashCommand(text));
     const agentPrompt = tutorMode
-      ? text + "\n\nTutor Mode is enabled: after implementing this request, include a concise beginner-friendly explanation of the important files and concepts changed, one practical next exercise, and a relevant link to https://expertsteam.giize.com/learn. Do not claim a lesson was completed."
-      : text;
+      ? expandedPrompt + "\n\nTutor Mode is enabled: after implementing this request, include a concise beginner-friendly explanation of the important files and concepts changed, one practical next exercise, and a relevant link to https://expertsteam.giize.com/learn. Do not claim a lesson was completed."
+      : expandedPrompt;
 
     // Both Plan and Build use the server-side Kilo Gateway; neither needs a CLI sandbox.
     const planPrefix = "Plan ready for your review. No project files were changed.\n\n";
@@ -2304,7 +2379,7 @@ export function CodeAgent() {
 
     try {
       // Ordinary conversation must never create a checkpoint, touch files, or start a terminal.
-      if (modeOverride === "build" && !isAgentBuildRequest(text) && referenceImages.length === 0) {
+      if (modeOverride === "build" && !isAgentBuildRequest(text) && !/^\\/(fix|refactor|seo|responsive|test)\\b/i.test(text) && referenceImages.length === 0) {
         const result = await runCodeAgent({
           data: {
             mode: "chat",
@@ -3461,6 +3536,7 @@ export function CodeAgent() {
                       </div>
                       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/60 px-1 pt-2">
                         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                          <button type="button" onClick={toggleVoicePrompt} disabled={busy} aria-pressed={voiceListening} title={voiceListening ? "Stop voice input" : "Voice to prompt"} className={voiceListening ? "inline-flex items-center gap-1 rounded-lg border border-rose-400/40 bg-rose-400/10 px-2.5 py-2 text-[10px] text-rose-200" : "inline-flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}><Mic className="h-3 w-3" />{voiceListening ? "Listening…" : "Voice"}</button>
                           <label className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1.5 text-[10px] text-slate-300"><span className="text-slate-500">Model</span><select aria-label="AI model tier" value={modelTier} onChange={(event) => setModelTier(event.target.value as "fast" | "balanced" | "architect")} disabled={busy} className="max-w-[112px] bg-transparent text-[10px] text-white outline-none"><option value="fast">Fast · 1 EC</option><option value="balanced">Balanced · 2 EC</option><option value="architect">Architect · 3 EC</option></select></label>
                           <AgentPromptLibrary currentPrompt={prompt} onUse={setPrompt} />
                           <button type="button" onClick={() => setAgentMode((mode) => mode === "plan" ? "build" : "plan")} disabled={busy} className={agentMode === "plan" ? "rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-2.5 py-2 text-[10px] font-semibold text-emerald-200" : "rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}>{agentMode === "plan" ? "Plan mode on" : "Plan first"}</button>
