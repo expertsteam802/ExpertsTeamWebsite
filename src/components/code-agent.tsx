@@ -69,6 +69,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import { extractZipTextFiles } from "@/lib/zip-text-import";
+import { beginGitHubPluginOAuth } from "@/lib/plugin-oauth.functions";
 import type { Json } from "@/integrations/supabase/types";
 import {
   pushProjectToGithub,
@@ -316,6 +317,7 @@ export function CodeAgent() {
     .slice(0, 39) || "user";
   const queryClient = useQueryClient();
   const runCliPrompt = useServerFn(runAgentTerminalPrompt);
+  const beginGithubOAuth = useServerFn(beginGitHubPluginOAuth);
   const push = useServerFn(pushProjectToGithub);
   const listGithubRepos = useServerFn(listGitHubRepositories);
   const importGithub = useServerFn(importGitHubProject);
@@ -2075,15 +2077,12 @@ export function CodeAgent() {
   }
 
   async function connectGitHubAccount() {
-    const { data, error } = await supabase.auth.linkIdentity({
-      provider: "github",
-      options: { redirectTo: window.location.href, scopes: "repo" },
-    });
-    if (error) {
-      toast.error(error.message || "Could not start GitHub authorization. Enable GitHub as an OAuth provider in Supabase first.");
-      return;
+    try {
+      const { url } = await beginGithubOAuth({ data: {} });
+      window.location.assign(url);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not start GitHub authorization.");
     }
-    if (data.url) window.location.assign(data.url);
   }
 
   async function cloneGithubRepository() {
