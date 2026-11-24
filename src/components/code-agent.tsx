@@ -2757,7 +2757,7 @@ export function CodeAgent() {
     if (!query || globalSearch.error) return;
     let pattern: RegExp;
     try {
-      const source = globalSearchRegex ? query : query.replace(/[.*+?^$()|[\\]\\]/g, "\\const source = globalSearchRegex ? query : query.replace(/[.*+?^$()|[\]\\]/g, "\\  async function toggleActiveFileLock() {");");
+      const source = globalSearchRegex ? query : query.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
       pattern = new RegExp(source, "gi");
     } catch {
       toast.error("The search expression is invalid.");
