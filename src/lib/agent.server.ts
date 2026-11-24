@@ -726,10 +726,10 @@ export async function runAgentChat(
     ],
     generationConfig: { maxOutputTokens: 1600 },
   }, undefined, ["kilo"], modelTier === "architect"
-    ? (process.env["KILO_ARCHITECT_MODEL"] || "anthropic/claude-sonnet-4")
+    ? (process.env["KILO_ARCHITECT_MODEL"] || "kilo-auto/free")
     : modelTier === "balanced"
-      ? (process.env["KILO_BALANCED_MODEL"] || "openai/gpt-4o")
-      : (process.env["KILO_FAST_MODEL"] || "kilo-auto/free"));
+      ? (process.env["KILO_BALANCED_MODEL"] || "kilo-auto/free")
+      : (process.env["KILO_FAST_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free"));
   const message = response.candidates?.[0]?.content?.parts
     ?.filter((part) => !part.thought)
     .map((part) => part.text ?? "")
