@@ -34,6 +34,7 @@ import {
   Pencil,
   RefreshCw,
   Save,
+  Search,
   Send,
   Settings2,
   Smartphone,
@@ -387,6 +388,31 @@ export function CodeAgent() {
     }
   }, [files]);
   const activeFileLocked = lockedFilePaths.has(activeFile);
+  const globalSearch = useMemo(() => {
+    const query = globalSearchQuery.trim();
+    if (!query) return { results: [] as { path: string; line: number; text: string }[], error: "" };
+    let pattern: RegExp;
+    try {
+      const source = globalSearchRegex ? query : query.replace(/[.*+?^$()|[\]\\]/g, "\\  const projectFileTree = useMemo(() => buildProjectFileTree(Object.keys(files).filter((filePath) => !isInternalAgentWorkspaceFile(filePath))), [files]);");
+      pattern = new RegExp(source, "gi");
+    } catch (error) {
+      return { results: [] as { path: string; line: number; text: string }[], error: error instanceof Error ? error.message : "Invalid regular expression." };
+    }
+    const results: { path: string; line: number; text: string }[] = [];
+    for (const [filePath, content] of Object.entries(files)) {
+      if (isInternalAgentWorkspaceFile(filePath)) continue;
+      const lines = content.split("\n");
+      for (let index = 0; index < lines.length; index++) {
+        pattern.lastIndex = 0;
+        if (pattern.test(lines[index] ?? "")) {
+          results.push({ path: filePath, line: index + 1, text: (lines[index] ?? "").trim().slice(0, 240) });
+          if (results.length >= 300) return { results, error: "" };
+        }
+      }
+    }
+    return { results, error: "" };
+  }, [files, globalSearchQuery, globalSearchRegex]);
+
   const projectFileTree = useMemo(() => buildProjectFileTree(Object.keys(files).filter((filePath) => !isInternalAgentWorkspaceFile(filePath))), [files]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [typingMessageIndex, setTypingMessageIndex] = useState<number | null>(null);
@@ -442,6 +468,11 @@ export function CodeAgent() {
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickOpenQuery, setQuickOpenQuery] = useState("");
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [globalSearchQuery, setGlobalSearchQuery] = useState("");
+  const [globalReplaceQuery, setGlobalReplaceQuery] = useState("");
+  const [globalSearchRegex, setGlobalSearchRegex] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [newFileName, setNewFileName] = useState("");
   const [renameFileOpen, setRenameFileOpen] = useState(false);
   const [renameFileFrom, setRenameFileFrom] = useState<string | null>(null);
@@ -846,6 +877,20 @@ export function CodeAgent() {
       return (data ?? []) as unknown as ProjectRow[];
     },
   });
+
+  useEffect(() => {
+    const handleStudioShortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        setGlobalSearchOpen(true);
+      } else if (event.key === "F1") {
+        event.preventDefault();
+        setShortcutsOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleStudioShortcut);
+    return () => window.removeEventListener("keydown", handleStudioShortcut);
+  }, []);
 
   const activeProjectSlug = projects.find((project) => project.id === projectId)?.slug ?? null;
 
@@ -1857,6 +1902,46 @@ export function CodeAgent() {
 
 
 
+  async function replaceAllSearchMatches() {
+    const query = globalSearchQuery.trim();
+    if (!query || globalSearch.error) return;
+    let pattern: RegExp;
+    try {
+      const source = globalSearchRegex ? query : query.replace(/[.*+?^$()|[\]\\]/g, "\\  async function toggleActiveFileLock() {");
+      pattern = new RegExp(source, "gi");
+    } catch {
+      toast.error("The search expression is invalid.");
+      return;
+    }
+    const nextFiles: ProjectFiles = { ...files };
+    let replacements = 0;
+    for (const [filePath, content] of Object.entries(files)) {
+      if (isInternalAgentWorkspaceFile(filePath)) continue;
+      const updated = content.replace(pattern, () => {
+        replacements += 1;
+        return globalReplaceQuery;
+      });
+      nextFiles[filePath] = updated;
+      pattern.lastIndex = 0;
+    }
+    if (!replacements) {
+      toast.info("No matching text was found to replace.");
+      return;
+    }
+    setFiles(nextFiles);
+    setDirty(true);
+    try {
+      await persist({ files: nextFiles });
+      setDirty(false);
+      setGlobalSearchOpen(false);
+      toast.success("Replaced " + replacements + " match(es) across the project.");
+    } catch (error) {
+      setFiles(files);
+      setDirty(false);
+      toast.error(error instanceof Error ? error.message : "Could not save the replacements.");
+    }
+  }
+
   async function toggleActiveFileLock() {
     if (!activeFile || files[activeFile] === undefined) return;
     const nextLocked = new Set(lockedFilePaths);
@@ -2343,7 +2428,7 @@ export function CodeAgent() {
   }
 
   function expandSlashCommand(value: string) {
-    const match = value.match(/^\/(fix|refactor|seo|responsive|explain|test|docs)(?:\s+([\s\S]*))?$/i);
+    const match = value.match(/^\/(fix|refactor|seo|responsive|explain|test|docs|svg)(?:\s+([\s\S]*))?$/i);
     if (!match) return value;
     const command = match[1]!.toLowerCase();
     const detail = match[2]?.trim() ?? "";
@@ -2355,6 +2440,7 @@ export function CodeAgent() {
       explain: "Explain the relevant project architecture and code in clear steps. Do not modify files.",
       test: "Add or improve meaningful automated tests for the requested behavior, then inspect related code for likely regressions. Do not claim tests ran unless verified.",
       docs: "Use the live npm registry documentation supplied with this request to verify current package versions, installation steps, and APIs before changing code.",
+      svg: "Generate polished, optimized, accessible SVG assets for the requested design. Create reusable SVG files with viewBox, scalable paths, accessible titles, and no unnecessary embedded raster data.",
     };
     return [detail, instructions[command]].filter(Boolean).join("\n\n");
   }
@@ -2416,7 +2502,7 @@ export function CodeAgent() {
 
     try {
       // Ordinary conversation must never create a checkpoint, touch files, or start a terminal.
-      if (modeOverride === "build" && !isAgentBuildRequest(text) && !/^\/(fix|refactor|seo|responsive|test|docs)\b/i.test(text) && referenceImages.length === 0) {
+      if (modeOverride === "build" && !isAgentBuildRequest(text) && !/^\/(fix|refactor|seo|responsive|test|docs|svg)\b/i.test(text) && referenceImages.length === 0) {
         const result = await runCodeAgent({
           data: {
             mode: "chat",
@@ -3300,6 +3386,12 @@ export function CodeAgent() {
                         {activeFileLocked ? <Unlock className="mr-1 h-3 w-3" /> : <Lock className="mr-1 h-3 w-3" />}
                         {activeFileLocked ? "Unlock" : "Lock file"}
                       </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setGlobalSearchOpen(true)} className="h-7 px-2 text-[10px] text-slate-400" title="Search across project files · Ctrl+Shift+F">
+                        <Search className="mr-1 h-3 w-3" /> Search
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setShortcutsOpen(true)} className="h-7 px-2 text-[10px] text-slate-400" title="Keyboard shortcuts · F1">
+                        <Command className="mr-1 h-3 w-3" /> Shortcuts
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -4143,6 +4235,49 @@ export function CodeAgent() {
       </Dialog>
 
       {/* New file dialog */}
+      <Dialog open={globalSearchOpen} onOpenChange={setGlobalSearchOpen}>
+        <DialogContent className="max-w-3xl border-slate-700 bg-[#0b1320] text-white">
+          <DialogHeader><DialogTitle>Search &amp; Replace Project</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <Input value={globalSearchQuery} onChange={(event) => setGlobalSearchQuery(event.target.value)} placeholder="Search text or regular expression…" className="border-slate-700 bg-[#080e19] text-white" autoFocus />
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 text-xs text-slate-400"><input type="checkbox" checked={globalSearchRegex} onChange={(event) => setGlobalSearchRegex(event.target.checked)} /> Regular expression</label>
+              <span className="ml-auto text-[10px] text-slate-500">{globalSearch.results.length}{globalSearch.results.length === 300 ? "+" : ""} matches</span>
+            </div>
+            <Input value={globalReplaceQuery} onChange={(event) => setGlobalReplaceQuery(event.target.value)} placeholder="Replace with…" className="border-slate-700 bg-[#080e19] text-white" />
+            {globalSearch.error && <p className="text-xs text-rose-300">{globalSearch.error}</p>}
+            <div className="max-h-[42vh] overflow-auto rounded-lg border border-slate-700">
+              {globalSearch.results.map((result, index) => (
+                <button key={result.path + ":" + result.line + ":" + index} type="button" onClick={() => { setActiveFile(result.path); setOpenFileTabs((tabs) => tabs.includes(result.path) ? tabs : [...tabs, result.path].slice(-8)); switchPanel("code"); setGlobalSearchOpen(false); }} className="flex w-full items-start gap-3 border-b border-slate-800 px-3 py-2 text-left hover:bg-white/5">
+                  <span className="shrink-0 font-mono text-[10px] text-cyan-300">{result.path}:{result.line}</span>
+                  <span className="truncate font-mono text-[10px] text-slate-300">{result.text}</span>
+                </button>
+              ))}
+              {!globalSearch.results.length && !globalSearch.error && <p className="px-3 py-6 text-center text-xs text-slate-500">{globalSearchQuery ? "No matches found." : "Type a search expression to scan all project source files."}</p>}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setGlobalSearchOpen(false)}>Close</Button>
+              <Button onClick={() => void replaceAllSearchMatches()} disabled={!globalSearchQuery.trim() || !globalSearch.results.length || Boolean(globalSearch.error)}>Replace all matches</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
+        <DialogContent className="max-w-lg border-slate-700 bg-[#0b1320] text-white">
+          <DialogHeader><DialogTitle>ExpertsTeam Studio Shortcuts</DialogTitle></DialogHeader>
+          <div className="space-y-2 text-xs">
+            {[
+              ["Ctrl / Cmd + Shift + F", "Search and replace across project files"],
+              ["F1", "Open this keyboard shortcut guide"],
+              ["Ctrl / Cmd + S", "Save current project"],
+              ["Ctrl / Cmd + Space", "Open editor completions"],
+              ["Enter", "Send Agent prompt"],
+              ["Shift + Enter", "Add a new line to the prompt"],
+              ["Esc", "Close the current dialog or popover"],
+            ].map(([key, description]) => <div key={key} className="flex items-center justify-between gap-4 border-b border-slate-800 py-2"><kbd className="rounded border border-slate-700 bg-[#080e19] px-2 py-1 font-mono text-[10px] text-cyan-200">{key}</kbd><span className="text-right text-slate-300">{description}</span></div>)}
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={quickOpen} onOpenChange={setQuickOpen}>
         <DialogContent className="border-slate-700 bg-[#101a29] p-0 text-white sm:max-w-xl">
           <DialogHeader className="border-b border-white/10 px-4 py-3">
