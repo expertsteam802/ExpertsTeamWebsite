@@ -44,6 +44,15 @@ Security behavior:
 
 Every accepted callback is processed by a service-role-only database function. Provider event IDs are unique per network. Duplicate callbacks do not double-credit. Reversals remove available credits; any amount already spent is recorded as credit debt and blocks further AI usage until future rewards clear it. The user ledger records awards and deductions.
 
+## Credit top-ups
+
+The Earn page supports four payment methods. Configure rates and payment instructions in Admin → CPA credits before enabling a method. The database stores a snapshot of the conversion rate on each order.
+
+- Mobile Money, Airtel Money and crypto orders require the member's payment transaction reference and an administrator's approval.
+- Stripe uses Checkout. Set server-only `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `APP_URL`. Register `/api/stripe/credits/webhook` as a Stripe webhook endpoint for `checkout.session.completed` and `checkout.session.async_payment_succeeded`.
+- Stripe orders are credited only after the signed webhook is verified and the order ID, Checkout Session ID, currency and total amount match the stored order.
+- Never enable a rate until the payment instructions and credit conversion have been checked.
+
 ## Launch checklist
 
 1. Create and get approval for each publisher placement.

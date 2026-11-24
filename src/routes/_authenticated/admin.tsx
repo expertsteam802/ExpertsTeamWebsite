@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { PageShell } from "@/components/layout/page-shell";
 import { AdminApiUsagePanel } from "@/components/admin-platform-panels";
 import { AdminCpaPanel } from "@/components/admin-cpa-panel";
+import { AdminCreditTopupsPanel } from "@/components/admin-credit-topups-panel";
 import { FileGrid, type CommunityFile } from "@/components/file-grid";
 import { UploadDialog } from "@/components/upload-dialog";
 import { Button } from "@/components/ui/button";
@@ -1766,6 +1767,7 @@ function AdminPage() {
 
               <TabsContent value="cpa-rewards" className="mt-0 space-y-4">
                 <AdminCpaPanel />
+                <AdminCreditTopupsPanel />
               </TabsContent>
 
               <TabsContent value="payments" className="mt-0 space-y-4">

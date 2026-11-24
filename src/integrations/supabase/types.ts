@@ -1043,6 +1043,108 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_topup_orders: {
+        Row: {
+          amount: number
+          checkout_url: string | null
+          created_at: string
+          credits_per_unit: number
+          credits_requested: number
+          currency: string
+          id: string
+          paid_at: string | null
+          payment_note: string
+          payment_reference: string | null
+          provider: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          stripe_checkout_session_id: string | null
+          stripe_event_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          checkout_url?: string | null
+          created_at?: string
+          credits_per_unit: number
+          credits_requested: number
+          currency: string
+          id?: string
+          paid_at?: string | null
+          payment_note?: string
+          payment_reference?: string | null
+          provider: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_event_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          checkout_url?: string | null
+          created_at?: string
+          credits_per_unit?: number
+          credits_requested?: number
+          currency?: string
+          id?: string
+          paid_at?: string | null
+          payment_note?: string
+          payment_reference?: string | null
+          provider?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_event_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      credit_topup_rates: {
+        Row: {
+          credits_per_unit: number
+          currency: string
+          id: string
+          is_enabled: boolean
+          max_amount: number
+          min_amount: number
+          payment_instructions: string
+          provider: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          credits_per_unit: number
+          currency: string
+          id?: string
+          is_enabled?: boolean
+          max_amount?: number
+          min_amount?: number
+          payment_instructions?: string
+          provider: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          credits_per_unit?: number
+          currency?: string
+          id?: string
+          is_enabled?: boolean
+          max_amount?: number
+          min_amount?: number
+          payment_instructions?: string
+          provider?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       developer_vault_items: {
         Row: {
           created_at: string
@@ -2303,6 +2405,10 @@ export type Database = {
         Args: { p_approve: boolean; p_conversion_id: string; p_note?: string }
         Returns: number
       }
+      admin_review_credit_topup: {
+        Args: { p_approve: boolean; p_note?: string; p_order_id: string }
+        Returns: Json
+      }
       admin_review_subscription_request: {
         Args: { p_approve: boolean; p_request_id: string }
         Returns: undefined
@@ -2311,12 +2417,30 @@ export type Database = {
       claim_daily_credit_streak: { Args: never; Returns: Json }
       claim_eligible_referral_bonus: { Args: never; Returns: Json }
       claim_free_ai_credits: { Args: never; Returns: number }
+      complete_stripe_credit_topup: {
+        Args: {
+          p_checkout_session_id: string
+          p_event_id: string
+          p_order_id: string
+        }
+        Returns: Json
+      }
       consume_ai_credit: { Args: never; Returns: number }
       consume_ai_credits: {
         Args: { p_amount: number; p_description?: string }
         Returns: number
       }
       consume_guest_ai_credit: { Args: { p_ip_hash: string }; Returns: boolean }
+      create_credit_topup_order: {
+        Args: {
+          p_amount: number
+          p_currency: string
+          p_payment_note?: string
+          p_payment_reference?: string
+          p_provider: string
+        }
+        Returns: Json
+      }
       delete_user_plugin_connection: {
         Args: { p_connection_id: string; p_user_id: string }
         Returns: boolean
