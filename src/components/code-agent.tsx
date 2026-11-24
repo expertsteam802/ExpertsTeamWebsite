@@ -442,6 +442,63 @@ export function CodeAgent() {
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [visualSelectMode, setVisualSelectMode] = useState(false);
   const [selectedPreviewElement, setSelectedPreviewElement] = useState<{ tag: string; selector: string; id: string; classes: string; text: string; outerHTML: string; styles: Record<string, string> } | null>(null);
+  const [visualTextDraft, setVisualTextDraft] = useState("");
+  const [visualColorDraft, setVisualColorDraft] = useState("#3b82f6");
+  const [visualFontSizeDraft, setVisualFontSizeDraft] = useState("16");
+  const [visualStyleOpen, setVisualStyleOpen] = useState(false);
+  useEffect(() => {
+    if (!selectedPreviewElement) { setVisualStyleOpen(false); return; }
+    setVisualTextDraft(selectedPreviewElement.text);
+    const rawColor = selectedPreviewElement.styles.color ?? "";
+    const rgb = rawColor.match(/\\d+/g)?.map(Number);
+    if (rgb && rgb.length >= 3) setVisualColorDraft("#" + rgb.slice(0, 3).map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0")).join(""));
+    else setVisualColorDraft("#3b82f6");
+    setVisualFontSizeDraft(String(Math.round(Number.parseFloat(selectedPreviewElement.styles.fontSize ?? "16") || 16)));
+    setVisualStyleOpen(true);
+  }, [selectedPreviewElement]);
+  function applyVisualElementEdits() {
+    const selected = selectedPreviewElement;
+    if (!selected) return;
+    const nextFiles = { ...files };
+    let textChanged = false;
+    const originalText = selected.text.trim();
+    const replacementText = visualTextDraft.trim();
+    if (replacementText && originalText && replacementText !== originalText) {
+      const candidates = Object.entries(nextFiles).filter(([path, source]) =>
+        /\\.(html?|jsx?|tsx?|vue|svelte)$/i.test(path) && source.includes(originalText)
+      );
+      const matches = candidates.reduce((count, [, source]) => count + source.split(originalText).length - 1, 0);
+      if (matches !== 1) {
+        toast.error(matches === 0 ? "Could not find this exact text in project source. Use Ask AI to edit it." : "This text appears more than once. Use Ask AI to target the correct source element.");
+        return;
+      }
+      const [sourcePath, source] = candidates[0];
+      const safeText = replacementText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      nextFiles[sourcePath] = source.replace(originalText, safeText);
+      textChanged = true;
+    }
+    const cssPath = Object.keys(nextFiles).find((path) => /\\.css$/i.test(path));
+    const selector = selected.selector.trim();
+    if (!cssPath || !selector || /[{};]/.test(selector)) {
+      toast.error("A project CSS file and a valid element selector are required for style edits. Text changes were not saved.");
+      return;
+    }
+    const fontSize = Number(visualFontSizeDraft);
+    if (!Number.isFinite(fontSize) || fontSize < 8 || fontSize > 96) {
+      toast.error("Choose a font size between 8 and 96 pixels.");
+      return;
+    }
+    const color = /^#[0-9a-f]{6}$/i.test(visualColorDraft) ? visualColorDraft : "#3b82f6";
+    const rule = "\\n\\n/* ExpertsTeam visual edit */\\n" + selector + " {\\n  color: " + color + ";\\n  font-size: " + fontSize + "px;\\n}\\n";
+    nextFiles[cssPath] = (nextFiles[cssPath] ?? "") + rule;
+    setFiles(nextFiles);
+    setAutoSaveStatus("saved");
+    setDirty(true);
+    setSelectedPreviewElement(null);
+    setVisualSelectMode(false);
+    toast.success(textChanged ? "Text and styles updated in project source." : "Styles saved to " + cssPath + ".");
+  }
+
   useEffect(() => {
     if (!previewExpanded) return;
     const restorePreview = (event: KeyboardEvent) => {
@@ -3100,15 +3157,6 @@ export function CodeAgent() {
                       </button>
                     </div>
                   </div>
-                  {selectedPreviewElement && (
-                    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-cyan-300/15 bg-cyan-300/[0.06] px-3 py-2">
-                      <div className="min-w-0"><p className="text-[10px] font-semibold text-cyan-100">Selected {selectedPreviewElement.tag}</p><p className="max-w-[420px] truncate text-[10px] text-slate-400">{selectedPreviewElement.selector}{selectedPreviewElement.text ? " · " + selectedPreviewElement.text : ""}</p></div>
-                      <div className="flex gap-2">
-                        <button type="button" onClick={() => { const item = selectedPreviewElement; setPrompt("Edit this selected element in my project.\nSelector: " + item.selector + "\nTag: " + item.tag + "\nCurrent text: " + item.text + "\nCurrent HTML: " + item.outerHTML + "\nCurrent styles: " + JSON.stringify(item.styles) + "\nMake the requested changes only to this element and preserve the rest of the page."); setSelectedPreviewElement(null); switchPanel("chat"); }} className="rounded-lg bg-cyan-400 px-3 py-1.5 text-[10px] font-semibold text-slate-950">Ask AI to edit</button>
-                        <button type="button" onClick={() => setSelectedPreviewElement(null)} className="rounded-lg px-2 py-1.5 text-[10px] text-slate-400 hover:bg-white/5">Dismiss</button>
-                      </div>
-                    </div>
-                  )}
                   {runtimeUrl && (
                     <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.07] bg-[#0a111d] px-3 py-2">
                       <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Preview URL</span>
@@ -3147,6 +3195,29 @@ export function CodeAgent() {
                           device === "desktop" ? "100%" : device === "tablet" ? "768px" : "375px",
                       }}
                     />
+                    {selectedPreviewElement && (
+                      <div className="et-visual-property-popover" role="dialog" aria-label="Visual element properties">
+                        <div className="flex items-center justify-between gap-3 border-b border-slate-700/80 pb-2">
+                          <div className="min-w-0"><p className="text-[11px] font-semibold text-slate-100">Edit {selectedPreviewElement.tag}</p><p className="truncate font-mono text-[9px] text-slate-400">{selectedPreviewElement.selector}</p></div>
+                          <button type="button" onClick={() => setSelectedPreviewElement(null)} className="rounded-md p-1 text-slate-400 hover:bg-slate-700 hover:text-white" aria-label="Close visual editor"><X className="h-3.5 w-3.5" /></button>
+                        </div>
+                        <label className="block pt-2 text-[10px] font-medium text-slate-300">Text content</label>
+                        <textarea value={visualTextDraft} onChange={(event) => setVisualTextDraft(event.target.value)} rows={2} className="mt-1 w-full resize-y rounded-lg border border-slate-700 bg-[#0B0F17] px-2.5 py-2 text-[11px] text-slate-100 outline-none focus:border-blue-500" />
+                        <div className="mt-2 grid grid-cols-2 gap-3">
+                          <label className="block text-[10px] font-medium text-slate-300">Text color
+                            <div className="mt-1 flex h-9 items-center gap-2 rounded-lg border border-slate-700 bg-[#0B0F17] px-2"><input aria-label="Text color" type="color" value={visualColorDraft} onChange={(event) => setVisualColorDraft(event.target.value)} className="h-6 w-7 cursor-pointer border-0 bg-transparent p-0" /><span className="font-mono text-[10px] text-slate-400">{visualColorDraft}</span></div>
+                          </label>
+                          <label className="block text-[10px] font-medium text-slate-300">Font size
+                            <div className="mt-1 flex h-9 items-center rounded-lg border border-slate-700 bg-[#0B0F17] px-2"><input aria-label="Font size in pixels" type="number" min="8" max="96" value={visualFontSizeDraft} onChange={(event) => setVisualFontSizeDraft(event.target.value)} className="w-full bg-transparent text-[11px] text-slate-100 outline-none" /><span className="text-[10px] text-slate-500">px</span></div>
+                          </label>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <button type="button" onClick={() => { const item = selectedPreviewElement; setPrompt("Edit this selected element in my project.\\nSelector: " + item.selector + "\\nTag: " + item.tag + "\\nCurrent text: " + item.text + "\\nCurrent HTML: " + item.outerHTML + "\\nCurrent styles: " + JSON.stringify(item.styles) + "\\nMake the requested changes only to this element and preserve the rest of the page."); setSelectedPreviewElement(null); switchPanel("chat"); }} className="rounded-lg border border-slate-700 px-2.5 py-2 text-[10px] font-medium text-slate-300 hover:bg-slate-700">Ask AI</button>
+                          <button type="button" onClick={applyVisualElementEdits} className="rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-semibold text-white hover:bg-blue-500">Apply edits</button>
+                        </div>
+                        <p className="mt-2 text-[9px] leading-4 text-slate-500">Direct source edits; no AI credits. Ambiguous text changes are blocked.</p>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -3735,6 +3806,16 @@ export function CodeAgent() {
           }
           .expert-agent-topbar .et-studio-header-actions button { height:30px!important;font-size:10px!important; }
         }
+        .et-visual-property-popover {
+          position:absolute;z-index:35;top:16px;right:16px;width:min(330px,calc(100% - 32px));
+          max-height:calc(100% - 32px);overflow:auto;padding:13px;border:1px solid rgba(96,165,250,.34);
+          border-radius:14px;background:rgba(15,23,42,.94);backdrop-filter:blur(18px);
+          box-shadow:0 18px 55px rgba(0,0,0,.48),inset 0 1px rgba(255,255,255,.04);
+        }
+        .et-visual-property-popover input[type="color"]::-webkit-color-swatch-wrapper { padding:0; }
+        .et-visual-property-popover input[type="color"]::-webkit-color-swatch { border:0;border-radius:5px; }
+        .expert-agent-assistant .min-h-0.flex-1 { font-family:Inter,ui-sans-serif,system-ui,sans-serif; }
+        .expert-agent-kilo-surface,.expert-agent-canvas .cm-editor { font-family:"JetBrains Mono",ui-monospace,monospace; }
       `}</style>
 
       <Dialog open={thumbnailDialogOpen} onOpenChange={setThumbnailDialogOpen}>
