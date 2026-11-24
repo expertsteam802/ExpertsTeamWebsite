@@ -347,7 +347,7 @@ function RootContent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <Toaster richColors position="top-center" />
-      <SiteTextEditor />
+      {currentPathname !== "/ai" && <SiteTextEditor />}
 
       {!isPublishedApp &&
         (aiChatOpen ? (
