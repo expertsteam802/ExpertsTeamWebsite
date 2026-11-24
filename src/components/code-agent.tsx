@@ -3810,6 +3810,113 @@ export function CodeAgent() {
         .et-visual-property-popover input[type="color"]::-webkit-color-swatch { border:0;border-radius:5px; }
         .expert-agent-assistant .min-h-0.flex-1 { font-family:Inter,ui-sans-serif,system-ui,sans-serif; }
         .expert-agent-kilo-surface,.expert-agent-canvas .cm-editor { font-family:"JetBrains Mono",ui-monospace,monospace; }
+
+        /* Final three-column Studio layout: 48px activity rail, resizable Agent,
+           and a full-bleed workbench. The explorer is intentionally not a column. */
+        .expert-agent-shell { height:100dvh!important;min-height:0!important;max-height:100dvh!important; }
+        .expert-agent-topbar {
+          height:48px!important;min-height:48px!important;max-height:48px!important;flex:0 0 48px!important;
+          display:flex!important;align-items:center!important;justify-content:space-between!important;
+          gap:12px!important;padding:0 16px!important;overflow:hidden!important;
+          background:#111827!important;border-bottom:1px solid #1E293B!important;
+        }
+        .expert-agent-topbar > div:first-child { flex:1 1 0!important;min-width:0!important; }
+        .expert-agent-topbar .et-studio-header-center { flex:0 1 auto!important;justify-content:center!important; }
+        .expert-agent-topbar .et-studio-header-actions { flex:1 1 0!important;justify-content:flex-end!important;min-width:0!important; }
+        .expert-agent-topbar > input[type="file"] { display:none!important; }
+        .expert-agent-topbar > div:first-child > div > div:first-child { display:none!important; }
+        .expert-agent-topbar > div:first-child .et-studio-project-switcher { max-width:150px!important; }
+        .expert-agent-topbar > div:first-child .text-sm.font-semibold { max-width:180px!important; }
+        .expert-agent-topbar .et-studio-header-actions button { white-space:nowrap!important; }
+        .expert-agent-workspace-grid {
+          display:grid!important;grid-template-columns:48px minmax(300px,var(--assistant-width,32vw)) 5px minmax(0,1fr)!important;
+          grid-template-rows:minmax(0,1fr)!important;gap:0!important;min-height:0!important;min-width:0!important;
+          height:calc(100dvh - 48px)!important;flex:1 1 0!important;overflow:hidden!important;padding:0!important;
+        }
+        .expert-agent-workspace-grid > .expert-agent-sidebar,
+        .expert-agent-workspace-grid > [aria-label="Resize project sidebar"],
+        .expert-agent-workspace-grid > .expert-agent-mobile-backdrop { display:none!important; }
+        .expert-agent-workspace-grid > .et-studio-activity-rail {
+          display:flex!important;grid-column:1!important;grid-row:1!important;width:48px!important;min-width:48px!important;
+          height:100%!important;align-items:center!important;gap:8px!important;padding:10px 6px!important;
+          background:#0F1623!important;border-right:1px solid #1E293B!important;
+        }
+        .expert-agent-stage { display:contents!important; }
+        .expert-agent-stage > .expert-agent-toolbar,
+        .expert-agent-stage > .expert-agent-statusbar,
+        .expert-agent-stage > footer { display:none!important; }
+        .expert-agent-stage > .grid { display:contents!important; }
+        .expert-agent-stage .expert-agent-canvas {
+          display:flex!important;grid-column:4!important;grid-row:1!important;position:relative!important;
+          inset:auto!important;width:auto!important;height:auto!important;min-width:0!important;min-height:0!important;
+          max-height:none!important;overflow:hidden!important;background:#0B0F17!important;
+        }
+        .expert-agent-stage .expert-agent-assistant {
+          display:flex!important;grid-column:2!important;grid-row:1!important;position:relative!important;
+          inset:auto!important;width:auto!important;height:100%!important;min-width:0!important;min-height:0!important;
+          max-height:none!important;border:0!important;border-right:1px solid #1E293B!important;border-radius:0!important;
+          background:#0F1623!important;box-shadow:none!important;overflow:hidden!important;
+        }
+        .expert-agent-stage .expert-agent-assistant.hidden { display:none!important; }
+        .expert-agent-stage [aria-label="Resize ExpertAI panel"] {
+          display:block!important;grid-column:3!important;grid-row:1!important;width:5px!important;min-width:5px!important;
+          cursor:col-resize!important;background:#1E293B!important;border:0!important;
+        }
+        .expert-agent-workspace-grid:has(.expert-agent-assistant.hidden) { grid-template-columns:48px minmax(0,1fr)!important; }
+        .expert-agent-workspace-grid:has(.expert-agent-assistant.hidden) .expert-agent-canvas { grid-column:2!important; }
+        .expert-agent-assistant > div:first-child {
+          height:48px!important;min-height:48px!important;background:#0F1623!important;border-bottom:1px solid #1E293B!important;
+        }
+        .expert-agent-assistant > div:nth-child(2),
+        .expert-agent-assistant > div:nth-child(3) { display:none!important; }
+        .expert-agent-assistant .min-h-0.flex-1 { min-height:0!important;overflow-y:auto!important;padding:14px!important; }
+        .expert-agent-assistant .shrink-0.border-t { padding:10px!important;background:#0F1623!important;border-color:#1E293B!important; }
+        .expert-agent-assistant .shrink-0.border-t > div { width:100%!important;max-width:none!important; }
+        .expert-agent-assistant textarea { width:100%!important;min-height:72px!important;max-height:160px!important; }
+        .expert-agent-preview-subbar { height:36px!important;min-height:36px!important;max-height:36px!important; }
+        .expert-agent-canvas > div:has(input[aria-label="Preview address"]) { display:none!important; }
+        .expert-agent-canvas > div:has(> iframe) {
+          display:flex!important;flex:1 1 0!important;min-height:0!important;min-width:0!important;
+          align-items:stretch!important;justify-content:center!important;padding:0!important;margin:0!important;
+          overflow:hidden!important;background:#0B0F17!important;
+        }
+        .expert-agent-canvas iframe {
+          display:block!important;height:100%!important;min-height:0!important;max-height:100%!important;
+          border:0!important;border-radius:0!important;box-shadow:none!important;background:white!important;
+        }
+        button[aria-label="Edit site text"],button[title="Edit site text"],
+        [data-tooltip="Edit site text"] { display:none!important; }
+        @media (max-width:1100px) and (min-width:768px) {
+          .expert-agent-workspace-grid { grid-template-columns:48px minmax(280px,38vw) 5px minmax(0,1fr)!important; }
+          .expert-agent-topbar { padding-inline:9px!important;gap:6px!important; }
+          .expert-agent-topbar .et-studio-project-switcher { max-width:105px!important; }
+          .expert-agent-topbar .et-studio-header-actions { gap:4px!important; }
+          .expert-agent-topbar .et-studio-header-actions button { padding-inline:7px!important;font-size:10px!important; }
+        }
+        @media (max-width:767px) {
+          .expert-agent-topbar { padding-inline:7px!important;gap:5px!important; }
+          .expert-agent-topbar > div:first-child { flex:1 1 auto!important; }
+          .expert-agent-topbar .et-studio-header-center { gap:4px!important; }
+          .expert-agent-topbar .et-studio-header-center > button { padding-inline:7px!important; }
+          .expert-agent-topbar .et-studio-header-center [role="tablist"] button { padding-inline:6px!important;font-size:9px!important; }
+          .expert-agent-topbar .et-studio-header-actions { flex:0 0 auto!important;gap:3px!important; }
+          .expert-agent-topbar .et-studio-header-actions button { width:30px!important;min-width:30px!important;padding:0!important;overflow:hidden!important;font-size:0!important; }
+          .expert-agent-topbar .et-studio-header-actions button svg { margin:0!important; }
+          .expert-agent-workspace-grid { display:grid!important;grid-template-columns:48px minmax(0,1fr)!important; }
+          .expert-agent-workspace-grid > .et-studio-activity-rail { display:flex!important; }
+          .expert-agent-stage .expert-agent-canvas { grid-column:2!important; }
+          .expert-agent-stage .expert-agent-assistant:not(.hidden) {
+            position:fixed!important;z-index:92!important;inset:48px 0 0 48px!important;width:auto!important;height:auto!important;
+            grid-column:auto!important;border-left:1px solid #1E293B!important;
+          }
+          .expert-agent-stage [aria-label="Resize ExpertAI panel"] { display:none!important; }
+          .expert-agent-preview-subbar { gap:4px!important;padding-inline:6px!important; }
+          .expert-agent-preview-subbar > div:last-child { gap:0!important; }
+          .expert-agent-preview-subbar button { padding:5px!important; }
+        }
+        @media (prefers-reduced-motion:reduce) {
+          .expert-agent-workspace-grid,.expert-agent-stage .expert-agent-canvas,.expert-agent-assistant { transition:none!important; }
+        }
       `}</style>
 
       <Dialog open={thumbnailDialogOpen} onOpenChange={setThumbnailDialogOpen}>
