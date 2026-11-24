@@ -593,3 +593,58 @@ jobs:
       - id: deployment
         uses: actions/deploy-pages@v4
 `;
+
+
+/** Kilo-only planning pass. It reads the saved project snapshot but never returns file mutations. */
+export async function runAgentPlan(
+  { prompt, files, history, referenceImage, referenceImages: suppliedReferenceImages }: AgentInput,
+) {
+  const visualReferences = suppliedReferenceImages?.length
+    ? suppliedReferenceImages
+    : referenceImage ? [referenceImage] : [];
+  const selectedFiles = Object.entries(files)
+    .filter(([name]) => !/node_modules|(^|\\/)dist\\//i.test(name))
+    .sort((left, right) => {
+      const priority = (name: string) => /^(package\\.json|index\\.html|vite\\.config|src\\/main|src\\/App|src\\/index\\.css)/i.test(name) ? 0 : 1;
+      return priority(left[0]) - priority(right[0]);
+    })
+    .slice(0, 28);
+  const projectContext = selectedFiles.map(([name, content]) =>
+    "--- " + name + " ---\\n" + content.slice(0, 4500)
+  ).join("\\n\\n").slice(0, 28000);
+  const systemPrompt = [
+    "You are the planning mode of the ExpertsTeam coding agent.",
+    "Use the Kilo Gateway only. You do not have or need a terminal, CLI, remote sandbox, or external project workspace.",
+    "Inspect the supplied project files and conversation. Produce a practical implementation plan for the user's latest request.",
+    "Return readable Markdown, not JSON. Do not output code patches and do not create, edit, delete, or rename files.",
+    "Be specific: affected files, components/routes, data flow, dependencies, risks, ordered implementation steps, and verification checks.",
+    "Preserve existing architecture and unrelated functionality. If the project context is incomplete, state the assumptions.",
+    "Keep the plan concise and actionable."
+  ].join("\\n");
+  const contents = [
+    ...history.slice(-8).map((message) => ({
+      role: message.role === "assistant" ? ("model" as const) : ("user" as const),
+      parts: [{ text: message.content.slice(-1800) }],
+    })),
+    {
+      role: "user" as const,
+      parts: [
+        { text: "LATEST REQUEST:\\n" + prompt + "\\n\\nCURRENT PROJECT FILES:\\n" + (projectContext || "(empty project)") },
+        ...visualReferences.map((image) => ({
+          inlineData: { mimeType: image.mimeType, data: image.data },
+        })),
+      ],
+    },
+  ];
+  const response = await generateGeminiContent({
+    systemInstruction: { parts: [{ text: systemPrompt }] },
+    contents,
+    generationConfig: { maxOutputTokens: 3000 },
+  });
+  const message = response.candidates?.[0]?.content?.parts
+    ?.filter((part) => !part.thought)
+    .map((part) => part.text ?? "")
+    .join("").trim();
+  if (!message) throw new Error("Kilo could not produce an implementation plan.");
+  return { message, files: {} as Record<string, string | null>, mode: "plan" as const };
+}
