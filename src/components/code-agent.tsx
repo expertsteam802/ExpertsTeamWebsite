@@ -385,6 +385,7 @@ export function CodeAgent() {
   const [tutorMode, setTutorMode] = useState(false);
   const [planDraft, setPlanDraft] = useState<string | null>(null);
   const [planChecklist, setPlanChecklist] = useState<Record<number, boolean>>({});
+  const [latestFileDiffs, setLatestFileDiffs] = useState<Array<{ path: string; before: string; after: string }>>([]);
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
   const referenceInputRef = useRef<HTMLInputElement>(null);
   const projectFileInputRef = useRef<HTMLInputElement>(null);
@@ -2362,6 +2363,7 @@ export function CodeAgent() {
 
       const answer = `${result.message}${changed.length ? `\n\nUpdated files:\n${changed.map((path) => `- ${path}`).join("\n")}` : ""}`;
       const finalMessages: Message[] = [...nextMessages, { role: "assistant", content: answer }];
+      setLatestFileDiffs(changed.map((path) => ({ path, before: files[path] ?? "", after: updatedFiles[path] ?? "" })));
       setFiles(updatedFiles);
       setMessages(finalMessages);
       setTypingMessageIndex(finalMessages.length - 1);
@@ -3470,11 +3472,32 @@ export function CodeAgent() {
                         </div>
                       </details>
                     )}
+                    {latestFileDiffs.length > 0 && (
+                      <div className="overflow-hidden rounded-xl border border-slate-700 bg-[#0b1220]">
+                        <div className="flex items-center justify-between border-b border-slate-700 px-3 py-2">
+                          <span className="text-[10px] font-semibold text-slate-200">File diff</span>
+                          <span className="text-[9px] text-emerald-300">{latestFileDiffs.length} file{latestFileDiffs.length === 1 ? "" : "s"} changed</span>
+                        </div>
+                        {latestFileDiffs.map((diff) => {
+                          const beforeLines = diff.before.split("\n");
+                          const afterLines = diff.after.split("\n");
+                          const removed = beforeLines.filter((line) => !afterLines.includes(line)).slice(0, 6);
+                          const added = afterLines.filter((line) => !beforeLines.includes(line)).slice(0, 6);
+                          return <div key={diff.path} className="border-b border-slate-800 last:border-0">
+                            <div className="flex items-center gap-2 px-3 py-2 font-mono text-[10px] text-slate-300"><FileCode2 className="h-3 w-3 text-blue-300" />{diff.path}</div>
+                            <div className="max-h-36 overflow-auto bg-[#080d16] px-3 py-2 font-mono text-[9px] leading-5">
+                              {removed.map((line, index) => <div key={"r"+index} className="whitespace-pre-wrap break-all text-red-300"><span className="mr-2 text-red-500">−</span>{line || " "}</div>)}
+                              {added.map((line, index) => <div key={"a"+index} className="whitespace-pre-wrap break-all text-emerald-300"><span className="mr-2 text-emerald-500">+</span>{line || " "}</div>)}
+                              {!removed.length && !added.length && <div className="text-slate-500">File updated · open Code to inspect the full source</div>}
+                            </div>
+                          </div>;
+                        })}
+                      </div>
+                    )}
                     {busy && <div className="flex items-center gap-2 px-2 py-2 text-xs text-cyan-200"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Working on your project…</div>}
                     <div ref={agentChatEndRef} />
                   </div>
                   {referenceImages.length > 0 && <div className="flex shrink-0 flex-wrap gap-2 border-t border-white/[0.06] px-3 pt-2">{referenceImages.map((image) => <span key={image.name} className="rounded-md bg-white/5 px-2 py-1 text-[10px] text-slate-300">{image.name}</span>)}</div>}
-                  {planDraft && <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-emerald-400/15 bg-emerald-400/[0.06] px-3 py-2"><span className="text-[10px] text-emerald-200">Plan ready · project files unchanged</span><div className="flex gap-2"><button type="button" onClick={dismissPlanDraft} className="rounded-lg px-2.5 py-1.5 text-[10px] text-slate-400 hover:bg-white/5">Discard</button><button type="button" onClick={() => { const approved = planDraft; setPlanDraft(null); setAgentMode("build"); void sendPrompt("build", "Implement this approved plan. Follow the steps in order and verify the result:\n\n" + approved); }} disabled={busy} className="rounded-lg bg-emerald-400 px-3 py-1.5 text-[10px] font-semibold text-slate-950 disabled:opacity-40">Implement plan</button></div></div>}
                   <div className="shrink-0 border-t border-white/[0.08] bg-[#0a1422] p-3">
                     <div className="rounded-2xl border border-white/10 bg-[#0c1727] p-2 focus-within:border-cyan-400/40">
                       <Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendPrompt(); } }} placeholder="Ask ExpertAI anything…" className="min-h-[76px] resize-none border-0 bg-transparent text-xs text-white shadow-none focus-visible:ring-0" disabled={busy} />
