@@ -770,6 +770,25 @@ export const startAgentPreview = createServerFn({ method: "POST" })
     const files = await loadProjectSourceFiles(context.supabase, data.projectId, context.userId);
     if (!Object.keys(files).length) throw new Error("This project has no saved source files to preview.");
     await assertBuilderResourcePolicy(context.supabase, context.userId, files);
+    const { data: savedAssets, error: assetQueryError } = await context.supabase
+      .from("agent_project_assets")
+      .select("file_path,storage_path,mime_type,sha256")
+      .eq("project_id", data.projectId)
+      .eq("user_id", context.userId);
+    if (assetQueryError) throw new Error("Could not load the project's saved binary assets: " + assetQueryError.message);
+    const binaryAssets: { filePath: string; buffer: Buffer; mimeType: string; sha256: string }[] = [];
+    for (const asset of savedAssets ?? []) {
+      const { data: blob, error: downloadError } = await context.supabase.storage
+        .from("builder-project-assets")
+        .download(asset.storage_path);
+      if (downloadError || !blob) throw new Error("Could not restore " + asset.file_path + ": " + (downloadError?.message ?? "asset is missing"));
+      binaryAssets.push({
+        filePath: asset.file_path,
+        buffer: Buffer.from(await blob.arrayBuffer()),
+        mimeType: asset.mime_type,
+        sha256: asset.sha256,
+      });
+    }
     const { loadProjectPublicEnvironment } = await import("./project-secrets.server");
     // Supabase generated types do not yet include the project-secrets migration tables.
     const projectEnvironment = await loadProjectPublicEnvironment(
@@ -779,7 +798,7 @@ export const startAgentPreview = createServerFn({ method: "POST" })
       data.projectId,
     );
     const { startDaytonaProjectPreview } = await import("./daytona-terminal.server");
-    return startDaytonaProjectPreview(data.projectId, files, projectEnvironment);
+    return startDaytonaProjectPreview(data.projectId, files, projectEnvironment, binaryAssets);
   });
 
 const terminalStartRequest = z
