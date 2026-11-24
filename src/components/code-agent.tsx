@@ -283,9 +283,9 @@ type ProjectRow = {
 type Panel = "preview" | "code" | "console" | "terminal";
 
 const CODING_AGENT_UNDER_DEVELOPMENT = false;
-// Keep the Agent Builder CLI terminal available. If the configured cloud
-// sandbox provider rejects a new session, surface its real error to the user.
-const CLOUD_SANDBOX_ENABLED = true;
+// Keep the Agent Builder CLI terminal on Daytona. If a session cannot start,
+// surface the actual runtime error while preserving the saved project files.
+const DAYTONA_RUNTIME_ENABLED = true;
 
 
 async function copyTextToSystemClipboard(value: string) {
@@ -449,7 +449,37 @@ export function CodeAgent() {
   const [liveCredits, setLiveCredits] = useState<number | null>(null);
   const liveCreditsRef = useRef<number | null>(null);
   const displayedCredits = liveCredits ?? profile?.ai_credits ?? 0;
-  const githubAccessToken = (session as (typeof session & { provider_token?: string }) | null)?.provider_token ?? "";
+  const lowCreditAlertShownRef = useRef(false);
+  useEffect(() => {
+    if (!user || !profile) return;
+    if (displayedCredits <= 2) {
+      if (!lowCreditAlertShownRef.current) {
+        lowCreditAlertShownRef.current = true;
+        toast.warning("Your ExpertAI credit balance is low. Earn credits from partner offers to keep building without interruption.");
+      }
+    } else {
+      lowCreditAlertShownRef.current = false;
+    }
+  }, [displayedCredits, profile, user]);
+  const { data: githubPluginConnection = null } = useQuery({
+    queryKey: ["github-plugin-connection", user?.id],
+    enabled: Boolean(user),
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = supabase as any;
+      const { data, error } = await db
+        .from("user_plugin_connections")
+        .select("id,display_name,status")
+        .eq("user_id", user!.id)
+        .eq("provider", "github")
+        .eq("status", "connected")
+        .order("connected_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw new Error("Could not check the GitHub connection.");
+      return data;
+    },
+  });
   const terminalUsername = (profile?.username || user?.email?.split("@")[0] || "user")
     .replace(/[^a-zA-Z0-9_-]/g, "")
     .slice(0, 39) || "user";
@@ -595,6 +625,7 @@ export function CodeAgent() {
   const [githubRepo, setGithubRepo] = useState("");
   const [githubRepositories, setGithubRepositories] = useState<{ fullName: string; private: boolean; url: string; defaultBranch: string }[]>([]);
   const [loadingGithubRepositories, setLoadingGithubRepositories] = useState(false);
+  const [pullingGithub, setPullingGithub] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [assistantOpen, setAssistantOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(248);
@@ -1116,7 +1147,17 @@ export function CodeAgent() {
 
   useEffect(() => {
     const handleStudioShortcut = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "f") {
+      const command = event.ctrlKey || event.metaKey;
+      if (command && !event.shiftKey && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        void persist().catch((error) => toast.error(error instanceof Error ? error.message : "Could not save this project."));
+      } else if (command && event.shiftKey && event.key.toLowerCase() === "p") {
+        event.preventDefault();
+        setQuickOpen(true);
+      } else if (command && event.key === "Enter") {
+        event.preventDefault();
+        void runProject();
+      } else if (command && event.shiftKey && event.key.toLowerCase() === "f") {
         event.preventDefault();
         setGlobalSearchOpen(true);
       } else if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "k" && panel === "code") {
@@ -1136,7 +1177,7 @@ export function CodeAgent() {
     };
     window.addEventListener("keydown", handleStudioShortcut);
     return () => window.removeEventListener("keydown", handleStudioShortcut);
-  }, [panel]);
+  }, [panel, persist, runProject]);
 
   const activeProjectSlug = projects.find((project) => project.id === projectId)?.slug ?? null;
 
@@ -1679,10 +1720,10 @@ export function CodeAgent() {
   }
 
   async function openTerminal() {
-    if (!CLOUD_SANDBOX_ENABLED) {
+    if (!DAYTONA_RUNTIME_ENABLED) {
       setAgentPanelMode("terminal");
       setRuntimeStatus("Cloud terminal temporarily unavailable");
-      toast.info("The CLI terminal is temporarily paused because the free Vercel Sandbox quota is exhausted. Your Agent Builder files remain saved.");
+      toast.info("The Daytona terminal is temporarily unavailable. Your Agent Builder files remain saved and can still be edited.");
       return;
     }
     // Reuse a live socket. A saved connection object alone is not proof that
@@ -1764,7 +1805,7 @@ export function CodeAgent() {
   // Start the selected CLI automatically when Studio opens. A blank first-time
   // workspace is persisted by openTerminal before the sandbox is created.
   useEffect(() => {
-    if (!CLOUD_SANDBOX_ENABLED) return;
+    if (!DAYTONA_RUNTIME_ENABLED) return;
     if (!user?.id || projectsLoading || !autoStartedKiloRef.current) return;
     if (autoConnectCliRef.current || terminalConnection) return;
     if (!projectId && projects.length > 0) return;
@@ -1789,7 +1830,7 @@ export function CodeAgent() {
           skipped += extracted.skipped;
           for (const entry of extracted.files) {
             const path = entry.path.replace(/^\/+/, "");
-            if (!path || path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) || /(^|\/)\.env($|\.)/i.test(path) || entry.sizeBytes > 10 * 1024 * 1024 || totalBytes + entry.sizeBytes > 25 * 1024 * 1024 || (Object.keys(nextFiles).length >= 2_000 && nextFiles[path] === undefined)) { skipped += 1; continue; }
+            if (!path || path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) || /(^|\/)\.env($|\.)/i.test(path) || entry.sizeBytes > 25 * 1024 * 1024 || totalBytes + entry.sizeBytes > 100 * 1024 * 1024 || (Object.keys(nextFiles).length >= 2_000 && nextFiles[path] === undefined)) { skipped += 1; continue; }
             nextFiles[path] = entry.content;
             totalBytes += entry.sizeBytes;
             imported += 1;
@@ -1798,7 +1839,7 @@ export function CodeAgent() {
         continue;
       }
       const path = relativePath.replace(/\\/g, "/").replace(/^\/+/, "");
-      if (!path || path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) || /(^|\/)\.env($|\.)/i.test(path) || file.size > 10 * 1024 * 1024 || totalBytes + file.size > 25 * 1024 * 1024 || (Object.keys(nextFiles).length >= 2_000 && nextFiles[path] === undefined)) { skipped += 1; continue; }
+      if (!path || path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) || /(^|\/)\.env($|\.)/i.test(path) || file.size > 25 * 1024 * 1024 || totalBytes + file.size > 100 * 1024 * 1024 || (Object.keys(nextFiles).length >= 2_000 && nextFiles[path] === undefined)) { skipped += 1; continue; }
       const textLike = file.type.startsWith("text/") || /\.(?:[cm]?[jt]sx?|json|css|scss|html?|md|mdx|xml|ya?ml|toml|ini|py|java|c|h|cpp|cs|go|rs|php|sql|sh|bat|ps1|svg|txt|env\.example)$/i.test(path);
       if (!textLike) { skipped += 1; continue; }
       try {
@@ -2076,7 +2117,7 @@ export function CodeAgent() {
   }
 
   useEffect(() => {
-    if (!CLOUD_SANDBOX_ENABLED) return;
+    if (!DAYTONA_RUNTIME_ENABLED) return;
     if (!projectId || autoStartedProjectRef.current === projectId) return;
     let scripts: Record<string, string> = {};
     try {
@@ -2120,8 +2161,8 @@ export function CodeAgent() {
   }
 
   async function publishProject() {
-    if (!CLOUD_SANDBOX_ENABLED) {
-      toast.info("New app builds are temporarily paused because the free cloud sandbox quota is exhausted. Your saved project and existing published apps are unaffected.");
+    if (!DAYTONA_RUNTIME_ENABLED) {
+      toast.info("The Daytona runtime is temporarily unavailable. Your saved project and existing published apps are unaffected.");
       return;
     }
     if (publishing) return;
@@ -2758,7 +2799,7 @@ export function CodeAgent() {
     mutationFn: async () => {
       const activeProjectId = await persist({ files });
       const result = await push({
-        data: { projectId: activeProjectId, token: githubAccessToken || githubToken, repo: githubRepo },
+        data: { projectId: activeProjectId, token: githubToken, repo: githubRepo },
       });
       if (!result.ok) throw new Error(result.error || "GitHub push failed");
       await persist({ extra: { github_repo: result.url } });
@@ -2809,7 +2850,7 @@ export function CodeAgent() {
           for (const entry of extracted.files) {
             if (
               Object.keys(importedFiles).length >= 2_000 ||
-              totalBytes + entry.sizeBytes > 25 * 1024 * 1024 ||
+              totalBytes + entry.sizeBytes > 100 * 1024 * 1024 ||
               Object.prototype.hasOwnProperty.call(importedFiles, entry.path)
             ) {
               skipped += 1;
@@ -2820,7 +2861,7 @@ export function CodeAgent() {
           }
           continue;
         }
-        if (!textFile.test(path) || /(^|\/)\.env($|\.)/i.test(path) || path.split("/").some((part) => part === "..") || row.size_bytes > 10 * 1024 * 1024 || totalBytes + row.size_bytes > 25 * 1024 * 1024) {
+        if (!textFile.test(path) || /(^|\/)\.env($|\.)/i.test(path) || path.split("/").some((part) => part === "..") || row.size_bytes > 25 * 1024 * 1024 || totalBytes + row.size_bytes > 100 * 1024 * 1024) {
           skipped += 1;
           continue;
         }
@@ -2882,11 +2923,7 @@ export function CodeAgent() {
   }
 
   async function loadGithubRepositories() {
-    const token = githubAccessToken || githubToken.trim();
-    if (!token) {
-      toast.error("Connect GitHub first to load your repositories.");
-      return;
-    }
+    const token = githubToken.trim();
     setLoadingGithubRepositories(true);
     try {
       const repositories = await listGithubRepos({ data: { token } });
@@ -2901,11 +2938,69 @@ export function CodeAgent() {
   }
 
   async function connectGitHubAccount() {
+    const popup = window.open("about:blank", "experts-github-oauth", "popup,width=620,height=760,resizable=yes,scrollbars=yes");
+    if (!popup) {
+      toast.error("Your browser blocked the GitHub popup. Allow popups for ExpertsTeam and try again.");
+      return;
+    }
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin || event.data?.type !== "experts-plugin-oauth" || event.data?.provider !== "github") return;
+      window.removeEventListener("message", onMessage);
+      if (event.data.success) {
+        toast.success("GitHub connected securely.");
+        void queryClient.invalidateQueries({ queryKey: ["github-plugin-connection", user?.id] });
+        void loadGithubRepositories();
+      } else {
+        toast.error(typeof event.data.error === "string" ? event.data.error : "GitHub authorization failed.");
+      }
+    };
+    window.addEventListener("message", onMessage);
     try {
       const { url } = await beginGithubOAuth({ data: {} });
-      window.location.assign(url);
+      popup.location.href = url;
     } catch (error) {
+      window.removeEventListener("message", onMessage);
+      popup.close();
       toast.error(error instanceof Error ? error.message : "Could not start GitHub authorization.");
+    }
+  }
+
+  async function pullLatestFromGithub() {
+    if (!user || !projectId || pullingGithub) return;
+    const entered = githubRepo.trim();
+    const repoUrl = entered
+      ? entered.startsWith("https://") ? entered : "https://github.com/" + entered.replace(/^github\.com\//i, "")
+      : window.prompt("Enter the GitHub repository (owner/name or full URL):")?.trim() ?? "";
+    if (!repoUrl) return;
+    if (!/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?\/?$/i.test(repoUrl)) {
+      toast.error("Enter a GitHub repository as owner/name or https://github.com/owner/name.");
+      return;
+    }
+    setPullingGithub(true);
+    try {
+      if (dirty) await persist();
+      await saveCheckpoint("Before GitHub pull", projectId);
+      const result = await importGithub({
+        data: { repoUrl, token: githubToken.trim() || undefined, projectId },
+      });
+      const refreshedFiles = await loadProjectFiles(projectId);
+      if (!Object.keys(refreshedFiles).length) throw new Error("GitHub sync completed, but the project files could not be reloaded.");
+      const nextActiveFile = refreshedFiles[activeFile] !== undefined ? activeFile : Object.keys(refreshedFiles).sort()[0] ?? "index.html";
+      setFiles(refreshedFiles);
+      setActiveFile(nextActiveFile);
+      setOpenFileTabs((current) => {
+        const remaining = current.filter((path) => refreshedFiles[path] !== undefined);
+        return remaining.includes(nextActiveFile) ? remaining : [...remaining, nextActiveFile].slice(-8);
+      });
+      setDirty(false);
+      setPreviewKey((current) => current + 1);
+      setGithubRepo(result.repoUrl.replace(/^https:\/\/github\.com\//i, "").replace(/\.git$/i, ""));
+      await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
+      toast.success("Pulled " + result.fileCount + " GitHub file(s) from " + result.branch + " into this project.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not pull the latest GitHub changes.");
+    } finally {
+      setPullingGithub(false);
     }
   }
 
@@ -2921,7 +3016,7 @@ export function CodeAgent() {
       // Preserve the workspace currently open before switching to the imported repository.
       if (dirty) await persist();
       const imported = await importGithub({
-        data: { repoUrl, token: githubAccessToken || importToken.trim() || undefined },
+        data: { repoUrl, token: importToken.trim() || undefined },
       });
       const importedFiles = await loadProjectFiles(imported.id);
       if (!Object.keys(importedFiles).length) {
@@ -4384,11 +4479,11 @@ export function CodeAgent() {
               ) : (
                 <>
                   <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/[0.07] px-3 py-2">
-                    <span className="text-[10px] text-slate-500">{CLOUD_SANDBOX_ENABLED ? `Advanced CLI session · ${terminalConnection?.cli ?? "not connected"}` : "Cloud CLI paused · project files remain saved"}</span>
+                    <span className="text-[10px] text-slate-500">{DAYTONA_RUNTIME_ENABLED ? `Advanced CLI session · ${terminalConnection?.cli ?? "not connected"}` : "Cloud CLI paused · project files remain saved"}</span>
                     <div className="flex items-center gap-1.5">
                       <button type="button" disabled={!terminalReady} onClick={() => xtermRef.current?.clear()} className="rounded px-2 py-1 text-[10px] text-slate-500 hover:bg-white/5 hover:text-white disabled:opacity-30">Clear</button>
                       <button type="button" disabled={!terminalReady} onClick={() => void importTerminalChanges()} className="rounded border border-cyan-400/20 px-2 py-1 text-[10px] text-cyan-200 hover:bg-cyan-400/10 disabled:opacity-30">Save files</button>
-                      {!terminalReady && <button type="button" onClick={() => void openTerminal()} className="rounded-md bg-cyan-400/15 px-2.5 py-1 text-[10px] font-semibold text-cyan-100 hover:bg-cyan-400/25">{CLOUD_SANDBOX_ENABLED ? "Connect CLI" : "Unavailable"}</button>}
+                      {!terminalReady && <button type="button" onClick={() => void openTerminal()} className="rounded-md bg-cyan-400/15 px-2.5 py-1 text-[10px] font-semibold text-cyan-100 hover:bg-cyan-400/25">{DAYTONA_RUNTIME_ENABLED ? "Connect CLI" : "Unavailable"}</button>}
                     </div>
                   </div>
                   <div ref={terminalContainerRef} role="region" aria-label="Advanced coding CLI terminal" className="expert-agent-kilo-surface min-h-0 flex-1 overflow-hidden" onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; }} onDrop={(event) => { event.preventDefault(); if (event.dataTransfer.files.length) void importLocalProjectFiles(event.dataTransfer.files); }} onPaste={(event) => { const pastedFiles = event.clipboardData?.files; if (pastedFiles?.length) { event.preventDefault(); void importLocalProjectFiles(pastedFiles); } }} />
@@ -5015,7 +5110,7 @@ export function CodeAgent() {
             {[
               ["Ctrl / Cmd + Shift + F", "Search and replace across project files"],
               ["Ctrl / Cmd + K", "Ask ExpertAI to edit selected code"],
-              ["Ctrl / Cmd + P", "Quick-open a project file"],
+              ["Ctrl / Cmd + Shift + P", "Quick-open a project file"],
               ["Ctrl / Cmd + Enter", "Run the current project"],
               ["F1", "Open this keyboard shortcut guide"],
               ["Ctrl / Cmd + S", "Save current project"],
@@ -5031,7 +5126,7 @@ export function CodeAgent() {
           <DialogHeader className="border-b border-white/10 px-4 py-3">
             <DialogTitle className="flex items-center gap-2 text-sm">
               <Command className="h-4 w-4 text-blue-300" /> Quick open file
-              <span className="ml-auto rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-normal text-slate-500">Ctrl P</span>
+              <span className="ml-auto rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-normal text-slate-500">Ctrl Shift P</span>
             </DialogTitle>
           </DialogHeader>
           <div className="p-3">
@@ -5210,7 +5305,7 @@ export function CodeAgent() {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm leading-6 text-slate-400">
-              Select a project folder, a source file or a ZIP archive (up to 25 MB). ExpertAI Studio
+              Select a project folder, a source file or a ZIP archive (up to 100 MB). ExpertsTeam Studio
               imports supported text files into a new project. Binary assets and secret files are skipped.
             </p>
             <div className="max-h-80 space-y-2 overflow-y-auto">
@@ -5238,7 +5333,7 @@ export function CodeAgent() {
               )}
             </div>
             <p className="text-[11px] leading-5 text-slate-500">
-              Imports up to 2,000 text files, 10 MB per file and 25 MB total source text. ZIP archives can be up to 100 MB. Files are
+              Imports up to 2,000 text files, 25 MB per file and 100 MB total source text. ZIP archives can be up to 100 MB. Files are
               copied into your own ExpertsAI Agent project; the shared vault copy is unchanged.
             </p>
           </div>
@@ -5302,7 +5397,7 @@ export function CodeAgent() {
                 className="border-white/10 bg-white/5"
               />
               <Button type="button" variant="outline" className="w-full border-white/15 bg-white/5 text-white hover:bg-white/10" onClick={() => void connectGitHubAccount()}>
-                <Github className="mr-2 h-4 w-4" />{githubAccessToken ? "GitHub connected" : "Connect GitHub for private repositories"}
+                <Github className="mr-2 h-4 w-4" />{githubPluginConnection ? "GitHub connected" : "Connect GitHub for private repositories"}
               </Button>
               <p className="text-[11px] leading-5 text-slate-500">
                 Public repositories work without authorization. Connecting GitHub uses the OAuth
@@ -5310,7 +5405,7 @@ export function CodeAgent() {
               </p>
             </div>
             <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-3 text-xs leading-5 text-slate-400">
-              Imports up to 2,000 text files and 25 MB of source text per project (maximum 10 MB per
+              Imports up to 2,000 text files and 100 MB of source text per project (maximum 25 MB per
               file, subject to the cloud runtime's own limits). Generated folders, binary assets and
               secret files are skipped. Your GitHub repository is not modified.
             </div>
@@ -5353,7 +5448,7 @@ export function CodeAgent() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-2">
                 <Label htmlFor="github-repository-picker">Your repositories</Label>
-                <Button type="button" size="sm" variant="outline" className="h-7 border-white/15 bg-white/5 px-2 text-xs text-white hover:bg-white/10" onClick={() => void loadGithubRepositories()} disabled={loadingGithubRepositories || !(githubAccessToken || githubToken.trim())}>
+                <Button type="button" size="sm" variant="outline" className="h-7 border-white/15 bg-white/5 px-2 text-xs text-white hover:bg-white/10" onClick={() => void loadGithubRepositories()} disabled={loadingGithubRepositories || !(githubToken.trim() || githubPluginConnection)}>
                   {loadingGithubRepositories ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <Github className="mr-1.5 h-3 w-3" />}
                   Refresh list
                 </Button>
@@ -5384,7 +5479,7 @@ export function CodeAgent() {
                 className="border-white/10 bg-white/5"
               />
               <Button type="button" variant="outline" className="w-full border-white/15 bg-white/5 text-white hover:bg-white/10" onClick={() => void connectGitHubAccount()}>
-                <Github className="mr-2 h-4 w-4" />{githubAccessToken ? "GitHub connected" : "Connect GitHub account"}
+                <Github className="mr-2 h-4 w-4" />{githubPluginConnection ? "GitHub connected" : "Connect GitHub account"}
               </Button>
               <p className="text-[11px] leading-5 text-slate-500">
                 OAuth is preferred. A one-time personal access token is only used for this operation
@@ -5392,8 +5487,18 @@ export function CodeAgent() {
               </p>
             </div>
             <Button
+              type="button"
+              variant="outline"
+              className="w-full border-cyan-400/30 bg-cyan-400/[0.06] text-cyan-100 hover:bg-cyan-400/[0.12]"
+              disabled={pullingGithub || !projectId || !(githubToken.trim() || githubPluginConnection)}
+              onClick={() => void pullLatestFromGithub()}
+            >
+              {pullingGithub ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              {pullingGithub ? "Pulling latest…" : "Pull latest from GitHub"}
+            </Button>
+            <Button
               className="w-full bg-white text-slate-950 hover:bg-slate-200"
-              disabled={githubMutation.isPending || !(githubAccessToken || githubToken.trim()) || !githubRepo.trim()}
+              disabled={githubMutation.isPending || !(githubToken.trim() || githubPluginConnection) || !githubRepo.trim()}
               onClick={() => githubMutation.mutate()}
             >
               {githubMutation.isPending ? (

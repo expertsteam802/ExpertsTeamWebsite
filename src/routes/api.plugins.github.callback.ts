@@ -2,14 +2,34 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { pluginOAuthRedirect, verifyPluginOAuthState } from "@/lib/plugin-oauth.server";
 
+function githubOAuthPopupResponse(
+  url: URL,
+  result: { success: boolean; error?: string },
+  fallbackPath: string,
+): Response {
+  const payload = JSON.stringify({ type: "experts-plugin-oauth", provider: "github", ...result }).replace(/</g, "\\u003c");
+  const origin = JSON.stringify(url.origin);
+  const fallback = JSON.stringify(fallbackPath);
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GitHub connection</title></head><body><p>Finishing GitHub connection…</p><script>(function(){var result=${payload};if(window.opener&&!window.opener.closed){window.opener.postMessage(result,${origin});window.close();}else{window.location.replace(${fallback});}})();</script></body></html>`;
+  return new Response(html, {
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Referrer-Policy": "no-referrer",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "default-src 'none'; script-src 'unsafe-inline'; base-uri 'none'",
+    },
+  });
+}
+
 export const Route = createFileRoute("/api/plugins/github/callback")({
   server: { handlers: { GET: async ({ request }) => {
     const url = new URL(request.url);
     const providerError = url.searchParams.get("error");
-    if (providerError) return Response.redirect(new URL("/connections?plugin_error=" + encodeURIComponent(providerError), url.origin));
+    if (providerError) return githubOAuthPopupResponse(url, { success: false, error: providerError }, "/connections?plugin_error=" + encodeURIComponent(providerError));
     const code = url.searchParams.get("code") ?? "";
     const state = url.searchParams.get("state") ?? "";
-    if (!code || !state) return Response.json({ error: "GitHub did not return an authorization code." }, { status: 400 });
+    if (!code || !state) return githubOAuthPopupResponse(url, { success: false, error: "GitHub did not return an authorization code." }, "/connections?plugin_error=missing_code");
     try {
       const signed = verifyPluginOAuthState(state, "github");
       const clientId = process.env["GITHUB_OAUTH_CLIENT_ID"];
@@ -40,10 +60,11 @@ export const Route = createFileRoute("/api/plugins/github/callback")({
         p_token_payload: { access_token: token.access_token, token_type: "bearer" },
       });
       if (error) throw new Error("Could not securely save the GitHub connection: " + error.message);
-      return Response.redirect(new URL("/connections?plugin_connected=github", url.origin));
+      return githubOAuthPopupResponse(url, { success: true }, "/connections?plugin_connected=github");
     } catch (error) {
       console.error("[Plugin OAuth] GitHub callback failed:", error);
-      return Response.redirect(new URL("/connections?plugin_error=" + encodeURIComponent(error instanceof Error ? error.message : "GitHub connection failed"), url.origin));
+      const message = error instanceof Error ? error.message : "GitHub connection failed";
+      return githubOAuthPopupResponse(url, { success: false, error: message }, "/connections?plugin_error=" + encodeURIComponent(message));
     }
   } } },
 });

@@ -732,7 +732,7 @@ export async function startDaytonaProjectTerminal(
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     if (/401|unauthorized|invalid.*api.?key/i.test(detail)) {
-      throw new Error("Daytona rejected DAYTONA_API_KEY. Check the key in the original Vercel project's server environment variables.");
+      throw new Error("Daytona rejected DAYTONA_API_KEY. Check the key in the ExpertsTeam server environment.");
     }
     throw new Error("Daytona terminal startup failed while " + stage + ": " + detail);
   }

@@ -25,7 +25,7 @@ const codingRequest = z
     mode: z.enum(["build", "plan", "chat"]).optional().default("build"),
     modelTier: z.enum(["fast", "balanced", "architect"]).optional().default("fast"),
     groundPackages: z.array(z.string().trim().min(1).max(214).regex(/^(?:@[a-z0-9._-]+\/)?[a-z0-9][a-z0-9._-]*$/i)).max(3).optional().default([]),
-    files: z.record(z.string().max(512), z.string().max(10_000_000)),
+    files: z.record(z.string().max(512), z.string().max(25_000_000)),
     history: z
       .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(3000) }))
       .max(8),
@@ -35,8 +35,8 @@ const codingRequest = z
   .refine(
     ({ files }) =>
       Object.keys(files).length <= 2_000 &&
-      Object.values(files).reduce((total, content) => total + content.length, 0) <= 25_000_000,
-    "The project exceeds the 25 MB agent request safety envelope.",
+      Object.values(files).reduce((total, content) => total + content.length, 0) <= 100_000_000,
+    "This agent request exceeds the 100 MB transport safety envelope. Import large assets separately and keep individual source files below 25 MB.",
   )
   .refine(({ referenceImage, referenceImages }) => {
     const references = referenceImages?.length
@@ -162,6 +162,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
       .object({
         repoUrl: z.string().trim().min(1).max(500),
         token: z.string().trim().max(500).optional().default(""),
+        projectId: z.string().uuid().optional(),
       })
       .parse(input),
   )
@@ -180,12 +181,30 @@ export const importGitHubProject = createServerFn({ method: "POST" })
     if (!/^[A-Za-z0-9_.-]{1,100}$/.test(owner) || !/^[A-Za-z0-9_.-]{1,100}$/.test(repo))
       throw new Error("The GitHub owner or repository name is invalid.");
 
+    let githubToken = data.token;
+    if (!githubToken) {
+      // Public repositories remain importable without OAuth; use the stored account token for private repositories.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = context.supabase as any;
+      const { data: connection, error: connectionError } = await db
+        .from("user_plugin_connections")
+        .select("id")
+        .eq("user_id", context.userId)
+        .eq("provider", "github")
+        .eq("status", "connected")
+        .order("connected_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (connectionError) throw new Error("Could not read the connected GitHub account.");
+      if (connection?.id) githubToken = await resolveGitHubAccessToken(context.supabase, context.userId, "");
+    }
+
     const headers: Record<string, string> = {
       Accept: "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28",
       "User-Agent": "ExpertsTeam-Project-Explorer",
     };
-    if (data.token) headers.Authorization = "Bearer " + data.token;
+    if (githubToken) headers.Authorization = "Bearer " + githubToken;
     const request = async (url: string, accept = "application/vnd.github+json") => {
       const response = await fetch(url, {
         headers: { ...headers, Accept: accept },
@@ -261,6 +280,10 @@ export const importGitHubProject = createServerFn({ method: "POST" })
     }
     const ignoredDirectories = new Set([
       ".git",
+      ".kilo",
+      ".kilocode",
+      ".opencode",
+      ".lovable",
       "node_modules",
       "dist",
       "build",
@@ -285,6 +308,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
         return (
           path.length <= 1024 &&
           !path.startsWith("/") &&
+          ![".expertrules", ".config/kilo/kilo.jsonc"].includes(path.toLowerCase()) &&
           !segments.some(
             (part) =>
               !part ||
@@ -313,22 +337,49 @@ export const importGitHubProject = createServerFn({ method: "POST" })
     if (!candidates.length)
       throw new Error("No supported source files were found in this repository.");
     const resourceLimits = await getBuilderResourceLimits(context.supabase, context.userId);
-    const projectName = metadata.name || repo;
+    let projectName = metadata.name || repo;
     const repoUrl = metadata.html_url || "https://github.com/" + owner + "/" + repo;
-    const { data: project, error: projectError } = await context.supabase
-      .from("agent_projects")
-      .insert({
-        user_id: context.userId,
-        name: projectName,
-        files: {},
-        messages: [],
-        github_repo: repoUrl,
-        published: false,
-      })
-      .select("id")
-      .single();
-    if (projectError || !project) {
-      throw new Error(projectError?.message || "Could not create the imported project.");
+    let project: { id: string };
+    let previousAssetPaths: string[] = [];
+    let preservedWorkspaceFiles: Record<string, string> = {};
+    if (data.projectId) {
+      await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+      const { data: existingProject, error: existingProjectError } = await context.supabase
+        .from("agent_projects")
+        .select("id,name")
+        .eq("id", data.projectId)
+        .eq("user_id", context.userId)
+        .single();
+      if (existingProjectError || !existingProject) throw new Error("The project selected for GitHub sync is unavailable.");
+      project = { id: existingProject.id };
+      projectName = existingProject.name;
+      const { data: oldAssets, error: oldAssetsError } = await context.supabase
+        .from("agent_project_assets")
+        .select("storage_path")
+        .eq("project_id", project.id)
+        .eq("user_id", context.userId);
+      if (oldAssetsError) throw new Error("Could not prepare existing project assets for GitHub sync.");
+      previousAssetPaths = (oldAssets ?? []).map((asset) => asset.storage_path);
+      preservedWorkspaceFiles = await loadProjectSourceFiles(context.supabase, project.id, context.userId);
+    } else {
+      const { data: createdProject, error: projectError } = await context.supabase
+        .from("agent_projects")
+        .insert({
+          user_id: context.userId,
+          name: projectName,
+          files: {},
+          messages: [],
+          github_repo: repoUrl,
+          repository_url: repoUrl,
+          default_branch: defaultBranch,
+          published: false,
+        })
+        .select("id")
+        .single();
+      if (projectError || !createdProject) {
+        throw new Error(projectError?.message || "Could not create the imported project.");
+      }
+      project = { id: createdProject.id };
     }
 
     const importId = crypto.randomUUID();
@@ -426,6 +477,24 @@ export const importGitHubProject = createServerFn({ method: "POST" })
         }
       }
 
+      if (data.projectId) {
+        for (const [filePath, content] of Object.entries(preservedWorkspaceFiles)) {
+          const parts = filePath.split("/");
+          const preserveForWorkspace = filePath === ".expertrules" || parts.some((part) =>
+            part.startsWith(".experts-") || [".kilo", ".kilocode", ".opencode"].includes(part),
+          ) || filePath === ".config/kilo/kilo.jsonc";
+          if (!preserveForWorkspace) continue;
+          const size = Buffer.byteLength(content, "utf8");
+          if (resourceLimits.maxFiles && fileCount + 1 > resourceLimits.maxFiles) throw new Error("Preserving workspace settings would exceed the administrator-configured file-count allowance.");
+          if (resourceLimits.maxProjectMb && totalBytes + size > resourceLimits.maxProjectMb * 1_000_000) throw new Error("Preserving workspace settings would exceed the administrator-configured project-size allowance.");
+          if (batch.length && (batch.length >= 100 || batchBytes + size > 4_000_000)) await flush();
+          batch.push({ import_id: importId, project_id: project.id, user_id: context.userId, file_path: filePath, content });
+          batchBytes += size;
+          totalBytes += size;
+          fileCount += 1;
+        }
+      }
+
       if (!fileCount) throw new Error("No readable source files could be imported.");
       await flush();
 
@@ -434,6 +503,18 @@ export const importGitHubProject = createServerFn({ method: "POST" })
         p_import_id: importId,
       });
       if (finalizeError) throw new Error("Could not finalize imported files: " + finalizeError.message);
+      if (data.projectId) {
+        const { error: linkError } = await context.supabase
+          .from("agent_projects")
+          .update({ github_repo: repoUrl, repository_url: repoUrl, default_branch: defaultBranch })
+          .eq("id", project.id)
+          .eq("user_id", context.userId);
+        if (linkError) console.warn("[ExpertsTeam GitHub sync] Could not update repository metadata:", linkError.message);
+      }
+      if (previousAssetPaths.length) {
+        const { error: cleanupError } = await context.supabase.storage.from("builder-project-assets").remove(previousAssetPaths);
+        if (cleanupError) console.warn("[ExpertsTeam GitHub sync] Could not remove replaced project assets:", cleanupError.message);
+      }
     } catch (error) {
       await context.supabase.storage.from("builder-project-assets").remove(uploadedAssetPaths);
       await context.supabase
@@ -448,11 +529,13 @@ export const importGitHubProject = createServerFn({ method: "POST" })
         .eq("import_id", importId)
         .eq("project_id", project.id)
         .eq("user_id", context.userId);
-      await context.supabase
-        .from("agent_projects")
-        .delete()
-        .eq("id", project.id)
-        .eq("user_id", context.userId);
+      if (!data.projectId) {
+        await context.supabase
+          .from("agent_projects")
+          .delete()
+          .eq("id", project.id)
+          .eq("user_id", context.userId);
+      }
       throw error;
     }
 
@@ -465,13 +548,47 @@ export const importGitHubProject = createServerFn({ method: "POST" })
     };
   });
 
+async function resolveGitHubAccessToken(
+  supabase: typeof import("@/integrations/supabase/client").supabase,
+  userId: string,
+  suppliedToken: string,
+): Promise<string> {
+  // Prefer the dedicated Plugin Center credential because the sign-in provider token may not include repository scopes.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any;
+  const { data: connection, error: connectionError } = await db
+    .from("user_plugin_connections")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("provider", "github")
+    .eq("status", "connected")
+    .order("connected_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (connectionError && !suppliedToken) throw new Error("Could not read the connected GitHub account.");
+  if (connection?.id) {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: secret, error: secretError } = await supabaseAdmin.rpc("get_user_plugin_connection_secret", {
+      p_connection_id: connection.id,
+      p_user_id: userId,
+    });
+    const payload = secret?.token_payload as Record<string, unknown> | undefined;
+    const token = typeof payload?.access_token === "string" ? payload.access_token : "";
+    if (!secretError && token) return token;
+    if (!suppliedToken) throw new Error("The connected GitHub credential is unavailable. Reconnect GitHub in Plugin Center.");
+  }
+  if (suppliedToken) return suppliedToken;
+  throw new Error("Connect GitHub in ExpertsTeam Plugin Center first, or provide a one-time token.");
+}
+
 export const listGitHubRepositories = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => z.object({ token: z.string().trim().min(1).max(500) }).parse(input))
-  .handler(async ({ data }) => {
+  .validator((input: unknown) => z.object({ token: z.string().trim().max(500).optional().default("") }).parse(input))
+  .handler(async ({ data, context }) => {
+    const token = await resolveGitHubAccessToken(context.supabase, context.userId, data.token);
     const response = await fetch("https://api.github.com/user/repos?sort=updated&per_page=100&affiliation=owner,collaborator,organization_member", {
       headers: {
-        Authorization: "Bearer " + data.token,
+        Authorization: "Bearer " + token,
         Accept: "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
         "User-Agent": "ExpertsTeam-Builder",
@@ -495,10 +612,11 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => z.object({
     projectId: z.string().uuid(),
-    token: z.string().trim().min(1).max(500),
+    token: z.string().trim().max(500).optional().default(""),
     repo: z.string().trim().regex(/^[A-Za-z0-9._-]{1,100}$/),
   }).parse(input))
   .handler(async ({ data, context }) => {
+    const token = await resolveGitHubAccessToken(context.supabase, context.userId, data.token);
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
     const files = await loadProjectSourceFiles(context.supabase, data.projectId, context.userId);
     if (!Object.keys(files).length) throw new Error("This project has no saved source files to push.");
@@ -507,7 +625,7 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
       const { pushToGithub } = await import("./agent.server");
       return {
         ok: true as const,
-        ...(await pushToGithub({ token: data.token, repo: data.repo, files, message: "Update from ExpertsTeam agent" })),
+        ...(await pushToGithub({ token, repo: data.repo, files, message: "Update from ExpertsTeam agent" })),
       };
     } catch (error) {
       return { ok: false as const, error: error instanceof Error ? error.message : "Push failed" };

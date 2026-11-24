@@ -10,8 +10,8 @@ const MYLEAD_IPS = new Set(
 );
 
 function getSourceIp(request: Request): string {
-  // Vercel supplies the connecting client IP in x-forwarded-for. Use the first
-  // address only; do not accept a query-string IP supplied by the caller.
+  // The hosting platform supplies the connecting client IP in x-forwarded-for. Use
+  // the first address only; never trust a query-string IP supplied by the caller.
   const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   const real = request.headers.get("x-real-ip")?.trim();
   return (real || forwarded || "").replace(/^::ffff:/, "");
