@@ -602,6 +602,7 @@ export function CodeAgent() {
   const projectFileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<Panel>("preview");
+  const [splitTerminalOpen, setSplitTerminalOpen] = useState(false);
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile" | "custom">("desktop");
   const [customViewportWidth, setCustomViewportWidth] = useState(1024);
   const [themePreset, setThemePreset] = useState("Brand");
@@ -870,6 +871,8 @@ export function CodeAgent() {
   const terminalContainerRef = useRef<HTMLDivElement>(null);
   const legacyTerminalContainerRef = useRef<HTMLDivElement>(null);
   const legacyTerminalRef = useRef<XTerm | null>(null);
+  const splitTerminalContainerRef = useRef<HTMLDivElement>(null);
+  const splitTerminalRef = useRef<XTerm | null>(null);
   const terminalSocketRef = useRef<WebSocket | null>(null);
   const terminalLastActivityRef = useRef(Date.now());
   const terminalRecoveryFilesRef = useRef<ProjectFiles>(files);
@@ -1136,6 +1139,58 @@ export function CodeAgent() {
       if (legacyTerminalRef.current === terminal) legacyTerminalRef.current = null;
     };
   }, [panel, terminalConnection]);
+
+  // A second WebSocket creates an independent bash process in the same Daytona workspace.
+  useEffect(() => {
+    const container = splitTerminalContainerRef.current;
+    if (panel !== "terminal" || !splitTerminalOpen || !terminalConnection || !container) return;
+    const terminal = new XTerm({
+      cursorBlink: true, cursorStyle: "bar", convertEol: true, scrollback: 5000,
+      fontSize: 12, lineHeight: 1.2, smoothScrollDuration: 0,
+      fontFamily: '"Cascadia Code", "Fira Code", Consolas, Menlo, monospace',
+      theme: { background: "#050a12", foreground: "#dbeafe", cursor: "#34d399", selectionBackground: "#164e63" },
+    });
+    const fit = new FitAddon();
+    terminal.loadAddon(fit);
+    terminal.open(container);
+    splitTerminalRef.current = terminal;
+    container.style.width = "100%";
+    container.style.height = "100%";
+    requestAnimationFrame(() => {
+      if (container.clientWidth > 1 && container.clientHeight > 1) fit.fit();
+      terminal.focus();
+    });
+    const socket = new WebSocket(terminalConnection.url, ["experts-terminal-plain", terminalConnection.token]);
+    socket.binaryType = "arraybuffer";
+    socket.onopen = () => {
+      terminal.writeln("\r\nConnected to an independent shell in this project workspace.");
+      socket.send("\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
+      terminal.focus();
+    };
+    socket.onmessage = (event) => {
+      if (typeof event.data === "string") terminal.write(event.data);
+      else if (event.data instanceof ArrayBuffer) terminal.write(new Uint8Array(event.data));
+    };
+    socket.onerror = () => terminal.writeln("\r\n[Second shell connection error]");
+    const input = terminal.onData((value) => { if (socket.readyState === WebSocket.OPEN) socket.send(value); });
+    const resize = terminal.onResize(({ cols, rows }) => {
+      if (socket.readyState === WebSocket.OPEN) socket.send("\u0000" + JSON.stringify({ type: "resize", cols, rows }));
+    });
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        fit.fit();
+        if (socket.readyState === WebSocket.OPEN) socket.send("\u0000" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
+      });
+    });
+    observer.observe(container);
+    return () => {
+      window.cancelAnimationFrame(frame); observer.disconnect();
+      input.dispose(); resize.dispose(); socket.close(); terminal.dispose();
+      if (splitTerminalRef.current === terminal) splitTerminalRef.current = null;
+    };
+  }, [panel, splitTerminalOpen, terminalConnection]);
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["agent-projects", user?.id],
@@ -4332,9 +4387,15 @@ export function CodeAgent() {
                 <div className="flex min-h-0 flex-1 flex-col bg-[#050a12]">
                   <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] px-4">
                     <span className="flex items-center gap-2 text-xs text-slate-300"><TerminalSquare className="h-3.5 w-3.5 text-emerald-300" /> Original Linux terminal</span>
-                    <span className="text-[10px] text-slate-500">Independent shell · same project workspace</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-500">Independent shell · same project workspace</span>
+                      <button type="button" onClick={() => setSplitTerminalOpen((open) => !open)} aria-pressed={splitTerminalOpen} className={splitTerminalOpen ? "rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2 py-1 text-[9px] text-cyan-200" : "rounded-md border border-slate-700 px-2 py-1 text-[9px] text-slate-400 hover:text-white"}>{splitTerminalOpen ? "Close split" : "Split terminal"}</button>
+                    </div>
                   </div>
-                  <div ref={legacyTerminalContainerRef} className="min-h-0 flex-1 overflow-hidden px-3 py-3" />
+                  <div className={splitTerminalOpen ? "flex min-h-0 flex-1 divide-x divide-slate-800 overflow-hidden" : "min-h-0 flex-1 overflow-hidden"}>
+                    <div ref={legacyTerminalContainerRef} className={splitTerminalOpen ? "min-h-0 w-1/2 overflow-hidden px-2 py-3" : "min-h-0 h-full w-full overflow-hidden px-3 py-3"} />
+                    {splitTerminalOpen && <div className="min-h-0 w-1/2 overflow-hidden px-2 py-3"><div ref={splitTerminalContainerRef} className="h-full w-full overflow-hidden" /></div>}
+                  </div>
                 </div>
               )}
               {panel === "console" && (
