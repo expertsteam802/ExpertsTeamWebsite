@@ -2299,7 +2299,7 @@ export function CodeAgent() {
             mode: "chat",
             prompt: agentPrompt,
             files,
-            history: messages.slice(-10).map((message) => ({ ...message, content: message.content.slice(-3000) })),
+            history: messages.slice(-8).map((message) => ({ ...message, content: message.content.slice(-3000) })),
           },
         });
         const finalMessages: Message[] = [...nextMessages, { role: "assistant", content: result.message }];
