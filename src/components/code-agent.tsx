@@ -432,6 +432,9 @@ const fileIcon = (name: string) => {
 
 export function CodeAgent() {
   const { user, session, profile, isAdmin, isDeveloper } = useAuth();
+  const [liveCredits, setLiveCredits] = useState<number | null>(null);
+  const liveCreditsRef = useRef<number | null>(null);
+  const displayedCredits = liveCredits ?? displayedCredits;
   const githubAccessToken = (session as (typeof session & { provider_token?: string }) | null)?.provider_token ?? "";
   const terminalUsername = (profile?.username || user?.email?.split("@")[0] || "user")
     .replace(/[^a-zA-Z0-9_-]/g, "")
@@ -2134,6 +2137,54 @@ export function CodeAgent() {
     setPanelMotionPhase((phase) => phase === 0 ? 1 : 0);
   }
 
+  useEffect(() => {
+    liveCreditsRef.current = null;
+    setLiveCredits(null);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (liveCreditsRef.current === null && typeof profile?.ai_credits === "number") {
+      liveCreditsRef.current = profile.ai_credits;
+      setLiveCredits(profile.ai_credits);
+    }
+  }, [profile?.ai_credits]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const updateCredits = (payload: { new: Record<string, unknown> }) => {
+      const next = Number(payload.new.ai_credits);
+      if (!Number.isFinite(next)) return;
+      const previous = liveCreditsRef.current ?? Number(displayedCredits);
+      liveCreditsRef.current = next;
+      setLiveCredits(next);
+      if (next > previous) {
+        toast.success("🎉 +" + (next - previous) + " AI credits added", {
+          description: "Your ExpertsTeam balance is updated in real time.",
+        });
+      } else if (next < previous) {
+        toast.info("Your AI credit balance was updated.");
+      }
+    };
+    const channel = supabase
+      .channel("studio-credit-balance-" + user.id)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "user_credit_balances",
+        filter: "user_id=eq." + user.id,
+      }, updateCredits)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "user_credit_balances",
+        filter: "user_id=eq." + user.id,
+      }, updateCredits)
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
   async function attemptRuntimeSelfHeal() {
     if (!user || !projectId) {
       toast.info("Save this project before using automatic repair.");
@@ -3453,7 +3504,7 @@ export function CodeAgent() {
           </div>
         </div>
         <div className="et-studio-header-actions">
-          <Button type="button" size="sm" variant="outline" onClick={() => setCreditsOfferwallOpen(true)} className="h-8 border-amber-300/25 bg-amber-300/[0.08] px-3 text-[10px] font-semibold text-amber-100 hover:bg-amber-300/[0.14]" title="Earn free AI credits"><Coins className="mr-1 h-3.5 w-3.5" />{profile?.ai_credits ?? 0} · Earn Free</Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => setCreditsOfferwallOpen(true)} className="h-8 border-amber-300/25 bg-amber-300/[0.08] px-3 text-[10px] font-semibold text-amber-100 hover:bg-amber-300/[0.14]" title="Earn free AI credits"><Coins className="mr-1 h-3.5 w-3.5" />{displayedCredits} · Earn Free</Button>
           <Button type="button" size="sm" variant="outline" onClick={() => setEnvironmentPanelOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700"><Settings2 className="mr-1.5 h-3.5 w-3.5" />DB &amp; Auth</Button>
           <Button type="button" size="sm" variant="outline" onClick={() => setGithubOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700"><Github className="mr-1.5 h-3.5 w-3.5" />GitHub</Button>
           <Button type="button" size="sm" onClick={() => void publishProject()} disabled={publishing} className="h-8 bg-blue-600 px-3 text-[11px] font-semibold text-white hover:bg-blue-500">{publishing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />}Deploy ↑</Button>
@@ -4288,7 +4339,7 @@ export function CodeAgent() {
                 Workspace ready
               </span>
               <span>{Object.keys(files).length} files</span>
-              <span className="text-cyan-300">{profile?.ai_credits ?? 0} AI credits</span>
+              <span className="text-cyan-300">{displayedCredits} AI credits</span>
               <span>{activeFile || "No file selected"}</span>
             </div>
             <span className="text-[10px] text-slate-600">ExpertsTeam · ExpertAI Studio</span>
@@ -5137,7 +5188,7 @@ export function CodeAgent() {
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300/20 bg-amber-300/[0.06] px-4 py-3">
             <div>
               <p className="text-xs text-slate-400">Your available balance</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums text-amber-100">{profile?.ai_credits ?? 0} credits</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-amber-100">{displayedCredits} credits</p>
             </div>
             <a href="/earn" className="text-xs font-semibold text-cyan-200 underline underline-offset-4 hover:text-cyan-100">Open full rewards history</a>
           </div>
