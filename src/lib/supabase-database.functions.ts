@@ -6,7 +6,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const identifier = z.string().min(1).max(63).regex(/^[A-Za-z_][A-Za-z0-9_]*$/);
 const databaseInput = z.object({
-  operation: z.enum(["tables", "rows", "insert", "update", "delete", "migration", "seed"]),
+  operation: z.enum(["tables", "rows", "insert", "update", "delete", "migration", "seed", "buckets", "create_bucket"]),
   projectRef: z.string().regex(/^[a-z0-9]{20}$/i),
   schema: identifier.optional().default("public"),
   table: identifier.optional(),
@@ -15,6 +15,10 @@ const databaseInput = z.object({
   primaryKeyValue: z.unknown().optional(),
   sql: z.string().max(20000).optional(),
   seedRows: z.array(z.record(z.string(), z.unknown())).max(50).optional(),
+  bucketName: z.string().min(3).max(63).regex(/^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])$/).optional(),
+  bucketPublic: z.boolean().optional().default(false),
+  bucketFileSizeLimit: z.number().int().min(1).max(52_428_800).optional().default(5_242_880),
+  bucketMimeTypes: z.array(z.string().min(1).max(120)).max(30).optional().default([]),
 });
 
 type ManagementToken = { accessToken: string; scopes: string[] };
@@ -169,9 +173,36 @@ export const manageSupabaseDatabase = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => databaseInput.parse(input))
   .handler(async ({ data, context }) => {
-    const write = ["insert", "update", "delete", "migration", "seed"].includes(data.operation);
+    const write = ["insert", "update", "delete", "migration", "seed", "create_bucket"].includes(data.operation);
     const { accessToken } = await getSupabaseManagementToken(context.userId, write);
     await assertSupabaseProjectAccess(accessToken, data.projectRef);
+
+    if (data.operation === "buckets") {
+      const result = await runManagementQuery(
+        accessToken,
+        data.projectRef,
+        "select id,name,public,file_size_limit,allowed_mime_types from storage.buckets order by name",
+      );
+      return { tables: [], columns: [], rows: rowsFrom(result), primaryKey: null, result };
+    }
+
+    if (data.operation === "create_bucket") {
+      const bucketName = data.bucketName?.trim() ?? "";
+      if (!/^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])$/.test(bucketName) || bucketName.length < 3 || bucketName.length > 63) {
+        throw new Error("Bucket names must be 3–63 lowercase letters, numbers, dots, underscores or hyphens.");
+      }
+      if (new Set(data.bucketMimeTypes).size !== data.bucketMimeTypes.length) {
+        throw new Error("Remove duplicate MIME types from the allowlist.");
+      }
+      const result = await runManagementQuery(
+        accessToken,
+        data.projectRef,
+        "insert into storage.buckets (id,name,public,file_size_limit,allowed_mime_types) values ($1,$1,$2,$3,$4::text[]) on conflict (id) do update set public=excluded.public,file_size_limit=excluded.file_size_limit,allowed_mime_types=excluded.allowed_mime_types returning id,name,public,file_size_limit,allowed_mime_types",
+        [bucketName, data.bucketPublic, data.bucketFileSizeLimit, data.bucketMimeTypes],
+        true,
+      );
+      return { tables: [], columns: [], rows: rowsFrom(result), primaryKey: null, result };
+    }
 
     if (data.operation === "migration") {
       const sql = data.sql?.trim() ?? "";
