@@ -37,6 +37,10 @@ import { Route as AuthenticatedConnectionsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedCreatorRouteImport } from './routes/_authenticated/creator'
 import { Route as AppsSlugRouteImport } from './routes/apps.$slug'
 import { Route as ApiAiStreamRouteImport } from './routes/api.ai.stream'
+import { Route as ApiOfferwallToroxPostbackRouteImport } from './routes/api.offerwall.torox.postback'
+import { Route as ApiOfferwallAdgatePostbackRouteImport } from './routes/api.offerwall.adgate.postback'
+import { Route as ApiOfferwallCpxPostbackRouteImport } from './routes/api.offerwall.cpx.postback'
+import { Route as ApiOfferwallLootablyPostbackRouteImport } from './routes/api.offerwall.lootably.postback'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -177,6 +181,26 @@ const ApiAiStreamRoute = ApiAiStreamRouteImport.update({
   path: '/api/ai/stream',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOfferwallToroxPostbackRoute = ApiOfferwallToroxPostbackRouteImport.update({
+  id: '/api/offerwall/torox/postback',
+  path: '/api/offerwall/torox/postback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOfferwallAdgatePostbackRoute = ApiOfferwallAdgatePostbackRouteImport.update({
+  id: '/api/offerwall/adgate/postback',
+  path: '/api/offerwall/adgate/postback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOfferwallCpxPostbackRoute = ApiOfferwallCpxPostbackRouteImport.update({
+  id: '/api/offerwall/cpx/postback',
+  path: '/api/offerwall/cpx/postback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOfferwallLootablyPostbackRoute = ApiOfferwallLootablyPostbackRouteImport.update({
+  id: '/api/offerwall/lootably/postback',
+  path: '/api/offerwall/lootably/postback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -206,6 +230,10 @@ export interface FileRoutesByFullPath {
   '/connections': typeof AuthenticatedConnectionsRoute
   '/apps/$slug': typeof AppsSlugRoute
   '/api/ai/stream': typeof ApiAiStreamRoute
+  '/api/offerwall/torox/postback': typeof ApiOfferwallToroxPostbackRoute
+  '/api/offerwall/adgate/postback': typeof ApiOfferwallAdgatePostbackRoute
+  '/api/offerwall/cpx/postback': typeof ApiOfferwallCpxPostbackRoute
+  '/api/offerwall/lootably/postback': typeof ApiOfferwallLootablyPostbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -266,6 +294,10 @@ export interface FileRoutesById {
   '/_authenticated/creator': typeof AuthenticatedCreatorRoute
   '/apps/$slug': typeof AppsSlugRoute
   '/api/ai/stream': typeof ApiAiStreamRoute
+  '/api/offerwall/torox/postback': typeof ApiOfferwallToroxPostbackRoute
+  '/api/offerwall/adgate/postback': typeof ApiOfferwallAdgatePostbackRoute
+  '/api/offerwall/cpx/postback': typeof ApiOfferwallCpxPostbackRoute
+  '/api/offerwall/lootably/postback': typeof ApiOfferwallLootablyPostbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -297,6 +329,10 @@ export interface FileRouteTypes {
     | '/connections'
     | '/apps/$slug'
     | '/api/ai/stream'
+    | '/api/offerwall/torox/postback'
+    | '/api/offerwall/adgate/postback'
+    | '/api/offerwall/cpx/postback'
+    | '/api/offerwall/lootably/postback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -326,6 +362,10 @@ export interface FileRouteTypes {
     | '/connections'
     | '/apps/$slug'
     | '/api/ai/stream'
+    | '/api/offerwall/torox/postback'
+    | '/api/offerwall/adgate/postback'
+    | '/api/offerwall/cpx/postback'
+    | '/api/offerwall/lootably/postback'
   id:
     | '__root__'
     | '/'
@@ -354,6 +394,10 @@ export interface FileRouteTypes {
     | '/_authenticated/creator'
     | '/apps/$slug'
     | '/api/ai/stream'
+    | '/api/offerwall/torox/postback'
+    | '/api/offerwall/adgate/postback'
+    | '/api/offerwall/cpx/postback'
+    | '/api/offerwall/lootably/postback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -380,6 +424,10 @@ export interface RootRouteChildren {
   VideosRoute: typeof VideosRoute
   AppsSlugRoute: typeof AppsSlugRoute
   ApiAiStreamRoute: typeof ApiAiStreamRoute
+  ApiOfferwallToroxPostbackRoute: typeof ApiOfferwallToroxPostbackRoute
+  ApiOfferwallAdgatePostbackRoute: typeof ApiOfferwallAdgatePostbackRoute
+  ApiOfferwallCpxPostbackRoute: typeof ApiOfferwallCpxPostbackRoute
+  ApiOfferwallLootablyPostbackRoute: typeof ApiOfferwallLootablyPostbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -580,6 +628,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAiStreamRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/offerwall/torox/postback': {
+      id: '/api/offerwall/torox/postback'
+      path: '/api/offerwall/torox/postback'
+      fullPath: '/api/offerwall/torox/postback'
+      preLoaderRoute: typeof ApiOfferwallToroxPostbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/offerwall/adgate/postback': {
+      id: '/api/offerwall/adgate/postback'
+      path: '/api/offerwall/adgate/postback'
+      fullPath: '/api/offerwall/adgate/postback'
+      preLoaderRoute: typeof ApiOfferwallAdgatePostbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/offerwall/cpx/postback': {
+      id: '/api/offerwall/cpx/postback'
+      path: '/api/offerwall/cpx/postback'
+      fullPath: '/api/offerwall/cpx/postback'
+      preLoaderRoute: typeof ApiOfferwallCpxPostbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/offerwall/lootably/postback': {
+      id: '/api/offerwall/lootably/postback'
+      path: '/api/offerwall/lootably/postback'
+      fullPath: '/api/offerwall/lootably/postback'
+      preLoaderRoute: typeof ApiOfferwallLootablyPostbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -625,6 +701,10 @@ const rootRouteChildren: RootRouteChildren = {
   VideosRoute: VideosRoute,
   AppsSlugRoute: AppsSlugRoute,
   ApiAiStreamRoute: ApiAiStreamRoute,
+  ApiOfferwallToroxPostbackRoute: ApiOfferwallToroxPostbackRoute,
+  ApiOfferwallAdgatePostbackRoute: ApiOfferwallAdgatePostbackRoute,
+  ApiOfferwallCpxPostbackRoute: ApiOfferwallCpxPostbackRoute,
+  ApiOfferwallLootablyPostbackRoute: ApiOfferwallLootablyPostbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

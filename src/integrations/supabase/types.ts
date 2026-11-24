@@ -977,6 +977,24 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_debts: {
+        Row: {
+          amount: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       credit_referral_codes: {
         Row: {
           code: string
@@ -1456,6 +1474,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      offerwall_provider_events: {
+        Row: {
+          country_code: string | null
+          created_at: string
+          credited_amount: number
+          debt_paid_amount: number
+          event_id: string
+          id: string
+          offer_id: string | null
+          offer_name: string | null
+          provider: string
+          raw_event: Json
+          revenue_usd: number | null
+          reversed_amount: number
+          reward_credits: number
+          source_ip: unknown
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          country_code?: string | null
+          created_at?: string
+          credited_amount?: number
+          debt_paid_amount?: number
+          event_id: string
+          id?: string
+          offer_id?: string | null
+          offer_name?: string | null
+          provider: string
+          raw_event?: Json
+          revenue_usd?: number | null
+          reversed_amount?: number
+          reward_credits: number
+          source_ip?: unknown
+          status: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          country_code?: string | null
+          created_at?: string
+          credited_amount?: number
+          debt_paid_amount?: number
+          event_id?: string
+          id?: string
+          offer_id?: string | null
+          offer_name?: string | null
+          provider?: string
+          raw_event?: Json
+          revenue_usd?: number | null
+          reversed_amount?: number
+          reward_credits?: number
+          source_ip?: unknown
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       personal_vault_files: {
         Row: {
@@ -2297,6 +2375,22 @@ export type Database = {
           p_status: string
           p_transaction_id: string
           p_virtual_amount: number
+        }
+        Returns: Json
+      }
+      process_offerwall_provider_event: {
+        Args: {
+          p_country_code?: string
+          p_event_id: string
+          p_offer_id?: string
+          p_offer_name?: string
+          p_provider: string
+          p_raw_event?: Json
+          p_revenue_usd?: number
+          p_reward_credits: number
+          p_source_ip?: unknown
+          p_status: string
+          p_user_id: string
         }
         Returns: Json
       }
