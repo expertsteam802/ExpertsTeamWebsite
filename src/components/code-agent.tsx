@@ -881,7 +881,6 @@ export function CodeAgent() {
   const terminalSocketRef = useRef<WebSocket | null>(null);
   const terminalLastActivityRef = useRef(Date.now());
   const terminalRecoveryFilesRef = useRef<ProjectFiles>(files);
-  const terminalRecoveryInProgressRef = useRef(false);
   const terminalSessionClosingRef = useRef(new Set<string>());
   const xtermRef = useRef<XTerm | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
@@ -1461,87 +1460,6 @@ export function CodeAgent() {
     }, 5 * 60 * 1000);
     return () => window.clearInterval(heartbeat);
   }, [terminalConnection?.sandboxName, terminalConnection?.projectId, terminalConnection?.provider, projectId, refreshTerminal]);
-
-  // Rotate the disposable Linux VM before Vercel's 45-minute Hobby limit.
-  // Project files are synced first; Kilo starts fresh in the replacement VM.
-  // An active CLI process cannot survive a provider VM replacement.
-  useEffect(() => {
-    const session = terminalConnection;
-    const userId = user?.id;
-    if (!session || session.projectId !== projectId || !userId || session.provider === "daytona") return;
-    let cancelled = false;
-    let retryTimer: number | undefined;
-
-    const recoverSession = async () => {
-      if (terminalRecoveryInProgressRef.current || cancelled) return;
-      terminalRecoveryInProgressRef.current = true;
-      try {
-        let recoveryFiles: ProjectFiles;
-        try {
-          const synced = await syncTerminalFiles({
-            data: { projectId: session.projectId, sandboxName: session.sandboxName },
-          });
-          recoveryFiles = synced.files;
-          await saveProjectFiles(session.projectId, userId, recoveryFiles);
-          const { error } = await supabase.from("agent_projects")
-            .update({ updated_at: new Date().toISOString() })
-            .eq("id", session.projectId).eq("user_id", userId);
-          if (error) throw error;
-        } catch {
-          if (cancelled) return;
-          // The VM may already have expired. Restore this exact project from Supabase,
-          // never from whichever project's editor happens to be selected now.
-          const { data, error } = await supabase
-            .from("agent_projects")
-            .select("files")
-            .eq("id", session.projectId)
-            .eq("user_id", userId)
-            .maybeSingle();
-          if (error) throw error;
-          recoveryFiles = await loadProjectFiles(session.projectId);
-          if (!Object.keys(recoveryFiles).length && data?.files && typeof data.files === "object" && !Array.isArray(data.files)) {
-            recoveryFiles = data.files as unknown as ProjectFiles;
-          }
-          if (!Object.keys(recoveryFiles).length) throw new Error("The saved project files could not be recovered.");
-        }
-        if (cancelled) return;
-        if (projectId === session.projectId) {
-          terminalRecoveryFilesRef.current = recoveryFiles;
-          setFiles(recoveryFiles);
-          setDirty(false);
-        }
-
-        const replacement = await connectTerminal({
-          data: {
-            projectId: session.projectId,
-            username: terminalUsername,
-            cli: session.cli,
-          },
-        });
-        if (cancelled) {
-          void stopTerminal({ data: { sandboxName: replacement.sandboxName } }).catch(() => undefined);
-          return;
-        }
-
-        terminalSessionClosingRef.current.add(session.sandboxName);
-        setTerminalConnection({ ...replacement, projectId: session.projectId });
-        setTerminalReady(false);
-        void stopTerminal({ data: { sandboxName: session.sandboxName } }).catch(() => undefined);
-      } catch {
-        // Retry quietly. If the old VM expired, restore from the saved project record.
-        if (!cancelled) retryTimer = window.setTimeout(recoverSession, 60_000);
-      } finally {
-        terminalRecoveryInProgressRef.current = false;
-      }
-    };
-
-    const timer = window.setTimeout(recoverSession, 30 * 60 * 1000);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
-    };
-  }, [terminalConnection?.sandboxName, terminalConnection?.projectId, projectId, user?.id, connectTerminal, syncTerminalFiles, stopTerminal, terminalUsername]);
 
   // Keep the Daytona preview session warm and recover it after an idle stop.
   // The server checks whether the dev server is already healthy, so this does not
@@ -4092,15 +4010,6 @@ export function CodeAgent() {
               >
                 <Github className="mr-1.5 h-3.5 w-3.5" /> GitHub
               </Button>
-              <a
-                href="https://vercel.com/new"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-3 text-xs font-medium text-slate-200 transition hover:border-white/20 hover:bg-white/[0.08]"
-                title="Import your GitHub repository into Vercel and configure automatic deployments"
-              >
-                <ExternalLink className="h-3.5 w-3.5" /> Vercel
-              </a>
               <Button
                 size="sm"
                 onClick={() => void publishProject()}
