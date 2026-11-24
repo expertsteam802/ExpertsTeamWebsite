@@ -2926,7 +2926,7 @@ export function CodeAgent() {
   }
 
   function expandSlashCommand(value: string) {
-    const match = value.match(/^\/(fix|refactor|seo|responsive|explain|test|docs|svg)(?:\s+([\s\S]*))?$/i);
+    const match = value.match(/^\/(fix|refactor|seo|responsive|explain|test|docs|svg|auth|api|pwa|payments)(?:\s+([\s\S]*))?$/i);
     if (!match) return value;
     const command = match[1]!.toLowerCase();
     const detail = match[2]?.trim() ?? "";
@@ -2939,6 +2939,10 @@ export function CodeAgent() {
       test: "Add or improve meaningful automated tests for the requested behavior, then inspect related code for likely regressions. Do not claim tests ran unless verified.",
       docs: "Use the live npm registry documentation supplied with this request to verify current package versions, installation steps, and APIs before changing code.",
       svg: "Generate polished, optimized, accessible SVG assets for the requested design. Create reusable SVG files with viewBox, scalable paths, accessible titles, and no unnecessary embedded raster data.",
+      auth: "Implement a production-ready Supabase authentication flow with email/password, Google OAuth, and magic links. Add protected routes, session handling, logout, secure environment variables, and least-privilege RLS policies. Never hardcode secrets; document provider setup that requires external credentials.",
+      api: "Scaffold a production-ready server-side API route or Supabase Edge Function for this request. Validate inputs, authenticate and authorize callers, handle errors, add rate limits where appropriate, and keep secrets server-side.",
+      pwa: "Make this app installable as a Progressive Web App. Add a valid web app manifest, service worker with safe update behavior, install metadata, offline fallback, and app icon assets. Do not cache private authenticated API responses.",
+      payments: "Scaffold secure payment adapters for Stripe, MTN Mobile Money, and Airtel Money as applicable. Keep credentials server-side, verify webhook signatures, implement idempotency, and use clearly named environment placeholders. Do not claim payment providers are connected until credentials and merchant accounts are configured.",
     };
     return [detail, instructions[command]].filter(Boolean).join("\n\n");
   }
@@ -3000,7 +3004,7 @@ export function CodeAgent() {
 
     try {
       // Ordinary conversation must never create a checkpoint, touch files, or start a terminal.
-      if (modeOverride === "build" && !isAgentBuildRequest(text) && !/^\/(fix|refactor|seo|responsive|test|docs|svg)\b/i.test(text) && referenceImages.length === 0) {
+      if (modeOverride === "build" && !isAgentBuildRequest(text) && !/^\/(fix|refactor|seo|responsive|test|docs|svg|auth|api|pwa|payments)\b/i.test(text) && referenceImages.length === 0) {
         const result = await runCodeAgent({
           data: {
             mode: "chat",
