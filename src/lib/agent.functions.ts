@@ -864,6 +864,7 @@ export const startAgentTerminal = createServerFn({ method: "POST" })
 const publishRequest = z.object({
   projectId: z.string().uuid(),
   slug: z.string().regex(/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/),
+  environment: z.enum(["production", "staging"]).default("production"),
 });
 
 export const stopAgentTerminal = createServerFn({ method: "POST" })
@@ -1009,34 +1010,54 @@ export const publishAgentProject = createServerFn({ method: "POST" })
         context.supabase,
         projectEnvironment,
       );
-      const { data: saved, error: saveError } = await context.supabase
-        .from("agent_projects")
-        .update({
-          published: true,
-          slug: data.slug,
-          deployment_url: result.url,
-          thumbnail_url: (await context.supabase
+
+      const appUrl = (process.env["APP_URL"] || "https://expertsteam.giize.com").replace(/\/$/, "");
+      let publicUrl: string;
+      if (data.environment === "staging") {
+        publicUrl = appUrl + "/staging/" + encodeURIComponent(data.slug);
+      } else {
+        const configuredDomain = process.env["PUBLIC_APP_DOMAIN"]?.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
+        if (configuredDomain) {
+          const domainUrl = new URL("https://" + configuredDomain);
+          if (domainUrl.pathname !== "/" || domainUrl.search || domainUrl.hash) throw new Error("PUBLIC_APP_DOMAIN must contain only a hostname.");
+          publicUrl = "https://" + data.slug + "." + domainUrl.hostname;
+        } else {
+          publicUrl = appUrl + "/apps/" + encodeURIComponent(data.slug);
+        }
+      }
+
+      const { data: deploymentId, error: recordError } = await context.supabase.rpc("record_agent_project_deployment", {
+        p_project_id: data.projectId,
+        p_slug: data.slug,
+        p_environment: data.environment,
+        p_release_id: result.releaseId,
+        p_deployment_url: result.url,
+        p_public_url: publicUrl,
+        p_file_count: result.fileCount,
+      });
+      if (recordError || !deploymentId) {
+        throw new Error(recordError?.message || "The app was built, but its deployment history could not be saved.");
+      }
+
+      if (data.environment === "production") {
+        const { data: existing } = await context.supabase
+          .from("agent_projects")
+          .select("thumbnail_url")
+          .eq("id", data.projectId)
+          .eq("user_id", context.userId)
+          .maybeSingle();
+        if (!existing?.thumbnail_url) {
+          await context.supabase
             .from("agent_projects")
-            .select("thumbnail_url")
+            .update({
+              thumbnail_url: "https://image.thum.io/get/width/1200/crop/675/noanimate/maxAge/24/" + publicUrl,
+            })
             .eq("id", data.projectId)
-            .eq("user_id", context.userId)
-            .maybeSingle()).data?.thumbnail_url ??
-            `https://image.thum.io/get/width/1200/crop/675/noanimate/maxAge/24/https://expertsteam.giize.com/apps/${encodeURIComponent(data.slug)}`,
-          last_build_status: "success",
-          last_build_at: new Date().toISOString(),
-        })
-        .eq("id", data.projectId)
-        .eq("user_id", context.userId)
-        .select("id")
-        .maybeSingle();
-      if (saveError)
-        throw new Error("The app was built, but its published URL could not be saved.");
-      if (!saved) throw new Error("The app was built, but the project is no longer available.");
-      return {
-        ...result,
-        // Public project links must use the agreed first-party path route, never wildcard subdomains.
-        publicUrl: `https://expertsteam.giize.com/apps/${encodeURIComponent(data.slug)}`,
-      };
+            .eq("user_id", context.userId);
+        }
+      }
+
+      return { ...result, publicUrl, deploymentId, environment: data.environment };
     } catch (error) {
       await context.supabase
         .from("agent_projects")

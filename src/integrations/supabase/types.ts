@@ -147,6 +147,62 @@ export type Database = {
           },
         ]
       }
+      agent_project_deployments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deployment_url: string
+          environment: string
+          file_count: number
+          id: string
+          is_current: boolean
+          project_id: string
+          public_url: string
+          release_id: string
+          slug: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deployment_url: string
+          environment: string
+          file_count?: number
+          id?: string
+          is_current?: boolean
+          project_id: string
+          public_url: string
+          release_id: string
+          slug: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deployment_url?: string
+          environment?: string
+          file_count?: number
+          id?: string
+          is_current?: boolean
+          project_id?: string
+          public_url?: string
+          release_id?: string
+          slug?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_deployments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_project_env_vars: {
         Row: {
           auth_tag: string
@@ -306,6 +362,38 @@ export type Database = {
             foreignKeyName: "agent_project_runs_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_project_staging_access: {
+        Row: {
+          password_hash: string
+          password_salt: string
+          project_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          password_hash: string
+          password_salt: string
+          project_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          password_hash?: string
+          password_salt?: string
+          project_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_staging_access_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
             referencedRelation: "agent_projects"
             referencedColumns: ["id"]
           },
@@ -2518,11 +2606,27 @@ export type Database = {
         }
         Returns: Json
       }
+      record_agent_project_deployment: {
+        Args: {
+          p_deployment_url: string
+          p_environment: string
+          p_file_count: number
+          p_project_id: string
+          p_public_url: string
+          p_release_id: string
+          p_slug: string
+        }
+        Returns: string
+      }
       record_video_view: { Args: { p_video_id: string }; Returns: undefined }
       redeem_invite: { Args: { _code: string }; Returns: Json }
       replace_agent_project_files: {
         Args: { p_files: Json; p_project_id: string }
         Returns: number
+      }
+      rollback_agent_project_deployment: {
+        Args: { p_deployment_id: string; p_project_id: string }
+        Returns: Json
       }
       save_user_supabase_connection: {
         Args: {

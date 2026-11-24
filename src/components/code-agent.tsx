@@ -64,6 +64,7 @@ import "@xterm/xterm/css/xterm.css";
 import { toast } from "sonner";
 
 import { AgentPromptLibrary } from "@/components/agent-prompt-library";
+import { DeploymentHistoryPanel } from "@/components/deployment-history-panel";
 import { MyLeadOfferwall } from "@/components/mylead-offerwall";
 import { ProjectEnvironmentPanel } from "@/components/project-environment-panel";
 import { SupabaseDatabasePanel } from "@/components/supabase-database-panel";
@@ -92,6 +93,7 @@ import {
   startAgentPreview,
   stopAgentPreview,
 } from "@/lib/agent.functions";
+import { setStagingPassword } from "@/lib/deployment.functions";
 import { buildSrcDocWithConsole, STARTER_FILES, type ProjectFiles } from "@/lib/sandbox";
 import { deleteProjectFile, loadProjectFiles, saveProjectFile, saveProjectFiles } from "@/lib/project-files";
 type Message = { role: "user" | "assistant"; content: string };
@@ -2184,11 +2186,24 @@ export function CodeAgent() {
         toast.error("Choose a URL slug with 3–60 characters, using letters, numbers and hyphens.");
         return;
       }
-      const result = await publish({ data: { projectId: activeProjectId, slug } });
+      const requestedEnvironment = window.prompt("Deploy to which environment? Enter production or staging.", "production");
+      if (requestedEnvironment === null) return;
+      const environment = requestedEnvironment.trim().toLowerCase();
+      if (environment !== "production" && environment !== "staging") {
+        toast.error("Choose production or staging.");
+        return;
+      }
+      if (environment === "staging") {
+        const stagingPassword = window.prompt("Set or confirm the staging password (at least 8 characters).");
+        if (stagingPassword === null) return;
+        await setStagingPassword({ data: { projectId: activeProjectId, password: stagingPassword } });
+      }
+      const result = await publish({ data: { projectId: activeProjectId, slug, environment } });
       await queryClient.invalidateQueries({ queryKey: ["agent-projects", user?.id] });
+      await queryClient.invalidateQueries({ queryKey: ["agent-project-deployments", activeProjectId] });
       const url = result.publicUrl;
       setPublishedUrl(url);
-      toast.success("Your app is built and published", {
+      toast.success(environment === "staging" ? "Your password-protected staging app is published" : "Your production app is published", {
         action: {
           label: "Open app",
           onClick: () => window.open(url, "_blank", "noopener,noreferrer"),
@@ -3630,6 +3645,7 @@ export function CodeAgent() {
           <Button type="button" size="sm" variant="outline" onClick={() => setCreditsOfferwallOpen(true)} className="h-8 border-amber-300/25 bg-amber-300/[0.08] px-3 text-[10px] font-semibold text-amber-100 hover:bg-amber-300/[0.14]" title="Earn free AI credits"><Coins className="mr-1 h-3.5 w-3.5" />{displayedCredits} · Earn Free</Button>
           <Button type="button" size="sm" variant="outline" onClick={() => setEnvironmentPanelOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700"><Settings2 className="mr-1.5 h-3.5 w-3.5" />DB &amp; Auth</Button>
           <Button type="button" size="sm" variant="outline" onClick={() => setGithubOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700"><Github className="mr-1.5 h-3.5 w-3.5" />GitHub</Button>
+          {projectId && <DeploymentHistoryPanel projectId={projectId} />}
           <Button type="button" size="sm" onClick={() => void publishProject()} disabled={publishing} className="h-8 bg-blue-600 px-3 text-[11px] font-semibold text-white hover:bg-blue-500">{publishing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />}Deploy ↑</Button>
         </div>
         {publishedUrl && (

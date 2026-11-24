@@ -43,6 +43,7 @@ import { Route as ApiOfferwallCpxPostbackRouteImport } from './routes/api.offerw
 import { Route as ApiOfferwallLootablyPostbackRouteImport } from './routes/api.offerwall.lootably.postback'
 import { Route as ApiOfferwallGeoRouteImport } from './routes/api.offerwall.geo'
 import { Route as ApiStripeCreditsWebhookRouteImport } from './routes/api.stripe.credits.webhook'
+import { Route as StagingSlugRouteImport } from './routes/staging.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -213,6 +214,11 @@ const ApiStripeCreditsWebhookRoute = ApiStripeCreditsWebhookRouteImport.update({
   path: '/api/stripe/credits/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StagingSlugRoute = StagingSlugRouteImport.update({
+  id: '/staging/$slug',
+  path: '/staging/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -248,6 +254,7 @@ export interface FileRoutesByFullPath {
   '/api/offerwall/lootably/postback': typeof ApiOfferwallLootablyPostbackRoute
   '/api/offerwall/geo': typeof ApiOfferwallGeoRoute
   '/api/stripe/credits/webhook': typeof ApiStripeCreditsWebhookRoute
+  '/staging/$slug': typeof StagingSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -314,6 +321,7 @@ export interface FileRoutesById {
   '/api/offerwall/lootably/postback': typeof ApiOfferwallLootablyPostbackRoute
   '/api/offerwall/geo': typeof ApiOfferwallGeoRoute
   '/api/stripe/credits/webhook': typeof ApiStripeCreditsWebhookRoute
+  '/staging/$slug': typeof StagingSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -351,6 +359,7 @@ export interface FileRouteTypes {
     | '/api/offerwall/lootably/postback'
     | '/api/offerwall/geo'
     | '/api/stripe/credits/webhook'
+    | '/staging/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -386,6 +395,7 @@ export interface FileRouteTypes {
     | '/api/offerwall/lootably/postback'
     | '/api/offerwall/geo'
     | '/api/stripe/credits/webhook'
+    | '/staging/$slug'
   id:
     | '__root__'
     | '/'
@@ -420,6 +430,7 @@ export interface FileRouteTypes {
     | '/api/offerwall/lootably/postback'
     | '/api/offerwall/geo'
     | '/api/stripe/credits/webhook'
+    | '/staging/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -452,6 +463,7 @@ export interface RootRouteChildren {
   ApiOfferwallLootablyPostbackRoute: typeof ApiOfferwallLootablyPostbackRoute
   ApiOfferwallGeoRoute: typeof ApiOfferwallGeoRoute
   ApiStripeCreditsWebhookRoute: typeof ApiStripeCreditsWebhookRoute
+  StagingSlugRoute: typeof StagingSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -694,6 +706,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStripeCreditsWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/staging/$slug': {
+      id: '/staging/$slug'
+      path: '/staging/$slug'
+      fullPath: '/staging/$slug'
+      preLoaderRoute: typeof StagingSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -745,6 +764,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOfferwallLootablyPostbackRoute: ApiOfferwallLootablyPostbackRoute,
   ApiOfferwallGeoRoute: ApiOfferwallGeoRoute,
   ApiStripeCreditsWebhookRoute: ApiStripeCreditsWebhookRoute,
+  StagingSlugRoute: StagingSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
