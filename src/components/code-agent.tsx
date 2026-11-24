@@ -381,6 +381,7 @@ export function CodeAgent() {
   const [agentPanelMode, setAgentPanelMode] = useState<"chat" | "terminal" | "chats">("chat");
   const [prompt, setPrompt] = useState("");
   const [agentMode, setAgentMode] = useState<"build" | "plan">("build");
+  const [modelTier, setModelTier] = useState<"fast" | "balanced" | "architect">("fast");
   const [tutorMode, setTutorMode] = useState(false);
   const [planDraft, setPlanDraft] = useState<string | null>(null);
   const [planPanelOpen, setPlanPanelOpen] = useState(true);
@@ -2307,6 +2308,7 @@ export function CodeAgent() {
         const result = await runCodeAgent({
           data: {
             mode: "chat",
+            modelTier,
             prompt: agentPrompt,
             files,
             history: messages.slice(-8).map((message) => ({ ...message, content: message.content.slice(-3000) })),
@@ -2327,6 +2329,7 @@ export function CodeAgent() {
         const result = await runCodeAgent({
           data: {
             mode: "plan",
+            modelTier,
             prompt: agentPrompt,
             files,
             history: messages.slice(-8).map((message) => ({ ...message, content: message.content.slice(-3000) })),
@@ -2349,6 +2352,7 @@ export function CodeAgent() {
       const result = await runCodeAgent({
         data: {
           prompt: agentPrompt,
+          modelTier,
           files,
           history: messages.slice(-8).map((message) => ({ ...message, content: message.content.slice(-3000) })),
           referenceImages,
@@ -3457,6 +3461,7 @@ export function CodeAgent() {
                       </div>
                       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/60 px-1 pt-2">
                         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                          <label className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1.5 text-[10px] text-slate-300"><span className="text-slate-500">Model</span><select aria-label="AI model tier" value={modelTier} onChange={(event) => setModelTier(event.target.value as "fast" | "balanced" | "architect")} disabled={busy} className="max-w-[112px] bg-transparent text-[10px] text-white outline-none"><option value="fast">Fast · 1 EC</option><option value="balanced">Balanced · 2 EC</option><option value="architect">Architect · 3 EC</option></select></label>
                           <AgentPromptLibrary currentPrompt={prompt} onUse={setPrompt} />
                           <button type="button" onClick={() => setAgentMode((mode) => mode === "plan" ? "build" : "plan")} disabled={busy} className={agentMode === "plan" ? "rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-2.5 py-2 text-[10px] font-semibold text-emerald-200" : "rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}>{agentMode === "plan" ? "Plan mode on" : "Plan first"}</button>
                           <button type="button" onClick={() => { setSelectedPreviewElement(null); setVisualSelectMode(true); switchPanel("preview"); }} disabled={busy} aria-pressed={visualSelectMode} className={visualSelectMode ? "inline-flex items-center gap-1.5 rounded-lg border border-blue-400/40 bg-blue-400/15 px-2.5 py-2 text-[10px] font-semibold text-blue-200" : "inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}><MousePointer2 className="h-3 w-3" /> Select Element</button>
