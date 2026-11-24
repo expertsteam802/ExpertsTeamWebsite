@@ -47,3 +47,11 @@ Netlify requires DNS to point to its infrastructure before it can issue a certif
 ## Database backup inventory
 
 The Admin → Database backups panel reads the Supabase Management API. Configure server-only `SUPABASE_ACCESS_TOKEN` with the `database:read` / `backups_read` scope and `SUPABASE_PROJECT_REF`. The panel is read-only and links to Supabase for restore operations; it never triggers a destructive restore from the app. Backup availability and retention depend on the Supabase plan.
+
+## Cron builder
+
+The Studio toolbar includes a visual cron builder for common schedules and custom five-field expressions. It generates SQL for the developer's own Supabase SQL Editor, including optional `pg_net` calls to Edge Functions. The builder deliberately does not execute arbitrary user SQL against the shared ExpertsTeam database. For HTTP jobs, store the generated secret in Supabase Vault and have the Edge Function validate the `x-cron-secret` header.
+
+## Uptime alerts
+
+The ExpertsTeam Supabase project enables `pg_cron` and `pg_net`. Production uptime monitoring can be enabled per project from Deploy history. A scheduled job checks the current published storage release every five minutes; a second job processes HTTP responses every minute. Owners can set consecutive failure and recovery thresholds and acknowledge down/recovered alerts in Studio. Checks are retained for 30 days. Alerts are currently in-app; email delivery is not enabled by this migration.

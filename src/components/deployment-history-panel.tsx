@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RotateCcw } from "lucide-react";
+import { UptimeAlertsPanel } from "@/components/uptime-alerts-panel";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -96,6 +97,7 @@ export function DeploymentHistoryPanel({ projectId }: { projectId: string }) {
             ))}
           </div>
         ) : <p className="p-3 text-xs text-slate-400">No deployment releases yet.</p>}
+        <UptimeAlertsPanel projectId={projectId} />
         <div className="mt-3 border-t border-slate-800 pt-3">
           <p className="mb-2 text-xs font-semibold text-slate-200">Recent build logs</p>
           {buildLogs.data?.length ? buildLogs.data.map((log) => (

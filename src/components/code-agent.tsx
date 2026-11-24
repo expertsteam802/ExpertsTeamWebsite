@@ -66,6 +66,7 @@ import { toast } from "sonner";
 import { AgentPromptLibrary } from "@/components/agent-prompt-library";
 import { DeploymentHistoryPanel } from "@/components/deployment-history-panel";
 import { CustomDomainPanel } from "@/components/custom-domain-panel";
+import { CronBuilderPanel } from "@/components/cron-builder-panel";
 import { MyLeadOfferwall } from "@/components/mylead-offerwall";
 import { ProjectEnvironmentPanel } from "@/components/project-environment-panel";
 import { SupabaseDatabasePanel } from "@/components/supabase-database-panel";
@@ -3648,6 +3649,7 @@ export function CodeAgent() {
           <Button type="button" size="sm" variant="outline" onClick={() => setGithubOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700"><Github className="mr-1.5 h-3.5 w-3.5" />GitHub</Button>
           {projectId && <DeploymentHistoryPanel projectId={projectId} />}
           {projectId && <CustomDomainPanel projectId={projectId} />}
+          <CronBuilderPanel />
           <Button type="button" size="sm" onClick={() => void publishProject()} disabled={publishing} className="h-8 bg-blue-600 px-3 text-[11px] font-semibold text-white hover:bg-blue-500">{publishing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />}Deploy ↑</Button>
         </div>
         {publishedUrl && (

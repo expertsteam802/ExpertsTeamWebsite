@@ -531,6 +531,157 @@ export type Database = {
           },
         ]
       }
+      agent_project_uptime_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          created_at: string
+          event_type: string
+          id: string
+          message: string
+          project_id: string
+          user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          message: string
+          project_id: string
+          user_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          message?: string
+          project_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_uptime_alerts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_project_uptime_checks: {
+        Row: {
+          checked_at: string | null
+          created_at: string
+          deployment_id: string
+          error_message: string | null
+          id: string
+          project_id: string
+          request_id: number
+          response_time_ms: number | null
+          status: string
+          status_code: number | null
+          timed_out: boolean
+          url: string
+          user_id: string
+        }
+        Insert: {
+          checked_at?: string | null
+          created_at?: string
+          deployment_id: string
+          error_message?: string | null
+          id?: string
+          project_id: string
+          request_id: number
+          response_time_ms?: number | null
+          status?: string
+          status_code?: number | null
+          timed_out?: boolean
+          url: string
+          user_id: string
+        }
+        Update: {
+          checked_at?: string | null
+          created_at?: string
+          deployment_id?: string
+          error_message?: string | null
+          id?: string
+          project_id?: string
+          request_id?: number
+          response_time_ms?: number | null
+          status?: string
+          status_code?: number | null
+          timed_out?: boolean
+          url?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_uptime_checks_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "agent_project_deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_project_uptime_checks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_project_uptime_settings: {
+        Row: {
+          consecutive_failures: number
+          consecutive_successes: number
+          enabled: boolean
+          failure_threshold: number
+          last_alert_at: string | null
+          last_checked_at: string | null
+          last_state: string
+          project_id: string
+          recovery_threshold: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          consecutive_failures?: number
+          consecutive_successes?: number
+          enabled?: boolean
+          failure_threshold?: number
+          last_alert_at?: string | null
+          last_checked_at?: string | null
+          last_state?: string
+          project_id: string
+          recovery_threshold?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          consecutive_failures?: number
+          consecutive_successes?: number
+          enabled?: boolean
+          failure_threshold?: number
+          last_alert_at?: string | null
+          last_checked_at?: string | null
+          last_state?: string
+          project_id?: string
+          recovery_threshold?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_uptime_settings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_projects: {
         Row: {
           cloud_connection_id: string | null
@@ -2609,6 +2760,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      acknowledge_agent_project_uptime_alert: {
+        Args: { p_alert_id: string }
+        Returns: boolean
+      }
       admin_api_usage_summary: {
         Args: { p_since?: string }
         Returns: {
@@ -2669,6 +2824,7 @@ export type Database = {
         Args: { p_connection_id: string }
         Returns: boolean
       }
+      dispatch_agent_project_uptime_checks: { Args: never; Returns: number }
       finalize_agent_project_file_staging: {
         Args: { p_import_id: string; p_project_id: string }
         Returns: number
@@ -2698,6 +2854,7 @@ export type Database = {
         Returns: boolean
       }
       is_workspace_member: { Args: { _user_id: string }; Returns: boolean }
+      process_agent_project_uptime_responses: { Args: never; Returns: number }
       process_cpa_grip_conversion: {
         Args: { p_provider_event_id?: string; p_tracking_id: string }
         Returns: Json
@@ -2771,6 +2928,15 @@ export type Database = {
           p_project_url: string
           p_publishable_key: string
           p_secret_key?: string
+        }
+        Returns: Json
+      }
+      set_agent_project_uptime_settings: {
+        Args: {
+          p_enabled: boolean
+          p_failure_threshold?: number
+          p_project_id: string
+          p_recovery_threshold?: number
         }
         Returns: Json
       }
