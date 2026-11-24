@@ -434,7 +434,7 @@ export function CodeAgent() {
   const { user, session, profile, isAdmin, isDeveloper } = useAuth();
   const [liveCredits, setLiveCredits] = useState<number | null>(null);
   const liveCreditsRef = useRef<number | null>(null);
-  const displayedCredits = liveCredits ?? displayedCredits;
+  const displayedCredits = liveCredits ?? profile?.ai_credits ?? 0;
   const githubAccessToken = (session as (typeof session & { provider_token?: string }) | null)?.provider_token ?? "";
   const terminalUsername = (profile?.username || user?.email?.split("@")[0] || "user")
     .replace(/[^a-zA-Z0-9_-]/g, "")
@@ -2154,7 +2154,7 @@ export function CodeAgent() {
     const updateCredits = (payload: { new: Record<string, unknown> }) => {
       const next = Number(payload.new.ai_credits);
       if (!Number.isFinite(next)) return;
-      const previous = liveCreditsRef.current ?? Number(displayedCredits);
+      const previous = liveCreditsRef.current ?? Number(profile?.ai_credits ?? 0);
       liveCreditsRef.current = next;
       setLiveCredits(next);
       if (next > previous) {
