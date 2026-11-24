@@ -167,6 +167,56 @@ function createStoredZip(entries: { path: string; data: Uint8Array }[]) {
   return new Blob([...localParts, ...centralParts, end], { type: "application/zip" });
 }
 
+async function formatProjectSources(sourceFiles: ProjectFiles) {
+  const [prettier, babel, estree, html, postcss, typescript, markdown, yaml] = await Promise.all([
+    import("prettier/standalone"),
+    import("prettier/plugins/babel"),
+    import("prettier/plugins/estree"),
+    import("prettier/plugins/html"),
+    import("prettier/plugins/postcss"),
+    import("prettier/plugins/typescript"),
+    import("prettier/plugins/markdown"),
+    import("prettier/plugins/yaml"),
+  ]);
+  const plugins = [babel, estree, html, postcss, typescript, markdown, yaml];
+  const formattedFiles: ProjectFiles = { ...sourceFiles };
+  let formattedCount = 0;
+  for (const [filePath, content] of Object.entries(sourceFiles)) {
+    if (isInternalAgentWorkspaceFile(filePath)) continue;
+    const extension = filePath.split(".").pop()?.toLowerCase();
+    const parser =
+      extension === "ts" || extension === "tsx" ? "typescript"
+      : ["js", "jsx", "mjs", "cjs"].includes(extension ?? "") ? "babel"
+      : extension === "json" ? "json"
+      : extension === "jsonc" ? "jsonc"
+      : extension === "css" ? "css"
+      : extension === "scss" ? "scss"
+      : extension === "less" ? "less"
+      : ["html", "htm"].includes(extension ?? "") ? "html"
+      : ["md", "mdx"].includes(extension ?? "") ? "markdown"
+      : ["yml", "yaml"].includes(extension ?? "") ? "yaml"
+      : null;
+    if (!parser) continue;
+    try {
+      const formatted = await prettier.format(content, {
+        parser,
+        plugins,
+        semi: true,
+        singleQuote: false,
+        trailingComma: "all",
+        printWidth: 100,
+      });
+      if (formatted !== content) {
+        formattedFiles[filePath] = formatted;
+        formattedCount += 1;
+      }
+    } catch {
+      // Unsupported syntax or incomplete files are left untouched rather than blocking saves.
+    }
+  }
+  return { files: formattedFiles, formattedCount };
+}
+
 function buildProjectFileTree(filePaths: string[]): ProjectTreeNode[] {
   const root: ProjectTreeNode[] = [];
   for (const filePath of filePaths) {
@@ -551,6 +601,7 @@ export function CodeAgent() {
   const [renameFileName, setRenameFileName] = useState("");
   const [extensionsOpen, setExtensionsOpen] = useState(false);
   const [packagesOpen, setPackagesOpen] = useState(false);
+  const [formatOnSave, setFormatOnSave] = useState(true);
   const [packageSearchQuery, setPackageSearchQuery] = useState("");
   const [packageSearchResults, setPackageSearchResults] = useState<{ name: string; version: string; description: string }[]>([]);
   const [packageSearchBusy, setPackageSearchBusy] = useState(false);
@@ -2425,8 +2476,16 @@ export function CodeAgent() {
   }
 
   const saveMutation = useMutation({
-    mutationFn: () => persist(),
-    onSuccess: () => { setAutoSaveStatus("saved"); toast.success("Project saved successfully"); },
+    mutationFn: async () => {
+      const formatted = formatOnSave ? await formatProjectSources(files) : { files, formattedCount: 0 };
+      if (formatted.formattedCount) setFiles(formatted.files);
+      await persist({ files: formatted.files });
+      return formatted.formattedCount;
+    },
+    onSuccess: (formattedCount) => {
+      setAutoSaveStatus("saved");
+      toast.success(formattedCount ? "Project saved · Prettier formatted " + formattedCount + " file(s)." : "Project saved successfully.");
+    },
     onError: (error: Error) => toast.error(error.message),
   });
   useEffect(() => {
@@ -3731,6 +3790,9 @@ export function CodeAgent() {
                         className="h-7 px-2 text-[10px] text-slate-400"
                       >
                         Autocomplete
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setFormatOnSave((enabled) => !enabled)} className={formatOnSave ? "h-7 px-2 text-[10px] text-emerald-300" : "h-7 px-2 text-[10px] text-slate-500"} title="Prettier formats supported source files on manual Save (Ctrl/Cmd+S)">
+                        <WandSparkles className="mr-1 h-3 w-3" /> Prettier {formatOnSave ? "On" : "Off"}
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => setPackagesOpen(true)} className="h-7 px-2 text-[10px] text-slate-400">
                         <Plus className="mr-1 h-3 w-3" /> Packages
