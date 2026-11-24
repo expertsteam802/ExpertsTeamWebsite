@@ -2757,7 +2757,7 @@ export function CodeAgent() {
     if (!query || globalSearch.error) return;
     let pattern: RegExp;
     try {
-      const source = globalSearchRegex ? query : query.replace(/[.*+?^$()|[\]\\]/g, "\\  async function toggleActiveFileLock() {");
+      const source = globalSearchRegex ? query : query.replace(/[.*+?^$()|[\\]\\]/g, "\\const source = globalSearchRegex ? query : query.replace(/[.*+?^$()|[\]\\]/g, "\\  async function toggleActiveFileLock() {");");
       pattern = new RegExp(source, "gi");
     } catch {
       toast.error("The search expression is invalid.");
@@ -4848,7 +4848,7 @@ export function CodeAgent() {
         .expert-agent-kilo-surface .xterm-viewport { overflow-y: scroll !important; overscroll-behavior: contain; scrollbar-width: thin; touch-action: pan-y; }
         @media (prefers-reduced-motion: reduce) { .expert-agent-canvas { animation: none !important; } }
         @media (min-width: 1280px) {
-          .expert-agent-topbar { min-height:60px; padding-top:8px; padding-bottom:8px; flex-wrap:nowrap; }
+          .expert-agent-topbar { height:48px; min-height:48px; padding-top:0; padding-bottom:0; flex-wrap:nowrap; }
           .expert-agent-toolbar { min-height:52px; flex-wrap:nowrap; padding-top:6px; padding-bottom:6px; gap:6px; }
           .expert-agent-toolbar > div { flex-shrink:0; }
           .expert-agent-toolbar button { white-space:nowrap; }
@@ -4902,7 +4902,7 @@ export function CodeAgent() {
           letter-spacing: -.01em;
         }
         .expert-agent-topbar {
-          min-height: 56px !important; padding: 7px 14px !important; gap: 10px !important;
+          height: 48px !important; min-height: 48px !important; padding: 0 14px !important; gap: 8px !important;
           background: #111a27 !important; border-color: var(--et-builder-line) !important;
           box-shadow: 0 1px 0 rgba(0,0,0,.16);
         }
