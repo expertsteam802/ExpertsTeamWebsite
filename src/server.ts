@@ -46,7 +46,7 @@ function isH3SwallowedErrorBody(body: string): boolean {
 
 function rewritePublishedSubdomain(request: Request): Request {
   if (request.method !== "GET" && request.method !== "HEAD") return request;
-  const configuredDomain = process.env["PUBLIC_APP_DOMAIN"]?.trim().toLowerCase().replace(/^https?:\\/\\//, "").replace(/\\/$/, "");
+  const configuredDomain = process.env["PUBLIC_APP_DOMAIN"]?.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
   if (!configuredDomain) return request;
   let domain: URL;
   try {

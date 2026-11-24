@@ -23,6 +23,29 @@ export function DeploymentHistoryPanel({ projectId }: { projectId: string }) {
     },
   });
 
+  const analytics = useQuery({
+    queryKey: ["agent-project-analytics", projectId],
+    enabled: Boolean(projectId && user),
+    queryFn: async () => {
+      const fromDay = new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const { data, error } = await supabase.from("agent_project_analytics_daily")
+        .select("day,views,errors").eq("project_id", projectId).gte("day", fromDay).order("day", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const buildLogs = useQuery({
+    queryKey: ["agent-project-build-logs", projectId],
+    enabled: Boolean(projectId && user),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("agent_project_build_logs")
+        .select("id,environment,status,release_id,message,created_at")
+        .eq("project_id", projectId).order("created_at", { ascending: false }).limit(8);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const rollback = useMutation({
     mutationFn: async (deployment: Deployment) => {
       const { data, error } = await supabase.rpc("rollback_agent_project_deployment", {
@@ -48,6 +71,10 @@ export function DeploymentHistoryPanel({ projectId }: { projectId: string }) {
       </summary>
       <div className="absolute right-0 top-full z-[100] mt-2 max-h-[420px] w-[min(420px,90vw)] overflow-y-auto rounded-xl border border-slate-700 bg-slate-950 p-3 shadow-2xl">
         <div className="mb-2 flex items-center justify-between"><p className="text-xs font-semibold text-white">Deployment releases</p><span className="text-[10px] text-slate-400">{history.data?.length ?? 0} releases</span></div>
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          <div className="rounded-lg bg-slate-900 p-2"><p className="text-[10px] text-slate-400">Views · 30 days</p><p className="text-lg font-semibold text-white tabular-nums">{(analytics.data ?? []).reduce((sum, day) => sum + Number(day.views), 0).toLocaleString()}</p></div>
+          <div className="rounded-lg bg-slate-900 p-2"><p className="text-[10px] text-slate-400">Load errors · 30 days</p><p className="text-lg font-semibold text-white tabular-nums">{(analytics.data ?? []).reduce((sum, day) => sum + Number(day.errors), 0).toLocaleString()}</p></div>
+        </div>
         {history.isLoading ? <p className="p-3 text-xs text-slate-400">Loading deployment history…</p> : history.data?.length ? (
           <div className="space-y-2">
             {history.data.map((deployment) => (
@@ -69,6 +96,15 @@ export function DeploymentHistoryPanel({ projectId }: { projectId: string }) {
             ))}
           </div>
         ) : <p className="p-3 text-xs text-slate-400">No deployment releases yet.</p>}
+        <div className="mt-3 border-t border-slate-800 pt-3">
+          <p className="mb-2 text-xs font-semibold text-slate-200">Recent build logs</p>
+          {buildLogs.data?.length ? buildLogs.data.map((log) => (
+            <div key={log.id} className="mb-2 rounded-lg bg-slate-900 p-2">
+              <p className="text-[10px] text-slate-400">{log.environment} · {log.status} · {new Date(log.created_at).toLocaleString()}</p>
+              <p className="mt-1 break-words text-[11px] text-slate-200">{log.message}</p>
+            </div>
+          )) : <p className="text-[10px] text-slate-400">No build logs recorded yet.</p>}
+        </div>
       </div>
     </details>
   );

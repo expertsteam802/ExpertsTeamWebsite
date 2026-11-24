@@ -25,3 +25,7 @@ When `PUBLIC_APP_DOMAIN` is absent, production continues to use the safe path UR
 - `PUBLIC_APP_DOMAIN`: optional hostname only (no scheme or path) for wildcard project subdomains.
 
 The wildcard DNS record and wildcard TLS certificate must be configured in the hosting provider before enabling subdomain publishing. The code does not create DNS records or certificates automatically.
+
+## Traffic and build diagnostics
+
+Published-app loads and load failures are aggregated by project and UTC day. The Studio history menu shows the last 30 days of views and load errors, plus the latest successful or failed build log entries. Analytics stores aggregate counts only; it does not store visitor IP addresses or full user-agent strings.

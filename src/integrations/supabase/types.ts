@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_project_analytics_daily: {
+        Row: {
+          day: string
+          errors: number
+          project_id: string
+          updated_at: string
+          views: number
+        }
+        Insert: {
+          day: string
+          errors?: number
+          project_id: string
+          updated_at?: string
+          views?: number
+        }
+        Update: {
+          day?: string
+          errors?: number
+          project_id?: string
+          updated_at?: string
+          views?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_analytics_daily_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_project_asset_staging: {
         Row: {
           created_at: string
@@ -95,6 +127,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "agent_project_assets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "agent_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_project_build_logs: {
+        Row: {
+          created_at: string
+          environment: string
+          id: string
+          message: string
+          project_id: string
+          release_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          environment: string
+          id?: string
+          message?: string
+          project_id: string
+          release_id?: string | null
+          status: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          environment?: string
+          id?: string
+          message?: string
+          project_id?: string
+          release_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_project_build_logs_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "agent_projects"
@@ -2617,6 +2690,10 @@ export type Database = {
           p_slug: string
         }
         Returns: string
+      }
+      record_public_project_event: {
+        Args: { p_event_type: string; p_route_path?: string; p_slug: string }
+        Returns: Json
       }
       record_video_view: { Args: { p_video_id: string }; Returns: undefined }
       redeem_invite: { Args: { _code: string }; Returns: Json }

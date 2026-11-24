@@ -994,6 +994,10 @@ export const publishAgentProject = createServerFn({ method: "POST" })
     if (startError) throw new Error("Could not start the app publishing job.");
 
     try {
+      const reservedSubdomains = new Set(["www", "api", "admin", "auth", "mail", "status", "cdn", "assets"]);
+      if (data.environment === "production" && process.env["PUBLIC_APP_DOMAIN"] && reservedSubdomains.has(data.slug)) {
+        throw new Error("That slug is reserved for a system subdomain. Choose another project URL.");
+      }
       const { loadProjectPublicEnvironment } = await import("./project-secrets.server");
       const projectEnvironment = await loadProjectPublicEnvironment(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1039,6 +1043,16 @@ export const publishAgentProject = createServerFn({ method: "POST" })
         throw new Error(recordError?.message || "The app was built, but its deployment history could not be saved.");
       }
 
+      const { error: buildLogError } = await context.supabase.from("agent_project_build_logs").insert({
+        project_id: data.projectId,
+        user_id: context.userId,
+        environment: data.environment,
+        status: "success",
+        release_id: result.releaseId,
+        message: "Published " + data.environment + " release " + result.releaseId + " with " + result.fileCount + " files.",
+      });
+      if (buildLogError) console.warn("[ExpertsTeam deployment] Could not save build log:", buildLogError.message);
+
       if (data.environment === "production") {
         const { data: existing } = await context.supabase
           .from("agent_projects")
@@ -1064,6 +1078,15 @@ export const publishAgentProject = createServerFn({ method: "POST" })
         .update({ last_build_status: "failed", last_build_at: new Date().toISOString() })
         .eq("id", data.projectId)
         .eq("user_id", context.userId);
+      await context.supabase.from("agent_project_build_logs").insert({
+        project_id: data.projectId,
+        user_id: context.userId,
+        environment: data.environment,
+        status: "failed",
+        message: (error instanceof Error ? error.message : String(error)).slice(0, 4000),
+      }).then(({ error: logError }) => {
+        if (logError) console.warn("[ExpertsTeam deployment] Could not save failure log:", logError.message);
+      });
       throw error;
     }
   });
