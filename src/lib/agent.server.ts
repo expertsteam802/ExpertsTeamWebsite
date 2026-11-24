@@ -304,7 +304,7 @@ export async function runAgent(
     const systemPrompt =
       AGENT_PROMPT +
       "\\n\\nResponse style: keep progress notes and explanations concise, direct, and useful. Use short sentences and small lists. Do not add long introductions, repeat the request, or explain obvious steps. Put implementation effort into complete working files, not verbose commentary.\\n" +
-      "Smart Processing rules:\\n" +
+      "Project rules: if a .expertrules file is present in the supplied files, read it first and obey its valid project-specific conventions unless they conflict with security, platform policies, or the user request.\\n" +\n      "Smart Processing rules:\\n" +
       "- Work in resumable batches of no more than 3 complete files per response.\\n" +
       '- Return JSON: {"message":"...","files":{"path":"full file content"},"complete":false}.\\n' +
       "- Set complete:true only after all necessary files have been supplied across continuation rounds.\\n" +
