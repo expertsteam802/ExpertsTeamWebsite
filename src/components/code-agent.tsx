@@ -67,6 +67,7 @@ import { AgentPromptLibrary } from "@/components/agent-prompt-library";
 import { DeploymentHistoryPanel } from "@/components/deployment-history-panel";
 import { CustomDomainPanel } from "@/components/custom-domain-panel";
 import { CronBuilderPanel } from "@/components/cron-builder-panel";
+import { MonacoEditor, type MonacoEditorHandle } from "@/components/monaco-editor";
 import { MyLeadOfferwall } from "@/components/mylead-offerwall";
 import { ProjectEnvironmentPanel } from "@/components/project-environment-panel";
 import { SupabaseDatabasePanel } from "@/components/supabase-database-panel";
@@ -876,6 +877,7 @@ export function CodeAgent() {
   const xtermRef = useRef<XTerm | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const editorRef = useRef<EditorView | null>(null);
+  const monacoEditorRef = useRef<MonacoEditorHandle | null>(null);
   const filterProjectTree = (nodes: ProjectTreeNode[], query: string): ProjectTreeNode[] => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return nodes;
@@ -1166,12 +1168,16 @@ export function CodeAgent() {
         setGlobalSearchOpen(true);
       } else if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "k" && panel === "code") {
         event.preventDefault();
-        const selection = editorRef.current?.state.selection.main;
-        if (!selection || selection.from === selection.to) {
+        const monacoSelection = monacoEditorRef.current?.getSelectionText();
+        const codeMirrorSelection = editorRef.current?.state.selection.main;
+        const selectedCode = monacoSelection ?? (codeMirrorSelection && codeMirrorSelection.from !== codeMirrorSelection.to
+          ? editorRef.current?.state.sliceDoc(codeMirrorSelection.from, codeMirrorSelection.to)
+          : null);
+        if (!selectedCode) {
           toast.info("Select a code block in the editor first, then press Ctrl/Cmd+K.");
           return;
         }
-        setInlineEditSelection(editorRef.current?.state.sliceDoc(selection.from, selection.to).slice(0, 12000) ?? "");
+        setInlineEditSelection(selectedCode.slice(0, 12000));
         setInlineEditPrompt("");
         setInlineEditOpen(true);
       } else if (event.key === "F1") {
@@ -1944,6 +1950,10 @@ export function CodeAgent() {
     setOpenFileTabs((tabs) => tabs.includes(diagnostic.path) ? tabs : [...tabs, diagnostic.path].slice(-8));
     switchPanel("code");
     requestAnimationFrame(() => {
+      if (monacoEditorRef.current) {
+        monacoEditorRef.current.revealLine(diagnostic.line);
+        return;
+      }
       const editor = editorRef.current;
       if (!editor) return;
       const line = Math.min(diagnostic.line, editor.state.doc.lines);
@@ -3418,6 +3428,11 @@ export function CodeAgent() {
   );
 
   function insertEditorSnippet(value: string) {
+    if (monacoEditorRef.current) {
+      monacoEditorRef.current.replaceSelection(value);
+      setCompletionsOpen(false);
+      return;
+    }
     const editor = editorRef.current;
     if (!editor) return;
     const { from, to } = editor.state.selection.main;
@@ -4141,9 +4156,13 @@ export function CodeAgent() {
                         {activeFileLocked ? "Unlock" : "Lock file"}
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => {
-                        const selection = editorRef.current?.state.selection.main;
-                        if (!selection || selection.from === selection.to) { toast.info("Select code first, then press Ctrl/Cmd+K."); return; }
-                        setInlineEditSelection(editorRef.current?.state.sliceDoc(selection.from, selection.to).slice(0, 12000) ?? "");
+                        const monacoSelection = monacoEditorRef.current?.getSelectionText();
+                        const codeMirrorSelection = editorRef.current?.state.selection.main;
+                        const selectedCode = monacoSelection ?? (codeMirrorSelection && codeMirrorSelection.from !== codeMirrorSelection.to
+                          ? editorRef.current?.state.sliceDoc(codeMirrorSelection.from, codeMirrorSelection.to)
+                          : null);
+                        if (!selectedCode) { toast.info("Select code first, then press Ctrl/Cmd+K."); return; }
+                        setInlineEditSelection(selectedCode.slice(0, 12000));
                         setInlineEditPrompt("");
                         setInlineEditOpen(true);
                       }} className="h-7 px-2 text-[10px] text-slate-400" title="AI edit selected code · Ctrl/Cmd+K">
@@ -4256,30 +4275,50 @@ export function CodeAgent() {
                         )}
                       </div>
                     )}
+                    <div className="flex h-7 shrink-0 items-center gap-1 overflow-hidden border-b border-white/[0.06] bg-[#080f1b] px-3 text-[10px] text-slate-500">
+                      {activeFile.split("/").map((segment, index, parts) => (
+                        <span key={index} className={index === parts.length - 1 ? "truncate text-slate-200" : "shrink-0"}>
+                          {index > 0 && <span className="mr-1 text-slate-700">/</span>}{segment}
+                        </span>
+                      ))}
+                    </div>
                     <div className="min-h-0 min-w-0 flex-1 overflow-auto text-sm">
-                      <CodeMirror
+                      <MonacoEditor
                         value={files[activeFile] ?? ""}
-                        height="100%"
-                        theme={oneDark}
-                        extensions={editorExtensions}
-                        onCreateEditor={(view) => {
-                          editorRef.current = view;
-                        }}
-                        onChange={(value) => updateFile(value)}
+                        filePath={activeFile}
                         editable={Boolean(activeFile)}
-                        basicSetup={{
-                          lineNumbers: true,
-                          foldGutter: true,
-                          highlightActiveLine: true,
-                          highlightActiveLineGutter: true,
-                          bracketMatching: true,
-                          autocompletion: true,
-                          closeBrackets: true,
-                          indentOnInput: true,
-                          tabSize: 2,
+                        onChange={updateFile}
+                        onEditorReady={(editor) => {
+                          monacoEditorRef.current = editor;
+                          if (editor) editorRef.current = null;
                         }}
                         className="h-full min-h-full text-[13px]"
-                        placeholder="Select a file to start editing…"
+                        fallback={
+                          <CodeMirror
+                            value={files[activeFile] ?? ""}
+                            height="100%"
+                            theme={oneDark}
+                            extensions={editorExtensions}
+                            onCreateEditor={(view) => {
+                              editorRef.current = view;
+                            }}
+                            onChange={(value) => updateFile(value)}
+                            editable={Boolean(activeFile)}
+                            basicSetup={{
+                              lineNumbers: true,
+                              foldGutter: true,
+                              highlightActiveLine: true,
+                              highlightActiveLineGutter: true,
+                              bracketMatching: true,
+                              autocompletion: true,
+                              closeBrackets: true,
+                              indentOnInput: true,
+                              tabSize: 2,
+                            }}
+                            className="h-full min-h-full text-[13px]"
+                            placeholder="Select a file to start editing…"
+                          />
+                        }
                       />
                     </div>
                   </div>
