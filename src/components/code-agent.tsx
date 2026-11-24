@@ -107,6 +107,20 @@ function isInternalAgentWorkspaceFile(filePath: string) {
     filePath === ".config/kilo/kilo.jsonc";
 }
 
+function countLineChanges(before: string, after: string) {
+  const remaining = new Map<string, number>();
+  for (const line of before.split("\n")) remaining.set(line, (remaining.get(line) ?? 0) + 1);
+  let added = 0;
+  for (const line of after.split("\n")) {
+    const count = remaining.get(line) ?? 0;
+    if (count > 0) remaining.set(line, count - 1);
+    else added += 1;
+  }
+  let removed = 0;
+  for (const count of remaining.values()) removed += count;
+  return { added, removed };
+}
+
 function crc32(bytes: Uint8Array) {
   let crc = 0xffffffff;
   for (const byte of bytes) {
@@ -4263,20 +4277,33 @@ export function CodeAgent() {
                       <div className="overflow-hidden rounded-xl border border-slate-700 bg-[#0b1220]">
                         <div className="flex items-center justify-between border-b border-slate-700 px-3 py-2">
                           <span className="text-[10px] font-semibold text-slate-200">File diff</span>
-                          <span className="text-[9px] text-emerald-300">{latestFileDiffs.length} files · {latestFileDiffs.reduce((sum, diff) => sum + diff.after.split("\n").filter((line) => !diff.before.split("\n").includes(line)).length, 0)} added / {latestFileDiffs.reduce((sum, diff) => sum + diff.before.split("\n").filter((line) => !diff.after.split("\n").includes(line)).length, 0)} removed</span>
+                          <span className="text-[9px] text-emerald-300">{latestFileDiffs.length} files · +{latestFileDiffs.reduce((sum, diff) => sum + countLineChanges(diff.before, diff.after).added, 0)} added / −{latestFileDiffs.reduce((sum, diff) => sum + countLineChanges(diff.before, diff.after).removed, 0)} removed</span>
                         </div>
                         {latestFileDiffs.map((diff) => {
-                          const beforeLines = diff.before.split("\n");
-                          const afterLines = diff.after.split("\n");
-                          const removed = beforeLines.filter((line) => !afterLines.includes(line));
-                          const added = afterLines.filter((line) => !beforeLines.includes(line));
+                          const lineChanges = countLineChanges(diff.before, diff.after);
+                          const beforeCounts = new Map<string, number>();
+                          for (const line of diff.before.split("\n")) beforeCounts.set(line, (beforeCounts.get(line) ?? 0) + 1);
+                          const added: string[] = [];
+                          for (const line of diff.after.split("\n")) {
+                            const count = beforeCounts.get(line) ?? 0;
+                            if (count > 0) beforeCounts.set(line, count - 1);
+                            else added.push(line);
+                          }
+                          const afterCounts = new Map<string, number>();
+                          for (const line of diff.after.split("\n")) afterCounts.set(line, (afterCounts.get(line) ?? 0) + 1);
+                          const removed: string[] = [];
+                          for (const line of diff.before.split("\n")) {
+                            const count = afterCounts.get(line) ?? 0;
+                            if (count > 0) afterCounts.set(line, count - 1);
+                            else removed.push(line);
+                          }
                           return (
                             <details key={diff.path} className="border-b border-slate-800 last:border-0">
                               <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 font-mono text-[10px] text-slate-300 hover:bg-white/[0.03]">
                                 <FileCode2 className="h-3 w-3 text-blue-300" />
                                 <span className="min-w-0 flex-1 truncate">{diff.path}</span>
-                                <span className="text-emerald-300">+{added.length}</span>
-                                <span className="text-rose-300">−{removed.length}</span>
+                                <span className="text-emerald-300">+{lineChanges.added}</span>
+                                <span className="text-rose-300">−{lineChanges.removed}</span>
                               </summary>
                               <div className="max-h-48 overflow-auto bg-[#080d16] px-3 py-2 font-mono text-[9px] leading-5">
                                 {removed.slice(0, 80).map((line, index) => <div key={"r" + index} className="whitespace-pre-wrap break-all text-red-300"><span className="mr-2 text-red-500">−</span>{line || " "}</div>)}
