@@ -3828,6 +3828,9 @@ export function CodeAgent() {
         .expert-agent-canvas > div:first-child { min-height:40px!important;background:#111827!important;border-color:#1E293B!important; }
         .expert-agent-canvas iframe { border:1px solid #1E293B!important;border-radius:10px!important; }
         .expert-agent-canvas > div:has(> iframe) { padding:12px!important;background:#0B0F17!important; }
+        .expert-agent-topbar > div:first-child > div > div:nth-child(2) > select,
+        .expert-agent-topbar > div:first-child > div > div:nth-child(2) > button:last-of-type { display:none!important; }
+        .expert-agent-workspace-grid > [aria-label="Resize project sidebar"] { display:none!important; }
         .expert-agent-statusbar,.expert-agent-mobile-dock { display:none!important; }
         @media (min-width:768px) {
           .expert-agent-topbar { flex-wrap:nowrap!important; }
@@ -3840,6 +3843,10 @@ export function CodeAgent() {
           .expert-agent-topbar .et-studio-header-actions button:first-child svg { margin:0!important; }
         }
         @media (max-width:767px) {
+          .expert-agent-workspace-grid { padding-bottom:0!important; }
+          .expert-agent-sidebar-drawer { top:48px!important;bottom:0!important;left:0!important; }
+          .expert-agent-mobile-backdrop { inset:48px 0 0!important; }
+          .expert-agent-stage > .expert-agent-toolbar > div:last-child > button[aria-label="Toggle ExpertAI builder"] { display:inline-flex!important; }
           .expert-agent-topbar { height:48px!important;min-height:48px!important;max-height:48px!important;padding:0 8px!important; }
           .expert-agent-topbar .et-studio-header-actions button:first-child { display:none!important; }
           .expert-agent-workspace-grid { display:flex!important; }
