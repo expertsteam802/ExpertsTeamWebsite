@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Database, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -34,29 +34,7 @@ export function SupabaseDatabasePanel({
   const [editorDraft, setEditorDraft] = useState("{}");
   const [editingPrimaryKey, setEditingPrimaryKey] = useState<unknown>(null);
 
-  async function loadTables() {
-    if (!projectRef) return;
-    setBusy(true);
-    try {
-      const result = await runDatabase({ data: { operation: "tables", projectRef } });
-      const found = result.tables as unknown as TableInfo[];
-      setTables(found);
-      if (found.length) {
-        const current = found.find((item) => item.table_schema === activeTable?.table_schema && item.table_name === activeTable?.table_name) ?? found[0]!;
-        setActiveTable(current);
-        await loadRows(current, "");
-      } else {
-        setActiveTable(null);
-        setRows([]);
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not load Supabase tables.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function loadRows(table: TableInfo, search = filter) {
+  const loadRows = useCallback(async (table: TableInfo, search = "") => {
     if (!projectRef) return;
     setBusy(true);
     try {
@@ -72,7 +50,29 @@ export function SupabaseDatabasePanel({
     } finally {
       setBusy(false);
     }
-  }
+  }, [projectRef, runDatabase]);
+
+  const loadTables = useCallback(async () => {
+    if (!projectRef) return;
+    setBusy(true);
+    try {
+      const result = await runDatabase({ data: { operation: "tables", projectRef } });
+      const found = result.tables as unknown as TableInfo[];
+      setTables(found);
+      if (found.length) {
+        const selected = found[0]!;
+        setActiveTable(selected);
+        await loadRows(selected, "");
+      } else {
+        setActiveTable(null);
+        setRows([]);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not load Supabase tables.");
+    } finally {
+      setBusy(false);
+    }
+  }, [projectRef, runDatabase, loadRows]);
 
   useEffect(() => {
     if (open && projectRef) void loadTables();
@@ -80,7 +80,7 @@ export function SupabaseDatabasePanel({
       setEditorMode(null);
       setFilter("");
     }
-  }, [open, projectRef]);
+  }, [open, projectRef, loadTables]);
 
   function beginInsert() {
     const initial: RowData = {};
@@ -126,7 +126,7 @@ export function SupabaseDatabasePanel({
         },
       });
       setEditorMode(null);
-      await loadRows(activeTable);
+      await loadRows(activeTable, filter);
       toast.success(editorMode === "insert" ? "Database row inserted." : "Database row updated.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save database row.");
