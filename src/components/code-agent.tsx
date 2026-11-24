@@ -535,6 +535,9 @@ export function CodeAgent() {
   const [globalReplaceQuery, setGlobalReplaceQuery] = useState("");
   const [globalSearchRegex, setGlobalSearchRegex] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [inlineEditOpen, setInlineEditOpen] = useState(false);
+  const [inlineEditPrompt, setInlineEditPrompt] = useState("");
+  const [inlineEditSelection, setInlineEditSelection] = useState("");
   const [newFileName, setNewFileName] = useState("");
   const [renameFileOpen, setRenameFileOpen] = useState(false);
   const [renameFileFrom, setRenameFileFrom] = useState<string | null>(null);
@@ -945,6 +948,16 @@ export function CodeAgent() {
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "f") {
         event.preventDefault();
         setGlobalSearchOpen(true);
+      } else if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "k" && panel === "code") {
+        event.preventDefault();
+        const selection = editorRef.current?.state.selection.main;
+        if (!selection || selection.from === selection.to) {
+          toast.info("Select a code block in the editor first, then press Ctrl/Cmd+K.");
+          return;
+        }
+        setInlineEditSelection(editorRef.current?.state.sliceDoc(selection.from, selection.to).slice(0, 12000) ?? "");
+        setInlineEditPrompt("");
+        setInlineEditOpen(true);
       } else if (event.key === "F1") {
         event.preventDefault();
         setShortcutsOpen(true);
@@ -952,7 +965,7 @@ export function CodeAgent() {
     };
     window.addEventListener("keydown", handleStudioShortcut);
     return () => window.removeEventListener("keydown", handleStudioShortcut);
-  }, []);
+  }, [panel]);
 
   const activeProjectSlug = projects.find((project) => project.id === projectId)?.slug ?? null;
 
@@ -2001,6 +2014,21 @@ export function CodeAgent() {
 
 
 
+
+  function submitInlineCodeEdit() {
+    const instruction = inlineEditPrompt.trim();
+    if (!instruction || !inlineEditSelection) return;
+    const request = [
+      "Edit only the selected code in " + activeFile + ". Preserve all unrelated files and behavior.",
+      "SELECTED CODE:",
+      inlineEditSelection,
+      "REQUESTED CHANGE:",
+      instruction,
+      "Return the smallest safe patch and keep surrounding interfaces compatible.",
+    ].join("\n\n");
+    setInlineEditOpen(false);
+    void sendPrompt("build", request);
+  }
 
   async function replaceAllSearchMatches() {
     const query = globalSearchQuery.trim();
@@ -3494,6 +3522,15 @@ export function CodeAgent() {
                         {activeFileLocked ? <Unlock className="mr-1 h-3 w-3" /> : <Lock className="mr-1 h-3 w-3" />}
                         {activeFileLocked ? "Unlock" : "Lock file"}
                       </Button>
+                      <Button size="sm" variant="ghost" onClick={() => {
+                        const selection = editorRef.current?.state.selection.main;
+                        if (!selection || selection.from === selection.to) { toast.info("Select code first, then press Ctrl/Cmd+K."); return; }
+                        setInlineEditSelection(editorRef.current?.state.sliceDoc(selection.from, selection.to).slice(0, 12000) ?? "");
+                        setInlineEditPrompt("");
+                        setInlineEditOpen(true);
+                      }} className="h-7 px-2 text-[10px] text-slate-400" title="AI edit selected code · Ctrl/Cmd+K">
+                        <Sparkles className="mr-1 h-3 w-3" /> Inline AI
+                      </Button>
                       <Button size="sm" variant="ghost" onClick={() => setGlobalSearchOpen(true)} className="h-7 px-2 text-[10px] text-slate-400" title="Search across project files · Ctrl+Shift+F">
                         <Search className="mr-1 h-3 w-3" /> Search
                       </Button>
@@ -4343,6 +4380,15 @@ export function CodeAgent() {
       </Dialog>
 
       {/* New file dialog */}
+      <Dialog open={inlineEditOpen} onOpenChange={setInlineEditOpen}>
+        <DialogContent className="max-w-2xl border-slate-700 bg-[#0b1320] text-white">
+          <DialogHeader><DialogTitle>AI edit selected code</DialogTitle></DialogHeader>
+          <p className="text-xs text-slate-400">Only the selected block from <span className="font-mono text-cyan-200">{activeFile}</span> is targeted. Review the resulting diff before saving.</p>
+          <pre className="max-h-48 overflow-auto rounded-lg border border-slate-700 bg-[#080e19] p-3 text-[10px] text-slate-300">{inlineEditSelection}</pre>
+          <Textarea value={inlineEditPrompt} onChange={(event) => setInlineEditPrompt(event.target.value)} placeholder="Describe the code change…" rows={3} className="border-slate-700 bg-[#080e19] text-white" />
+          <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setInlineEditOpen(false)}>Cancel</Button><Button onClick={submitInlineCodeEdit} disabled={!inlineEditPrompt.trim()}>Send to ExpertAI</Button></div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={globalSearchOpen} onOpenChange={setGlobalSearchOpen}>
         <DialogContent className="max-w-3xl border-slate-700 bg-[#0b1320] text-white">
           <DialogHeader><DialogTitle>Search &amp; Replace Project</DialogTitle></DialogHeader>
@@ -4376,9 +4422,11 @@ export function CodeAgent() {
           <div className="space-y-2 text-xs">
             {[
               ["Ctrl / Cmd + Shift + F", "Search and replace across project files"],
+              ["Ctrl / Cmd + K", "Ask ExpertAI to edit selected code"],
+              ["Ctrl / Cmd + P", "Quick-open a project file"],
+              ["Ctrl / Cmd + Enter", "Run the current project"],
               ["F1", "Open this keyboard shortcut guide"],
               ["Ctrl / Cmd + S", "Save current project"],
-              ["Ctrl / Cmd + Space", "Open editor completions"],
               ["Enter", "Send Agent prompt"],
               ["Shift + Enter", "Add a new line to the prompt"],
               ["Esc", "Close the current dialog or popover"],
