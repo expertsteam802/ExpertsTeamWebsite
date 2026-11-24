@@ -384,6 +384,7 @@ export function CodeAgent() {
   const [prompt, setPrompt] = useState("");
   const [voiceListening, setVoiceListening] = useState(false);
   const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  useEffect(() => () => speechRecognitionRef.current?.stop(), []);
   const [agentMode, setAgentMode] = useState<"build" | "plan">("build");
   const [modelTier, setModelTier] = useState<"fast" | "balanced" | "architect">("fast");
   const [tutorMode, setTutorMode] = useState(false);

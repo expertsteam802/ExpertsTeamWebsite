@@ -231,6 +231,7 @@ export async function runAgent(
 
   const promptTerms = new Set(cleanPrompt.toLowerCase().match(/[a-z0-9_./-]{3,}/g) ?? []);
   const priorityFiles = [
+    ".expertrules",
     "package.json",
     "vite.config.",
     "tsconfig.json",
