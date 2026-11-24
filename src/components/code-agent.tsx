@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronRight,
   Code2,
+  Coins,
   Command,
   Copy,
   Download,
@@ -58,6 +59,7 @@ import "@xterm/xterm/css/xterm.css";
 import { toast } from "sonner";
 
 import { AgentPromptLibrary } from "@/components/agent-prompt-library";
+import { MyLeadOfferwall } from "@/components/mylead-offerwall";
 import { ProjectEnvironmentPanel } from "@/components/project-environment-panel";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -427,6 +429,7 @@ export function CodeAgent() {
   const [projectNameEditing, setProjectNameEditing] = useState(false);
   const [cloudConnectionId, setCloudConnectionId] = useState<string | null>(null);
   const [environmentPanelOpen, setEnvironmentPanelOpen] = useState(false);
+  const [creditsOfferwallOpen, setCreditsOfferwallOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "error">("saved");
   const [runtimeBusy, setRuntimeBusy] = useState(false);
@@ -2637,6 +2640,9 @@ export function CodeAgent() {
           }}
         />
         <div className="flex items-center gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={() => setCreditsOfferwallOpen(true)} className="h-8 border-amber-300/25 bg-amber-300/[0.08] px-3 text-xs font-semibold text-amber-100 hover:bg-amber-300/[0.14]" title="Earn free AI credits from verified partner offers">
+            <Coins className="mr-1.5 h-3.5 w-3.5" /> {profile?.ai_credits ?? 0} credits <span className="ml-1 text-amber-200/80">· Earn free</span>
+          </Button>
           <a href="/" className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-slate-300 transition hover:border-cyan-300/30 hover:bg-cyan-300/10 hover:text-cyan-100" title="Return to the ExpertsTeam website">
             <ExternalLink className="h-3.5 w-3.5" /> Back to website
           </a>
@@ -3762,6 +3768,24 @@ export function CodeAgent() {
               copied into your own ExpertsAI Agent project; the shared vault copy is unchanged.
             </p>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={creditsOfferwallOpen} onOpenChange={setCreditsOfferwallOpen}>
+        <DialogContent className="max-h-[92dvh] max-w-5xl overflow-y-auto border-slate-700 bg-[#101a29] p-4 text-white sm:p-6">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <Coins className="h-5 w-5 text-amber-300" /> Earn free ExpertAI credits
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300/20 bg-amber-300/[0.06] px-4 py-3">
+            <div>
+              <p className="text-xs text-slate-400">Your available balance</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-amber-100">{profile?.ai_credits ?? 0} credits</p>
+            </div>
+            <a href="/earn" className="text-xs font-semibold text-cyan-200 underline underline-offset-4 hover:text-cyan-100">Open full rewards history</a>
+          </div>
+          <MyLeadOfferwall />
         </DialogContent>
       </Dialog>
 
