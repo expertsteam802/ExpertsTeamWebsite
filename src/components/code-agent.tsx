@@ -3903,6 +3903,13 @@ export function CodeAgent() {
         @media (prefers-reduced-motion:reduce) {
           .expert-agent-workspace-grid,.expert-agent-stage .expert-agent-canvas,.expert-agent-assistant { transition:none!important; }
         }
+        .expert-agent-topbar > div.mt-2 { display:none!important; }
+        .expert-agent-assistant > div:first-child p.text-\\[10px\\] { display:none!important; }
+        @media (max-width:767px) {
+          .expert-agent-topbar .et-studio-header-actions button:first-child { display:inline-flex!important; }
+          .expert-agent-topbar .et-studio-header-actions button { width:auto!important;min-width:28px!important; }
+          .expert-agent-topbar .et-studio-header-actions button:first-child { width:30px!important;min-width:30px!important;font-size:0!important; }
+        }
       `}</style>
 
       <Dialog open={thumbnailDialogOpen} onOpenChange={setThumbnailDialogOpen}>
