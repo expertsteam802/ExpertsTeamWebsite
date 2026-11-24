@@ -67,7 +67,7 @@ async function inflateRaw(compressed: Uint8Array, maxOutputBytes: number): Promi
       total += value.byteLength;
       if (total > maxOutputBytes) {
         await reader.cancel();
-        throw new Error("A ZIP source file expands beyond the 25 MB per-file import limit.");
+        throw new Error("The ZIP archive exceeds the remaining 100 MB expanded-source budget.");
       }
       chunks.push(value);
     }
@@ -85,7 +85,6 @@ async function inflateRaw(compressed: Uint8Array, maxOutputBytes: number): Promi
 
 export async function extractZipTextFiles(blob: Blob): Promise<ZipTextImportResult> {
   const maxArchiveBytes = 100 * 1024 * 1024;
-  const maxFileBytes = 25 * 1024 * 1024;
   const maxTotalTextBytes = 100 * 1024 * 1024;
   const maxFiles = 2_000;
 
@@ -152,7 +151,7 @@ export async function extractZipTextFiles(blob: Blob): Promise<ZipTextImportResu
 
     if (!rawName || rawName.endsWith("/")) continue;
     const safePath = safeArchivePath(rawName);
-    if (!safePath || (flags & 0x0001) !== 0 || uncompressedSize > maxFileBytes) {
+    if (!safePath || (flags & 0x0001) !== 0 || uncompressedSize > maxTotalTextBytes - totalTextBytes) {
       skipped += 1;
       continue;
     }
@@ -181,7 +180,7 @@ export async function extractZipTextFiles(blob: Blob): Promise<ZipTextImportResu
     if (method === 0) {
       expanded = compressed.slice();
     } else {
-      expanded = await inflateRaw(compressed, maxFileBytes);
+      expanded = await inflateRaw(compressed, maxTotalTextBytes - totalTextBytes);
     }
     if (expanded.byteLength !== uncompressedSize || expanded.subarray(0, Math.min(1024, expanded.length)).includes(0)) {
       skipped += 1;

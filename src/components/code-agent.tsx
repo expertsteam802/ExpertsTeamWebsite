@@ -1882,56 +1882,162 @@ export function CodeAgent() {
 
   async function importLocalProjectFiles(selectedFiles: FileList | File[]) {
     const incoming = Array.from(selectedFiles);
-    if (!incoming.length) return;
+    if (!incoming.length || !user) return;
     const nextFiles: ProjectFiles = { ...files };
-    let totalBytes = Object.values(nextFiles).reduce((sum, value) => sum + new Blob([value]).size, 0);
+    const binaryFiles: Array<{ path: string; file: File; mimeType: string }> = [];
     let imported = 0;
     let skipped = 0;
+    const mimeByExtension: Record<string, string> = {
+      png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp",
+      ico: "image/x-icon", svg: "image/svg+xml", pdf: "application/pdf", zip: "application/zip",
+      gz: "application/gzip", woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf", otf: "font/otf",
+      mp4: "video/mp4", mp3: "audio/mpeg", wav: "audio/wav", mov: "video/quicktime",
+      avi: "video/x-msvideo", wasm: "application/wasm",
+    };
+    const safePath = (value: string) => {
+      const path = value.replace(/\\/g, "/").replace(/^\\/+/, "");
+      return path && path.length <= 1024 && !path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) && !/(^|\\/)\\.env($|\\.)/i.test(path)
+        ? path
+        : "";
+    };
+
     for (const file of incoming) {
       const relativePath = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
       if (relativePath.toLowerCase().endsWith(".zip")) {
-        if (file.size > 100 * 1024 * 1024) { skipped += 1; continue; }
         try {
           const extracted = await extractZipTextFiles(file);
           skipped += extracted.skipped;
           for (const entry of extracted.files) {
-            const path = entry.path.replace(/^\/+/, "");
-            if (!path || path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) || /(^|\/)\.env($|\.)/i.test(path) || entry.sizeBytes > 25 * 1024 * 1024 || totalBytes + entry.sizeBytes > 100 * 1024 * 1024 || (Object.keys(nextFiles).length >= 2_000 && nextFiles[path] === undefined)) { skipped += 1; continue; }
+            const path = safePath(entry.path);
+            if (!path) { skipped += 1; continue; }
             nextFiles[path] = entry.content;
-            totalBytes += entry.sizeBytes;
             imported += 1;
           }
         } catch { skipped += 1; }
         continue;
       }
-      const path = relativePath.replace(/\\/g, "/").replace(/^\/+/, "");
-      if (!path || path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) || /(^|\/)\.env($|\.)/i.test(path) || file.size > 25 * 1024 * 1024 || totalBytes + file.size > 100 * 1024 * 1024 || (Object.keys(nextFiles).length >= 2_000 && nextFiles[path] === undefined)) { skipped += 1; continue; }
-      const textLike = file.type.startsWith("text/") || /\.(?:[cm]?[jt]sx?|json|css|scss|html?|md|mdx|xml|ya?ml|toml|ini|py|java|c|h|cpp|cs|go|rs|php|sql|sh|bat|ps1|svg|txt|env\.example)$/i.test(path);
-      if (!textLike) { skipped += 1; continue; }
+      const path = safePath(relativePath);
+      if (!path) { skipped += 1; continue; }
+      const textLike = file.type.startsWith("text/") || /\\.(?:[cm]?[jt]sx?|json|css|scss|html?|md|mdx|xml|ya?ml|toml|ini|py|java|c|h|cpp|cs|go|rs|php|sql|sh|bat|ps1|svg|txt|env\\.example)$/i.test(path);
       try {
-        nextFiles[path] = await file.text();
-        totalBytes += file.size;
+        if (textLike) {
+          nextFiles[path] = await file.text();
+        } else {
+          const extension = path.split(".").at(-1)?.toLowerCase() ?? "";
+          const mimeType = file.type || mimeByExtension[extension] || "application/octet-stream";
+          binaryFiles.push({ path, file, mimeType });
+          delete nextFiles[path];
+        }
         imported += 1;
       } catch { skipped += 1; }
     }
+
     if (!imported) {
-      toast.error("No supported text/source files were imported. Use a ZIP for a project folder; binary files are not stored as source text.");
+      toast.error("No supported source files or binary assets were imported.");
       return;
     }
     if (!window.confirm("Import " + imported + " file(s) into this project? Existing paths will be replaced.")) return;
+
     try {
-      await persist({ files: nextFiles });
+      if (!binaryFiles.length) {
+        await persist({ files: nextFiles });
+      } else {
+        // Create a project first when this is a new workspace; existing projects
+        // stage the complete tree so text files and binary assets finalize together.
+        const activeProjectId = projectId ?? await persist({ files: nextFiles });
+        const { data: oldAssets, error: oldAssetsError } = await supabase
+          .from("agent_project_assets")
+          .select("file_path,storage_path,mime_type,size_bytes,sha256")
+          .eq("project_id", activeProjectId)
+          .eq("user_id", user.id);
+        if (oldAssetsError) throw oldAssetsError;
+
+        const importId = crypto.randomUUID();
+        const replacedPaths = new Set([...Object.keys(nextFiles), ...binaryFiles.map((asset) => asset.path)]);
+        const retainedAssets = (oldAssets ?? []).filter((asset) => !replacedPaths.has(asset.file_path));
+        const retainedStoragePaths = new Set(retainedAssets.map((asset) => asset.storage_path));
+        const uploadedPaths: string[] = [];
+        try {
+          const stagedAssets = [
+            ...retainedAssets.map((asset) => ({
+              import_id: importId,
+              project_id: activeProjectId,
+              user_id: user.id,
+              file_path: asset.file_path,
+              storage_path: asset.storage_path,
+              mime_type: asset.mime_type,
+              size_bytes: asset.size_bytes,
+              sha256: asset.sha256,
+            })),
+          ];
+          for (const asset of binaryFiles) {
+            const buffer = await asset.file.arrayBuffer();
+            const digest = await crypto.subtle.digest("SHA-256", buffer);
+            const sha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+            const storagePath = user.id + "/" + activeProjectId + "/" + importId + "/" + asset.path;
+            const { error: uploadError } = await supabase.storage.from("builder-project-assets").upload(
+              storagePath,
+              new Blob([buffer], { type: asset.mimeType }),
+              { contentType: asset.mimeType, cacheControl: "31536000", upsert: false },
+            );
+            if (uploadError) throw new Error("Could not upload " + asset.path + ": " + uploadError.message);
+            uploadedPaths.push(storagePath);
+            stagedAssets.push({
+              import_id: importId,
+              project_id: activeProjectId,
+              user_id: user.id,
+              file_path: asset.path,
+              storage_path: storagePath,
+              mime_type: asset.mimeType,
+              size_bytes: asset.file.size,
+              sha256,
+            });
+          }
+
+          for (let offset = 0; offset < stagedAssets.length; offset += 50) {
+            const { error } = await supabase.from("agent_project_asset_staging").insert(stagedAssets.slice(offset, offset + 50));
+            if (error) throw new Error("Could not stage binary assets: " + error.message);
+          }
+          const textRows = Object.entries(nextFiles).map(([filePath, content]) => ({
+            import_id: importId,
+            project_id: activeProjectId,
+            user_id: user.id,
+            file_path: filePath,
+            content,
+          }));
+          for (let offset = 0; offset < textRows.length; offset += 100) {
+            const { error } = await supabase.from("agent_project_file_staging").insert(textRows.slice(offset, offset + 100));
+            if (error) throw new Error("Could not stage source files: " + error.message);
+          }
+          if (!textRows.length && !stagedAssets.length) throw new Error("There are no project files to finalize.");
+          const { error: finalizeError } = await supabase.rpc("finalize_agent_project_workspace_staging", {
+            p_project_id: activeProjectId,
+            p_import_id: importId,
+          });
+          if (finalizeError) throw new Error("Could not finalize imported project assets: " + finalizeError.message);
+
+          const oldPaths = (oldAssets ?? []).map((asset) => asset.storage_path).filter((storagePath) => !retainedStoragePaths.has(storagePath) && !uploadedPaths.includes(storagePath));
+          if (oldPaths.length) {
+            const { error: cleanupError } = await supabase.storage.from("builder-project-assets").remove(oldPaths);
+            if (cleanupError) console.warn("[ExpertsTeam] Previous binary asset cleanup is pending:", cleanupError.message);
+          }
+        } catch (error) {
+          await supabase.from("agent_project_asset_staging").delete().eq("import_id", importId).eq("project_id", activeProjectId).eq("user_id", user.id);
+          await supabase.from("agent_project_file_staging").delete().eq("import_id", importId).eq("project_id", activeProjectId).eq("user_id", user.id);
+          if (uploadedPaths.length) await supabase.storage.from("builder-project-assets").remove(uploadedPaths);
+          throw error;
+        }
+      }
+
+      setFiles(nextFiles);
+      setActiveFile(Object.keys(nextFiles).find((path) => !Object.prototype.hasOwnProperty.call(files, path)) ?? Object.keys(nextFiles)[0] ?? "index.html");
+      setDirty(false);
+      setPreviewKey((value) => value + 1);
+      toast.success("Imported and auto-saved " + imported + " file(s)" + (skipped ? " · " + skipped + " skipped" : "") + (binaryFiles.length ? " · " + binaryFiles.length + " binary assets" : "") + ".");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Imported files could not be saved.");
-      return;
     }
-    setFiles(nextFiles);
-    setActiveFile(Object.keys(nextFiles).find((path) => !Object.prototype.hasOwnProperty.call(files, path)) ?? Object.keys(nextFiles)[0] ?? "index.html");
-    setDirty(false);
-    setPreviewKey((value) => value + 1);
-    toast.success("Imported and auto-saved " + imported + " file(s)" + (skipped ? " · " + skipped + " skipped" : "") + ".");
   }
-
 
   function downloadActiveFile() {
     const content = files[activeFile];
@@ -3700,7 +3806,7 @@ export function CodeAgent() {
           ref={projectFileInputRef}
           type="file"
           multiple
-          accept=".zip,.txt,.md,.mdx,.html,.htm,.css,.scss,.js,.jsx,.ts,.tsx,.json,.xml,.yaml,.yml,.toml,.ini,.py,.java,.c,.h,.cpp,.cs,.go,.rs,.php,.sql,.sh,.bat,.ps1,.svg,.env.example"
+          accept="*/*"
           className="hidden"
           onChange={(event) => { if (event.target.files?.length) void importLocalProjectFiles(event.target.files); event.target.value = ""; }}
         />
