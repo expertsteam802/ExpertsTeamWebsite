@@ -6,13 +6,15 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const identifier = z.string().min(1).max(63).regex(/^[A-Za-z_][A-Za-z0-9_]*$/);
 const databaseInput = z.object({
-  operation: z.enum(["tables", "rows", "insert", "update", "delete"]),
+  operation: z.enum(["tables", "rows", "insert", "update", "delete", "migration", "seed"]),
   projectRef: z.string().regex(/^[a-z0-9]{20}$/i),
   schema: identifier.optional().default("public"),
   table: identifier.optional(),
   filter: z.string().max(200).optional().default(""),
   values: z.record(z.string(), z.unknown()).optional(),
   primaryKeyValue: z.unknown().optional(),
+  sql: z.string().max(20000).optional(),
+  seedRows: z.array(z.record(z.string(), z.unknown())).max(50).optional(),
 });
 
 type ManagementToken = { accessToken: string; scopes: string[] };
@@ -167,9 +169,22 @@ export const manageSupabaseDatabase = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => databaseInput.parse(input))
   .handler(async ({ data, context }) => {
-    const write = ["insert", "update", "delete"].includes(data.operation);
+    const write = ["insert", "update", "delete", "migration", "seed"].includes(data.operation);
     const { accessToken } = await getSupabaseManagementToken(context.userId, write);
     await assertSupabaseProjectAccess(accessToken, data.projectRef);
+
+    if (data.operation === "migration") {
+      const sql = data.sql?.trim() ?? "";
+      if (!sql || sql.length > 20000) throw new Error("Provide a SQL migration under 20 KB.");
+      const statements = sql.split(";").map((statement) => statement.replace(/^\s*(?:--[^\n]*\n\s*)*/g, "").trim()).filter(Boolean);
+      if (!statements.length || statements.length > 20) throw new Error("A migration must contain between 1 and 20 SQL statements.");
+      const allowed = statements.every((statement) =>
+        /^(CREATE\s+TABLE\b|CREATE\s+(?:UNIQUE\s+)?INDEX\b|CREATE\s+POLICY\b|CREATE\s+TYPE\b|ALTER\s+TABLE\b[^;]*\b(?:ENABLE\s+ROW\s+LEVEL\s+SECURITY|ADD\s+COLUMN|ADD\s+CONSTRAINT|ALTER\s+COLUMN)\b|COMMENT\s+ON\s+(?:TABLE|COLUMN)\b)/i.test(statement)
+      );
+      if (!allowed) throw new Error("For safety, only CREATE TABLE, CREATE INDEX, CREATE POLICY, CREATE TYPE, safe ALTER TABLE, and COMMENT statements are accepted. Destructive SQL and arbitrary commands are blocked.");
+      const result = await runManagementQuery(accessToken, data.projectRef, sql, [], true);
+      return { tables: [], columns: [], rows: [], primaryKey: null, result };
+    }
 
     if (data.operation === "tables") {
       const result = await runManagementQuery(
@@ -214,6 +229,27 @@ export const manageSupabaseDatabase = createServerFn({ method: "POST" })
     const allowedColumns = new Set(columns.map((column) => String(column.column_name)));
     const keys = Object.keys(values);
     if (keys.some((key) => !allowedColumns.has(key))) throw new Error("One or more column names are not part of this table.");
+
+    if (data.operation === "seed") {
+      const seedRows = data.seedRows ?? [];
+      if (!seedRows.length || seedRows.length > 50) throw new Error("Seed data must contain between 1 and 50 rows.");
+      if (JSON.stringify(seedRows).length > 100000) throw new Error("Seed data is too large.");
+      const allowedColumns = new Set(columns.map((column) => String(column.column_name)));
+      const inserted: Record<string, unknown>[] = [];
+      for (const row of seedRows) {
+        const keys = Object.keys(row);
+        if (!keys.length || keys.some((key) => !allowedColumns.has(key))) throw new Error("Seed data contains an empty row or unknown column.");
+        const result = await runManagementQuery(
+          accessToken,
+          data.projectRef,
+          "insert into " + qualified + " (" + keys.map(quoteIdentifier).join(", ") + ") values (" + keys.map((_, index) => "$" + (index + 1)).join(", ") + ") returning *",
+          keys.map((key) => row[key]),
+          true,
+        );
+        inserted.push(...rowsFrom(result));
+      }
+      return { tables: [], columns, rows: inserted, primaryKey, result: inserted };
+    }
 
     if (data.operation === "insert") {
       const result = await runManagementQuery(
