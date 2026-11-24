@@ -3085,41 +3085,16 @@ export function CodeAgent() {
             >
               {panel === "preview" && (
                 <>
-                  <div className="flex h-10 items-center justify-between border-b border-white/[0.07] px-3">
-                    <div className="flex items-center gap-2 text-xs text-slate-400">
-                      <span
-                        className={`h-2 w-2 rounded-full ${runtimeUrl ? "bg-emerald-400" : "bg-amber-400"}`}
-                      />
-                      {runtimeUrl ? "Running project" : "Project preview"}
-                    </div>
+                  <div className="expert-agent-preview-subbar flex h-9 shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-slate-900/60 px-3">
                     <div className="flex min-w-0 items-center gap-2">
-                      <span className="max-w-[55%] truncate text-[10px] text-slate-500">
-                        {runtimeUrl
-                          ? "Cloud runtime · isolated environment"
-                          : runtimeBusy || runtimeStatus !== "Not started"
-                            ? runtimeStatus
-                            : "HTML quick preview · press Run for React/Vite"}
-                      </span>
-                      {(!runtimeUrl || remoteVisualSelectSupported) && (
-                        <button
-                          type="button"
-                          onClick={() => { setSelectedPreviewElement(null); setVisualSelectMode((enabled) => !enabled); }}
-                          className={visualSelectMode ? "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-cyan-300/40 bg-cyan-300/15 px-2 text-[10px] font-semibold text-cyan-100" : "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 text-[10px] font-semibold text-slate-300 hover:border-cyan-300/30 hover:text-cyan-100"}
-                          title={runtimeUrl ? "Select an element in the cloud Vite preview" : "Select an element in the local preview"}
-                        >
-                          <MousePointer2 className="h-3.5 w-3.5" /> {visualSelectMode ? "Visual Edit: ON" : "Visual Edit: OFF"}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setPreviewExpanded((expanded) => !expanded)}
-                        className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 text-[10px] font-semibold text-slate-300 transition hover:border-cyan-300/30 hover:bg-cyan-300/10 hover:text-cyan-100"
-                        aria-label={previewExpanded ? "Restore preview height" : "Expand preview to full height"}
-                        title={previewExpanded ? "Exit extended preview and return to Studio" : "Expand preview vertically"}
-                      >
-                        {previewExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-                        {previewExpanded ? "Exit extended preview" : "Expand preview"}
-                      </button>
+                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${runtimeUrl ? "bg-emerald-400" : "bg-amber-400"}`} />
+                      <span className="truncate rounded-md border border-slate-700/70 bg-[#0B0F17] px-2 py-1 font-mono text-[10px] text-slate-300">{runtimeUrl || publishedUrl || `expertsteam.giize.com/apps/${slug || "your-project"}`}</span>
+                      <button type="button" onClick={() => void copyTextToSystemClipboard(runtimeUrl || publishedUrl || `https://expertsteam.giize.com/apps/${slug || "your-project"}`).then(() => toast.success("App URL copied")).catch(() => toast.error("Could not copy URL"))} className="rounded p-1.5 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Copy app URL"><Copy className="h-3.5 w-3.5" /></button>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {(!runtimeUrl || remoteVisualSelectSupported) && <button type="button" onClick={() => { setSelectedPreviewElement(null); setVisualSelectMode((enabled) => !enabled); }} className={visualSelectMode ? "inline-flex h-7 items-center gap-1 rounded-md border border-blue-400/40 bg-blue-400/15 px-2 text-[10px] font-semibold text-blue-200" : "inline-flex h-7 items-center gap-1 rounded-md border border-slate-700 px-2 text-[10px] font-semibold text-slate-300 hover:bg-white/5"} title="Click elements to edit them"><MousePointer2 className="h-3 w-3" />Visual Edit</button>}
+                      {([["desktop", Monitor], ["tablet", Tablet], ["mobile", Smartphone]] as const).map(([value, Icon]) => <button key={value} type="button" onClick={() => setDevice(value)} className={device === value ? "rounded-md bg-slate-700 p-1.5 text-white" : "rounded-md p-1.5 text-slate-400 hover:bg-white/5"} aria-label={`${value} viewport`}><Icon className="h-3.5 w-3.5" /></button>)}
+                      <button type="button" onClick={() => setPreviewExpanded((expanded) => !expanded)} className="rounded-md p-1.5 text-slate-400 hover:bg-white/10 hover:text-white" aria-label={previewExpanded ? "Exit fullscreen preview" : "Fullscreen preview"} title="Fullscreen preview">{previewExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}</button>
                     </div>
                   </div>
                   {runtimeUrl && (
