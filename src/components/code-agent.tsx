@@ -445,16 +445,14 @@ export function CodeAgent() {
   const [visualTextDraft, setVisualTextDraft] = useState("");
   const [visualColorDraft, setVisualColorDraft] = useState("#3b82f6");
   const [visualFontSizeDraft, setVisualFontSizeDraft] = useState("16");
-  const [visualStyleOpen, setVisualStyleOpen] = useState(false);
   useEffect(() => {
-    if (!selectedPreviewElement) { setVisualStyleOpen(false); return; }
+    if (!selectedPreviewElement) return;
     setVisualTextDraft(selectedPreviewElement.text);
     const rawColor = selectedPreviewElement.styles.color ?? "";
     const rgb = rawColor.match(/\\d+/g)?.map(Number);
     if (rgb && rgb.length >= 3) setVisualColorDraft("#" + rgb.slice(0, 3).map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0")).join(""));
     else setVisualColorDraft("#3b82f6");
     setVisualFontSizeDraft(String(Math.round(Number.parseFloat(selectedPreviewElement.styles.fontSize ?? "16") || 16)));
-    setVisualStyleOpen(true);
   }, [selectedPreviewElement]);
   function applyVisualElementEdits() {
     const selected = selectedPreviewElement;
