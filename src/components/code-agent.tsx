@@ -3253,7 +3253,15 @@ export function CodeAgent() {
         </div>
       )}
       <ProjectEnvironmentPanel projectId={projectId} open={environmentPanelOpen} onOpenChange={setEnvironmentPanelOpen} />
-      <SupabaseDatabasePanel projectRef={databaseProjectRef} open={databasePanelOpen} onOpenChange={setDatabasePanelOpen} />
+      <SupabaseDatabasePanel projectRef={databaseProjectRef} open={databasePanelOpen} onOpenChange={setDatabasePanelOpen} projectId={projectId} projectFiles={files} onMigrationApplied={async (sql) => {
+        const timestamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
+        const filePath = "supabase/migrations/" + timestamp + "_expert_ai_migration.sql";
+        const nextFiles = { ...files, [filePath]: sql.trim() + "\n" };
+        setFiles(nextFiles);
+        setDirty(true);
+        await persist({ files: nextFiles });
+        setDirty(false);
+      }} />
       {/* Workspace top bar */}
       <header className="expert-agent-topbar flex min-h-[62px] flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#0d1523] px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
