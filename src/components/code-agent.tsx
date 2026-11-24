@@ -823,6 +823,8 @@ export function CodeAgent() {
     },
   });
 
+  const activeProjectSlug = projects.find((project) => project.id === projectId)?.slug ?? null;
+
   const { data: cloudConnections = [] } = useQuery({
     queryKey: ["cloud-connections", user?.id],
     enabled: !!user,
@@ -3074,8 +3076,8 @@ export function CodeAgent() {
                   <div className="expert-agent-preview-subbar flex h-9 shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-slate-900/60 px-3">
                     <div className="flex min-w-0 items-center gap-2">
                       <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${runtimeUrl ? "bg-emerald-400" : "bg-amber-400"}`} />
-                      <span className="truncate rounded-md border border-slate-700/70 bg-[#0B0F17] px-2 py-1 font-mono text-[10px] text-slate-300">{runtimeUrl || publishedUrl || `expertsteam.giize.com/apps/${slug || "your-project"}`}</span>
-                      <button type="button" onClick={() => void copyTextToSystemClipboard(runtimeUrl || publishedUrl || `https://expertsteam.giize.com/apps/${slug || "your-project"}`).then(() => toast.success("App URL copied")).catch(() => toast.error("Could not copy URL"))} className="rounded p-1.5 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Copy app URL"><Copy className="h-3.5 w-3.5" /></button>
+                      <span className="truncate rounded-md border border-slate-700/70 bg-[#0B0F17] px-2 py-1 font-mono text-[10px] text-slate-300">{runtimeUrl || publishedUrl || `expertsteam.giize.com/apps/${activeProjectSlug || "your-project"}`}</span>
+                      <button type="button" onClick={() => void copyTextToSystemClipboard(runtimeUrl || publishedUrl || `https://expertsteam.giize.com/apps/${activeProjectSlug || "your-project"}`).then(() => toast.success("App URL copied")).catch(() => toast.error("Could not copy URL"))} className="rounded p-1.5 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Copy app URL"><Copy className="h-3.5 w-3.5" /></button>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
                       {(!runtimeUrl || remoteVisualSelectSupported) && <button type="button" onClick={() => { setSelectedPreviewElement(null); setVisualSelectMode((enabled) => !enabled); }} className={visualSelectMode ? "inline-flex h-7 items-center gap-1 rounded-md border border-blue-400/40 bg-blue-400/15 px-2 text-[10px] font-semibold text-blue-200" : "inline-flex h-7 items-center gap-1 rounded-md border border-slate-700 px-2 text-[10px] font-semibold text-slate-300 hover:bg-white/5"} title="Click elements to edit them"><MousePointer2 className="h-3 w-3" />Visual Edit</button>}
