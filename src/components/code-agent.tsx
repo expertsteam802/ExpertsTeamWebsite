@@ -670,6 +670,12 @@ export function CodeAgent() {
   const [typecheckBusy, setTypecheckBusy] = useState(false);
   const [typecheckOutput, setTypecheckOutput] = useState("");
   const [typecheckDiagnostics, setTypecheckDiagnostics] = useState<{ path: string; line: number; column: number; code: string; message: string }[]>([]);
+  const [webhookTesterOpen, setWebhookTesterOpen] = useState(false);
+  const [webhookTestUrl, setWebhookTestUrl] = useState("");
+  const [webhookTestMethod, setWebhookTestMethod] = useState<"GET" | "POST" | "PUT" | "PATCH" | "DELETE">("POST");
+  const [webhookTestBody, setWebhookTestBody] = useState('{\n  "event": "experts.webhook.test",\n  "test": true\n}');
+  const [webhookTestOutput, setWebhookTestOutput] = useState("");
+  const [webhookTestBusy, setWebhookTestBusy] = useState(false);
   const [completionsOpen, setCompletionsOpen] = useState(false);
   const [enabledEditorPacks, setEnabledEditorPacks] = useState<string[]>(["react", "html", "css"]);
   const [projectNameEditing, setProjectNameEditing] = useState(false);
@@ -2079,6 +2085,63 @@ export function CodeAgent() {
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     toast.success("Project files exported");
+  }
+
+  async function runWebhookTest() {
+    if (!projectId || !terminalConnection?.sandboxName || terminalConnection.projectId !== projectId) {
+      toast.info("Connect this project's Daytona terminal before sending a test request.");
+      return;
+    }
+    let target: URL;
+    try {
+      target = new URL(webhookTestUrl.trim());
+    } catch {
+      toast.error("Enter a valid HTTPS endpoint URL.");
+      return;
+    }
+    const allowedOrigins = [runtimeUrl, publishedUrl].filter(Boolean).flatMap((value) => {
+      try { return [new URL(value!).origin]; } catch { return []; }
+    });
+    if (target.protocol !== "https:" || target.username || target.password || !allowedOrigins.includes(target.origin)) {
+      toast.error("For safety, the tester only sends HTTPS requests to this project's current preview or published origin.");
+      return;
+    }
+    if (webhookTestMethod !== "GET") {
+      try { JSON.parse(webhookTestBody); } catch {
+        toast.error("The test payload must be valid JSON.");
+        return;
+      }
+    }
+    const quote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
+    const bytes = new TextEncoder().encode(webhookTestBody);
+    const encodedBody = btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""));
+    const writeOut = "'\\nHTTP_STATUS:%{http_code}\\n'";
+    const command = webhookTestMethod === "GET"
+      ? "curl --silent --show-error --max-time 20 --request GET --write-out " + writeOut + " " + quote(target.toString())
+      : "printf '%s' " + quote(encodedBody) + " | base64 -d | curl --silent --show-error --max-time 20 --request " +
+        quote(webhookTestMethod) + " --header 'Content-Type: application/json' --data-binary @- --write-out " +
+        writeOut + " " + quote(target.toString());
+    setWebhookTestBusy(true);
+    setWebhookTestOutput("Sending request from the project's Daytona workspace…");
+    try {
+      const result = await runTerminalCommand({
+        data: { projectId, sandboxName: terminalConnection.sandboxName, command },
+      });
+      const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
+      setWebhookTestOutput((output || "(The endpoint returned an empty response.)").slice(0, 12000));
+      const statusCode = Number(output.match(/HTTP_STATUS:(\\d{3})/)?.[1] ?? 0);
+      if (result.exitCode === 0 && statusCode >= 200 && statusCode < 400) {
+        toast.success("Webhook test returned HTTP " + statusCode + ".");
+      } else {
+        toast.warning(statusCode ? "Webhook test returned HTTP " + statusCode + "." : "Webhook test request failed. Review the response below.");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Webhook test failed.";
+      setWebhookTestOutput(message);
+      toast.error(message);
+    } finally {
+      setWebhookTestBusy(false);
+    }
   }
 
   async function runProjectTypecheck() {
@@ -3834,6 +3897,13 @@ export function CodeAgent() {
           <Button type="button" size="sm" variant="outline" onClick={() => setGithubOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700"><Github className="mr-1.5 h-3.5 w-3.5" />GitHub</Button>
           {projectId && <DeploymentHistoryPanel projectId={projectId} />}
           {projectId && <CustomDomainPanel projectId={projectId} />}
+          <Button type="button" size="sm" variant="outline" onClick={() => {
+            setWebhookTestUrl((runtimeUrl || publishedUrl || "") + "/api/webhook");
+            setWebhookTestOutput("");
+            setWebhookTesterOpen(true);
+          }} className="h-8 border-slate-700 bg-slate-800/70 px-2.5 text-[10px] text-slate-200 hover:border-cyan-500/50 hover:bg-slate-700" title="Send a test request to this project's preview or published API route">
+            <Zap className="mr-1 h-3.5 w-3.5" />Webhook test
+          </Button>
           <CronBuilderPanel />
           <Button type="button" size="sm" onClick={() => void publishProject()} disabled={publishing} className="h-8 bg-blue-600 px-3 text-[11px] font-semibold text-white hover:bg-blue-500">{publishing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />}Deploy ↑</Button>
         </div>
@@ -5305,6 +5375,25 @@ export function CodeAgent() {
             </div>
           </div>
           <p className="text-[9px] leading-4 text-slate-500">Package installs run in your connected Linux workspace and sync the updated manifest back into this project.</p>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={webhookTesterOpen} onOpenChange={setWebhookTesterOpen}>
+        <DialogContent className="max-w-2xl border-slate-700 bg-[#0b1320] text-white">
+          <DialogHeader><DialogTitle>Webhook / API route tester</DialogTitle></DialogHeader>
+          <p className="text-xs leading-5 text-slate-400">Send a real test request from this project's Daytona workspace. Requests are restricted to the current preview or published HTTPS origin. Use a test endpoint that does not trigger live payments or production side effects.</p>
+          <div className="grid gap-3 sm:grid-cols-[1fr_130px]">
+            <div className="space-y-1.5"><Label htmlFor="webhook-test-url" className="text-slate-300">Endpoint URL</Label><Input id="webhook-test-url" value={webhookTestUrl} onChange={(event) => setWebhookTestUrl(event.target.value)} placeholder="https://your-preview.example/api/webhook" className="border-slate-700 bg-[#080e19] font-mono text-xs text-white" /></div>
+            <div className="space-y-1.5"><Label htmlFor="webhook-test-method" className="text-slate-300">Method</Label><select id="webhook-test-method" value={webhookTestMethod} onChange={(event) => setWebhookTestMethod(event.target.value as typeof webhookTestMethod)} className="h-10 w-full rounded-md border border-slate-700 bg-[#080e19] px-3 text-sm text-white"><option>POST</option><option>GET</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></div>
+          </div>
+          {webhookTestMethod !== "GET" && <div className="space-y-1.5"><Label htmlFor="webhook-test-body" className="text-slate-300">JSON payload</Label><Textarea id="webhook-test-body" rows={7} value={webhookTestBody} onChange={(event) => setWebhookTestBody(event.target.value)} className="border-slate-700 bg-[#080e19] font-mono text-xs text-white" /></div>}
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] text-slate-500">Requires an active Daytona terminal for this project.</p>
+            <Button type="button" onClick={() => void runWebhookTest()} disabled={webhookTestBusy || !webhookTestUrl.trim() || !terminalConnection || terminalConnection.projectId !== projectId}>
+              {webhookTestBusy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Zap className="mr-1.5 h-3.5 w-3.5" />}
+              {webhookTestBusy ? "Sending…" : "Send test request"}
+            </Button>
+          </div>
+          {webhookTestOutput && <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-black/40 p-3 text-[10px] leading-5 text-cyan-100">{webhookTestOutput}</pre>}
         </DialogContent>
       </Dialog>
       <Dialog open={inlineEditOpen} onOpenChange={setInlineEditOpen}>
