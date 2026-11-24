@@ -67,14 +67,14 @@ export const runCodingAgent = createServerFn({ method: "POST" })
       throw new Error(
         "You have no AI credits remaining. Visit Earn AI Credits to complete a partner offer.",
       );
-    await assertBuilderResourcePolicy(context.supabase, context.userId, data.files, data.prompt);
+    if (data.mode !== "chat") await assertBuilderResourcePolicy(context.supabase, context.userId, data.files, data.prompt);
     const { runAgent, runAgentPlan, runAgentChat } = await import("./agent.server");
     const result = data.mode === "plan"
       ? await runAgentPlan(data)
       : data.mode === "chat"
         ? await runAgentChat(data)
         : await runAgent(data);
-    if (!isAdmin) {
+    if (!isAdmin && data.mode !== "chat") {
       const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
       if (creditError) throw new Error(creditError.message);
     }
