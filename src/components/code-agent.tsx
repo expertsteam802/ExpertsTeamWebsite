@@ -446,6 +446,7 @@ export function CodeAgent() {
   const [visualTextDraft, setVisualTextDraft] = useState("");
   const [visualColorDraft, setVisualColorDraft] = useState("#3b82f6");
   const [visualFontSizeDraft, setVisualFontSizeDraft] = useState("16");
+  const [visualWeightDraft, setVisualWeightDraft] = useState("400");
   useEffect(() => {
     if (!selectedPreviewElement) return;
     setVisualTextDraft(selectedPreviewElement.text);
@@ -454,6 +455,7 @@ export function CodeAgent() {
     if (rgb && rgb.length >= 3) setVisualColorDraft("#" + rgb.slice(0, 3).map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0")).join(""));
     else setVisualColorDraft("#3b82f6");
     setVisualFontSizeDraft(String(Math.round(Number.parseFloat(selectedPreviewElement.styles.fontSize ?? "16") || 16)));
+    setVisualWeightDraft(selectedPreviewElement.styles.fontWeight === "700" || selectedPreviewElement.styles.fontWeight === "bold" ? "700" : selectedPreviewElement.styles.fontWeight === "600" || selectedPreviewElement.styles.fontWeight === "semibold" ? "600" : "400");
   }, [selectedPreviewElement]);
   function applyVisualElementEdits() {
     const selected = selectedPreviewElement;
@@ -2762,7 +2764,7 @@ export function CodeAgent() {
         </div>
         <div className="et-studio-header-actions">
           <Button type="button" size="sm" variant="outline" onClick={() => setEnvironmentPanelOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700">
-            <Settings2 className="mr-1.5 h-3.5 w-3.5" /> 1-Click DB &amp; Auth
+            <Settings2 className="mr-1.5 h-3.5 w-3.5" /> DB &amp; Auth
           </Button>
           <Button type="button" size="sm" variant="outline" onClick={() => setGithubOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700">
             <Github className="mr-1.5 h-3.5 w-3.5" /> GitHub
@@ -3175,7 +3177,7 @@ export function CodeAgent() {
                       </Button>
                     </div>
                   )}
-                  <div className="flex min-h-0 flex-1 items-stretch justify-center overflow-hidden bg-[#111a29] p-2 sm:p-3">
+                  <div className="relative flex min-h-0 flex-1 items-stretch justify-center overflow-hidden bg-[#111a29] p-2 sm:p-3">
                     <iframe
                       ref={iframeRef}
                       key={previewKey}
@@ -3210,6 +3212,11 @@ export function CodeAgent() {
                             <div className="mt-1 flex h-9 items-center rounded-lg border border-slate-700 bg-[#0B0F17] px-2"><input aria-label="Font size in pixels" type="number" min="8" max="96" value={visualFontSizeDraft} onChange={(event) => setVisualFontSizeDraft(event.target.value)} className="w-full bg-transparent text-[11px] text-slate-100 outline-none" /><span className="text-[10px] text-slate-500">px</span></div>
                           </label>
                         </div>
+                        <label className="mt-2 block text-[10px] font-medium text-slate-300">Style
+                          <select value={visualWeightDraft} onChange={(event) => setVisualWeightDraft(event.target.value)} className="mt-1 h-9 w-full rounded-lg border border-slate-700 bg-[#0B0F17] px-2 text-[11px] text-slate-100 outline-none focus:border-blue-500">
+                            <option value="400">Regular</option><option value="600">Semibold</option><option value="700">Bold</option>
+                          </select>
+                        </label>
                         <div className="mt-3 flex items-center justify-between gap-2">
                           <button type="button" onClick={() => { const item = selectedPreviewElement; setPrompt("Edit this selected element in my project.\\nSelector: " + item.selector + "\\nTag: " + item.tag + "\\nCurrent text: " + item.text + "\\nCurrent HTML: " + item.outerHTML + "\\nCurrent styles: " + JSON.stringify(item.styles) + "\\nMake the requested changes only to this element and preserve the rest of the page."); setSelectedPreviewElement(null); switchPanel("chat"); }} className="rounded-lg border border-slate-700 px-2.5 py-2 text-[10px] font-medium text-slate-300 hover:bg-slate-700">Ask AI</button>
                           <button type="button" onClick={applyVisualElementEdits} className="rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-semibold text-white hover:bg-blue-500">Apply edits</button>
@@ -3402,7 +3409,7 @@ export function CodeAgent() {
                     <Sparkles className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-white">{isAdmin ? "ExpertsTeam Agent Studio" : "ExpertsTeam Agent"}</p>
+                    <p className="text-sm font-semibold text-white">AI Agent Chat</p>
                     <p className="text-[10px] text-slate-500">{isAdmin ? "Workspace controls · project builder" : "AI-powered project builder"}</p>
                   </div>
                 </div>
@@ -3470,7 +3477,7 @@ export function CodeAgent() {
                   {planDraft && <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-emerald-400/15 bg-emerald-400/[0.06] px-3 py-2"><span className="text-[10px] text-emerald-200">Plan ready · project files unchanged</span><div className="flex gap-2"><button type="button" onClick={dismissPlanDraft} className="rounded-lg px-2.5 py-1.5 text-[10px] text-slate-400 hover:bg-white/5">Discard</button><button type="button" onClick={() => { const approved = planDraft; setPlanDraft(null); setAgentMode("build"); void sendPrompt("build", "Implement this approved plan. Follow the steps in order and verify the result:\n\n" + approved); }} disabled={busy} className="rounded-lg bg-emerald-400 px-3 py-1.5 text-[10px] font-semibold text-slate-950 disabled:opacity-40">Implement plan</button></div></div>}
                   <div className="shrink-0 border-t border-white/[0.08] bg-[#0a1422] p-3">
                     <div className="rounded-2xl border border-white/10 bg-[#0c1727] p-2 focus-within:border-cyan-400/40">
-                      <Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendPrompt(); } }} placeholder="Ask ExpertsTeam Agent to plan or build something…" className="min-h-[76px] resize-none border-0 bg-transparent text-xs text-white shadow-none focus-visible:ring-0" disabled={busy} />
+                      <Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendPrompt(); } }} placeholder="Ask ExpertAI anything…" className="min-h-[76px] resize-none border-0 bg-transparent text-xs text-white shadow-none focus-visible:ring-0" disabled={busy} />
                       <div className="flex items-center justify-between gap-2 px-1 pt-2">
                         <div className="flex items-center gap-1">
                           <AgentPromptLibrary currentPrompt={prompt} onUse={setPrompt} />
