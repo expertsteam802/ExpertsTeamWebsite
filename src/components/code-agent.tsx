@@ -1684,7 +1684,8 @@ export function CodeAgent() {
       ...next.extra,
     };
 
-    const activeProjectId = targetProjectId ?? projectId;\n    if (activeProjectId) {
+    const activeProjectId = targetProjectId ?? projectId;
+    if (activeProjectId) {
       const { files: _legacyFiles, ...metadataPayload } = payload;
       const { error } = await supabase
         .from("agent_projects")
