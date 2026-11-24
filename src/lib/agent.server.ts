@@ -694,7 +694,7 @@ export async function runAgentSelfHeal(input: {
 
 /** Conversational Agent response. This path is read-only: it never returns file patches or invokes a terminal. */
 export async function runAgentChat(
-  { prompt, files, history }: AgentInput,
+  { prompt, files, history, modelTier = "fast" }: AgentInput,
 ) {
   const selectedFiles = Object.entries(files)
     .filter(([name]) => !/node_modules|(^|\/)dist\//i.test(name))
@@ -724,8 +724,12 @@ export async function runAgentChat(
         }]
       }
     ],
-    generationConfig: { maxOutputTokens: 1200 },
-  });
+    generationConfig: { maxOutputTokens: 1600 },
+  }, undefined, ["kilo"], modelTier === "architect"
+    ? (process.env["KILO_ARCHITECT_MODEL"] || "anthropic/claude-sonnet-4")
+    : modelTier === "balanced"
+      ? (process.env["KILO_BALANCED_MODEL"] || "openai/gpt-4o")
+      : (process.env["KILO_FAST_MODEL"] || "kilo-auto/free"));
   const message = response.candidates?.[0]?.content?.parts
     ?.filter((part) => !part.thought)
     .map((part) => part.text ?? "")
