@@ -85,6 +85,7 @@ export async function generateGeminiContent(
   request: GeminiRequest,
   _apiKey?: string,
   _providerOrder?: string[],
+  modelOverride?: string,
 ): Promise<GeminiResponse> {
   const activeRequest = compactSmartRequest(request);
   const endpoint = (process.env["KILO_API_BASE_URL"] || "https://ai-gateway.kilo.ai/api/v1")
@@ -106,7 +107,7 @@ export async function generateGeminiContent(
   for (let index = 0; index < attempts.length; index++) {
     const budget = attempts[index]!;
     const body: Record<string, unknown> = {
-      model: process.env["KILO_MODEL"] || "kilo-auto/free",
+      model: modelOverride || process.env["KILO_MODEL"] || "kilo-auto/free",
       messages: openAiMessages(activeRequest, budget.context),
       max_tokens: budget.output,
     };
