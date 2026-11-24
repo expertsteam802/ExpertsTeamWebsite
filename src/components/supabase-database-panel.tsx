@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { manageSupabaseDatabase } from "@/lib/supabase-database.functions";
 import { runCodingAgent } from "@/lib/agent.functions";
-import { runCodingAgent } from "@/lib/agent.functions";
+
 
 type TableInfo = { table_schema: string; table_name: string };
 type ColumnInfo = { column_name: string; data_type: string; is_nullable: string; is_primary_key: boolean };
@@ -32,7 +32,7 @@ export function SupabaseDatabasePanel({
 }) {
   const runDatabase = useServerFn(manageSupabaseDatabase);
   const runAgent = useServerFn(runCodingAgent);
-  const runAgent = useServerFn(runCodingAgent);
+
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [activeTable, setActiveTable] = useState<TableInfo | null>(null);
   const [columns, setColumns] = useState<ColumnInfo[]>([]);
@@ -51,14 +51,14 @@ export function SupabaseDatabasePanel({
   const [seedOpen, setSeedOpen] = useState(false);
   const [seedDraft, setSeedDraft] = useState("[]");
   const [seedGenerating, setSeedGenerating] = useState(false);
-  const [migrationOpen, setMigrationOpen] = useState(false);
-  const [migrationPrompt, setMigrationPrompt] = useState("");
-  const [migrationSql, setMigrationSql] = useState("");
-  const [migrationGenerating, setMigrationGenerating] = useState(false);
-  const [migrationApplying, setMigrationApplying] = useState(false);
-  const [seedOpen, setSeedOpen] = useState(false);
-  const [seedDraft, setSeedDraft] = useState("[]");
-  const [seedGenerating, setSeedGenerating] = useState(false);
+
+
+
+
+
+
+
+
 
   const loadRows = useCallback(async (table: TableInfo, search = "") => {
     if (!projectRef) return;
@@ -126,124 +126,6 @@ export function SupabaseDatabasePanel({
     delete editable[primaryKey];
     setEditorDraft(JSON.stringify(editable, null, 2));
     setEditorMode("update");
-  }
-
-  async function generateMigration() {
-    if (!projectId || !migrationPrompt.trim()) return;
-    setMigrationGenerating(true);
-    try {
-      const schemaSummary = tables.map((item) => item.table_schema + "." + item.table_name).join(", ");
-      const result = await runAgent({
-        data: {
-          projectId,
-          mode: "chat",
-          modelTier: "fast",
-          files: projectFiles,
-          prompt: [
-            "Generate a production-safe PostgreSQL schema migration for this request: " + migrationPrompt.trim(),
-            "Existing database tables: " + (schemaSummary || "not yet discovered"),
-            "Return exactly one fenced sql block and no prose.",
-            "Prefer CREATE TABLE IF NOT EXISTS, explicit foreign keys, indexes, ENABLE ROW LEVEL SECURITY, and least-privilege policies.",
-            "Never DROP, TRUNCATE, DELETE, or modify existing rows. Do not create permissive USING (true) policies.",
-          ].join("\n"),
-        },
-      });
-      const message = result.message || "";
-      const fence = String.fromCharCode(96).repeat(3);
-      const match = message.match(new RegExp(fence + "(?:sql|postgres|postgresql)?\\s*([\\s\\S]*?)" + fence, "i"));
-      setMigrationSql((match && match[1] ? match[1] : message).trim());
-      setMigrationOpen(true);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not generate the SQL migration.");
-    } finally {
-      setMigrationGenerating(false);
-    }
-  }
-
-  async function applyMigration() {
-    if (!projectRef || !migrationSql.trim()) return;
-    if (!window.confirm("Apply this SQL migration to your connected Supabase database? Review the SQL carefully before continuing.")) return;
-    setMigrationApplying(true);
-    try {
-      await runDatabase({ data: { operation: "migration", projectRef, sql: migrationSql } });
-      try {
-        await onMigrationApplied(migrationSql);
-      } catch {
-        toast.error("The database migration ran, but its SQL file could not be saved to the project. Copy the SQL so it can be tracked.");
-      }
-      setMigrationOpen(false);
-      await loadTables();
-      toast.success("Supabase migration applied.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The migration could not be applied.");
-    } finally {
-      setMigrationApplying(false);
-    }
-  }
-
-  async function generateSeedData() {
-    if (!projectId || !activeTable) return;
-    setSeedGenerating(true);
-    try {
-      const columnSummary = columns.map((column) => ({
-        name: column.column_name,
-        type: column.data_type,
-        nullable: column.is_nullable === "YES",
-        primaryKey: column.is_primary_key,
-      }));
-      const result = await runAgent({
-        data: {
-          projectId,
-          mode: "chat",
-          modelTier: "fast",
-          files: projectFiles,
-          prompt: [
-            "Generate 5 realistic, internally consistent test rows for PostgreSQL table " + activeTable.table_schema + "." + activeTable.table_name + ".",
-            "Columns: " + JSON.stringify(columnSummary),
-            "Return only a JSON array of objects. Do not include generated integer primary keys or unknown columns.",
-            "Respect data types, nullable fields, and plausible foreign key values. Use no real personal data.",
-          ].join("\n"),
-        },
-      });
-      const message = result.message || "";
-      const fence = String.fromCharCode(96).repeat(3);
-      const match = message.match(new RegExp(fence + "(?:json)?\\s*([\\s\\S]*?)" + fence, "i"));
-      const parsed: unknown = JSON.parse((match && match[1] ? match[1] : message).trim());
-      if (!Array.isArray(parsed)) throw new Error("ExpertAI did not return a JSON array.");
-      setSeedDraft(JSON.stringify(parsed, null, 2));
-      setSeedOpen(true);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not generate seed data.");
-    } finally {
-      setSeedGenerating(false);
-    }
-  }
-
-  async function applySeedData() {
-    if (!projectRef || !activeTable) return;
-    let seedRows: Record<string, unknown>[];
-    try {
-      const parsed: unknown = JSON.parse(seedDraft);
-      if (!Array.isArray(parsed) || parsed.length < 1 || parsed.length > 50 || parsed.some((row) => !row || typeof row !== "object" || Array.isArray(row))) {
-        throw new Error("Provide a JSON array with 1–50 row objects.");
-      }
-      seedRows = parsed as Record<string, unknown>[];
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Invalid seed JSON.");
-      return;
-    }
-    if (!window.confirm("Insert " + seedRows.length + " generated test rows into " + activeTable.table_name + "?")) return;
-    setBusy(true);
-    try {
-      await runDatabase({ data: { operation: "seed", projectRef, schema: activeTable.table_schema, table: activeTable.table_name, seedRows } });
-      setSeedOpen(false);
-      await loadRows(activeTable, filter);
-      toast.success("Inserted " + seedRows.length + " test rows.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not insert seed data.");
-    } finally {
-      setBusy(false);
-    }
   }
 
   async function generateMigration() {
@@ -441,24 +323,6 @@ export function SupabaseDatabasePanel({
         <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setSeedOpen(false)}>Cancel</Button><Button onClick={() => void applySeedData()} disabled={busy}>Insert seed rows</Button></div>
       </DialogContent>
     </Dialog>
-    <Dialog open={migrationOpen} onOpenChange={setMigrationOpen}>
-      <DialogContent className="max-w-3xl border-slate-700 bg-[#0b1320] text-white">
-        <DialogHeader><DialogTitle>AI SQL Migration</DialogTitle></DialogHeader>
-        <Input value={migrationPrompt} onChange={(event) => setMigrationPrompt(event.target.value)} placeholder="Describe tables, relationships, and access policies to create…" className="border-slate-700 bg-[#080e19] text-white" />
-        <div className="flex justify-end"><Button size="sm" onClick={() => void generateMigration()} disabled={!migrationPrompt.trim() || migrationGenerating || !projectId}>{migrationGenerating ? "Generating…" : "Generate SQL"}</Button></div>
-        <Textarea value={migrationSql} onChange={(event) => setMigrationSql(event.target.value)} rows={14} placeholder="Generated PostgreSQL migration appears here for review…" className="border-slate-700 bg-[#080e19] font-mono text-[10px] text-white" />
-        <p className="text-[9px] leading-4 text-slate-500">Only CREATE TABLE, CREATE INDEX, CREATE POLICY, CREATE TYPE, safe ALTER TABLE, and COMMENT statements are accepted. Destructive SQL is blocked. You must confirm before applying.</p>
-        <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setMigrationOpen(false)}>Cancel</Button><Button onClick={() => void applyMigration()} disabled={!migrationSql.trim() || migrationApplying}>{migrationApplying ? "Applying…" : "Apply migration"}</Button></div>
-      </DialogContent>
-    </Dialog>
-    <Dialog open={seedOpen} onOpenChange={setSeedOpen}>
-      <DialogContent className="max-w-2xl border-slate-700 bg-[#0b1320] text-white">
-        <DialogHeader><DialogTitle>AI-generated seed data</DialogTitle></DialogHeader>
-        <p className="text-[10px] text-slate-500">Review and edit the JSON rows before inserting them into the selected table.</p>
-        <Textarea value={seedDraft} onChange={(event) => setSeedDraft(event.target.value)} rows={12} className="border-slate-700 bg-[#080e19] font-mono text-[10px] text-white" />
-        <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setSeedOpen(false)}>Cancel</Button><Button onClick={() => void applySeedData()} disabled={busy}>Insert seed rows</Button></div>
-      </DialogContent>
-    </Dialog>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-6xl overflow-hidden border-slate-700 bg-[#0b1320] p-0 text-white">
         <DialogHeader className="border-b border-slate-800 px-5 py-4">
@@ -496,9 +360,7 @@ export function SupabaseDatabasePanel({
                       <Button size="icon" variant="outline" className="h-8 w-8 border-slate-700" onClick={() => void loadRows(activeTable, filter)} disabled={busy}><Search className="h-3 w-3" /></Button>
                     </div>
                     <Button size="sm" onClick={beginInsert} disabled={busy} className="h-8 text-[10px]"><Plus className="mr-1 h-3 w-3" /> Add row</Button>
-                    <Button size="sm" variant="outline" onClick={() => void generateSeedData()} disabled={busy || seedGenerating || !projectId} className="h-8 border-slate-700 text-[10px]">{seedGenerating ? "Generating…" : "AI Seed"}</Button>
                     <Button size="sm" variant="outline" onClick={() => { setMigrationPrompt(""); setMigrationSql(""); setMigrationOpen(true); }} className="h-8 border-slate-700 text-[10px]">SQL Migration</Button>
-                    <Button size="sm" variant="outline" onClick={() => void generateSeedData()} disabled={busy || seedGenerating || !projectId} className="h-8 border-slate-700 text-[10px]">{seedGenerating ? "Generating…" : "AI Seed"}</Button>
                   </div>
                   <div className="border-b border-slate-800 px-3 py-2 text-[9px] text-slate-500">{columns.map((column) => column.column_name + (column.is_primary_key ? " · PK" : "")).join("  ·  ")}</div>
                   {editorMode && (
