@@ -43,3 +43,7 @@ The Studio's Custom domains panel supports domain ownership verification, Netlif
 5. Once the record is active, requests for that hostname are rewritten to the matching published project.
 
 Netlify requires DNS to point to its infrastructure before it can issue a certificate. SSL may remain pending while DNS propagates; retry verification after the DNS records are visible. See [Netlify's API guide for adding domains](https://developers.netlify.com/guides/adding-your-domain-using-netlify-api/) and [HTTPS/SSL documentation](https://docs.netlify.com/manage/domains/secure-domains-with-https/https-ssl/).
+
+## Database backup inventory
+
+The Admin → Database backups panel reads the Supabase Management API. Configure server-only `SUPABASE_ACCESS_TOKEN` with the `database:read` / `backups_read` scope and `SUPABASE_PROJECT_REF`. The panel is read-only and links to Supabase for restore operations; it never triggers a destructive restore from the app. Backup availability and retention depend on the Supabase plan.

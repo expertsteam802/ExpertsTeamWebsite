@@ -31,7 +31,7 @@ export function CustomDomainPanel({ projectId }: { projectId: string }) {
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ["agent-project-domains", projectId] });
   const add = useMutation({
     mutationFn: () => addDomain({ data: { projectId, domain: domain.trim() } }),
-    onSuccess: (result) => {
+    onSuccess: () => {
       toast.success("Domain verification record created.");
       setDomain("");
       refresh();
