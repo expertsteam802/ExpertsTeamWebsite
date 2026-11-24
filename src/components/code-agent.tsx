@@ -647,6 +647,9 @@ export function CodeAgent() {
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [visualSelectMode, setVisualSelectMode] = useState(false);
   const [selectedPreviewElement, setSelectedPreviewElement] = useState<{ tag: string; selector: string; id: string; classes: string; text: string; outerHTML: string; styles: Record<string, string> } | null>(null);
+  const [componentTreeOpen, setComponentTreeOpen] = useState(false);
+  const [componentTreeNodes, setComponentTreeNodes] = useState<{ tag: string; selector: string; label: string; depth: number }[]>([]);
+  const [componentTreeSelectedSelector, setComponentTreeSelectedSelector] = useState("");
   const [visualTextDraft, setVisualTextDraft] = useState("");
   const [visualColorDraft, setVisualColorDraft] = useState("#3b82f6");
   const [visualFontSizeDraft, setVisualFontSizeDraft] = useState("16");
@@ -1516,6 +1519,9 @@ export function CodeAgent() {
       const data = event.data as {
         __agentConsole?: boolean;
         __agentSelection?: boolean;
+        __agentComponentTree?: boolean;
+        __agentTreeSelection?: boolean;
+        nodes?: { tag: string; selector: string; label: string; depth: number }[];
         __agentInlineTextEdit?: { originalText?: string; newText?: string };
         element?: { tag: string; selector: string; id: string; classes: string; text: string; outerHTML: string; styles: Record<string, string> };
         type?: string;
@@ -1549,6 +1555,14 @@ export function CodeAgent() {
             toast.success("Preview text updated · 0 AI credits.");
           }
         }
+        return;
+      }
+      if (data?.__agentComponentTree && Array.isArray(data.nodes)) {
+        setComponentTreeNodes(data.nodes.slice(0, 180));
+        return;
+      }
+      if (data?.__agentTreeSelection && data.element) {
+        setSelectedPreviewElement(data.element);
         return;
       }
       if (data?.__agentSelection && data.element) {
@@ -3884,6 +3898,7 @@ export function CodeAgent() {
                         {["Inter", "Roboto", "Poppins", "Montserrat", "Open Sans"].map((value) => <option key={value}>{value}</option>)}
                       </select>
 {(!runtimeUrl || remoteVisualSelectSupported) && <button type="button" onClick={() => { setSelectedPreviewElement(null); setVisualSelectMode((enabled) => !enabled); }} className={visualSelectMode ? "inline-flex h-7 items-center gap-1 rounded-md border border-blue-400/40 bg-blue-400/15 px-2 text-[10px] font-semibold text-blue-200" : "inline-flex h-7 items-center gap-1 rounded-md border border-slate-700 px-2 text-[10px] font-semibold text-slate-300 hover:bg-white/5"} title="Click elements to edit them"><MousePointer2 className="h-3 w-3" />Visual Edit</button>}
+                      {(!runtimeUrl || remoteVisualSelectSupported) && <button type="button" onClick={() => { const opening = !componentTreeOpen; setComponentTreeOpen(opening); if (opening) { setComponentTreeNodes([]); iframeRef.current?.contentWindow?.postMessage({ __agentGetComponentTree: true }, "*"); } }} className={componentTreeOpen ? "inline-flex h-7 items-center gap-1 rounded-md border border-cyan-400/40 bg-cyan-400/15 px-2 text-[10px] font-semibold text-cyan-100" : "inline-flex h-7 items-center gap-1 rounded-md border border-slate-700 px-2 text-[10px] font-semibold text-slate-300 hover:bg-white/5"} title="Inspect the rendered component hierarchy"><Code2 className="h-3 w-3" />Tree</button>}
                       {([["desktop", Monitor], ["tablet", Tablet], ["mobile", Smartphone]] as const).map(([value, Icon]) => <button key={value} type="button" onClick={() => setDevice(value)} className={device === value ? "rounded-md bg-slate-700 p-1.5 text-white" : "rounded-md p-1.5 text-slate-400 hover:bg-white/5"} aria-label={`${value} viewport`}><Icon className="h-3.5 w-3.5" /></button>)}<button type="button" onClick={() => setDevice("custom")} className={device === "custom" ? "rounded-md bg-slate-700 px-2 py-1.5 text-[10px] text-white" : "rounded-md px-2 py-1.5 text-[10px] text-slate-400 hover:bg-white/5"} aria-label="Custom viewport width">Custom</button>
                       <button type="button" onClick={() => setPreviewExpanded((expanded) => !expanded)} className="rounded-md p-1.5 text-slate-400 hover:bg-white/10 hover:text-white" aria-label={previewExpanded ? "Exit fullscreen preview" : "Fullscreen preview"} title="Fullscreen preview">{previewExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}</button>
                     </div>
@@ -3933,6 +3948,23 @@ export function CodeAgent() {
                           device === "desktop" ? "100%" : device === "tablet" ? "768px" : device === "mobile" ? "375px" : customViewportWidth + "px",
                       }}
                     />
+                    {componentTreeOpen && (
+                      <div className="absolute bottom-3 left-3 top-3 z-30 flex w-[min(300px,calc(100%-24px))] flex-col overflow-hidden rounded-xl border border-cyan-400/20 bg-[#091321]/95 shadow-2xl backdrop-blur">
+                        <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/10 px-3">
+                          <div><p className="text-[11px] font-semibold text-slate-100">Component tree</p><p className="text-[9px] text-slate-500">{componentTreeNodes.length} rendered elements</p></div>
+                          <button type="button" onClick={() => setComponentTreeOpen(false)} className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Close component tree"><X className="h-3.5 w-3.5" /></button>
+                        </div>
+                        <div className="min-h-0 flex-1 overflow-auto p-1.5">
+                          {componentTreeNodes.length ? componentTreeNodes.map((node, index) => (
+                            <button key={node.selector + ":" + index} type="button" onClick={() => { setComponentTreeSelectedSelector(node.selector); iframeRef.current?.contentWindow?.postMessage({ __agentHighlightSelector: node.selector }, "*"); }} title={node.selector} className={componentTreeSelectedSelector === node.selector ? "flex w-full items-center gap-2 rounded-md bg-cyan-400/15 px-2 py-1.5 text-left text-cyan-100" : "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-slate-300 hover:bg-white/[0.06]"} style={{ paddingLeft: 8 + Math.min(node.depth, 7) * 12 }}>
+                              <span className="shrink-0 font-mono text-[9px] text-cyan-300">&lt;{node.tag}&gt;</span>
+                              <span className="min-w-0 flex-1 truncate text-[10px]">{node.label}</span>
+                            </button>
+                          )) : <p className="px-3 py-6 text-center text-[10px] text-slate-500">No elements found yet. Reload the preview or try again.</p>}
+                        </div>
+                        <div className="border-t border-white/10 px-3 py-2 text-[9px] text-slate-500">Select an element to highlight it in the preview</div>
+                      </div>
+                    )}
                     {selectedPreviewElement && (
                       <div className="et-visual-property-popover" role="dialog" aria-label="Visual element properties">
                         <div className="flex items-center justify-between gap-3 border-b border-slate-700/80 pb-2">
