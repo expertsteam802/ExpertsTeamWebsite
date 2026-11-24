@@ -608,6 +608,10 @@ export function CodeAgent() {
   const [packageSearchResults, setPackageSearchResults] = useState<{ name: string; version: string; description: string }[]>([]);
   const [packageSearchBusy, setPackageSearchBusy] = useState(false);
   const [packageInstallBusy, setPackageInstallBusy] = useState<string | null>(null);
+  const [typecheckOpen, setTypecheckOpen] = useState(false);
+  const [typecheckBusy, setTypecheckBusy] = useState(false);
+  const [typecheckOutput, setTypecheckOutput] = useState("");
+  const [typecheckDiagnostics, setTypecheckDiagnostics] = useState<{ path: string; line: number; column: number; code: string; message: string }[]>([]);
   const [completionsOpen, setCompletionsOpen] = useState(false);
   const [enabledEditorPacks, setEnabledEditorPacks] = useState<string[]>(["react", "html", "css"]);
   const [projectNameEditing, setProjectNameEditing] = useState(false);
@@ -1790,6 +1794,53 @@ export function CodeAgent() {
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     toast.success("Project files exported");
+  }
+
+  async function runProjectTypecheck() {
+    if (!projectId || !terminalConnection?.sandboxName) {
+      toast.info("Connect the project's Linux terminal before running diagnostics.");
+      return;
+    }
+    setTypecheckBusy(true);
+    try {
+      const result = await runTerminalCommand({
+        data: {
+          projectId,
+          sandboxName: terminalConnection.sandboxName,
+          command: "if [ -x node_modules/.bin/tsc ]; then node_modules/.bin/tsc --noEmit --pretty false; else echo 'TypeScript compiler is not installed in this project.'; exit 2; fi",
+        },
+      });
+      const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
+      const diagnostics = [...output.matchAll(/^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+(TS\d+):\s*(.*)$/gm)].map((match) => ({
+        path: match[1] ?? "",
+        line: Number(match[2] ?? 1),
+        column: Number(match[3] ?? 1),
+        code: match[5] ?? "TS",
+        message: match[6] ?? "",
+      }));
+      setTypecheckOutput(output);
+      setTypecheckDiagnostics(diagnostics);
+      setTypecheckOpen(true);
+      if (result.exitCode === 0) toast.success("TypeScript check passed.");
+      else toast.warning(diagnostics.length ? diagnostics.length + " TypeScript issue(s) found." : "TypeScript check failed. Review the terminal output.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "TypeScript diagnostics failed.");
+    } finally {
+      setTypecheckBusy(false);
+    }
+  }
+
+  function openTypecheckDiagnostic(diagnostic: { path: string; line: number; column: number; code: string; message: string }) {
+    setActiveFile(diagnostic.path);
+    setOpenFileTabs((tabs) => tabs.includes(diagnostic.path) ? tabs : [...tabs, diagnostic.path].slice(-8));
+    switchPanel("code");
+    requestAnimationFrame(() => {
+      const editor = editorRef.current;
+      if (!editor) return;
+      const line = Math.min(diagnostic.line, editor.state.doc.lines);
+      const position = editor.state.doc.line(Math.max(1, line)).from + Math.max(0, diagnostic.column - 1);
+      editor.dispatch({ selection: { anchor: Math.min(position, editor.state.doc.length) }, scrollIntoView: true });
+    });
   }
 
   async function searchNpmPackages() {
@@ -3840,6 +3891,9 @@ export function CodeAgent() {
                       <Button size="sm" variant="ghost" onClick={() => setFormatOnSave((enabled) => !enabled)} className={formatOnSave ? "h-7 px-2 text-[10px] text-emerald-300" : "h-7 px-2 text-[10px] text-slate-500"} title="Prettier formats supported source files on manual Save (Ctrl/Cmd+S)">
                         <Sparkles className="mr-1 h-3 w-3" /> Prettier {formatOnSave ? "On" : "Off"}
                       </Button>
+                      <Button size="sm" variant="ghost" onClick={() => void runProjectTypecheck()} disabled={typecheckBusy} className="h-7 px-2 text-[10px] text-slate-400" title="Run TypeScript diagnostics in the connected Linux workspace">
+                        {typecheckBusy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <CheckCircle2 className="mr-1 h-3 w-3" />} Typecheck
+                      </Button>
                       <Button size="sm" variant="ghost" onClick={() => setPackagesOpen(true)} className="h-7 px-2 text-[10px] text-slate-400">
                         <Plus className="mr-1 h-3 w-3" /> Packages
                       </Button>
@@ -4686,6 +4740,23 @@ export function CodeAgent() {
       </Dialog>
 
       {/* New file dialog */}
+      <Dialog open={typecheckOpen} onOpenChange={setTypecheckOpen}>
+        <DialogContent className="max-w-3xl border-slate-700 bg-[#0b1320] text-white">
+          <DialogHeader><DialogTitle>TypeScript diagnostics · {typecheckDiagnostics.length} issue(s)</DialogTitle></DialogHeader>
+          <div className="max-h-[48vh] space-y-2 overflow-auto">
+            {typecheckDiagnostics.map((diagnostic, index) => (
+              <div key={diagnostic.path + ":" + diagnostic.line + ":" + index} className="rounded-lg border border-rose-400/15 bg-rose-400/[0.04] p-3">
+                <button type="button" onClick={() => openTypecheckDiagnostic(diagnostic)} className="mb-1 text-left font-mono text-[10px] text-cyan-200 hover:underline">{diagnostic.path}:{diagnostic.line}:{diagnostic.column} · {diagnostic.code}</button>
+                <p className="text-[10px] text-slate-300">{diagnostic.message}</p>
+                <div className="mt-2 flex justify-end"><Button size="sm" variant="outline" className="h-7 border-slate-700 px-2 text-[9px]" onClick={() => { setActiveFile(diagnostic.path); setOpenFileTabs((tabs) => tabs.includes(diagnostic.path) ? tabs : [...tabs, diagnostic.path].slice(-8)); switchPanel("chat"); void sendPrompt("build", "/fix Resolve " + diagnostic.code + " in " + diagnostic.path + ":" + diagnostic.line + ". Error: " + diagnostic.message + ". Make the smallest safe correction."); }}>Fix with ExpertAI</Button></div>
+              </div>
+            ))}
+            {!typecheckDiagnostics.length && <p className="py-5 text-center text-xs text-slate-400">{typecheckOutput ? "No parsed TypeScript diagnostics were returned." : "Run Typecheck to inspect the project."}</p>}
+          </div>
+          {typecheckOutput && <details className="rounded-lg border border-slate-800"><summary className="cursor-pointer px-3 py-2 text-[10px] text-slate-400">Raw compiler output</summary><pre className="max-h-40 overflow-auto whitespace-pre-wrap p-3 text-[9px] text-slate-400">{typecheckOutput}</pre></details>}
+          <div className="flex justify-end"><Button variant="outline" onClick={() => setTypecheckOpen(false)}>Close</Button></div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={packagesOpen} onOpenChange={setPackagesOpen}>
         <DialogContent className="max-w-2xl border-slate-700 bg-[#0b1320] text-white">
           <DialogHeader><DialogTitle>npm Package Manager</DialogTitle></DialogHeader>
