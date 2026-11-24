@@ -2715,10 +2715,7 @@ export function CodeAgent() {
           multiple
           accept=".zip,.txt,.md,.mdx,.html,.htm,.css,.scss,.js,.jsx,.ts,.tsx,.json,.xml,.yaml,.yml,.toml,.ini,.py,.java,.c,.h,.cpp,.cs,.go,.rs,.php,.sql,.sh,.bat,.ps1,.svg,.env.example"
           className="hidden"
-          onChange={(event) => {
-            if (event.target.files?.length) void importLocalProjectFiles(event.target.files);
-            event.target.value = "";
-          }}
+          onChange={(event) => { if (event.target.files?.length) void importLocalProjectFiles(event.target.files); event.target.value = ""; }}
         />
         <div className="et-studio-header-center flex min-w-0 items-center justify-center gap-2">
           <Button type="button" size="sm" onClick={() => void runProject()} disabled={runtimeBusy} className="h-8 shrink-0 bg-emerald-500 px-3 text-[11px] font-semibold text-white hover:bg-emerald-400">
@@ -2731,21 +2728,10 @@ export function CodeAgent() {
           </div>
         </div>
         <div className="et-studio-header-actions">
-            <Coins className="mr-1.5 h-3.5 w-3.5" /> {profile?.ai_credits ?? 0} credits <span className="ml-1 text-amber-200/80">· Earn free</span>
-          </Button>
-          
-        </div>
-        <div className="et-studio-header-actions">
           <Button type="button" size="sm" variant="outline" onClick={() => setCreditsOfferwallOpen(true)} className="h-8 border-amber-300/25 bg-amber-300/[0.08] px-3 text-[10px] font-semibold text-amber-100 hover:bg-amber-300/[0.14]" title="Earn free AI credits"><Coins className="mr-1 h-3.5 w-3.5" />{profile?.ai_credits ?? 0} · Earn Free</Button>
-          <Button type="button" size="sm" variant="outline" onClick={() => setEnvironmentPanelOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700">
-            <Settings2 className="mr-1.5 h-3.5 w-3.5" /> DB &amp; Auth
-          </Button>
-          <Button type="button" size="sm" variant="outline" onClick={() => setGithubOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700">
-            <Github className="mr-1.5 h-3.5 w-3.5" /> GitHub
-          </Button>
-          <Button type="button" size="sm" onClick={() => void publishProject()} disabled={publishing} className="h-8 bg-blue-600 px-3 text-[11px] font-semibold text-white hover:bg-blue-500">
-            {publishing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />} Deploy ↑
-          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => setEnvironmentPanelOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700"><Settings2 className="mr-1.5 h-3.5 w-3.5" />DB &amp; Auth</Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => setGithubOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700"><Github className="mr-1.5 h-3.5 w-3.5" />GitHub</Button>
+          <Button type="button" size="sm" onClick={() => void publishProject()} disabled={publishing} className="h-8 bg-blue-600 px-3 text-[11px] font-semibold text-white hover:bg-blue-500">{publishing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />}Deploy ↑</Button>
         </div>
         {publishedUrl && (
           <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-2 text-xs">
