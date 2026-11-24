@@ -563,6 +563,10 @@ export function CodeAgent() {
   const [previewKey, setPreviewKey] = useState(0);
   const [githubOpen, setGithubOpen] = useState(false);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
+  const [checkpointDiffOpen, setCheckpointDiffOpen] = useState(false);
+  const [checkpointDiffLeftId, setCheckpointDiffLeftId] = useState("");
+  const [checkpointDiffRightId, setCheckpointDiffRightId] = useState("");
+  const [selectedCheckpointDiffPath, setSelectedCheckpointDiffPath] = useState("");
   const [restoringCheckpointId, setRestoringCheckpointId] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [importRepoUrl, setImportRepoUrl] = useState("");
@@ -1175,6 +1179,35 @@ export function CodeAgent() {
       return (data ?? []) as unknown as CheckpointRow[];
     },
   });
+
+  const checkpointDiffFiles = useMemo(() => {
+    const left = checkpoints.find((checkpoint) => checkpoint.id === checkpointDiffLeftId);
+    const right = checkpoints.find((checkpoint) => checkpoint.id === checkpointDiffRightId);
+    if (!left || !right) return [];
+    const leftFiles = (left.files ?? {}) as ProjectFiles;
+    const rightFiles = (right.files ?? {}) as ProjectFiles;
+    const paths = new Set([...Object.keys(leftFiles), ...Object.keys(rightFiles)]);
+    return [...paths].map((path) => ({
+      path,
+      before: leftFiles[path] ?? "",
+      after: rightFiles[path] ?? "",
+      added: !Object.prototype.hasOwnProperty.call(leftFiles, path),
+      removed: !Object.prototype.hasOwnProperty.call(rightFiles, path),
+    })).filter((item) => item.before !== item.after);
+  }, [checkpoints, checkpointDiffLeftId, checkpointDiffRightId]);
+
+  useEffect(() => {
+    if (checkpointDiffFiles.length && !checkpointDiffFiles.some((item) => item.path === selectedCheckpointDiffPath)) {
+      setSelectedCheckpointDiffPath(checkpointDiffFiles[0]!.path);
+    }
+  }, [checkpointDiffFiles, selectedCheckpointDiffPath]);
+
+  useEffect(() => {
+    if (checkpoints.length >= 2) {
+      setCheckpointDiffLeftId((current) => current || checkpoints[1]!.id);
+      setCheckpointDiffRightId((current) => current || checkpoints[0]!.id);
+    }
+  }, [checkpoints]);
 
   useEffect(() => {
     const session = terminalConnection;
@@ -2516,6 +2549,32 @@ export function CodeAgent() {
       toast.success("Project duplicated and saved. Refresh your project list to open the copy.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not duplicate this project.");
+    }
+  }
+
+  async function forkCheckpoint(checkpoint: CheckpointRow) {
+    if (!user) {
+      toast.error("Sign in to fork a checkpoint.");
+      return;
+    }
+    try {
+      const forkFiles = checkpoint.files as ProjectFiles;
+      const { data: duplicate, error } = await supabase
+        .from("agent_projects")
+        .insert({
+          user_id: user.id,
+          name: (name.trim() || "Untitled project") + " · " + checkpoint.name + " fork",
+          files: forkFiles as unknown as Json,
+          messages: [] as unknown as Json,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      await saveProjectFiles(duplicate.id, user.id, forkFiles);
+      await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
+      toast.success("Checkpoint fork created as a new project.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not fork this checkpoint.");
     }
   }
 
@@ -5230,6 +5289,16 @@ export function CodeAgent() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><History className="h-5 w-5" /> Project version history</DialogTitle>
           </DialogHeader>
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-700 bg-white/[0.03] p-2">
+            <select value={checkpointDiffLeftId} onChange={(event) => setCheckpointDiffLeftId(event.target.value)} className="min-w-0 flex-1 rounded-md border border-slate-700 bg-[#080e19] px-2 py-2 text-[10px] text-slate-200">
+              {checkpoints.map((checkpoint) => <option key={checkpoint.id} value={checkpoint.id}>{checkpoint.name} · {new Date(checkpoint.created_at).toLocaleString()}</option>)}
+            </select>
+            <span className="text-[9px] text-slate-500">to</span>
+            <select value={checkpointDiffRightId} onChange={(event) => setCheckpointDiffRightId(event.target.value)} className="min-w-0 flex-1 rounded-md border border-slate-700 bg-[#080e19] px-2 py-2 text-[10px] text-slate-200">
+              {checkpoints.map((checkpoint) => <option key={checkpoint.id} value={checkpoint.id}>{checkpoint.name} · {new Date(checkpoint.created_at).toLocaleString()}</option>)}
+            </select>
+            <Button size="sm" onClick={() => setCheckpointDiffOpen(true)} disabled={!checkpointDiffLeftId || !checkpointDiffRightId || checkpointDiffLeftId === checkpointDiffRightId} className="h-8 text-[10px]">Compare</Button>
+          </div>
           <div className="min-h-0 space-y-2 overflow-y-auto">
             {checkpoints.length === 0 ? (
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-slate-400">
@@ -5248,10 +5317,43 @@ export function CodeAgent() {
                   <Button size="sm" variant="outline" disabled={restoringCheckpointId !== null} onClick={() => void restoreCheckpoint(checkpoint)} className="shrink-0 border-cyan-400/20 text-cyan-100">
                     {restoringCheckpointId === checkpoint.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Restore"}
                   </Button>
+                  <Button size="sm" variant="ghost" onClick={() => void forkCheckpoint(checkpoint)} className="shrink-0 px-2 text-[10px] text-slate-400">Fork</Button>
                 </div>
               </div>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={checkpointDiffOpen} onOpenChange={setCheckpointDiffOpen}>
+        <DialogContent className="max-h-[90vh] max-w-6xl overflow-hidden border-slate-700 bg-[#101a29] text-white">
+          <DialogHeader><DialogTitle>Checkpoint comparison · {checkpointDiffFiles.length} changed file(s)</DialogTitle></DialogHeader>
+          {checkpointDiffFiles.length ? (
+            <>
+              <select value={selectedCheckpointDiffPath} onChange={(event) => setSelectedCheckpointDiffPath(event.target.value)} className="w-full rounded-md border border-slate-700 bg-[#080e19] px-3 py-2 font-mono text-[10px] text-slate-200">
+                {checkpointDiffFiles.map((item) => <option key={item.path} value={item.path}>{item.path}{item.added ? " · added" : item.removed ? " · removed" : ""}</option>)}
+              </select>
+              {(() => {
+                const selected = checkpointDiffFiles.find((item) => item.path === selectedCheckpointDiffPath);
+                if (!selected) return null;
+                const beforeLines = selected.before.split("\n");
+                const afterLines = selected.after.split("\n");
+                const removed = beforeLines.filter((line) => !afterLines.includes(line));
+                const added = afterLines.filter((line) => !beforeLines.includes(line));
+                return (
+                  <div className="grid min-h-0 grid-cols-1 gap-2 overflow-hidden md:grid-cols-2">
+                    <div className="min-h-0 overflow-hidden rounded-lg border border-slate-800">
+                      <div className="border-b border-slate-800 px-3 py-2 text-[10px] text-rose-300">Previous · −{removed.length} lines</div>
+                      <pre className="max-h-[58vh] overflow-auto whitespace-pre-wrap break-all p-3 font-mono text-[9px] leading-5 text-slate-400">{selected.before || "(file did not exist)"}</pre>
+                    </div>
+                    <div className="min-h-0 overflow-hidden rounded-lg border border-slate-800">
+                      <div className="border-b border-slate-800 px-3 py-2 text-[10px] text-emerald-300">Selected version · +{added.length} lines</div>
+                      <pre className="max-h-[58vh] overflow-auto whitespace-pre-wrap break-all p-3 font-mono text-[9px] leading-5 text-slate-300">{selected.after || "(file was deleted)"}</pre>
+                    </div>
+                  </div>
+                );
+              })()}
+            </>
+          ) : <p className="py-8 text-center text-xs text-slate-500">No file differences between these checkpoints.</p>}
         </DialogContent>
       </Dialog>
     </div>
