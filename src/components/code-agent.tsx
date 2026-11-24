@@ -449,7 +449,7 @@ export function CodeAgent() {
     if (!selectedPreviewElement) return;
     setVisualTextDraft(selectedPreviewElement.text);
     const rawColor = selectedPreviewElement.styles.color ?? "";
-    const rgb = rawColor.match(/\\d+/g)?.map(Number);
+    const rgb = rawColor.match(/\d+/g)?.map(Number);
     if (rgb && rgb.length >= 3) setVisualColorDraft("#" + rgb.slice(0, 3).map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0")).join(""));
     else setVisualColorDraft("#3b82f6");
     setVisualFontSizeDraft(String(Math.round(Number.parseFloat(selectedPreviewElement.styles.fontSize ?? "16") || 16)));
@@ -463,7 +463,7 @@ export function CodeAgent() {
     const replacementText = visualTextDraft.trim();
     if (replacementText && originalText && replacementText !== originalText) {
       const candidates = Object.entries(nextFiles).filter(([path, source]) =>
-        /\\.(html?|jsx?|tsx?|vue|svelte)$/i.test(path) && source.includes(originalText)
+        /\.(html?|jsx?|tsx?|vue|svelte)$/i.test(path) && source.includes(originalText)
       );
       const matches = candidates.reduce((count, [, source]) => count + source.split(originalText).length - 1, 0);
       if (matches !== 1) {
@@ -475,7 +475,7 @@ export function CodeAgent() {
       nextFiles[sourcePath] = source.replace(originalText, safeText);
       textChanged = true;
     }
-    const cssPath = Object.keys(nextFiles).find((path) => /\\.css$/i.test(path));
+    const cssPath = Object.keys(nextFiles).find((path) => /\.css$/i.test(path));
     const selector = selected.selector.trim();
     if (!cssPath || !selector || /[{};]/.test(selector)) {
       toast.error("A project CSS file and a valid element selector are required for style edits. Text changes were not saved.");
@@ -487,7 +487,7 @@ export function CodeAgent() {
       return;
     }
     const color = /^#[0-9a-f]{6}$/i.test(visualColorDraft) ? visualColorDraft : "#3b82f6";
-    const rule = "\\n\\n/* ExpertsTeam visual edit */\\n" + selector + " {\\n  color: " + color + ";\\n  font-size: " + fontSize + "px;\\n}\\n";
+    const rule = "\n\n/* ExpertsTeam visual edit */\n" + selector + " {\n  color: " + color + ";\n  font-size: " + fontSize + "px;\n}\n";
     nextFiles[cssPath] = (nextFiles[cssPath] ?? "") + rule;
     setFiles(nextFiles);
     setAutoSaveStatus("saved");
