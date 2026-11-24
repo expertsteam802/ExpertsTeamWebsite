@@ -603,6 +603,7 @@ export function CodeAgent() {
   const referenceInputRef = useRef<HTMLInputElement>(null);
   const projectFileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const agentRequestIdRef = useRef(0);
   const [panel, setPanel] = useState<Panel>("preview");
   const [splitTerminalOpen, setSplitTerminalOpen] = useState(false);
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile" | "custom">("desktop");
@@ -618,6 +619,7 @@ export function CodeAgent() {
   const autoHealAttemptedErrorsRef = useRef(new Set<string>());
   const [previewKey, setPreviewKey] = useState(0);
   const [githubOpen, setGithubOpen] = useState(false);
+  const [deploymentOpen, setDeploymentOpen] = useState(false);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [checkpointDiffOpen, setCheckpointDiffOpen] = useState(false);
   const [checkpointDiffLeftId, setCheckpointDiffLeftId] = useState("");
@@ -3439,6 +3441,7 @@ export function CodeAgent() {
     setMessages(nextMessages);
     setPrompt("");
     setBusy(true);
+    const requestId = ++agentRequestIdRef.current;
     let activeProjectId: string | null = projectId;
 
     try {
@@ -3454,6 +3457,7 @@ export function CodeAgent() {
             history: messages.slice(-8).map((message) => ({ ...message, content: message.content.slice(-3000) })),
           },
         });
+        if (requestId !== agentRequestIdRef.current) return;
         const finalMessages: Message[] = [...nextMessages, { role: "assistant", content: result.message }];
         setMessages(finalMessages);
         setTypingMessageIndex(finalMessages.length - 1);
@@ -3477,6 +3481,7 @@ export function CodeAgent() {
             referenceImages,
           },
         });
+        if (requestId !== agentRequestIdRef.current) return;
         setReferenceImages([]);
         const planMessage = "Plan ready for your review. No project files were changed.\n\n" + result.message;
         const finalMessages: Message[] = [...nextMessages, { role: "assistant", content: planMessage }];
@@ -3500,6 +3505,7 @@ export function CodeAgent() {
           referenceImages,
         },
       });
+      if (requestId !== agentRequestIdRef.current) return;
       setReferenceImages([]);
       setPlanDraft(null);
 
@@ -3537,6 +3543,7 @@ export function CodeAgent() {
       await persist({ files: updatedFiles, messages: finalMessages }, activeProjectId);
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
     } catch (error) {
+      if (requestId !== agentRequestIdRef.current) return;
       const detail = error instanceof Error ? error.message : "Kilo could not complete that request.";
       const failedMessages: Message[] = [
         ...nextMessages,
@@ -3547,7 +3554,7 @@ export function CodeAgent() {
       toast.error(detail);
       await persist({ messages: failedMessages }, activeProjectId ?? undefined).catch(() => undefined);
     } finally {
-      setBusy(false);
+      if (requestId === agentRequestIdRef.current) setBusy(false);
     }
   }
 
@@ -3821,7 +3828,7 @@ export function CodeAgent() {
         setDirty(false);
       }} />
       {/* Workspace top bar */}
-      <header className="expert-agent-topbar flex min-h-[62px] flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#0d1523] px-4 py-3">
+      <header className="expert-agent-topbar relative z-30 flex h-12 min-h-12 shrink-0 flex-nowrap items-center justify-between gap-2 overflow-visible border-b border-white/[0.08] bg-[#0d1523] px-4 py-0">
         <div className="flex min-w-0 items-center gap-3">
           <img
             src="/agent-mark.svg"
@@ -3886,7 +3893,7 @@ export function CodeAgent() {
           className="hidden"
           onChange={(event) => { if (event.target.files?.length) void importLocalProjectFiles(event.target.files); event.target.value = ""; }}
         />
-        <div className="et-studio-header-center flex min-w-0 items-center justify-center gap-2">
+        <div className="et-studio-header-center relative z-20 flex min-w-0 flex-1 items-center justify-center gap-2">
           <Button type="button" size="sm" onClick={() => void runProject()} disabled={runtimeBusy} className="h-8 shrink-0 bg-emerald-500 px-3 text-[11px] font-semibold text-white hover:bg-emerald-400">
             {runtimeBusy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Play className="mr-1.5 h-3.5 w-3.5" />}{runtimeBusy ? "Starting…" : "Run"}
           </Button>
@@ -3896,37 +3903,26 @@ export function CodeAgent() {
             ))}
           </div>
         </div>
-        <div className="et-studio-header-actions">
+        <div className="et-studio-header-actions relative z-20 flex shrink-0 items-center justify-end gap-1.5 whitespace-nowrap">
           <Button type="button" size="sm" variant="outline" onClick={() => setCreditsOfferwallOpen(true)} className="h-8 border-amber-300/25 bg-amber-300/[0.08] px-3 text-[10px] font-semibold text-amber-100 hover:bg-amber-300/[0.14]" title="Earn free AI credits"><Coins className="mr-1 h-3.5 w-3.5" />{displayedCredits} · Earn Free</Button>
           <Button type="button" size="sm" variant="outline" onClick={() => setEnvironmentPanelOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700"><Settings2 className="mr-1.5 h-3.5 w-3.5" />DB &amp; Auth</Button>
           <Button type="button" size="sm" variant="outline" onClick={() => setGithubOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700"><Github className="mr-1.5 h-3.5 w-3.5" />GitHub</Button>
-          {projectId && <DeploymentHistoryPanel projectId={projectId} />}
-          {projectId && <CustomDomainPanel projectId={projectId} />}
-          <Button type="button" size="sm" variant="outline" onClick={() => {
-            setPortForwardUrl("");
-            setPortForwardOpen(true);
-          }} className="h-8 border-slate-700 bg-slate-800/70 px-2.5 text-[10px] text-slate-200 hover:border-cyan-500/50 hover:bg-slate-700" title="Expose another port from this Daytona workspace">
-            <ExternalLink className="mr-1 h-3.5 w-3.5" />Forward port
-          </Button>
-          <Button type="button" size="sm" variant="outline" onClick={() => {
-            setWebhookTestUrl((runtimeUrl || publishedUrl || "") + "/api/webhook");
-            setWebhookTestOutput("");
-            setWebhookTesterOpen(true);
-          }} className="h-8 border-slate-700 bg-slate-800/70 px-2.5 text-[10px] text-slate-200 hover:border-cyan-500/50 hover:bg-slate-700" title="Send a test request to this project's preview or published API route">
-            <Zap className="mr-1 h-3.5 w-3.5" />Webhook test
-          </Button>
-          <CronBuilderPanel />
-          <Button type="button" size="sm" onClick={() => void publishProject()} disabled={publishing} className="h-8 bg-blue-600 px-3 text-[11px] font-semibold text-white hover:bg-blue-500">{publishing ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />}Deploy ↑</Button>
+          <Button type="button" size="sm" onClick={() => setDeploymentOpen(true)} className="h-8 bg-blue-600 px-3 text-[11px] font-semibold text-white hover:bg-blue-500"><ExternalLink className="mr-1.5 h-3.5 w-3.5" />Deploy ↑</Button>
+          <Dialog open={deploymentOpen} onOpenChange={setDeploymentOpen}>
+            <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto border-slate-700 bg-[#0b1422] text-white">
+              <DialogHeader><DialogTitle>Deployment &amp; Custom Domains</DialogTitle></DialogHeader>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {projectId && <section className="rounded-xl border border-slate-700 p-3"><p className="mb-2 text-xs font-semibold text-slate-200">Deploy history</p><DeploymentHistoryPanel projectId={projectId} /></section>}
+                {projectId && <section className="rounded-xl border border-slate-700 p-3"><p className="mb-2 text-xs font-semibold text-slate-200">Custom domains</p><CustomDomainPanel projectId={projectId} /></section>}
+                <section className="rounded-xl border border-slate-700 p-3"><p className="mb-2 text-xs font-semibold text-slate-200">Forward port</p><Button type="button" variant="outline" className="w-full" onClick={() => { setPortForwardUrl(""); setPortForwardOpen(true); }}>Forward port from workspace</Button></section>
+                <section className="rounded-xl border border-slate-700 p-3"><p className="mb-2 text-xs font-semibold text-slate-200">Webhook test</p><Button type="button" variant="outline" className="w-full" onClick={() => { setWebhookTestUrl((runtimeUrl || publishedUrl || "") + "/api/webhook"); setWebhookTestOutput(""); setWebhookTesterOpen(true); }}>Open webhook tester</Button></section>
+                <section className="rounded-xl border border-slate-700 p-3 sm:col-span-2"><p className="mb-2 text-xs font-semibold text-slate-200">Cron builder</p><CronBuilderPanel /></section>
+              </div>
+              {publishedUrl && <div className="rounded-lg border border-emerald-400/20 bg-emerald-400/[0.06] p-3 text-xs"><span className="font-semibold text-emerald-200">Live URL</span><a href={publishedUrl} target="_blank" rel="noopener noreferrer" className="ml-2 break-all text-emerald-100 underline">{publishedUrl}</a></div>}
+              <div className="flex justify-end"><Button type="button" onClick={() => void publishProject()} disabled={publishing} className="bg-blue-600 text-white hover:bg-blue-500">{publishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ExternalLink className="mr-2 h-4 w-4" />}{publishing ? "Deploying…" : "Deploy project"}</Button></div>
+            </DialogContent>
+          </Dialog>
         </div>
-        {publishedUrl && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-2 text-xs">
-            <span className="font-semibold text-emerald-200">Live URL</span>
-            <a href={publishedUrl} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate text-emerald-100 underline underline-offset-2">{publishedUrl}</a>
-            <Button size="sm" variant="ghost" className="h-7 px-2 text-emerald-100" onClick={() => void navigator.clipboard.writeText(publishedUrl).then(() => toast.success("Published URL copied")).catch(() => toast.error("Could not copy URL"))}>
-              <Copy className="mr-1 h-3.5 w-3.5" /> Copy URL
-            </Button>
-          </div>
-        )}
       </header>
 
       {/* Main workspace */}
@@ -4767,8 +4763,8 @@ export function CodeAgent() {
                     )}
                     <div className="rounded-xl border border-slate-700 bg-[#0B0F17] p-2 shadow-[0_-8px_30px_rgba(0,0,0,.16)] focus-within:border-blue-400/50">
                       <div className="relative">
-                        <Textarea value={prompt} onChange={(event) => { setPrompt(event.target.value); event.target.style.height = "auto"; event.target.style.height = Math.min(event.target.scrollHeight, 160) + "px"; }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendPrompt(); } }} placeholder="Ask ExpertAI anything..." className="min-h-[72px] max-h-40 resize-y border-0 bg-transparent pb-10 pr-14 text-xs leading-5 text-white shadow-none focus-visible:ring-0" disabled={busy} />
-                        <button type="button" onClick={() => void sendPrompt()} disabled={!prompt.trim() || busy} className="absolute bottom-2 right-2 inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[10px] font-semibold text-white shadow-lg hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-3.5 w-3.5" />{busy ? "Working" : "Send"}</button>
+                        <Textarea value={prompt} onChange={(event) => { setPrompt(event.target.value); event.target.style.height = "auto"; event.target.style.height = Math.min(event.target.scrollHeight, 160) + "px"; }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); if (!busy) void sendPrompt(); } }} placeholder="Ask ExpertAI anything..." className="min-h-[72px] max-h-40 resize-y border-0 bg-transparent pb-10 pr-14 text-xs leading-5 text-white shadow-none focus-visible:ring-0" disabled={false} />
+                        {busy ? <button type="button" onClick={() => { agentRequestIdRef.current += 1; setBusy(false); toast.info("Stopped waiting for the Agent response. Any late result will be ignored."); }} className="absolute bottom-2 right-2 inline-flex h-8 items-center gap-1.5 rounded-lg border border-rose-400/30 bg-rose-500/15 px-3 text-[10px] font-semibold text-rose-100 shadow-lg hover:bg-rose-500/25"><Square className="h-3 w-3 fill-current" />Stop</button> : <button type="button" onClick={() => void sendPrompt()} disabled={!prompt.trim()} className="absolute bottom-2 right-2 inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[10px] font-semibold text-white shadow-lg hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-3.5 w-3.5" />Send</button>}
                       </div>
                       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/60 px-1 pt-2">
                         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
