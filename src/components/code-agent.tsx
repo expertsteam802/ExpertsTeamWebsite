@@ -1768,9 +1768,9 @@ export function CodeAgent() {
     };
   }, [terminalReady, terminalConnection?.sandboxName, projectId, user, busy, dirty, files, syncTerminalFiles, queryClient]);
 
-  async function saveCheckpoint(label: string) {
+  async function saveCheckpoint(label: string, targetProjectId?: string) {
     if (!user) throw new Error("Sign in to create a checkpoint.");
-    const activeProjectId = projectId ?? (await persist());
+    const activeProjectId = targetProjectId ?? projectId ?? (await persist());
     const { error } = await supabase.from("agent_project_checkpoints").insert({
       project_id: activeProjectId,
       user_id: user.id,
@@ -2182,7 +2182,7 @@ export function CodeAgent() {
 
     try {
       const activeProjectId = projectId ?? (await persist());
-      if (modeOverride === "build") await saveCheckpoint(`Before: ${text.slice(0, 96)}`);
+      if (modeOverride === "build") await saveCheckpoint(`Before: ${text.slice(0, 96)}`, activeProjectId);
 
       if (modeOverride === "plan") {
         const conversationContext = messages.slice(-8).map((message) =>
@@ -2217,7 +2217,7 @@ export function CodeAgent() {
         data: {
           prompt: text,
           files,
-          history: messages.slice(-8),
+          history: messages.slice(-8).map((message) => ({ ...message, content: message.content.slice(-3000) })),
           referenceImages,
         },
       });
