@@ -79,23 +79,25 @@ function LiveApp() {
           <Link to="/" className="text-sm font-semibold text-blue-700 underline">Back to ExpertsTeam</Link>
         </div>
       ) : data?.document ? (
-        <iframe
-          title={data.name}
-          srcDoc={data.document}
-          sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"
-          allow="clipboard-read; clipboard-write; fullscreen"
-          referrerPolicy="strict-origin-when-cross-origin"
-          className="fixed inset-0 h-screen w-screen border-0 bg-white"
-        />
-        <a
+        <>
+          <iframe
+            title={data.name}
+            srcDoc={data.document}
+            sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"
+            allow="clipboard-read; clipboard-write; fullscreen"
+            referrerPolicy="strict-origin-when-cross-origin"
+            className="fixed inset-0 h-screen w-screen border-0 bg-white"
+          />
+          <a
           href="/ai"
           className="fixed bottom-4 right-4 z-50 inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-slate-950/90 px-3.5 py-2.5 text-xs font-semibold text-white shadow-xl shadow-slate-950/20 backdrop-blur transition hover:border-cyan-200/60 hover:bg-slate-900"
           aria-label="Built with ExpertsTeam. Start building your own app."
         >
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-400/15 text-cyan-200">⚡</span>
           <span>Built with ExpertsTeam</span>
-          <span className="text-cyan-200">· Build yours</span>
-        </a>
+            <span className="text-cyan-200">· Build yours</span>
+          </a>
+        </>
       ) : (
         <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
           <h1 className="text-2xl font-semibold">This app is not published</h1>
