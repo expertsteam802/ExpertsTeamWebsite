@@ -3838,7 +3838,10 @@ export function CodeAgent() {
         .expert-agent-canvas > div:first-child { min-height:40px!important;background:#111827!important;border-color:#1E293B!important; }
         .expert-agent-canvas iframe { border:1px solid #1E293B!important;border-radius:10px!important; }
         .expert-agent-canvas > div:has(> iframe) { padding:12px!important;background:#0B0F17!important; }
-        .expert-agent-topbar > div:first-child > div > div:nth-child(2) > select,
+        .expert-agent-topbar > div:first-child > div > div:nth-child(2) > select {
+          display:block!important;max-width:138px!important;height:26px!important;padding:0 6px!important;
+          border-color:#334155!important;background:#0B0F17!important;color:#cbd5e1!important;font-size:10px!important;
+        }
         .expert-agent-topbar > div:first-child > div > div:nth-child(2) > button:last-of-type { display:none!important; }
         .expert-agent-workspace-grid > [aria-label="Resize project sidebar"] { display:none!important; }
         .expert-agent-statusbar,.expert-agent-mobile-dock { display:none!important; }
