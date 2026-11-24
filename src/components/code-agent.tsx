@@ -1895,8 +1895,8 @@ export function CodeAgent() {
       avi: "video/x-msvideo", wasm: "application/wasm",
     };
     const safePath = (value: string) => {
-      const path = value.replace(/\\/g, "/").replace(/^\\/+/, "");
-      return path && path.length <= 1024 && !path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) && !/(^|\\/)\\.env($|\\.)/i.test(path)
+      const path = value.replace(/\\/g, "/").replace(/^\/+/, "");
+      return path && path.length <= 1024 && !path.split("/").some((part) => !part || part === "." || part === ".." || part.startsWith(".")) && !/(^|\/)\.env($|\.)/i.test(path)
         ? path
         : "";
     };
