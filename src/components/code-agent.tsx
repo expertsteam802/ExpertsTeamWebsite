@@ -3637,7 +3637,7 @@ export function CodeAgent() {
         .expert-agent-stage > footer { display:none!important; }
         .expert-agent-stage > .grid { display:contents!important; }
         .expert-agent-stage .expert-agent-canvas {
-          display:flex!important;grid-column:4!important;grid-row:1!important;position:relative!important;
+          display:flex!important;grid-column:3!important;grid-row:1!important;position:relative!important;
           inset:auto!important;width:auto!important;height:auto!important;min-width:0!important;min-height:0!important;
           max-height:none!important;overflow:hidden!important;background:#0B0F17!important;
         }
@@ -3670,8 +3670,6 @@ export function CodeAgent() {
           display:block!important;height:100%!important;min-height:0!important;max-height:100%!important;
           border:0!important;border-radius:0!important;box-shadow:none!important;background:white!important;
         }
-        button[aria-label="Edit site text"],button[title="Edit site text"],
-        [data-tooltip="Edit site text"] { display:none!important; }
         @media (max-width:1100px) and (min-width:768px) {
           .expert-agent-workspace-grid { grid-template-columns:48px minmax(340px,min(32%,460px)) minmax(0,1fr)!important; }
           .expert-agent-topbar { padding-inline:9px!important;gap:6px!important; }
