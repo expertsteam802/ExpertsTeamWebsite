@@ -3248,7 +3248,21 @@ export function CodeAgent() {
                       <Terminal className="h-3.5 w-3.5 text-cyan-300" />
                       Browser console
                     </span>
-                    <span className="text-[10px] text-slate-600">Preview logs only</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-600">Preview logs only</span>
+                      {logs.some((entry) => entry.type === "error") && (
+                        <button
+                          type="button"
+                          onClick={() => void attemptRuntimeSelfHeal()}
+                          disabled={selfHealBusy || !projectId || selfHealAttempts >= 3}
+                          className="inline-flex h-7 items-center gap-1.5 rounded-md border border-emerald-300/25 bg-emerald-300/[0.08] px-2.5 text-[10px] font-semibold text-emerald-200 transition hover:bg-emerald-300/[0.15] disabled:cursor-not-allowed disabled:opacity-40"
+                          title="Create a checkpoint and attempt a guarded repair without charging user credits"
+                        >
+                          {selfHealBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                          {selfHealBusy ? "Repairing…" : "Free auto-fix"}
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="min-h-0 flex-1 overflow-auto bg-[#050a12] p-4 font-mono text-xs">
                     {logs.length === 0 && (
