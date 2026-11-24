@@ -22,7 +22,7 @@ const referenceImageSchema = z.object({
 const codingRequest = z
   .object({
     prompt: z.string().trim().min(1).max(100_000),
-    mode: z.enum(["build", "plan"]).optional().default("build"),
+    mode: z.enum(["build", "plan", "chat"]).optional().default("build"),
     files: z.record(z.string().max(512), z.string().max(10_000_000)),
     history: z
       .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(3000) }))
@@ -68,8 +68,12 @@ export const runCodingAgent = createServerFn({ method: "POST" })
         "You have no AI credits remaining. Visit Earn AI Credits to complete a partner offer.",
       );
     await assertBuilderResourcePolicy(context.supabase, context.userId, data.files, data.prompt);
-    const { runAgent, runAgentPlan } = await import("./agent.server");
-    const result = data.mode === "plan" ? await runAgentPlan(data) : await runAgent(data);
+    const { runAgent, runAgentPlan, runAgentChat } = await import("./agent.server");
+    const result = data.mode === "plan"
+      ? await runAgentPlan(data)
+      : data.mode === "chat"
+        ? await runAgentChat(data)
+        : await runAgent(data);
     if (!isAdmin) {
       const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
       if (creditError) throw new Error(creditError.message);
@@ -868,80 +872,6 @@ export const runAgentTerminalCommand = createServerFn({ method: "POST" })
     return runDaytonaProjectCommand(assertDaytonaTerminalSandboxName(context.userId, data.sandboxName), data.command);
   });
 
-export const runAgentTerminalPrompt = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((input: unknown) =>
-    z.object({
-      projectId: z.string().uuid(),
-      sandboxName: z.string().min(20).max(80),
-      cli: z.enum(["kilo", "opencode", "aider"]),
-      mode: z.enum(["build", "plan"]).optional().default("build"),
-      prompt: z.string().trim().min(1).max(100_000),
-      referenceImages: z.array(referenceImageSchema).max(3).optional().default([]),
-    }).parse(input),
-  )
-  .handler(async ({ data, context }) => {
-    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
-    const projectFiles = await loadProjectSourceFiles(context.supabase, data.projectId, context.userId);
-    await assertBuilderResourcePolicy(context.supabase, context.userId, projectFiles, data.prompt);
-    const { data: profile, error: profileError } = await context.supabase
-      .from("profiles").select("ai_credits").eq("id", context.userId).single();
-    if (profileError) throw new Error(profileError.message);
-    const { data: isAdmin, error: roleError } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId, _role: "admin",
-    });
-    if (roleError) throw new Error(roleError.message);
-    if (!isAdmin && profile.ai_credits < 1)
-      throw new Error("You have no AI credits remaining. Visit Earn AI Credits to complete a partner offer.");
-
-    const quote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
-    const {
-      assertDaytonaTerminalSandboxName,
-      runDaytonaProjectCommand,
-      readDaytonaProjectFiles,
-      writeDaytonaProjectReferenceImages,
-    } = await import("./daytona-terminal.server");
-    const terminalName = assertDaytonaTerminalSandboxName(context.userId, data.sandboxName);
-    const referencePaths = await writeDaytonaProjectReferenceImages(terminalName, data.referenceImages);
-    const modePrompt = data.mode === "plan"
-      ? "PLANNING ONLY. Inspect the project and produce a concrete implementation plan with affected files, dependencies, risks, test steps, and ordered tasks. Do not create, edit, delete, rename, or format any project files. Do not run commands that change project state. Return the plan as readable text only.\n\nREQUEST:\n" + data.prompt
-      : data.prompt;
-    const promptWithReferences = referencePaths.length
-      ? modePrompt + "\n\nVISUAL REFERENCES (read these image files before planning or changing the UI):\n" +
-        referencePaths.map((filePath) => "- " + filePath).join("\n") +
-        "\nUse the attached images as visual requirements for the implementation plan; do not edit project files in plan mode."
-      : modePrompt;
-    const commandWithReferences = data.cli === "kilo"
-      ? "kilo run --auto " + quote(promptWithReferences)
-      : data.cli === "opencode"
-        ? "opencode run " + quote(promptWithReferences)
-        : "aider --yes --message " + quote(promptWithReferences);
-    const cliEnvironment = "runuser -u experts-shell -- env HOME=/home/experts-shell USER=experts-shell LOGNAME=experts-shell " +
-      "PATH=/home/experts-shell/.local/bin:/home/experts-shell/.cargo/bin:/home/experts-shell/.npm-global/bin:/usr/local/bin:/usr/bin:/bin ";
-    const executionCommand = data.mode === "plan"
-      ? [
-          'PLAN_DIR="$(mktemp -d /tmp/experts-plan-XXXXXX)" || exit 1',
-          'tar --exclude="./node_modules" --exclude="./.git" --exclude="./dist" --exclude="./build" --exclude="./.next" --exclude="./.experts-terminal-*" --exclude="./.experts-preview-*" -cf - . | tar -xf - -C "$PLAN_DIR" || { rm -rf "$PLAN_DIR"; exit 1; }',
-          'chmod -R a-w "$PLAN_DIR"',
-          '(cd "$PLAN_DIR" && ' + cliEnvironment + commandWithReferences + ')',
-          'PLAN_EXIT=$?',
-          'chmod -R u+w "$PLAN_DIR" 2>/dev/null || true',
-          'rm -rf "$PLAN_DIR"',
-          'exit "$PLAN_EXIT"',
-        ].join("\n")
-      : cliEnvironment + commandWithReferences;
-    const result = await runDaytonaProjectCommand(terminalName, executionCommand);
-    if (result.exitCode !== 0 && (data.mode !== "plan" || !result.stdout.trim())) {
-      const detail = result.stderr || result.stdout || "The agent could not complete the request.";
-      throw new Error(detail.slice(-6000));
-    }
-    const files = await readDaytonaProjectFiles(terminalName);
-    if (!isAdmin) {
-      const { error: creditError } = await context.supabase.rpc("consume_ai_credit");
-      if (creditError) throw new Error(creditError.message);
-    }
-    return { message: (result.stdout || (data.mode === "plan" ? "The agent could not produce a plan." : "Your project update is complete.")).slice(-12000), files: files.files, mode: data.mode };
-  });
 
 export const stopAgentPreview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
