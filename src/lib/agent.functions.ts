@@ -1038,6 +1038,45 @@ export const syncAgentTerminalFiles = createServerFn({ method: "POST" })
     }
   });
 
+export const syncAgentTerminalWorkspace = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z.object({ projectId: z.string().uuid(), sandboxName: z.string().min(20).max(80) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const files = await loadProjectSourceFiles(context.supabase, data.projectId, context.userId);
+    const { data: assets, error: assetError } = await context.supabase
+      .from("agent_project_assets")
+      .select("file_path,storage_path,mime_type,sha256")
+      .eq("project_id", data.projectId)
+      .eq("user_id", context.userId);
+    if (assetError) throw new Error("Could not load project assets for terminal synchronization.");
+    const binaryAssets: { filePath: string; buffer: Buffer; mimeType: string; sha256: string }[] = [];
+    for (const asset of assets ?? []) {
+      const { data: blob, error } = await context.supabase.storage
+        .from("builder-project-assets")
+        .download(asset.storage_path);
+      if (error || !blob) throw new Error("Could not restore terminal asset " + asset.file_path + ".");
+      binaryAssets.push({
+        filePath: asset.file_path,
+        buffer: Buffer.from(await blob.arrayBuffer()),
+        mimeType: asset.mime_type,
+        sha256: asset.sha256,
+      });
+    }
+    await assertBuilderResourcePolicy(
+      context.supabase,
+      context.userId,
+      files,
+      undefined,
+      binaryAssets.map((asset) => asset.buffer.byteLength),
+    );
+    const { assertDaytonaTerminalSandboxName, writeDaytonaProjectFiles } = await import("./daytona-terminal.server");
+    const sandboxName = assertDaytonaTerminalSandboxName(context.userId, data.sandboxName);
+    return writeDaytonaProjectFiles(sandboxName, files, binaryAssets);
+  });
+
 export const refreshAgentTerminal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
