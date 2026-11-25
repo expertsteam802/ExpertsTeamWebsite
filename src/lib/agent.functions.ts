@@ -623,6 +623,132 @@ export const listGitHubRepositories = createServerFn({ method: "POST" })
     }));
   });
 
+const githubRepoInput = z.object({
+  projectId: z.string().uuid(),
+  repo: z.string().trim().regex(/^[A-Za-z0-9_.-]{1,100}\\/[A-Za-z0-9_.-]{1,100}$/),
+  branch: z.string().trim().min(1).max(255).optional(),
+});
+
+function validateGitBranchName(branch: string) {
+  if (branch.length > 255 || branch.startsWith("/") || branch.endsWith("/") ||
+    branch.includes("//") || branch.includes("..") || branch.includes("@{") ||
+    /[ ~^:?*]/.test(branch) || branch.includes("\\\\") ||
+    Array.from(branch).some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127) ||
+    branch.split("/").some((part) => !part || part.startsWith(".") || part.endsWith(".lock"))) {
+    throw new Error("The selected GitHub branch name is invalid.");
+  }
+  return branch;
+}
+
+async function githubApiRequest(token: string, path: string, init: RequestInit = {}) {
+  const response = await fetch("https://api.github.com" + path, {
+    ...init,
+    headers: {
+      Authorization: "Bearer " + token,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "ExpertsTeam-Studio",
+      ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...(init.headers ?? {}),
+    },
+    signal: AbortSignal.timeout(20000),
+  });
+  const body = await response.json().catch(() => ({})) as Record<string, any>;
+  if (!response.ok) {
+    const message = typeof body.message === "string" ? body.message : "GitHub API request failed.";
+    throw new Error("GitHub " + response.status + ": " + message.slice(0, 500));
+  }
+  return body;
+}
+
+export const getProjectGithubLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const db = context.supabase as any;
+    const { data: link, error } = await db.from("project_repos").select("*")
+      .eq("project_id", data.projectId).eq("user_id", context.userId).maybeSingle();
+    if (error) throw new Error("Could not load this project's GitHub link.");
+    return link ?? null;
+  });
+
+export const linkProjectGithubRepository = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => githubRepoInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const token = await resolveGitHubAccessToken(context.supabase, context.userId, "");
+    const [owner, name] = data.repo.split("/");
+    const repository = await githubApiRequest(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!));
+    const defaultBranch = typeof repository.default_branch === "string" ? repository.default_branch : "main";
+    const activeBranch = validateGitBranchName(data.branch?.trim() || defaultBranch);
+    const branch = await githubApiRequest(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!) + "/branches/" + encodeURIComponent(activeBranch));
+    const sha = branch.commit?.sha ?? null;
+    const db = context.supabase as any;
+    const { data: saved, error } = await db.from("project_repos").upsert({
+      project_id: data.projectId, user_id: context.userId, repo_owner: owner, repo_name: name,
+      default_branch: defaultBranch, active_branch: activeBranch, last_synced_sha: sha,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "project_id" }).select("*").single();
+    if (error) throw new Error("GitHub repository was verified, but its project link could not be saved: " + error.message);
+    return saved;
+  });
+
+export const listProjectGithubBranches = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ projectId: z.string().uuid(), repo: z.string().trim().regex(/^[A-Za-z0-9_.-]{1,100}\\/[A-Za-z0-9_.-]{1,100}$/) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const token = await resolveGitHubAccessToken(context.supabase, context.userId, "");
+    const [owner, name] = data.repo.split("/");
+    const rows = await githubApiRequest(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!) + "/branches?per_page=100");
+    return (Array.isArray(rows) ? rows : []).map((row: any) => ({
+      name: String(row.name ?? ""), sha: String(row.commit?.sha ?? ""),
+      protected: Boolean(row.protected),
+    })).filter((row: any) => row.name);
+  });
+
+export const createProjectGithubBranch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({
+    projectId: z.string().uuid(), repo: z.string().trim().regex(/^[A-Za-z0-9_.-]{1,100}\\/[A-Za-z0-9_.-]{1,100}$/),
+    branch: z.string().trim().min(1).max(255), fromBranch: z.string().trim().min(1).max(255).optional(),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const token = await resolveGitHubAccessToken(context.supabase, context.userId, "");
+    const branch = validateGitBranchName(data.branch);
+    const [owner, name] = data.repo.split("/");
+    const baseBranch = validateGitBranchName(data.fromBranch?.trim() || "main");
+    const base = await githubApiRequest(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!) + "/branches/" + encodeURIComponent(baseBranch));
+    const created = await githubApiRequest(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!) + "/git/refs", {
+      method: "POST", body: JSON.stringify({ ref: "refs/heads/" + branch, sha: base.commit.sha }),
+    });
+    const db = context.supabase as any;
+    const { error } = await db.from("project_repos").upsert({
+      project_id: data.projectId, user_id: context.userId, repo_owner: owner, repo_name: name,
+      default_branch: baseBranch, active_branch: branch, last_synced_sha: created.object?.sha ?? base.commit.sha,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "project_id" });
+    if (error) throw new Error("Branch created on GitHub, but project link metadata could not be updated.");
+    return { branch, sha: created.object?.sha ?? base.commit.sha };
+  });
+
+export const setProjectGithubAutoSync = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ projectId: z.string().uuid(), enabled: z.boolean() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const db = context.supabase as any;
+    const { data: updated, error } = await db.from("project_repos")
+      .update({ auto_sync_enabled: data.enabled, updated_at: new Date().toISOString() })
+      .eq("project_id", data.projectId).eq("user_id", context.userId).select("auto_sync_enabled").maybeSingle();
+    if (error) throw new Error("Could not update GitHub auto-sync settings.");
+    if (!updated) throw new Error("Link a GitHub repository to this project first.");
+    return updated;
+  });
+
 export const pushProjectToGithub = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => z.object({
@@ -654,13 +780,19 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
     await assertBuilderResourcePolicy(context.supabase, context.userId, files, undefined, binaryAssets.map((asset) => asset.buffer.byteLength));
     try {
       const { pushToGithub } = await import("./agent.server");
-      return {
-        ok: true as const,
-        ...(await pushToGithub({
-          token, repo: data.repo, files, binaryAssets, branch: data.branch,
-          message: data.message || "feat: update project from ExpertsTeam",
-        })),
-      };
+      const pushed = await pushToGithub({
+        token, repo: data.repo, files, binaryAssets, branch: data.branch,
+        message: data.message || "feat: update project from ExpertsTeam",
+      });
+      const [owner, repository] = data.repo.split("/");
+      const db = context.supabase as any;
+      const { error: linkError } = await db.from("project_repos").upsert({
+        project_id: data.projectId, user_id: context.userId, repo_owner: owner, repo_name: repository,
+        default_branch: pushed.branch, active_branch: pushed.branch, last_synced_sha: pushed.commitSha,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "project_id" });
+      if (linkError) throw new Error("GitHub push succeeded, but sync metadata could not be saved. Refresh repository status before pushing again.");
+      return { ok: true as const, ...pushed };
     } catch (error) {
       return { ok: false as const, error: error instanceof Error ? error.message : "Push failed" };
     }
