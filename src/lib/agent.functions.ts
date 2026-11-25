@@ -692,6 +692,7 @@ export const linkProjectGithubRepository = createServerFn({ method: "POST" })
     const { data: saved, error } = await db.from("project_repos").upsert({
       project_id: data.projectId, user_id: context.userId, repo_owner: owner, repo_name: name,
       default_branch: defaultBranch, active_branch: activeBranch, last_synced_sha: sha,
+      auto_sync_enabled: false,
       updated_at: new Date().toISOString(),
     }, { onConflict: "project_id" }).select("*").single();
     if (error) throw new Error("GitHub repository was verified, but its project link could not be saved: " + error.message);
