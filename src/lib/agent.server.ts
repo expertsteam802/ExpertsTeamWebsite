@@ -451,11 +451,13 @@ export async function pushToGithub({
   token,
   repo,
   files,
+  binaryAssets = [],
   message,
 }: {
   token: string;
   repo: string;
   files: Record<string, string>;
+  binaryAssets?: Array<{ path: string; buffer: Buffer }>;
   message: string;
 }) {
   const headers = {
@@ -506,24 +508,32 @@ export async function pushToGithub({
     repoInfo = (await repoResponse.json()) as { default_branch?: string };
   }
 
-  const allFiles: Record<string, string> = {
-    ...files,
-    ".github/workflows/deploy.yml": PAGES_WORKFLOW,
-  };
+  const branch = repoInfo.default_branch || "main";
+  const refPath = branch.split("/").map(encodeURIComponent).join("/");
+  const allFiles: Record<string, string> = { ...files };
   if (!allFiles["README.md"]) {
     allFiles["README.md"] =
       `# ${repository}\n\nBuilt with the ExpertsTeam AI agent.\n\nLive: https://${owner}.github.io/${repository}/\n`;
   }
+  allFiles[".github/workflows/deploy.yml"] = PAGES_WORKFLOW
+    .replaceAll("__DEFAULT_BRANCH__", branch)
+    .replaceAll("__REPOSITORY__", repository);
 
-  const entries = Object.entries(allFiles);
+  const entries: Array<{ filePath: string; content?: string; buffer?: Buffer }> = [
+    ...Object.entries(allFiles).map(([filePath, content]) => ({ filePath, content })),
+    ...binaryAssets.map((asset) => ({ filePath: asset.path, buffer: asset.buffer })),
+  ];
+  const seenPaths = new Set<string>();
   if (!entries.length) throw new Error("There are no project files to push.");
-  for (const [filePath, content] of entries) {
-    if (!isSafeProjectPath(filePath)) throw new Error("Refusing to push an unsafe file path: " + filePath);
-    if (typeof content !== "string") throw new Error("A project file is not text: " + filePath);
+  for (const entry of entries) {
+    if (!isSafeProjectPath(entry.filePath) || isSensitiveProjectPath(entry.filePath)) {
+      throw new Error("Refusing to push an unsafe or sensitive file path: " + entry.filePath);
+    }
+    if (seenPaths.has(entry.filePath)) throw new Error("A text file and binary asset share the same project path: " + entry.filePath);
+    seenPaths.add(entry.filePath);
+    if (entry.buffer && !Buffer.isBuffer(entry.buffer)) throw new Error("A binary project asset is invalid: " + entry.filePath);
+    if (!entry.buffer && typeof entry.content !== "string") throw new Error("A project file is not text: " + entry.filePath);
   }
-
-  const branch = repoInfo.default_branch || "main";
-  const refPath = branch.split("/").map(encodeURIComponent).join("/");
   let parentCommit: string | undefined;
   let baseTree: string | undefined;
   const refResponse = await fetch(repoApi + "/git/ref/heads/" + refPath, { headers });
@@ -545,14 +555,16 @@ export async function pushToGithub({
   const treeEntries: { path: string; mode: "100644"; type: "blob"; sha: string }[] = [];
   for (let offset = 0; offset < entries.length; offset += 6) {
     const batch = entries.slice(offset, offset + 6);
-    const blobs = await Promise.all(batch.map(async ([filePath, content]) => {
+    const blobs = await Promise.all(batch.map(async (entry) => {
+      const binary = Boolean(entry.buffer);
+      const content = binary ? entry.buffer!.toString("base64") : entry.content!;
       const response = await request(repoApi + "/git/blobs", {
         method: "POST",
-        body: JSON.stringify({ content, encoding: "utf-8" }),
+        body: JSON.stringify({ content, encoding: binary ? "base64" : "utf-8" }),
       });
       const blob = (await response.json()) as { sha?: string };
-      if (!blob.sha) throw new Error("GitHub did not return a blob ID for " + filePath);
-      return { path: filePath, mode: "100644" as const, type: "blob" as const, sha: blob.sha };
+      if (!blob.sha) throw new Error("GitHub did not return a blob ID for " + entry.filePath);
+      return { path: entry.filePath, mode: "100644" as const, type: "blob" as const, sha: blob.sha };
     }));
     treeEntries.push(...blobs);
   }
