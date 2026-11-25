@@ -1055,8 +1055,27 @@ export const publishAgentProject = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
     const files = await loadProjectSourceFiles(context.supabase, data.projectId, context.userId);
-    if (!Object.keys(files).length) throw new Error("This project has no saved source files to publish.");
-    await assertBuilderResourcePolicy(context.supabase, context.userId, files);
+    const { data: savedAssets, error: assetQueryError } = await context.supabase
+      .from("agent_project_assets")
+      .select("file_path,storage_path,mime_type,sha256")
+      .eq("project_id", data.projectId)
+      .eq("user_id", context.userId);
+    if (assetQueryError) throw new Error("Could not load project binary assets for publishing: " + assetQueryError.message);
+    const binaryAssets: { filePath: string; buffer: Buffer; mimeType: string; sha256: string }[] = [];
+    for (const asset of savedAssets ?? []) {
+      const { data: blob, error: downloadError } = await context.supabase.storage
+        .from("builder-project-assets")
+        .download(asset.storage_path);
+      if (downloadError || !blob) throw new Error("Could not restore " + asset.file_path + " for publishing: " + (downloadError?.message ?? "asset is missing"));
+      binaryAssets.push({
+        filePath: asset.file_path,
+        buffer: Buffer.from(await blob.arrayBuffer()),
+        mimeType: asset.mime_type,
+        sha256: asset.sha256,
+      });
+    }
+    if (!Object.keys(files).length && !binaryAssets.length) throw new Error("This project has no saved source files to publish.");
+    await assertBuilderResourcePolicy(context.supabase, context.userId, files, undefined, binaryAssets.map((asset) => asset.buffer.byteLength));
     const now = new Date().toISOString();
     const { error: startError } = await context.supabase
       .from("agent_projects")
@@ -1085,6 +1104,7 @@ export const publishAgentProject = createServerFn({ method: "POST" })
         context.userId,
         context.supabase,
         projectEnvironment,
+        binaryAssets,
       );
 
       const appUrl = (process.env["APP_URL"] || "https://expertsteam.giize.com").replace(/\/$/, "");
