@@ -620,7 +620,7 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
   .validator((input: unknown) => z.object({
     projectId: z.string().uuid(),
     token: z.string().trim().max(500).optional().default(""),
-    repo: z.string().trim().regex(/^[A-Za-z0-9._-]{1,100}$/),
+    repo: z.string().trim().regex(/^(?:[A-Za-z0-9._-]{1,100}\\/)?[A-Za-z0-9._-]{1,100}$/),
   }).parse(input))
   .handler(async ({ data, context }) => {
     const token = await resolveGitHubAccessToken(context.supabase, context.userId, data.token);
