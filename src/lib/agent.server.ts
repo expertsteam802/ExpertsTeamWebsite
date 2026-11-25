@@ -342,11 +342,6 @@ export async function runAgent(
       collaborationRole +
       "\nDo not claim completion while required screens, files, tests or interactions remain. Never claim tests, builds, runtime behavior, browser verification, or deployment were executed unless an actual tool result in this run proves it. When you only generated or saved source files, say implementation was written and clearly state that runtime verification remains outstanding.";
 
-    const startAt = round % providerSequence.length;
-    const rotatedProviders = [
-      ...providerSequence.slice(startAt),
-      ...providerSequence.slice(0, startAt),
-    ];
     try {
       const response = await generateGeminiContent(
         {
@@ -851,7 +846,7 @@ export async function runAgentChat(
   return { message, files: {} as Record<string, string | null>, mode: "chat" as const };
 }
 
-/** Kilo-only planning pass. It reads the saved project snapshot but never returns file mutations. */
+/** Planning pass. It reads the saved project snapshot but never returns file mutations. */
 export async function runAgentPlan(
   { prompt, files, history, referenceImage, referenceImages: suppliedReferenceImages, modelTier = "fast" }: AgentInput,
 ) {
