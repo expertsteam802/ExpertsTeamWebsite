@@ -1,5 +1,5 @@
 import { AI_SYSTEM_PROMPT, AI_WORKSPACE_PROMPT } from "./ai-prompt";
-import { generateGeminiContent } from "./gemini.server";
+import { generateExpertAiContent } from "./kilo-gateway.server";
 
 export type AiAttachment = {
   name: string;
@@ -45,7 +45,7 @@ export async function askChrisAi(
     .filter(Boolean)
     .join("\n\n");
 
-  const json = await generateGeminiContent(
+  const json = await generateExpertAiContent(
     {
       systemInstruction: {
         parts: [{ text: systemPrompt }],
