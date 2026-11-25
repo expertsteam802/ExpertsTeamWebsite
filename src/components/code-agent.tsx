@@ -2807,11 +2807,11 @@ export function CodeAgent() {
   // Keep files edited by Kilo/OpenCode in the terminal reflected in the editor
   // and saved project record. Manual editor changes take priority while dirty.
   useEffect(() => {
-    if (!terminalReady || !projectId || !user || busy || dirty || terminalSyncPausedRef.current) return;
+    if (!terminalReady || !projectId || !user || busy || dirty) return;
     let cancelled = false;
     let syncing = false;
     const timer = window.setInterval(async () => {
-      if (cancelled || syncing || busy || dirty) return;
+      if (cancelled || syncing || busy || dirty || terminalSyncPausedRef.current) return;
       syncing = true;
       try {
         if (!terminalConnection?.sandboxName || terminalConnection.projectId !== projectId) return;
