@@ -108,7 +108,7 @@ import {
 import { setStagingPassword } from "@/lib/deployment.functions";
 import { buildSrcDocWithConsole, STARTER_FILES, type ProjectFiles } from "@/lib/sandbox";
 import { deleteProjectFile, loadProjectFiles, saveProjectFile, saveProjectFiles } from "@/lib/project-files";
-type Message = { role: "user" | "assistant"; content: string };
+type Message = { role: "user" | "assistant"; content: string; error?: boolean };
 type BrowserSpeechRecognition = { lang: string; interimResults: boolean; onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onerror: (() => void) | null; onend: (() => void) | null; start: () => void; stop: () => void };
 type ProjectTreeNode = { name: string; path: string; folder: boolean; children: ProjectTreeNode[] };
 
@@ -3606,7 +3606,7 @@ export function CodeAgent() {
     return /\b(build|create|make|implement|add|remove|delete|fix|change|update|refactor|debug|design|generate|write code|develop|integrate|connect|deploy|publish|test|run|install|upgrade|migrate|optimi[sz]e|redesign|rebuild)\b/i.test(request);
   }
 
-  async function sendPrompt(modeOverride: "build" | "plan" = agentMode, promptOverride?: string) {
+  function handleSendMessage() { void sendPrompt(); }\n\n  async function sendPrompt(modeOverride: "build" | "plan" = agentMode, promptOverride?: string) {
     if (CODING_AGENT_UNDER_DEVELOPMENT) return;
     if (projectRestoring) {
       toast.info("Your project is still loading. Please send your message when the workspace is ready.");
@@ -4972,7 +4972,7 @@ export function CodeAgent() {
                         })}
                       </div>
                     )}
-                    {busy && <div className="flex items-center gap-2 px-2 py-2 text-xs text-cyan-200"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Working on your project…</div>}
+                    {busy && <div className="flex justify-start" role="status" aria-live="polite"><div className="flex items-center gap-2 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.07] px-3.5 py-3 text-xs text-cyan-100"><Loader2 className="h-3.5 w-3.5 animate-spin" /> ExpertAI is thinking...</div></div>}
                     <div ref={agentChatEndRef} />
                   </div>
                   {referenceImages.length > 0 && <div className="flex shrink-0 flex-wrap gap-2 border-t border-white/[0.06] px-3 pt-2">{referenceImages.map((image) => <span key={image.name} className="rounded-md bg-white/5 px-2 py-1 text-[10px] text-slate-300">{image.name}</span>)}</div>}
@@ -4983,10 +4983,10 @@ export function CodeAgent() {
                         <button type="button" onClick={() => setCreditsOfferwallOpen(true)} className="shrink-0 rounded-md bg-amber-300/15 px-2.5 py-1.5 text-[10px] font-semibold text-amber-100 hover:bg-amber-300/25">Earn credits</button>
                       </div>
                     )}
-                    <div className="rounded-xl border border-slate-700 bg-[#0B0F17] p-2 shadow-[0_-8px_30px_rgba(0,0,0,.16)] focus-within:border-blue-400/50">
+                    <form onSubmit={(event) => { event.preventDefault(); handleSendMessage(); }} className="rounded-xl border border-slate-700 bg-[#0B0F17] p-2 shadow-[0_-8px_30px_rgba(0,0,0,.16)] focus-within:border-blue-400/50">
                       <div className="relative">
-                        <Textarea value={prompt} onChange={(event) => { setPrompt(event.target.value); event.target.style.height = "auto"; event.target.style.height = Math.min(event.target.scrollHeight, 160) + "px"; }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); if (!busy && !projectRestoring) void sendPrompt(); } }} placeholder={projectRestoring ? "Loading your project…" : "Ask ExpertAI anything..."} className="min-h-[72px] max-h-40 resize-y border-0 bg-transparent pb-10 pr-14 text-xs leading-5 text-white shadow-none focus-visible:ring-0" disabled={projectRestoring} />
-                        {busy ? <button type="button" onClick={() => { agentRequestIdRef.current += 1; setBusy(false); toast.info("Stopped waiting for the Agent response. Any late result will be ignored."); }} className="absolute bottom-2 right-2 inline-flex h-8 items-center gap-1.5 rounded-lg border border-rose-400/30 bg-rose-500/15 px-3 text-[10px] font-semibold text-rose-100 shadow-lg hover:bg-rose-500/25"><Square className="h-3 w-3 fill-current" />Stop</button> : <button type="button" onClick={() => void sendPrompt()} disabled={!prompt.trim() || projectRestoring} className="absolute bottom-2 right-2 inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[10px] font-semibold text-white shadow-lg hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-3.5 w-3.5" />Send</button>}
+                        <Textarea value={prompt} onChange={(event) => { setPrompt(event.target.value); event.target.style.height = "auto"; event.target.style.height = Math.min(event.target.scrollHeight, 160) + "px"; }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); if (!busy && !projectRestoring) handleSendMessage(); } }} placeholder={projectRestoring ? "Loading your project…" : "Ask ExpertAI anything..."} className="min-h-[72px] max-h-40 resize-y border-0 bg-transparent pb-10 pr-14 text-xs leading-5 text-white shadow-none focus-visible:ring-0" disabled={projectRestoring} />
+                        {busy ? <button type="button" onClick={() => { agentRequestIdRef.current += 1; setBusy(false); toast.info("Stopped waiting for the Agent response. Any late result will be ignored."); }} className="absolute bottom-2 right-2 inline-flex h-8 items-center gap-1.5 rounded-lg border border-rose-400/30 bg-rose-500/15 px-3 text-[10px] font-semibold text-rose-100 shadow-lg hover:bg-rose-500/25"><Square className="h-3 w-3 fill-current" />Stop</button> : <button type="submit" disabled={!prompt.trim() || projectRestoring || busy} className="absolute bottom-2 right-2 inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[10px] font-semibold text-white shadow-lg hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-3.5 w-3.5" />Send</button>}
                       </div>
                       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/60 px-1 pt-2">
                         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
@@ -5008,7 +5008,7 @@ export function CodeAgent() {
                         </div>
                         <span className="text-[9px] text-slate-500">{agentMode === "plan" ? "Plan mode" : "Build mode"}</span>
                       </div>
-                    </div>
+                    </form>
                     <p className="mt-2 text-center text-[9px] text-slate-600">Usage display shows your remaining ExpertsTeam AI credits.</p>
                   </div>
                 </>
