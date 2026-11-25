@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 
-import { repairMissingStylesheetImports, runAgent } from "./agent.server";
+import { repairMissingStylesheetImports, runAgent, runAgentChat } from "./agent.server";
 import { generateGeminiContent } from "./gemini.server";
 import { compactSmartContents, estimateSmartTokens } from "./smart-processing.server";
 
@@ -36,6 +36,30 @@ test("agent repairs a missing stylesheet import by reusing style.css", () => {
 test("agent creates a minimal stylesheet when an imported CSS entry is missing", () => {
   const files = repairMissingStylesheetImports({ "src/main.tsx": 'import "./index.css";' });
   assert.match(files["src/index.css"] ?? "", /box-sizing: border-box/);
+});
+
+test("Agent chat forwards attached visual references to Kilo", async () => {
+  let sawImage = false;
+  globalThis.fetch = (async (_url, init) => {
+    const body = JSON.parse(String(init?.body ?? "{}")) as {
+      messages?: { content?: { type?: string; image_url?: { url?: string } }[] }[];
+    };
+    sawImage = Boolean(body.messages?.some((message) =>
+      Array.isArray(message.content) && message.content.some((part) =>
+        part.type === "image_url" && part.image_url?.url?.startsWith("data:image/webp;base64,"),
+      ),
+    ));
+    return Response.json({ choices: [{ finish_reason: "stop", message: { content: "I can see the screenshot." } }] });
+  }) as typeof fetch;
+
+  const result = await runAgentChat({
+    prompt: "What is in this screenshot?",
+    files: {},
+    history: [],
+    referenceImages: [{ name: "screen.webp", mimeType: "image/webp", data: "aGVsbG8=" }],
+  });
+  assert.match(result.message, /see the screenshot/i);
+  assert.equal(sawImage, true);
 });
 
 test("Kilo anonymous gateway receives a larger output budget and returns normalized text", async () => {
