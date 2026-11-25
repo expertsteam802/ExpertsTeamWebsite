@@ -91,6 +91,7 @@ export const revokePluginConnection = createServerFn({ method: "POST" })
 
 const pluginActionInput = z.object({
   connectionId: z.string().uuid(),
+  projectId: z.string().uuid().optional(),
   action: z.string().min(3).max(80),
   payload: z.record(z.string(), z.unknown()).default({}),
   approved: z.boolean().optional().default(false),
@@ -134,8 +135,17 @@ export const executePluginAction = createServerFn({ method: "POST" })
     const { data: permissionRows, error: permissionError } = await db.from("user_plugin_permissions")
       .select("actions,require_approval_for,project_id").eq("connection_id", data.connectionId).eq("user_id", context.userId);
     if (permissionError) throw new Error(permissionError.message);
-    const permission = (permissionRows ?? []).find((row: any) => row.project_id === null);
-    if (!permission?.actions?.includes(data.action)) throw new Error("This Agent action is not permitted. Enable it in Plugin Center first.");
+    if (data.projectId) {
+      const { data: project, error: projectError } = await db.from("agent_projects")
+        .select("id").eq("id", data.projectId).eq("user_id", context.userId).maybeSingle();
+      if (projectError) throw new Error("Could not verify the selected project permission scope.");
+      if (!project) throw new Error("The selected project is unavailable.");
+    }
+    const permission = data.projectId
+      ? (permissionRows ?? []).find((row: any) => row.project_id === data.projectId)
+        ?? (permissionRows ?? []).find((row: any) => row.project_id === null)
+      : (permissionRows ?? []).find((row: any) => row.project_id === null);
+    if (!permission?.actions?.includes(data.action)) throw new Error("This Agent action is not permitted for the selected project. Enable it in Plugin Center first.");
     const alwaysConfirm = new Set(["repositories.delete", "tables.drop", "projects.delete", "auth.manage"]);
     if ((alwaysConfirm.has(data.action) || permission.require_approval_for?.includes(data.action)) && !data.approved) {
       throw new Error("This action requires explicit user approval before it can run.");
@@ -244,18 +254,21 @@ export const executePluginAction = createServerFn({ method: "POST" })
         const sql = data.action === "schemas.read"
           ? "select table_schema, table_name, column_name, data_type from information_schema.columns where table_schema not in ('pg_catalog','information_schema') order by table_schema,table_name,ordinal_position limit 500"
           : readString(payload, "sql", 50000);
-        const first = sql.trim().replace(/^(?:--[^\n]*\n|\/\*[\s\S]*?\*\/\s*)*/, "").split(/\s+/)[0]?.toLowerCase();
-        const normalizedSql = sql.trim().replace(/;\s*$/, "");
+        const normalizedSql = sql
+          .replace(/^(?:\s|--[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/)+/g, "")
+          .trim()
+          .replace(/;\s*$/, "");
         if (normalizedSql.includes(";")) throw new Error("Run one SQL statement per action.");
+        const first = normalizedSql.split(/\s+/)[0]?.toLowerCase();
         const readOnly = data.action === "schemas.read" || data.action === "sql.read";
-        if (data.action === "sql.write" && /^drop\s+table\b/i.test(normalizedSql)) throw new Error("Use the separately permissioned Drop tables action and confirm it explicitly.");
-        if (data.action === "sql.write" && /^alter\s+table\b/i.test(normalizedSql)) throw new Error("Use the separately permissioned Alter tables action.");
-        if (data.action === "sql.write" && /^create\s+table\b/i.test(normalizedSql)) throw new Error("Use the separately permissioned Create tables action.");
-        if (data.action === "sql.write" && /^(delete|truncate)\b/i.test(normalizedSql) && !data.approved) throw new Error("DELETE and TRUNCATE statements require explicit confirmation.");
+        const containsDestructiveDdl = /\b(?:drop|alter|create)\s+table\b/i.test(normalizedSql);
+        const containsDestructiveDml = /\b(?:delete\s+from|truncate(?:\s+table)?\b)/i.test(normalizedSql);
+        if (data.action === "sql.write" && containsDestructiveDdl) throw new Error("Use the separately permissioned Create, Alter or Drop tables action for table-definition changes.");
+        if (data.action === "sql.write" && containsDestructiveDml && !data.approved) throw new Error("DELETE and TRUNCATE statements require explicit confirmation.");
         if (readOnly && !["select", "with", "show", "explain"].includes(first ?? "")) throw new Error("Read-only SQL permission accepts SELECT, WITH, SHOW or EXPLAIN statements only.");
-        if (!readOnly && data.action === "tables.create" && !/^create\s+table\b/i.test(sql.trim())) throw new Error("The Create tables permission only accepts CREATE TABLE statements.");
-        if (!readOnly && data.action === "tables.alter" && !/^alter\s+table\b/i.test(sql.trim())) throw new Error("The Alter tables permission only accepts ALTER TABLE statements.");
-        if (!readOnly && data.action === "tables.drop" && !/^drop\s+table\b/i.test(sql.trim())) throw new Error("The Drop tables permission only accepts DROP TABLE statements.");
+        if (!readOnly && data.action === "tables.create" && !/^create\s+table\b/i.test(normalizedSql)) throw new Error("The Create tables permission only accepts CREATE TABLE statements.");
+        if (!readOnly && data.action === "tables.alter" && !/^alter\s+table\b/i.test(normalizedSql)) throw new Error("The Alter tables permission only accepts ALTER TABLE statements.");
+        if (!readOnly && data.action === "tables.drop" && !/^drop\s+table\b/i.test(normalizedSql)) throw new Error("The Drop tables permission only accepts DROP TABLE statements.");
         const endpoint = readOnly ? "/projects/" + encodeURIComponent(ref) + "/database/query/read-only" : "/projects/" + encodeURIComponent(ref) + "/database/query";
         result = await checkedJson(api + endpoint, token, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: sql, ...(readOnly ? {} : { read_only: false }) }) });
         resource = ref;
