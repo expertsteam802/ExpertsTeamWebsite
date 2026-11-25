@@ -605,6 +605,8 @@ export function CodeAgent() {
   const referenceInputRef = useRef<HTMLInputElement>(null);
   const projectFileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
   const agentRequestIdRef = useRef(0);
   const [panel, setPanel] = useState<Panel>("preview");
   const [splitTerminalOpen, setSplitTerminalOpen] = useState(false);
@@ -1404,7 +1406,7 @@ export function CodeAgent() {
     const session = terminalConnection;
     if (!session) return;
     return () => {
-      if (busy) {
+      if (busyRef.current) {
         void stopTerminal({ data: { sandboxName: session.sandboxName } }).catch(() => undefined);
         return;
       }
@@ -1429,7 +1431,7 @@ export function CodeAgent() {
         })
         .catch(() => undefined);
     };
-  }, [syncTerminalFiles, stopTerminal, terminalConnection?.sandboxName, terminalConnection?.projectId, user?.id, busy]);
+  }, [syncTerminalFiles, stopTerminal, terminalConnection?.sandboxName, terminalConnection?.projectId, user?.id]);
 
 
   // Agent builds run through the server-side Kilo gateway. Do not pull the
