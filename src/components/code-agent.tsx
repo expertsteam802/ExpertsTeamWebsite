@@ -1316,7 +1316,10 @@ export function CodeAgent() {
     },
   });
 
-  const databaseProjectRef = cloudConnections.find((connection) => connection.id === cloudConnectionId)?.project_ref ?? cloudConnections[0]?.project_ref ?? null;
+  useEffect(() => {
+    if (!cloudConnectionId && cloudConnections.length === 1) setCloudConnectionId(cloudConnections[0]!.id);
+  }, [cloudConnectionId, cloudConnections]);
+  const databaseProjectRef = cloudConnections.find((connection) => connection.id === cloudConnectionId)?.project_ref ?? null;
 
 
   const { data: developerVaultRows = [], isLoading: developerVaultLoading } = useQuery({
@@ -3800,7 +3803,7 @@ export function CodeAgent() {
         </div>
       )}
       <ProjectEnvironmentPanel projectId={projectId} open={environmentPanelOpen} onOpenChange={setEnvironmentPanelOpen} />
-      <SupabaseDatabasePanel projectRef={databaseProjectRef} open={databasePanelOpen} onOpenChange={setDatabasePanelOpen} onOpenEnvironment={() => setEnvironmentPanelOpen(true)} projectId={projectId} projectFiles={files} onMigrationApplied={async (sql) => {
+      <SupabaseDatabasePanel projectRef={databaseProjectRef} open={databasePanelOpen} onOpenChange={setDatabasePanelOpen} onOpenEnvironment={() => setEnvironmentPanelOpen(true)} connections={cloudConnections} selectedConnectionId={cloudConnectionId} onSelectConnection={(id) => { setCloudConnectionId(id || null); if (projectId) void persist({ extra: { cloud_connection_id: id || null } }).catch((error) => toast.error(error instanceof Error ? error.message : "Could not save the Supabase connection.")); }} projectId={projectId} projectFiles={files} onMigrationApplied={async (sql) => {
         const timestamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
         const filePath = "supabase/migrations/" + timestamp + "_expert_ai_migration.sql";
         const nextFiles = { ...files, [filePath]: sql.trim() + "\n" };
