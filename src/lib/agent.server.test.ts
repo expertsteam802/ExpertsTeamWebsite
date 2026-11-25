@@ -8,18 +8,12 @@ import { compactSmartContents, estimateSmartTokens } from "./smart-processing.se
 const originalFetch = globalThis.fetch;
 process.env["GROQ_API_KEY"] = "groq-test-key";
 const originalEnv = {
-  key: process.env["GROQ_API_KEY"],
-  base: process.env["GROQ_API_BASE_URL"],
-  model: process.env["GROQ_MODEL"],
   groqKey: process.env["GROQ_API_KEY"],
   groqModel: process.env["GROQ_MODEL"],
 };
 afterEach(() => {
   globalThis.fetch = originalFetch;
   for (const [key, value] of Object.entries({
-    GROQ_API_KEY: originalEnv.key,
-    GROQ_API_BASE_URL: originalEnv.base,
-    GROQ_MODEL: originalEnv.model,
     GROQ_API_KEY: originalEnv.groqKey,
     GROQ_MODEL: originalEnv.groqModel,
   })) {
