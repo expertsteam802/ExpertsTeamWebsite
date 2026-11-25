@@ -60,12 +60,12 @@ export const getStagingDeployment = createServerFn({ method: "POST" })
   });
 
 function normalizeCustomDomain(input: string): string {
-  const domain = input.trim().toLowerCase().replace(/\\.$/, "");
+  const domain = input.trim().toLowerCase().replace(/\.$/, "");
   if (!domain || domain.length > 253 || domain.includes("*")) throw new Error("Enter a valid custom domain.");
   let parsed: URL;
   try { parsed = new URL("https://" + domain); } catch { throw new Error("Enter a valid custom domain."); }
   if (parsed.hostname !== domain || parsed.pathname !== "/" || parsed.search || parsed.hash ||
-      !domain.includes(".") || !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(domain)) {
+      !domain.includes(".") || !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain)) {
     throw new Error("Enter a valid fully qualified domain name without a path.");
   }
   if (domain === "expertsteam.giize.com" || domain.endsWith(".expertsteam.giize.com")) {
@@ -148,7 +148,7 @@ export const verifyProjectCustomDomain = createServerFn({ method: "POST" })
 
     let dnsReady = false;
     try {
-      const cname = (await resolveCname(row.domain)).map((value) => value.toLowerCase().replace(/\\.$/, ""));
+      const cname = (await resolveCname(row.domain)).map((value) => value.toLowerCase().replace(/\.$/, ""));
       dnsReady = cname.some((value) => value === row.dns_target || value.endsWith(".netlify.app") || value === "apex-loadbalancer.netlify.com");
     } catch { /* Check A records below for apex domains. */ }
     if (!dnsReady) {
