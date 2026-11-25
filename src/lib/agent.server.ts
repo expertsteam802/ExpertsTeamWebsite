@@ -457,12 +457,14 @@ export async function pushToGithub({
   files,
   binaryAssets = [],
   message,
+  branch: requestedBranch,
 }: {
   token: string;
   repo: string;
   files: Record<string, string>;
   binaryAssets?: Array<{ path: string; buffer: Buffer }>;
   message: string;
+  branch?: string;
 }) {
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -512,8 +514,14 @@ export async function pushToGithub({
     repoInfo = (await repoResponse.json()) as { default_branch?: string };
   }
 
-  const branch = repoInfo.default_branch || "main";
-  const refPath = branch.split("/").map(encodeURIComponent).join("/");
+  const branch = requestedBranch?.trim() || repoInfo.default_branch || "main";
+  if (branch.length > 255 || branch.startsWith("/") || branch.endsWith("/") ||
+    branch.includes("//") || branch.includes("..") || branch.includes("@{") ||
+    /[\\s~^:?*\[\\\\\x00-\x1f]/.test(branch) ||
+    branch.split("/").some((part) => !part || part.startsWith(".") || part.endsWith(".lock"))) {
+    throw new Error("The selected GitHub branch name is invalid.");
+  }
+  const refPath = encodeURIComponent(branch);
   const allFiles: Record<string, string> = { ...files };
   if (!allFiles["README.md"]) {
     allFiles["README.md"] =
@@ -554,6 +562,8 @@ export async function pushToGithub({
       };
       baseTree = commit.tree?.sha;
     }
+  } else if (refResponse.status === 404 && requestedBranch) {
+    throw new Error("Branch " + branch + " does not exist in this repository. Create it or select an existing branch first.");
   } else if (refResponse.status !== 404) {
     throw new Error(`GitHub could not read branch ${branch} (${refResponse.status}).`);
   }
@@ -648,6 +658,9 @@ export async function pushToGithub({
   return {
     url: `https://github.com/${owner}/${repository}`,
     pagesUrl: `https://${owner}.github.io/${repository}/`,
+    branch,
+    commitSha: commit.sha,
+    commitUrl: `https://github.com/${owner}/${repository}/commit/${commit.sha}`,
   };
 }
 

@@ -638,6 +638,8 @@ export function CodeAgent() {
   const [importingVault, setImportingVault] = useState(false);
   const [githubToken, setGithubToken] = useState("");
   const [githubRepo, setGithubRepo] = useState("");
+  const [githubBranch, setGithubBranch] = useState("main");
+  const [githubCommitMessage, setGithubCommitMessage] = useState("");
   const [githubRepositories, setGithubRepositories] = useState<{ fullName: string; private: boolean; url: string; defaultBranch: string }[]>([]);
   const [loadingGithubRepositories, setLoadingGithubRepositories] = useState(false);
   const [pullingGithub, setPullingGithub] = useState(false);
@@ -3064,19 +3066,23 @@ export function CodeAgent() {
     mutationFn: async () => {
       const activeProjectId = await persist({ files });
       const result = await push({
-        data: { projectId: activeProjectId, token: githubToken, repo: githubRepo },
+        data: {
+          projectId: activeProjectId, token: githubToken, repo: githubRepo,
+          branch: githubBranch.trim() || undefined, message: githubCommitMessage.trim(),
+        },
       });
       if (!result.ok) throw new Error(result.error || "GitHub push failed");
       await persist({ extra: { github_repo: result.url } });
-      return result.url;
+      return { url: result.url, commitUrl: result.commitUrl, branch: result.branch, commitSha: result.commitSha };
     },
-    onSuccess: (url) => {
+    onSuccess: (result) => {
       setGithubOpen(false);
       setGithubToken("");
-      toast.success("Project pushed to GitHub", {
+      setGithubCommitMessage("");
+      toast.success("Committed " + (result.commitSha?.slice(0, 7) || "changes") + " to " + result.branch, {
         action: {
-          label: "Open repository",
-          onClick: () => window.open(url, "_blank", "noopener,noreferrer"),
+          label: "View commit",
+          onClick: () => window.open(result.commitUrl || result.url, "_blank", "noopener,noreferrer"),
         },
       });
     },
@@ -3246,7 +3252,7 @@ export function CodeAgent() {
       if (dirty) await persist();
       await saveCheckpoint("Before GitHub pull", projectId);
       const result = await importGithub({
-        data: { repoUrl, token: githubToken.trim() || undefined, projectId },
+        data: { repoUrl, token: githubToken.trim() || undefined, projectId, branch: githubBranch.trim() || undefined },
       });
       const refreshedFiles = await loadProjectFiles(projectId);
       if (!Object.keys(refreshedFiles).length) throw new Error("GitHub sync completed, but the project files could not be reloaded.");
@@ -5845,6 +5851,16 @@ export function CodeAgent() {
                 OAuth is preferred. A one-time personal access token is only used for this operation
                 and is not saved in your project.
               </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="github-branch">Branch</Label>
+                <Input id="github-branch" value={githubBranch} onChange={(event) => setGithubBranch(event.target.value)} placeholder="main" className="border-white/10 bg-white/5" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="github-commit-message">Commit message</Label>
+                <Input id="github-commit-message" value={githubCommitMessage} onChange={(event) => setGithubCommitMessage(event.target.value)} placeholder="feat: describe your changes" className="border-white/10 bg-white/5" />
+              </div>
             </div>
             <Button
               type="button"

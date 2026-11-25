@@ -170,6 +170,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
         repoUrl: z.string().trim().min(1).max(500),
         token: z.string().trim().max(500).optional().default(""),
         projectId: z.string().uuid().optional(),
+        branch: z.string().trim().min(1).max(255).optional(),
       })
       .parse(input),
   )
@@ -241,9 +242,15 @@ export const importGitHubProject = createServerFn({ method: "POST" })
     };
     const defaultBranch = metadata.default_branch;
     if (!defaultBranch) throw new Error("GitHub did not return the repository's default branch.");
-    const treeResponse = await request(
-      apiBase + "/git/trees/" + encodeURIComponent(defaultBranch) + "?recursive=1",
-    );
+    const selectedBranch = data.branch?.trim() || defaultBranch;
+    if (selectedBranch.length > 255 || selectedBranch.startsWith("/") || selectedBranch.endsWith("/") ||
+      selectedBranch.includes("//") || selectedBranch.includes("..") || selectedBranch.includes("@{") ||
+      /[\\s~^:?*\[\\\\\x00-\x1f]/.test(selectedBranch) ||
+      selectedBranch.split("/").some((part) => !part || part.startsWith(".") || part.endsWith(".lock"))) {
+      throw new Error("The selected GitHub branch name is invalid.");
+    }
+    const encodedBranch = encodeURIComponent(selectedBranch);
+    const treeResponse = await request(apiBase + "/git/trees/" + encodedBranch + "?recursive=1");
     const tree = (await treeResponse.json()) as {
       truncated?: boolean;
       tree?: Array<{ path?: string; type?: string; size?: number; sha?: string }>;
@@ -254,7 +261,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
     // Fall back to walking individual tree objects so nested directories are
     // not silently omitted or rejected solely because of that API response cap.
     if (tree.truncated) {
-      const branchResponse = await request(apiBase + "/branches/" + encodeURIComponent(defaultBranch));
+      const branchResponse = await request(apiBase + "/branches/" + encodedBranch);
       const branch = (await branchResponse.json()) as { commit?: { commit?: { tree?: { sha?: string } } } };
       const rootTreeSha = branch.commit?.commit?.tree?.sha;
       if (!rootTreeSha) throw new Error("GitHub did not return the repository tree.");
@@ -427,7 +434,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
               "/" +
               encodeURIComponent(repo) +
               "/" +
-              encodeURIComponent(defaultBranch) +
+              encodedBranch +
               "/" +
               filePath.split("/").map(encodeURIComponent).join("/");
             const response = await request(rawUrl, "text/plain");
@@ -550,7 +557,8 @@ export const importGitHubProject = createServerFn({ method: "POST" })
       id: project.id,
       name: projectName,
       repoUrl,
-      branch: defaultBranch,
+      branch: selectedBranch,
+      defaultBranch,
       fileCount,
     };
   });
@@ -621,6 +629,8 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
     projectId: z.string().uuid(),
     token: z.string().trim().max(500).optional().default(""),
     repo: z.string().trim().regex(/^(?:[A-Za-z0-9._-]{1,100}\/)?[A-Za-z0-9._-]{1,100}$/),
+    branch: z.string().trim().min(1).max(255).optional(),
+    message: z.string().trim().max(500).optional().default(""),
   }).parse(input))
   .handler(async ({ data, context }) => {
     const token = await resolveGitHubAccessToken(context.supabase, context.userId, data.token);
@@ -646,7 +656,10 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
       const { pushToGithub } = await import("./agent.server");
       return {
         ok: true as const,
-        ...(await pushToGithub({ token, repo: data.repo, files, binaryAssets, message: "Update from ExpertsTeam agent" })),
+        ...(await pushToGithub({
+          token, repo: data.repo, files, binaryAssets, branch: data.branch,
+          message: data.message || "feat: update project from ExpertsTeam",
+        })),
       };
     } catch (error) {
       return { ok: false as const, error: error instanceof Error ? error.message : "Push failed" };
