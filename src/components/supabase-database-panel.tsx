@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Database, Download, KeyRound, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { Database, Download, ExternalLink, KeyRound, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -367,7 +367,10 @@ export function SupabaseDatabasePanel({
           <p className="text-[10px] text-slate-500">{projectRef ? "Connected project · " + projectRef : "Select a connected Supabase project in the Builder first."}</p>
         </DialogHeader>
         {!projectRef ? (
-          <div className="p-8 text-center text-xs text-slate-400">Connect a Supabase project under Connections &amp; Integrations, then select it in the Builder.</div>
+          <div className="flex flex-col items-center gap-3 p-8 text-center text-xs text-slate-400">
+            <p>Connect a Supabase project under Connections &amp; Integrations, then select it in the Builder.</p>
+            <Button type="button" variant="outline" className="border-slate-700 text-slate-200" onClick={() => window.location.assign("/connections")}><ExternalLink className="mr-2 h-3.5 w-3.5" />Open Connections &amp; Integrations</Button>
+          </div>
         ) : (
           <div className="grid min-h-0 grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)]">
             <aside className="max-h-48 overflow-auto border-b border-slate-800 p-3 md:max-h-[70vh] md:border-b-0 md:border-r">
