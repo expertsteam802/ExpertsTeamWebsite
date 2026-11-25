@@ -457,10 +457,19 @@ export async function publishDaytonaProject(
   userId: string,
   storageClient: SupabaseClient<Database>,
   projectEnvironment: Record<string, string> = {},
+  binaryAssets: Array<{ filePath: string; buffer: Buffer; mimeType: string; sha256: string }> = [],
 ) {
   if (!/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(slug)) throw new Error("The public app address is invalid.");
   const entries = Object.entries(sourceFiles);
-  if (!entries.length || entries.some(([filePath]) => !safePreviewPath(filePath))) {
+  const binaryPaths = new Set<string>();
+  for (const asset of binaryAssets) {
+    if (!safePreviewPath(asset.filePath) || binaryPaths.has(asset.filePath) || Object.prototype.hasOwnProperty.call(sourceFiles, asset.filePath)) {
+      throw new Error("The project contains an invalid or duplicate binary asset path: " + asset.filePath);
+    }
+    if (!Buffer.isBuffer(asset.buffer)) throw new Error("A binary project asset is invalid: " + asset.filePath);
+    binaryPaths.add(asset.filePath);
+  }
+  if ((!entries.length && !binaryAssets.length) || entries.some(([filePath]) => !safePreviewPath(filePath))) {
     throw new Error("The project contains no publishable source files or has an invalid file path.");
   }
 
@@ -475,14 +484,23 @@ export async function publishDaytonaProject(
     const oldText = await readText(sandbox, path.join(workdir, PREVIEW_META_FILE));
     let oldManifest: Record<string, string> = {};
     try { oldManifest = oldText ? JSON.parse(oldText) as Record<string, string> : {}; } catch { oldManifest = {}; }
-    const nextManifest = Object.fromEntries(entries.map(([filePath, content]) => [filePath, createHash("sha256").update(content).digest("hex")]));
-    const removed = Object.keys(oldManifest).filter((filePath) => !(filePath in sourceFiles));
+    const binaryByPath = new Map(binaryAssets.map((asset) => [asset.filePath, asset]));
+    const nextManifest = Object.fromEntries([
+      ...entries.map(([filePath, content]) => [filePath, createHash("sha256").update(content).digest("hex")] as const),
+      ...binaryAssets.map((asset) => [asset.filePath, asset.sha256 || createHash("sha256").update(asset.buffer).digest("hex")] as const),
+    ]);
+    const removed = Object.keys(oldManifest).filter((filePath) => !(filePath in nextManifest));
     if (removed.length) await command(sandbox, "rm -rf -- " + removed.map((filePath) => shellQuote(path.join(workdir, filePath))).join(" "), workdir, undefined, 45);
-    const changed = entries.filter(([filePath]) => oldManifest[filePath] !== nextManifest[filePath]);
-    if (changed.length) {
-      const dirs = [...new Set(changed.map(([filePath]) => path.dirname(path.join(workdir, filePath))))];
+    const changedText = entries.filter(([filePath]) => oldManifest[filePath] !== nextManifest[filePath]);
+    const changedBinary = binaryAssets.filter((asset) => oldManifest[asset.filePath] !== nextManifest[asset.filePath]);
+    const changedPaths = [...changedText.map(([filePath]) => filePath), ...changedBinary.map((asset) => asset.filePath)];
+    if (changedPaths.length) {
+      const dirs = [...new Set(changedPaths.map((filePath) => path.dirname(path.join(workdir, filePath))))];
       await command(sandbox, "mkdir -p " + dirs.map(shellQuote).join(" "), workdir, undefined, 30);
-      await uploadFiles(sandbox, changed.map(([filePath, content]) => ({ destination: path.join(workdir, filePath), source: Buffer.from(content, "utf8") })));
+      await uploadFiles(sandbox, [
+        ...changedText.map(([filePath, content]) => ({ destination: path.join(workdir, filePath), source: Buffer.from(content, "utf8") })),
+        ...changedBinary.map((asset) => ({ destination: path.join(workdir, asset.filePath), source: asset.buffer })),
+      ]);
     }
     await sandbox.fs.uploadFile(Buffer.from(JSON.stringify(nextManifest), "utf8"), path.join(workdir, PREVIEW_META_FILE));
 
@@ -529,7 +547,7 @@ export async function publishDaytonaProject(
         .filter(publishableFile);
     } else {
       if (!sourceFiles["index.html"]) throw new Error("Add an index.html file or a package.json build script before publishing.");
-      outputPaths = entries.filter(([filePath]) => publishableFile(filePath)).map(([filePath]) => filePath);
+      outputPaths = [...entries.map(([filePath]) => filePath), ...binaryAssets.map((asset) => asset.filePath)].filter(publishableFile);
     }
 
     if (!outputPaths.length || !outputPaths.includes("index.html")) {
@@ -544,9 +562,10 @@ export async function publishDaytonaProject(
 
     try {
       for (const relativePath of outputPaths) {
+        const binaryAsset = binaryByPath.get(relativePath);
         let buffer = buildScript
           ? await sandbox.fs.downloadFile(path.join(workdir, outputDirectory, relativePath))
-          : Buffer.from(sourceFiles[relativePath] ?? "", "utf8");
+          : binaryAsset?.buffer ?? Buffer.from(sourceFiles[relativePath] ?? "", "utf8");
 
         if (buffer.byteLength > maxFileBytes) {
           throw new Error(relativePath + " exceeds the published-app storage limit of 50 MiB per file.");
