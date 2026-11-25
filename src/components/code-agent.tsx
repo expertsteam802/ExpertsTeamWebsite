@@ -882,6 +882,7 @@ export function CodeAgent() {
   const [savingThumbnailUrl, setSavingThumbnailUrl] = useState(false);
   const [panelMotionPhase, setPanelMotionPhase] = useState(0);
   const [runtimeStatus, setRuntimeStatus] = useState("Not started");
+  const [previewAssetDataUrls, setPreviewAssetDataUrls] = useState<Record<string, string>>({});
   const [terminalReady, setTerminalReady] = useState(false);
   const [showConnectionCinematic, setShowConnectionCinematic] = useState(false);
   const [connectionProgress, setConnectionProgress] = useState(0);
@@ -997,7 +998,7 @@ export function CodeAgent() {
       );
     });
 
-  const srcDoc = useMemo(() => buildSrcDocWithConsole(files), [files]);
+  const srcDoc = useMemo(() => buildSrcDocWithConsole(files, previewAssetDataUrls), [files, previewAssetDataUrls]);
   useEffect(() => {
     agentChatEndRef.current?.scrollIntoView({ behavior: busy ? "auto" : "smooth", block: "end" });
   }, [messages, busy]);
@@ -2312,6 +2313,33 @@ export function CodeAgent() {
     }
   }
 
+  async function loadPreviewAssetDataUrls(): Promise<Record<string, string>> {
+    if (!projectId || !user) return {};
+    const { data: assets, error } = await supabase
+      .from("agent_project_assets")
+      .select("file_path,storage_path,mime_type,size_bytes")
+      .eq("project_id", projectId)
+      .eq("user_id", user.id);
+    if (error) throw new Error("Could not load preview assets: " + error.message);
+    const totalBytes = (assets ?? []).reduce((sum, asset) => sum + Number(asset.size_bytes || 0), 0);
+    if (totalBytes > 15_000_000) throw new Error("This browser-only preview has more than 15 MB of binary assets. Use the Run action with a server preview for this project.");
+    const urls: Record<string, string> = {};
+    for (const asset of assets ?? []) {
+      const { data: blob, error: downloadError } = await supabase.storage
+        .from("builder-project-assets")
+        .download(asset.storage_path);
+      if (downloadError || !blob) throw new Error("Could not load preview asset " + asset.file_path + ".");
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      let binary = "";
+      for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length)));
+      }
+      urls[asset.file_path.replace(/^\\.\\//, "").replace(/^\\/+/, "")] =
+        "data:" + (asset.mime_type || "application/octet-stream") + ";base64," + btoa(binary);
+    }
+    return urls;
+  }
+
   async function runProject() {
     const packageManifest = (() => {
       try { return JSON.parse(files["package.json"] ?? "{}") as { scripts?: Record<string, string> }; }
@@ -2333,6 +2361,12 @@ export function CodeAgent() {
             const message = error instanceof Error ? error.message : "The previous Daytona preview could not be stopped.";
             setLogs((current) => [...current.slice(-199), { type: "warn", message }]);
           }
+        }
+        try {
+          setPreviewAssetDataUrls(await loadPreviewAssetDataUrls());
+        } catch (error) {
+          setPreviewAssetDataUrls({});
+          toast.warning(error instanceof Error ? error.message : "Some binary assets could not be loaded into the browser preview.");
         }
         switchPanel("preview");
         setRuntimeUrl(null);
@@ -2395,6 +2429,7 @@ export function CodeAgent() {
     if (projectId && runtimeUrl) void stopPreview({ data: { projectId } }).catch(() => undefined);
     // Keep the user-scoped terminal connection alive while the project folder changes.
     setRuntimeUrl(null);
+    setPreviewAssetDataUrls({});
     setPreviewAddress("");
     setRuntimeStatus("Not started");
     runtimeFilesRef.current = {};
