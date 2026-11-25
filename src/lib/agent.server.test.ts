@@ -62,7 +62,6 @@ test("Agent chat forwards attached visual references to ExpertAI", async () => {
 });
 
 test("ExpertAI anonymous gateway receives a larger output budget and returns normalized text", async () => {
-  delete process.env["GROQ_API_KEY"];
   let requestBody: { model?: string; max_tokens?: number } | undefined;
   let authorization: string | null = null;
   globalThis.fetch = (async (url, init) => {
