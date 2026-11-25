@@ -93,6 +93,7 @@ import {
   startAgentTerminal,
   stopAgentTerminal,
   syncAgentTerminalFiles,
+  syncAgentTerminalWorkspace,
   refreshAgentTerminal,
   startAgentPreview,
   stopAgentPreview,
@@ -528,6 +529,7 @@ export function CodeAgent() {
   const connectTerminal = useServerFn(startAgentTerminal);
   const stopTerminal = useServerFn(stopAgentTerminal);
   const syncTerminalFiles = useServerFn(syncAgentTerminalFiles);
+  const syncTerminalWorkspace = useServerFn(syncAgentTerminalWorkspace);
   const refreshTerminal = useServerFn(refreshAgentTerminal);
   const stopPreview = useServerFn(stopAgentPreview);
   const { data: terminalIdleTimeoutMinutes = 0 } = useQuery({
@@ -916,6 +918,8 @@ export function CodeAgent() {
   const terminalSocketRef = useRef<WebSocket | null>(null);
   const terminalLastActivityRef = useRef(Date.now());
   const terminalRecoveryFilesRef = useRef<ProjectFiles>(files);
+  const terminalSyncedFilesRef = useRef<ProjectFiles>({});
+  const terminalSyncPausedRef = useRef(false);
   const terminalSessionClosingRef = useRef(new Set<string>());
   const xtermRef = useRef<XTerm | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
@@ -1424,85 +1428,9 @@ export function CodeAgent() {
   }, [syncTerminalFiles, stopTerminal, terminalConnection?.sandboxName, terminalConnection?.projectId, user?.id]);
 
 
-  // Persist each generated file separately as soon as it appears or changes
-  // in the Daytona project directory. This is intentionally file-by-file,
-  // not one large upload after the CLI has finished its entire task.
-  useEffect(() => {
-    const session = terminalConnection;
-    if (!busy || !session || session.projectId !== projectId || !user?.id) return;
-    let active = true;
-    let saving = false;
-    let lastSaveError = "";
-    const saveSnapshot = async () => {
-      if (!active || saving) return;
-      saving = true;
-      try {
-        const snapshot = await syncTerminalFiles({
-          data: { projectId: session.projectId, sandboxName: session.sandboxName },
-        });
-        if (!active) return;
-
-        const persisted: ProjectFiles = { ...terminalRecoveryFilesRef.current };
-        const changedPaths = Object.keys(snapshot.files).filter(
-          (filePath) => persisted[filePath] !== snapshot.files[filePath],
-        );
-        const deletedPaths = Object.keys(persisted).filter(
-          (filePath) => !(filePath in snapshot.files),
-        );
-
-        // Commit each newly written/updated file individually. If a later
-        // write fails, earlier files are already safely stored in the project.
-        for (const filePath of changedPaths) {
-          if (!active) return;
-          const nextFiles: ProjectFiles = {
-            ...persisted,
-            [filePath]: String(snapshot.files[filePath]),
-          };
-          await saveProjectFile(session.projectId, user.id, filePath, String(snapshot.files[filePath]));
-          Object.assign(persisted, { [filePath]: String(snapshot.files[filePath]) });
-          terminalRecoveryFilesRef.current = { ...persisted };
-        }
-
-        // Mirror deletions one at a time so removed files do not reappear
-        // when the project is reopened.
-        for (const filePath of deletedPaths) {
-          if (!active) return;
-          delete persisted[filePath];
-          await deleteProjectFile(session.projectId, filePath);
-          terminalRecoveryFilesRef.current = { ...persisted };
-        }
-
-        if (changedPaths.length || deletedPaths.length) {
-          const { error: touchError } = await supabase.from("agent_projects")
-            .update({ updated_at: new Date().toISOString() })
-            .eq("id", session.projectId).eq("user_id", user.id);
-          if (touchError) throw touchError;
-        }
-
-        lastSaveError = "";
-        if (active && (changedPaths.length || deletedPaths.length) && projectId === session.projectId) {
-          setFiles({ ...snapshot.files });
-          setDirty(false);
-        }
-      } catch (error) {
-        // Retry on the next poll and surface a single warning instead of silently
-        // losing the user's confidence that generated files are being saved.
-        const message = error instanceof Error ? error.message : "Automatic file saving failed.";
-        if (active && message !== lastSaveError) {
-          lastSaveError = message;
-          setLogs((current) => [...current.slice(-199), { type: "warn", message: "Auto-save will retry: " + message }]);
-        }
-      } finally {
-        saving = false;
-      }
-    };
-    const timer = window.setInterval(() => void saveSnapshot(), 1200);
-    void saveSnapshot();
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
-  }, [busy, terminalConnection?.sandboxName, terminalConnection?.projectId, projectId, user?.id, syncTerminalFiles]);
+  // Agent builds run through the server-side Kilo gateway. Do not pull the
+  // terminal's older snapshot while that independent request is updating the
+  // canonical saved project; persist() pushes those changes into Daytona.
 
   // Keep the Daytona sandbox's idle timer refreshed while its terminal is open.
   // If the browser disappears unexpectedly, Daytona still auto-stops the workspace.
@@ -1800,6 +1728,8 @@ export function CodeAgent() {
             data: { projectId: terminalConnection.projectId, sandboxName: terminalConnection.sandboxName },
           });
           nextFiles = synced.files;
+          terminalSyncedFilesRef.current = { ...synced.files };
+          terminalSyncPausedRef.current = false;
         } catch {
           // Keep the last saved editor contents; the server will retry workspace startup.
         }
@@ -1809,6 +1739,8 @@ export function CodeAgent() {
         data: { projectId: activeProjectId, username: terminalUsername, cli: selectedCli },
       });
       setTerminalConnection({ ...connection, projectId: activeProjectId, cli: selectedCli });
+      terminalSyncedFilesRef.current = { ...nextFiles };
+      terminalSyncPausedRef.current = false;
       setConnectionProgress(100);
       setShowConnectionCinematic(false);
       setRuntimeStatus("CLI connected");
@@ -2016,6 +1948,17 @@ export function CodeAgent() {
         }
       }
 
+      if (binaryFiles.length && terminalConnection?.projectId === activeProjectId) {
+        try {
+          await syncTerminalWorkspace({ data: { projectId: activeProjectId, sandboxName: terminalConnection.sandboxName } });
+          terminalSyncedFilesRef.current = { ...nextFiles };
+          terminalSyncPausedRef.current = false;
+        } catch (error) {
+          terminalSyncPausedRef.current = true;
+          const message = error instanceof Error ? error.message : "Could not sync imported assets to the terminal.";
+          setLogs((current) => [...current.slice(-199), { type: "warn", message: "Imported files are saved, but the terminal needs reconnecting: " + message }]);
+        }
+      }
       setFiles(nextFiles);
       setActiveFile(Object.keys(nextFiles).find((path) => !Object.prototype.hasOwnProperty.call(files, path)) ?? Object.keys(nextFiles)[0] ?? "index.html");
       setDirty(false);
@@ -2736,6 +2679,20 @@ export function CodeAgent() {
         .eq("user_id", user.id);
       if (error) throw error;
       await saveProjectFiles(activeProjectId, user.id, filesToSave);
+      if (
+        terminalConnection?.projectId === activeProjectId &&
+        JSON.stringify(terminalSyncedFilesRef.current) !== JSON.stringify(filesToSave)
+      ) {
+        try {
+          await syncTerminalWorkspace({ data: { projectId: activeProjectId, sandboxName: terminalConnection.sandboxName } });
+          terminalSyncedFilesRef.current = { ...filesToSave };
+          terminalSyncPausedRef.current = false;
+        } catch (error) {
+          terminalSyncPausedRef.current = true;
+          const message = error instanceof Error ? error.message : "Could not sync saved files to the terminal.";
+          setLogs((current) => [...current.slice(-199), { type: "warn", message: "Project files are saved in ExpertsTeam, but the terminal sync needs reconnecting: " + message }]);
+        }
+      }
       await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] });
       if (JSON.stringify(terminalRecoveryFilesRef.current) === JSON.stringify(filesToSave)) {
         setDirty(false);
@@ -2843,7 +2800,7 @@ export function CodeAgent() {
   // Keep files edited by Kilo/OpenCode in the terminal reflected in the editor
   // and saved project record. Manual editor changes take priority while dirty.
   useEffect(() => {
-    if (!terminalReady || !projectId || !user || busy || dirty) return;
+    if (!terminalReady || !projectId || !user || busy || dirty || terminalSyncPausedRef.current) return;
     let cancelled = false;
     let syncing = false;
     const timer = window.setInterval(async () => {
@@ -2859,6 +2816,7 @@ export function CodeAgent() {
           Object.entries(importedFiles).some(([path, content]) => files[path] !== content);
         if (!changed) return;
         await saveProjectFiles(projectId, user.id, importedFiles);
+        terminalSyncedFilesRef.current = { ...importedFiles };
         const { error } = await supabase.from("agent_projects")
           .update({ updated_at: new Date().toISOString() })
           .eq("id", projectId).eq("user_id", user.id);
