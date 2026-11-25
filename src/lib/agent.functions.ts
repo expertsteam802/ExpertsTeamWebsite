@@ -625,7 +625,7 @@ export const listGitHubRepositories = createServerFn({ method: "POST" })
 
 const githubRepoInput = z.object({
   projectId: z.string().uuid(),
-  repo: z.string().trim().regex(/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/),
+  repo: z.string().trim().refine((value) => { const parts = value.split("/"); return parts.length === 2 && parts.every((part) => /^[A-Za-z0-9_.-]{1,100}$/.test(part)); }, "Use owner/repository."),
   branch: z.string().trim().min(1).max(255).optional(),
 });
 
@@ -712,7 +712,7 @@ export const listProjectGithubBranches = createServerFn({ method: "POST" })
 export const createProjectGithubBranch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => z.object({
-    projectId: z.string().uuid(), repo: z.string().trim().regex(/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/),
+    projectId: z.string().uuid(), repo: z.string().trim().refine((value) => { const parts = value.split("/"); return parts.length === 2 && parts.every((part) => /^[A-Za-z0-9_.-]{1,100}$/.test(part)); }, "Use owner/repository."),
     branch: z.string().trim().min(1).max(255), fromBranch: z.string().trim().min(1).max(255).optional(),
   }).parse(input))
   .handler(async ({ data, context }) => {
