@@ -3800,7 +3800,7 @@ export function CodeAgent() {
         </div>
       )}
       <ProjectEnvironmentPanel projectId={projectId} open={environmentPanelOpen} onOpenChange={setEnvironmentPanelOpen} />
-      <SupabaseDatabasePanel projectRef={databaseProjectRef} open={databasePanelOpen} onOpenChange={setDatabasePanelOpen} projectId={projectId} projectFiles={files} onMigrationApplied={async (sql) => {
+      <SupabaseDatabasePanel projectRef={databaseProjectRef} open={databasePanelOpen} onOpenChange={setDatabasePanelOpen} onOpenEnvironment={() => setEnvironmentPanelOpen(true)} projectId={projectId} projectFiles={files} onMigrationApplied={async (sql) => {
         const timestamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
         const filePath = "supabase/migrations/" + timestamp + "_expert_ai_migration.sql";
         const nextFiles = { ...files, [filePath]: sql.trim() + "\n" };
@@ -3887,7 +3887,7 @@ export function CodeAgent() {
         </div>
         <div className="et-studio-header-actions relative z-20 flex shrink-0 items-center justify-end gap-1.5 whitespace-nowrap">
           <Button type="button" size="sm" variant="outline" onClick={() => setCreditsOfferwallOpen(true)} className="h-8 border-amber-300/25 bg-amber-300/[0.08] px-3 text-[10px] font-semibold text-amber-100 hover:bg-amber-300/[0.14]" title="Earn free AI credits"><Coins className="mr-1 h-3.5 w-3.5" />{displayedCredits} · Earn Free</Button>
-          <Button type="button" size="sm" variant="outline" onClick={() => setEnvironmentPanelOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700"><Settings2 className="mr-1.5 h-3.5 w-3.5" />DB &amp; Auth</Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => setDatabasePanelOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700"><Settings2 className="mr-1.5 h-3.5 w-3.5" />DB &amp; Auth</Button>
           <Button type="button" size="sm" variant="outline" onClick={() => setGithubOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700"><Github className="mr-1.5 h-3.5 w-3.5" />GitHub</Button>
           <Button type="button" size="sm" onClick={() => setDeploymentOpen(true)} className="h-8 bg-blue-600 px-3 text-[11px] font-semibold text-white hover:bg-blue-500"><ExternalLink className="mr-1.5 h-3.5 w-3.5" />Deploy ↑</Button>
           <Dialog open={deploymentOpen} onOpenChange={setDeploymentOpen}>
