@@ -1,2 +1,3 @@
-- AI credentials are read only inside authenticated server-function handlers and passed explicitly to Gemini helpers; never use VITE-prefixed private keys or browser storage.
+- ExpertsTeam Agent Studio uses the Kilo Gateway as its only AI provider. The anonymous free model is `kilo-auto/free`; do not add provider fallbacks or expose private credentials in browser code.
+- Keep all AI gateway requests on the server. Never expose service-role keys or other private credentials through VITE-prefixed variables or browser storage.
 - The managed Lovable Cloud connection and generated integration files remain platform-owned; do not overwrite them to redirect the project to another database.
