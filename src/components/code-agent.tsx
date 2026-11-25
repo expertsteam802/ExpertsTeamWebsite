@@ -719,6 +719,8 @@ export function CodeAgent() {
   const [creditsOfferwallOpen, setCreditsOfferwallOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "error">("saved");
+  const [autoSaveRetryCount, setAutoSaveRetryCount] = useState(0);
+  const lastAutoSaveErrorRef = useRef("");
   const [runtimeBusy, setRuntimeBusy] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [previewExpanded, setPreviewExpanded] = useState(false);
@@ -1902,7 +1904,7 @@ export function CodeAgent() {
       }
       const path = safePath(relativePath);
       if (!path) { skipped += 1; continue; }
-    const textLike = file.type.startsWith("text/") || /\.(?:[cm]?[jt]sx?|json|css|scss|html?|md|mdx|xml|ya?ml|toml|ini|py|java|c|h|cpp|cs|go|rs|php|sql|sh|bat|ps1|svg|txt|env\.example)$/i.test(path);
+      const textLike = file.type.startsWith("text/") || /\.(?:[cm]?[jt]sx?|json|css|scss|html?|md|mdx|xml|ya?ml|toml|ini|py|java|c|h|cpp|cs|go|rs|php|sql|sh|bat|ps1|svg|txt|env\.example)$/i.test(path);
       try {
         if (textLike) {
           nextFiles[path] = await file.text();
@@ -3021,19 +3023,27 @@ export function CodeAgent() {
     onError: (error: Error) => toast.error(error.message),
   });
   useEffect(() => {
-    if (!dirty || busy || !user || autoSaveStatus === "saving" || autoSaveStatus === "error") return;
+    if (!dirty || busy || !user || autoSaveStatus === "saving") return;
+    const retryDelay = autoSaveStatus === "error" ? Math.min(30_000, 3_000 * 2 ** Math.min(autoSaveRetryCount, 4)) : 1_200;
     const timeout = window.setTimeout(async () => {
       setAutoSaveStatus("saving");
       try {
         await persist();
         setAutoSaveStatus("saved");
+        setAutoSaveRetryCount(0);
+        lastAutoSaveErrorRef.current = "";
       } catch (error) {
         setAutoSaveStatus("error");
-        toast.error(error instanceof Error ? "Auto-save failed: " + error.message : "Auto-save failed. Your changes are still in this workspace.");
+        setAutoSaveRetryCount((count) => count + 1);
+        const message = error instanceof Error ? error.message : "Your changes are still in this workspace.";
+        if (lastAutoSaveErrorRef.current !== message) {
+          lastAutoSaveErrorRef.current = message;
+          toast.error("Auto-save failed: " + message + " Retrying automatically.");
+        }
       }
-    }, 1200);
+    }, retryDelay);
     return () => window.clearTimeout(timeout);
-  }, [dirty, busy, user?.id, projectId, files, messages, name, cloudConnectionId, autoSaveStatus, persist]);
+  }, [dirty, busy, user?.id, projectId, files, messages, name, cloudConnectionId, autoSaveStatus, autoSaveRetryCount, persist]);
   useEffect(() => {
     const handleWorkspaceShortcut = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
