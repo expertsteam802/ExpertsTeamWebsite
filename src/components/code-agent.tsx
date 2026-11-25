@@ -3639,20 +3639,30 @@ export function CodeAgent() {
     try {
       // Ordinary conversation must never create a checkpoint, touch files, or start a terminal.
       if (modeOverride === "build" && !isAgentBuildRequest(text) && !/^\/(fix|refactor|seo|responsive|test|docs|svg|auth|api|pwa|payments)\b/i.test(text) && referenceImages.length === 0) {
-        const result = await runCodeAgent({
-          data: {
-            mode: "chat",
-            modelTier,
-            groundPackages,
-            prompt: agentPrompt,
-            files,
-            history: messages.slice(-8).map((message) => ({ ...message, content: message.content.slice(-3000) })),
-            referenceImages,
-          },
-        });
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 30_000);
+        let result: { reply: string; updatedFiles: Record<string, string | null> };
+        try {
+          const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+          if (sessionError || !sessionData.session?.access_token) throw new Error("API Error (401): Your session is missing or expired. Sign in again.");
+          const response = await fetch("/api/ai/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: "Bearer " + sessionData.session.access_token },
+            body: JSON.stringify({ prompt: agentPrompt, modelTier, files, history: messages.slice(-8).map((message) => ({ ...message, content: message.content.slice(-3000) })) }),
+            signal: controller.signal,
+          });
+          const payload = await response.json().catch(() => ({})) as { reply?: string; updatedFiles?: Record<string, string | null>; error?: string };
+          if (!response.ok) throw new Error("API Error (" + response.status + "): " + (payload.error || response.statusText || "Request failed"));
+          if (!payload.reply || typeof payload.reply !== "string") throw new Error("API Error (500): Invalid chat response.");
+          result = { reply: payload.reply, updatedFiles: payload.updatedFiles ?? {} };
+        } catch (error) {
+          if (controller.signal.aborted) throw new Error("ExpertAI timed out after 30 seconds. Please try again.");
+          if (error instanceof TypeError) throw new Error("Could not reach /api/ai/chat. Check your connection and try again.");
+          throw error;
+        } finally { window.clearTimeout(timeoutId); }
         if (requestId !== agentRequestIdRef.current) return;
         setReferenceImages([]);
-        const finalMessages: Message[] = [...nextMessages, { role: "assistant", content: result.message }];
+        const finalMessages: Message[] = [...nextMessages, { role: "assistant", content: result.reply }];
         setMessages(finalMessages);
         setTypingMessageIndex(finalMessages.length - 1);
         // Render the reply immediately. Conversation persistence must never keep
