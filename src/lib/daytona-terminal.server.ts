@@ -786,6 +786,56 @@ export async function startDaytonaProjectTerminal(
   }
 }
 
+export async function writeDaytonaProjectFiles(
+  name: string,
+  sourceFiles: AgentProjectFiles,
+  binaryAssets: AgentProjectBinaryAsset[] = [],
+) {
+  const textEntries = Object.entries(sourceFiles);
+  const binaryByPath = new Map<string, AgentProjectBinaryAsset>();
+  for (const asset of binaryAssets) {
+    if (!safePreviewPath(asset.filePath) || binaryByPath.has(asset.filePath) || Object.prototype.hasOwnProperty.call(sourceFiles, asset.filePath)) {
+      throw new Error("The project contains an invalid or duplicate file path: " + asset.filePath);
+    }
+    binaryByPath.set(asset.filePath, asset);
+  }
+  if ([...textEntries.map(([filePath]) => filePath), ...binaryByPath.keys()].some((filePath) => !safePreviewPath(filePath))) {
+    throw new Error("The project contains a file path that cannot be synchronized to the terminal.");
+  }
+  const { api } = client();
+  const sandbox = await findSandboxByName(api, name);
+  if (!sandbox) throw new Error("Your connected Daytona terminal workspace could not be found. Reconnect the Terminal before syncing changes.");
+  if (["stopped", "archived"].includes(String(sandbox.state ?? "").toLowerCase())) await sandbox.start(120);
+  const workdir = await workspacePath(sandbox);
+  const previousText = await readText(sandbox, path.join(workdir, META_FILE));
+  let previousManifest: Record<string, string> = {};
+  try { previousManifest = previousText ? JSON.parse(previousText) as Record<string, string> : {}; } catch { previousManifest = {}; }
+  const textManifest = Object.fromEntries(textEntries.map(([filePath, content]) => [
+    filePath, createHash("sha256").update(content).digest("hex"),
+  ]));
+  const binaryManifest = Object.fromEntries(binaryAssets.map((asset) => [
+    asset.filePath, asset.sha256 || createHash("sha256").update(asset.buffer).digest("hex"),
+  ]));
+  const nextManifest = { ...textManifest, ...binaryManifest };
+  const removed = Object.keys(previousManifest).filter((filePath) => !(filePath in nextManifest));
+  if (removed.length) {
+    await command(sandbox, "rm -rf -- " + removed.map((filePath) => shellQuote(path.join(workdir, filePath))).join(" "), workdir, undefined, 60);
+  }
+  const changedText = textEntries.filter(([filePath]) => previousManifest[filePath] !== nextManifest[filePath]);
+  const changedBinary = binaryAssets.filter((asset) => previousManifest[asset.filePath] !== nextManifest[asset.filePath]);
+  const changedPaths = [...changedText.map(([filePath]) => filePath), ...changedBinary.map((asset) => asset.filePath)];
+  if (changedPaths.length) {
+    const directories = [...new Set(changedPaths.map((filePath) => path.dirname(path.join(workdir, filePath))))];
+    await command(sandbox, "mkdir -p " + directories.map(shellQuote).join(" "), workdir, undefined, 30);
+    await uploadFiles(sandbox, [
+      ...changedText.map(([filePath, content]) => ({ destination: path.join(workdir, filePath), source: Buffer.from(content, "utf8") })),
+      ...changedBinary.map((asset) => ({ destination: path.join(workdir, asset.filePath), source: asset.buffer })),
+    ]);
+  }
+  await sandbox.fs.uploadFile(Buffer.from(JSON.stringify(nextManifest), "utf8"), path.join(workdir, META_FILE));
+  return { syncedFiles: Object.keys(nextManifest).length, changedFiles: changedPaths.length, removedFiles: removed.length };
+}
+
 export async function stopDaytonaProjectTerminal(name: string) {
   const { api } = client();
   const sandbox = await findSandboxByName(api, name);
