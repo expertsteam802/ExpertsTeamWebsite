@@ -105,7 +105,7 @@ function Index() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [resolvePublishedHost]);
 
   const { data: videos } = useQuery({
     queryKey: ["videos", "featured"],
