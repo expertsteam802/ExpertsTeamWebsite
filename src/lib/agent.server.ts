@@ -405,6 +405,10 @@ export async function runAgent(
       }
 
       if (parsed.complete && candidate?.finishReason !== "MAX_TOKENS") {
+        if (!Object.keys(completedFiles).length) {
+          lastFailure = "Kilo marked the build complete but returned no file changes.";
+          continue;
+        }
         const lockNote = blockedLockedFiles.size
           ? " AI changes were skipped for locked files: " + [...blockedLockedFiles].join(", ") + "."
           : "";
@@ -443,7 +447,7 @@ export async function runAgent(
       ? "AI providers could not produce complete files. " +
           lastFailure +
           " Your existing files were not replaced."
-      : "AI did not return any complete files. Your existing files were not replaced.",
+      : "Kilo did not return any complete files. Your existing files were not replaced.",
   );
 }
 
