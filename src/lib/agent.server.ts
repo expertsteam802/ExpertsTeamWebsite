@@ -415,7 +415,7 @@ export async function runAgent(
       }
       lastFailure = error instanceof Error ? error.message : String(error);
       // Quota/auth failures will not improve by repeating the same request.
-      if (/rate limit|free access is unavailable|HTTP 401|HTTP 402|HTTP 403|does not support image input/i.test(lastFailure)) {
+      if (/rate limit|temporarily busy|temporarily unavailable|HTTP 429|free access is unavailable|HTTP 401|HTTP 402|HTTP 403|does not support image input/i.test(lastFailure)) {
         throw new Error(lastFailure);
       }
     }
@@ -432,7 +432,7 @@ export async function runAgent(
   }
   throw new Error(
     lastFailure
-      ? "AI providers could not produce complete files. " +
+      ? "Kilo Gateway could not produce complete files. " +
           lastFailure +
           " Your existing files were not replaced."
       : "ExpertAI did not return any complete files. Your existing files were not replaced.",
