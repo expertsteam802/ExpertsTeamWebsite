@@ -59,13 +59,8 @@ export const Route = createFileRoute("/api/ai/chat")({
           if (roleError) {
             return Response.json({ error: "Could not verify your account permissions." }, { status: 500 });
           }
-          const modelName = parsed.data.modelTier === "architect"
-            ? process.env["KILO_ARCHITECT_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free"
-            : parsed.data.modelTier === "balanced"
-              ? process.env["KILO_BALANCED_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free"
-              : process.env["KILO_FAST_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free";
-          const creditCost = modelName === "kilo-auto/free"
-            ? 1 : parsed.data.modelTier === "architect" ? 3 : parsed.data.modelTier === "balanced" ? 2 : 1;
+          const creditCost = parsed.data.modelTier === "architect" ? 3
+            : parsed.data.modelTier === "balanced" ? 2 : 1;
           if (!isAdmin && Number(profile.ai_credits ?? 0) < creditCost) {
             return Response.json({ error: `This model requires ${creditCost} AI credits. Earn credits or choose Fast.` }, { status: 402 });
           }
@@ -86,7 +81,9 @@ export const Route = createFileRoute("/api/ai/chat")({
           console.error("[ExpertAI chat API] Request failed:", error);
           const rawMessage = error instanceof Error ? error.message : "ExpertAI could not complete your request.";
           const message = rawMessage.replace(/Kilo(?: Gateway)?/gi, "ExpertAI");
-          return Response.json({ error: message }, { status: 500 });
+                    const status = /rate limit|temporarily busy|temporarily unavailable|not configured/i.test(message) ? 503
+            : /timeout|timed out|abort/i.test(message) ? 504 : 500;
+          return Response.json({ error: message }, { status });
         }
       },
     },
