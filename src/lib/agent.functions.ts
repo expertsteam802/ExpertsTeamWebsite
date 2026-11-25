@@ -641,7 +641,7 @@ function validateGitBranchName(branch: string) {
   return branch;
 }
 
-async function githubApiRequest(token: string, path: string, init: RequestInit = {}) {
+async function githubApiRequest<T extends object = Record<string, unknown>>(token: string, path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch("https://api.github.com" + path, {
     ...init,
     headers: {
@@ -659,7 +659,7 @@ async function githubApiRequest(token: string, path: string, init: RequestInit =
     const message = typeof body.message === "string" ? body.message : "GitHub API request failed.";
     throw new Error("GitHub " + response.status + ": " + message.slice(0, 500));
   }
-  return body;
+  return body as T;
 }
 
 export const getProjectGithubLink = createServerFn({ method: "POST" })
@@ -682,10 +682,10 @@ export const linkProjectGithubRepository = createServerFn({ method: "POST" })
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
     const token = await resolveGitHubAccessToken(context.supabase, context.userId, "");
     const [owner, name] = data.repo.split("/");
-    const repository = await githubApiRequest(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!));
+    const repository = await githubApiRequest<{ default_branch?: string }>(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!));
     const defaultBranch = typeof repository.default_branch === "string" ? repository.default_branch : "main";
     const activeBranch = validateGitBranchName(data.branch?.trim() || defaultBranch);
-    const branch = await githubApiRequest(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!) + "/branches/" + encodeURIComponent(activeBranch));
+    const branch = await githubApiRequest<{ commit?: { sha?: string } }>(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!) + "/branches/" + encodeURIComponent(activeBranch));
     const sha = branch.commit?.sha ?? null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = context.supabase as any;
@@ -705,8 +705,7 @@ export const listProjectGithubBranches = createServerFn({ method: "POST" })
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
     const token = await resolveGitHubAccessToken(context.supabase, context.userId, "");
     const [owner, name] = data.repo.split("/");
-    const rows = await githubApiRequest(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!) + "/branches?per_page=100");
-    const branchRows = Array.isArray(rows) ? rows as Array<{ name?: string; commit?: { sha?: string }; protected?: boolean }> : [];
+    const branchRows = await githubApiRequest<Array<{ name?: string; commit?: { sha?: string }; protected?: boolean }>>(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!) + "/branches?per_page=100");
     return branchRows.map((row) => ({
       name: String(row.name ?? ""), sha: String(row.commit?.sha ?? ""),
       protected: Boolean(row.protected),
@@ -724,11 +723,11 @@ export const createProjectGithubBranch = createServerFn({ method: "POST" })
     const token = await resolveGitHubAccessToken(context.supabase, context.userId, "");
     const branch = validateGitBranchName(data.branch);
     const [owner, name] = data.repo.split("/");
-    const repoInfo = await githubApiRequest(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!));
+    const repoInfo = await githubApiRequest<{ default_branch?: string }>(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!));
     const defaultBranch = String(repoInfo.default_branch || "main");
     const baseBranch = validateGitBranchName(data.fromBranch?.trim() || defaultBranch);
-    const base = await githubApiRequest(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!) + "/branches/" + encodeURIComponent(baseBranch));
-    const created = await githubApiRequest(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!) + "/git/refs", {
+    const base = await githubApiRequest<{ commit: { sha: string } }>(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!) + "/branches/" + encodeURIComponent(baseBranch));
+    const created = await githubApiRequest<{ object?: { sha?: string } }>(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!) + "/git/refs", {
       method: "POST", body: JSON.stringify({ ref: "refs/heads/" + branch, sha: base.commit.sha }),
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
