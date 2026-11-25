@@ -4902,9 +4902,39 @@ export function CodeAgent() {
               )}
             </section>
 
+            <style>{`
+              .et-agent-chat-v2{display:flex!important;flex-direction:column!important;min-width:320px!important;min-height:0!important;overflow:hidden!important;background:#0b1220!important;border-left:1px solid #263449!important}
+              .et-agent-chat-v2>.et-agent-chat-header{height:58px!important;min-height:58px!important;padding:0 16px!important;background:linear-gradient(105deg,#111d30,#101827)!important;border-bottom:1px solid #263449!important}
+              .et-agent-chat-v2>.et-agent-chat-header p:first-child{font-size:13px!important;letter-spacing:-.01em}
+              .et-agent-chat-feed{display:flex!important;flex:1 1 0!important;flex-direction:column!important;gap:16px!important;min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain!important;padding:22px 16px!important;background:radial-gradient(ellipse at 50% 0%,rgba(37,99,235,.08),transparent 55%),#0b1220!important;scrollbar-gutter:stable}
+              .et-agent-chat-feed>div:first-child:has(p){width:100%;max-width:460px;margin:auto;padding:28px 20px!important;border:1px solid #263449;border-radius:20px;background:linear-gradient(145deg,rgba(30,41,59,.5),rgba(15,23,42,.25))}
+              .et-agent-chat-feed>div:first-child:has(p)>div:first-child{width:52px;height:52px;border-radius:16px;background:rgba(59,130,246,.14)!important;color:#93c5fd!important}
+              .et-agent-chat-feed>div:first-child:has(p)>p:first-of-type{font-size:19px!important;font-weight:650;letter-spacing:-.04em;color:#f8fafc!important}
+              .et-agent-chat-feed>div:first-child:has(p)>p:nth-of-type(2){font-size:12px!important;line-height:1.7;color:#94a3b8!important}
+              .et-agent-chat-feed>div:first-child:has(p) button{border-color:#334155!important;background:#111d30!important;color:#cbd5e1!important;font-size:11px!important;transition:all .15s ease}
+              .et-agent-chat-feed>div:first-child:has(p) button:hover{border-color:#60a5fa!important;background:#1d3556!important;color:#eff6ff!important}
+              .et-agent-message-row{width:100%;animation:etAgentMessageIn .18s ease-out both}
+              .et-agent-message{max-width:min(92%,620px)!important;padding:12px 15px!important;border-radius:16px!important;font-size:13px!important;line-height:1.75!important;box-shadow:0 6px 24px rgba(0,0,0,.12)}
+              .et-agent-message-user{background:linear-gradient(135deg,#1d4ed8,#2563eb)!important;color:#fff!important;border:1px solid rgba(147,197,253,.25)!important;border-bottom-right-radius:5px!important}
+              .et-agent-message-assistant{background:#121d2d!important;border:1px solid #29384d!important;color:#e2e8f0!important;border-bottom-left-radius:5px!important}
+              .et-agent-message-error{background:rgba(127,29,29,.2)!important;border:1px solid rgba(248,113,113,.3)!important;color:#fecaca!important}
+              .et-agent-message>div:first-child{font-size:9px!important;letter-spacing:.12em;color:#93a4ba!important}
+              .et-agent-chat-composer{padding:12px 14px 14px!important;background:#0e1726!important;border-top:1px solid #263449!important}
+              .et-agent-chat-composer form{padding:10px!important;border-radius:15px!important;border:1px solid #34445b!important;background:#0a1220!important;box-shadow:0 10px 35px rgba(0,0,0,.22)!important}
+              .et-agent-chat-composer textarea{min-height:76px!important;max-height:180px!important;padding:12px 54px 12px 12px!important;font-size:13px!important;line-height:1.6!important;color:#f1f5f9!important}
+              .et-agent-chat-composer textarea::placeholder{color:#64748b!important}
+              .et-agent-chat-composer form:focus-within{border-color:#3b82f6!important;box-shadow:0 0 0 3px rgba(59,130,246,.1)!important}
+              .et-agent-chat-composer form>div:last-child{gap:7px!important;padding-top:10px!important}
+              .et-agent-chat-composer form>div:last-child button,.et-agent-chat-composer form>div:last-child label{min-height:32px!important;border-radius:9px!important}
+              .et-agent-chat-composer form button:disabled{opacity:.38!important}
+              .et-agent-chat-composer>p{color:#64748b!important}
+              @keyframes etAgentMessageIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+              @media(max-width:767px){.et-agent-chat-v2{min-width:0!important;width:auto!important;max-width:none!important;top:56px!important;bottom:104px!important;left:8px!important;right:8px!important;height:auto!important;border-radius:16px!important}.et-agent-chat-feed{padding:16px 12px!important}.et-agent-message{max-width:96%!important}.et-agent-chat-composer{padding:10px!important}.et-agent-chat-composer form>div:last-child{max-height:110px;overflow-y:auto}}
+              @media(prefers-reduced-motion:reduce){.et-agent-message-row{animation:none!important}}
+            `}</style>
             {/* AI panel */}
-            <aside className={`${assistantOpen ? "flex" : "hidden"} expert-agent-assistant expert-agent-assistant-drawer min-h-0 min-w-0 flex-col overflow-hidden border-t border-white/[0.08] bg-[#080f1b] xl:border-l xl:border-t-0`}>
-              <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/[0.08] px-4">
+            <aside className={`${assistantOpen ? "flex" : "hidden"} expert-agent-assistant expert-agent-assistant-drawer et-agent-chat-v2 min-h-0 min-w-0 flex-col overflow-hidden border-t border-white/[0.08] bg-[#080f1b] xl:border-l xl:border-t-0`}>
+              <div className="et-agent-chat-header flex h-12 shrink-0 items-center justify-between border-b border-white/[0.08] px-4">
                 <div className="flex min-w-0 items-center gap-2">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400/20 to-blue-500/20 text-cyan-200">
                     <Sparkles className="h-4 w-4" />
@@ -4922,7 +4952,7 @@ export function CodeAgent() {
               <div className="hidden" aria-hidden="true" />
               {agentPanelMode === "chat" ? (
                 <>
-                  <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-live="polite">
+                  <div className="et-agent-chat-feed min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-live="polite" aria-label="Conversation">
                     {messages.length === 0 ? (
                       <div className="flex h-full min-h-[220px] flex-col items-center justify-center px-5 text-center">
                         <div className="mb-4 grid h-12 w-12 place-items-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10 text-cyan-200"><Sparkles className="h-6 w-6" /></div>
@@ -4933,9 +4963,9 @@ export function CodeAgent() {
                         </div>
                       </div>
                     ) : messages.map((message, index) => (
-                      <div key={`${message.role}-${index}-${message.content}`} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                      <div key={`${message.role}-${index}-${message.content}`} className={`et-agent-message-row flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                         <div
-                          className={`max-w-[94%] rounded-2xl px-3.5 py-3 text-xs leading-6 ${message.role === "user" ? "rounded-br-md bg-cyan-400/15 text-cyan-50" : message.error ? "rounded-bl-md border border-red-400/40 bg-red-500/10 text-red-100" : "rounded-bl-md border border-white/[0.07] bg-white/[0.035] text-slate-200"}`}
+                          className={`et-agent-message max-w-[94%] rounded-2xl px-3.5 py-3 text-xs leading-6 ${message.role === "user" ? "et-agent-message-user rounded-br-md bg-cyan-400/15 text-cyan-50" : message.error ? "et-agent-message-error rounded-bl-md border border-red-400/40 bg-red-500/10 text-red-100" : "et-agent-message-assistant rounded-bl-md border border-white/[0.07] bg-white/[0.035] text-slate-200"}`}
                         >
                           <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-slate-500">{message.role === "user" ? "You" : "ExpertsTeam Agent"}</div>
                           <p className="whitespace-pre-wrap break-words"><TypewriterText text={message.content} animate={message.role === "assistant" && typingMessageIndex === index} onComplete={() => setTypingMessageIndex((current) => current === index ? null : current)} /></p>
@@ -5015,7 +5045,7 @@ export function CodeAgent() {
                     <div ref={agentChatEndRef} />
                   </div>
                   {referenceImages.length > 0 && <div className="flex shrink-0 flex-wrap gap-2 border-t border-white/[0.06] px-3 pt-2">{referenceImages.map((image) => <span key={image.name} className="rounded-md bg-white/5 px-2 py-1 text-[10px] text-slate-300">{image.name}</span>)}</div>}
-                  <div className="shrink-0 border-t border-white/[0.08] bg-[#0a1422] p-3 px-3">
+                  <div className="et-agent-chat-composer shrink-0 border-t border-white/[0.08] bg-[#0a1422] p-3 px-3">
                     {displayedCredits < 3 && !isAdmin && (
                       <div className="mb-2 flex items-center justify-between gap-3 rounded-lg border border-amber-300/20 bg-amber-300/[0.06] px-3 py-2">
                         <span className="min-w-0 text-[10px] leading-4 text-amber-100/90">Low balance · {displayedCredits} AI credits left. Earn more with partner offers.</span>
