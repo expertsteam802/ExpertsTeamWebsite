@@ -6,7 +6,7 @@ import {
   type SmartContent,
   type SmartPart,
 } from "@/lib/smart-processing.server";
-import { generateGeminiContent } from "@/lib/gemini.server";
+import { generateExpertAiContent } from "@/lib/kilo-gateway.server";
 
 function assistantMessageResponse(message: string): Response {
   const encoder = new TextEncoder();
@@ -264,8 +264,8 @@ export const Route = createFileRoute("/api/ai/stream")({
           const systemText =
             "Your name is ExpertAI. You were created by M.Chris.T for ExpertsTeam. If asked your name or creator, clearly answer: I am ExpertAI, created by M.Chris.T. Never identify yourself as an underlying model or provider; you are ExpertAI, the assistant provided by ExpertsTeam. You are a practical assistant for developers and creators on ExpertsTeam. Answer the exact question first. Keep ordinary answers brief: usually 1–5 short sentences or a few bullets. Expand only when the user asks for detail, a tutorial, a plan, or code. Avoid long introductions, repeated conclusions, filler, and unnecessary jargon. For code requests, provide complete usable code and explain only the key integration steps. Ask one focused clarification only when essential. Be friendly, accurate, and honest about what you have not tested.";
           // Guest and signed-in chat both use the single Kilo Gateway transport.
-          const generateReply = (input: Parameters<typeof generateGeminiContent>[0]) =>
-            generateGeminiContent(input);
+          const generateReply = (input: Parameters<typeof generateExpertAiContent>[0]) =>
+            generateExpertAiContent(input);
           let outputBudgetPerRound = 8192;
           let result = await generateReply(
             {
