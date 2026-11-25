@@ -523,6 +523,10 @@ export async function pushToGithub({
     .replaceAll("__DEFAULT_BRANCH__", branch)
     .replaceAll("__REPOSITORY__", repository);
 
+  const manifestPath = ".github/.experts-manifest.json";
+  const managedPaths = [...new Set([...Object.keys(allFiles), ...binaryAssets.map((asset) => asset.path)])].sort();
+  allFiles[manifestPath] = JSON.stringify({ version: 1, files: managedPaths }, null, 2);
+
   const entries: Array<{ filePath: string; content?: string; buffer?: Buffer }> = [
     ...Object.entries(allFiles).map(([filePath, content]) => ({ filePath, content })),
     ...binaryAssets.map((asset) => ({ filePath: asset.path, buffer: asset.buffer })),
@@ -554,9 +558,38 @@ export async function pushToGithub({
     throw new Error(`GitHub could not read branch ${branch} (${refResponse.status}).`);
   }
 
+  // Remove only paths previously managed by ExpertsTeam. Untracked repository files are preserved.
+  const previousManifestResponse = await fetch(
+    repoApi + "/contents/.github/.experts-manifest.json?ref=" + encodeURIComponent(branch),
+    { headers },
+  );
+  const deletedPaths: string[] = [];
+  if (previousManifestResponse.ok) {
+    const previousManifest = (await previousManifestResponse.json()) as { content?: string; encoding?: string };
+    if (!previousManifest.content || previousManifest.encoding !== "base64") {
+      throw new Error("The existing ExpertsTeam GitHub manifest could not be read safely; no repository files were changed.");
+    }
+    let previousPaths: unknown;
+    try {
+      const decoded = Buffer.from(previousManifest.content.replace(/\s/g, ""), "base64").toString("utf8");
+      const parsed = JSON.parse(decoded) as { version?: number; files?: unknown };
+      if (parsed.version !== 1 || !Array.isArray(parsed.files)) throw new Error("Invalid manifest version.");
+      previousPaths = parsed.files;
+    } catch {
+      throw new Error("The existing ExpertsTeam GitHub manifest is invalid; no repository files were changed.");
+    }
+    const nextPathSet = new Set(managedPaths);
+    deletedPaths.push(...(previousPaths as unknown[]).filter(
+      (value): value is string => typeof value === "string" && value !== manifestPath &&
+        isSafeProjectPath(value) && !isSensitiveProjectPath(value) && !nextPathSet.has(value),
+    ));
+  } else if (previousManifestResponse.status !== 404) {
+    throw new Error("GitHub could not read the previous project manifest (" + previousManifestResponse.status + ").");
+  }
+
   // Upload blobs in bounded concurrency, then publish one Git tree + commit.
   // This avoids two Contents API calls per file and handles much larger trees.
-  const treeEntries: { path: string; mode: "100644"; type: "blob"; sha: string }[] = [];
+  const treeEntries: { path: string; mode: "100644"; type: "blob"; sha: string | null }[] = [];
   for (let offset = 0; offset < entries.length; offset += 6) {
     const batch = entries.slice(offset, offset + 6);
     const blobs = await Promise.all(batch.map(async (entry) => {
@@ -572,6 +605,7 @@ export async function pushToGithub({
     }));
     treeEntries.push(...blobs);
   }
+  for (const filePath of deletedPaths) treeEntries.push({ path: filePath, mode: "100644", type: "blob", sha: null });
 
   const treePayload: { base_tree?: string; tree: typeof treeEntries } = { tree: treeEntries };
   if (baseTree) treePayload.base_tree = baseTree;
