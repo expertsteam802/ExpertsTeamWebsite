@@ -613,10 +613,10 @@ export async function pushToGithub({
   };
 }
 
-const PAGES_WORKFLOW = `name: Deploy to GitHub Pages
+const PAGES_WORKFLOW = \`name: Deploy to GitHub Pages
 on:
   push:
-    branches: [main]
+    branches: ["__DEFAULT_BRANCH__"]
   workflow_dispatch:
 
 permissions:
@@ -636,13 +636,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: actions/configure-pages@v5
+      - name: Build the project
+        shell: bash
+        run: |
+          mkdir -p _site
+          if [ -f package.json ]; then
+            if [ -f package-lock.json ]; then npm ci; else npm install; fi
+            if node -e "const p=require('./package.json');process.exit(p.scripts?.build?0:1)"; then
+              if node -e "const p=require('./package.json');process.exit(p.dependencies?.vite||p.devDependencies?.vite?0:1)"; then
+                npm run build -- --base="/__REPOSITORY__/"
+              else
+                npm run build
+              fi
+              if [ -d dist ]; then cp -R dist/. _site/
+              elif [ -d build ]; then cp -R build/. _site/
+              elif [ -d out ]; then cp -R out/. _site/
+              else echo "Build completed but no dist, build, or out directory exists."; exit 1; fi
+            else
+              rsync -a --exclude=.git --exclude=.github --exclude=node_modules --exclude=_site . _site/
+            fi
+          else
+            rsync -a --exclude=.git --exclude=.github --exclude=_site . _site/
+          fi
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: "."
+          path: "_site"
       - id: deployment
         uses: actions/deploy-pages@v4
-`;
+\`;
 
 
 /** Low-cost, no-user-credit runtime repair. Returns only changed existing files. */
