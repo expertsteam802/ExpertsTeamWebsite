@@ -66,7 +66,7 @@ test("ExpertAI anonymous gateway receives a larger output budget and returns nor
     contents: [{ role: "user", parts: [{ text: "Say hello." }] }],
     generationConfig: { maxOutputTokens: 8192 },
   });
-  assert.equal(requestBody?.model, "openai/gpt-oss-120b");
+  assert.equal(requestBody?.model, "kilo-auto/free");
   assert.equal(requestBody?.max_tokens, 8192);
   assert.equal(authorization, null);
   assert.equal(response.candidates?.[0]?.content?.parts?.[0]?.text, "Hello from ExpertAI");
@@ -148,7 +148,7 @@ test("coding agent sends 8192 output tokens to ExpertAI and returns complete fil
   }) as typeof fetch;
 
   const result = await runAgent(input);
-  assert.equal(model, "openai/gpt-oss-120b");
+  assert.equal(model, "kilo-auto/free");
   assert.equal(outputBudget, 8192);
   assert.equal(result.files["index.html"], "<h1>Game</h1>");
 });
