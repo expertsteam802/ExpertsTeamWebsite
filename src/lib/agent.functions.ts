@@ -65,14 +65,8 @@ export const runCodingAgent = createServerFn({ method: "POST" })
       _role: "admin",
     });
     if (roleError) throw new Error(roleError.message);
-    const tierModel = data.modelTier === "architect"
-      ? process.env["KILO_ARCHITECT_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free"
-      : data.modelTier === "balanced"
-        ? process.env["KILO_BALANCED_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free"
-        : process.env["KILO_FAST_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free";
-    const creditCost = tierModel === "kilo-auto/free"
-      ? 1
-      : data.modelTier === "architect" ? 3 : data.modelTier === "balanced" ? 2 : 1;
+    const creditCost = data.modelTier === "architect" ? 3
+      : data.modelTier === "balanced" ? 2 : 1;
     if (!isAdmin && profile.ai_credits < creditCost)
       throw new Error(
         `This model requires ${creditCost} AI credits. Earn more credits from partner offers or choose Fast.`,
