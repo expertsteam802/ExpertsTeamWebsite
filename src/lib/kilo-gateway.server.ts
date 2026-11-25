@@ -49,7 +49,7 @@ function toMessages(request: GatewayRequest): GatewayMessage[] {
 export async function generateExpertAiContent(request: GatewayRequest): Promise<GatewayResponse> {
   const activeRequest = compactSmartRequest(request);
   const body: Record<string, unknown> = {
-    model: process.env["KILO_GATEWAY_MODEL"]?.trim() || DEFAULT_KILO_MODEL,
+    model: DEFAULT_KILO_MODEL,
     messages: toMessages(activeRequest),
     max_tokens: Math.min(request.generationConfig?.maxOutputTokens ?? 4096, 16384),
   };
