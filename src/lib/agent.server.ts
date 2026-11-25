@@ -916,6 +916,6 @@ export async function runAgentPlan(
     ?.filter((part) => !part.thought)
     .map((part) => part.text ?? "")
     .join("").trim();
-  if (!message) throw new Error("Kilo could not produce an implementation plan.");
+  if (!message) throw new Error("ExpertAI could not produce an implementation plan. Please try again.");
   return { message, files: {} as Record<string, string | null>, mode: "plan" as const };
 }
