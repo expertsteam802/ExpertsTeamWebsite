@@ -46,18 +46,18 @@ export function buildSrcDoc(files: ProjectFiles, assetDataUrls: Record<string, s
   );
   const resolveAsset = (reference: string): string | undefined => {
     const value = reference.trim();
-    if (!value || /^(?:[a-z][a-z0-9+.-]*:|\\/\\/|#)/i.test(value)) return undefined;
+    if (!value || /^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(value)) return undefined;
     const pathOnly = value.split(/[?#]/, 1)[0] ?? "";
-    const normalized = pathOnly.replace(/^\\.\\//, "").replace(/^\\/+/, "");
+    const normalized = pathOnly.replace(/^\.?\//, "").replace(/^\/+/, "");
     let decoded = normalized;
     try { decoded = decodeURIComponent(normalized); } catch { /* keep the original path */ }
     return assetDataUrls[decoded] ?? assetDataUrls[normalized];
   };
-  html = html.replace(/\\b(src|href|poster)=(["'])([^"']+)\\2/gi, (match, attribute: string, quote: string, reference: string) => {
+  html = html.replace(/\b(src|href|poster)=(["'])([^"']+)\2/gi, (match, attribute: string, quote: string, reference: string) => {
     const resolved = resolveAsset(reference);
     return resolved ? attribute + "=" + quote + resolved + quote : match;
   });
-  html = html.replace(/url\\(\\s*(["']?)([^"')]+)\\1\\s*\\)/gi, (match, quote: string, reference: string) => {
+  html = html.replace(/url\(\s*(["']?)([^"')]+)\1\s*\)/gi, (match, quote: string, reference: string) => {
     const resolved = resolveAsset(reference);
     return resolved ? 'url("' + resolved + '")' : match;
   });
