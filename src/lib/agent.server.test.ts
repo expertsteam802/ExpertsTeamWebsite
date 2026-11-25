@@ -6,11 +6,8 @@ import { generateExpertAiContent } from "./kilo-gateway.server";
 import { compactSmartContents, estimateSmartTokens } from "./smart-processing.server";
 
 const originalFetch = globalThis.fetch;
-const originalEnv = {};
 afterEach(() => {
   globalThis.fetch = originalFetch;
-  delete process.env["GROQ_API_KEY"];
-  delete process.env["OPENROUTER_API_KEY"];
 });
 
 const input = { prompt: "Build a game", files: {}, history: [] };
