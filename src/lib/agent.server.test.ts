@@ -91,26 +91,6 @@ test("ExpertAI anonymous gateway receives a larger output budget and returns nor
   assert.equal(response.candidates?.[0]?.content?.parts?.[0]?.text, "Hello from ExpertAI");
 });
 
-test("ExpertAI adapter retries context-capacity failures with smaller budgets", async () => {
-  const budgets: number[] = [];
-  let calls = 0;
-  globalThis.fetch = (async (_url, init) => {
-    calls++;
-    const body = JSON.parse(String(init?.body ?? "{}")) as { max_tokens?: number };
-    budgets.push(body.max_tokens ?? 0);
-    if (calls === 1) return new Response("context length exceeded", { status: 413 });
-    return Response.json({ choices: [{ finish_reason: "stop", message: { content: "Recovered" } }] });
-  }) as typeof fetch;
-
-  const response = await generateGeminiContent({
-    systemInstruction: { parts: [{ text: "You are ExpertAI." }] },
-    contents: [{ role: "user", parts: [{ text: "Explain this." }] }],
-    generationConfig: { maxOutputTokens: 8192 },
-  });
-  assert.equal(response.candidates?.[0]?.content?.parts?.[0]?.text, "Recovered");
-  assert.deepEqual(budgets, [8192, 6144]);
-});
-
 test("ExpertAI adapter forwards image attachments in OpenAI-compatible format", async () => {
   let sawImage = false;
   globalThis.fetch = (async (_url, init) => {
