@@ -6,17 +6,22 @@ import { generateGeminiContent } from "./gemini.server";
 import { compactSmartContents, estimateSmartTokens } from "./smart-processing.server";
 
 const originalFetch = globalThis.fetch;
+process.env["GROQ_API_KEY"] = "groq-test-key";
 const originalEnv = {
-  key: process.env["KILO_API_KEY"],
-  base: process.env["KILO_API_BASE_URL"],
-  model: process.env["KILO_MODEL"],
+  key: process.env["GROQ_API_KEY"],
+  base: process.env["GROQ_API_BASE_URL"],
+  model: process.env["GROQ_MODEL"],
+  groqKey: process.env["GROQ_API_KEY"],
+  groqModel: process.env["GROQ_MODEL"],
 };
 afterEach(() => {
   globalThis.fetch = originalFetch;
   for (const [key, value] of Object.entries({
-    KILO_API_KEY: originalEnv.key,
-    KILO_API_BASE_URL: originalEnv.base,
-    KILO_MODEL: originalEnv.model,
+    GROQ_API_KEY: originalEnv.key,
+    GROQ_API_BASE_URL: originalEnv.base,
+    GROQ_MODEL: originalEnv.model,
+    GROQ_API_KEY: originalEnv.groqKey,
+    GROQ_MODEL: originalEnv.groqModel,
   })) {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
@@ -38,7 +43,7 @@ test("agent creates a minimal stylesheet when an imported CSS entry is missing",
   assert.match(files["src/index.css"] ?? "", /box-sizing: border-box/);
 });
 
-test("Agent chat forwards attached visual references to Kilo", async () => {
+test("Agent chat forwards attached visual references to ExpertAI", async () => {
   let sawImage = false;
   globalThis.fetch = (async (_url, init) => {
     const body = JSON.parse(String(init?.body ?? "{}")) as {
@@ -62,8 +67,8 @@ test("Agent chat forwards attached visual references to Kilo", async () => {
   assert.equal(sawImage, true);
 });
 
-test("Kilo anonymous gateway receives a larger output budget and returns normalized text", async () => {
-  delete process.env["KILO_API_KEY"];
+test("ExpertAI anonymous gateway receives a larger output budget and returns normalized text", async () => {
+  delete process.env["GROQ_API_KEY"];
   let requestBody: { model?: string; max_tokens?: number } | undefined;
   let authorization: string | null = null;
   globalThis.fetch = (async (url, init) => {
@@ -80,13 +85,13 @@ test("Kilo anonymous gateway receives a larger output budget and returns normali
     contents: [{ role: "user", parts: [{ text: "Say hello." }] }],
     generationConfig: { maxOutputTokens: 8192 },
   });
-  assert.equal(requestBody?.model, "kilo-auto/free");
+  assert.equal(requestBody?.model, "openai/gpt-oss-120b");
   assert.equal(requestBody?.max_tokens, 8192);
   assert.equal(authorization, null);
   assert.equal(response.candidates?.[0]?.content?.parts?.[0]?.text, "Hello from ExpertAI");
 });
 
-test("Kilo adapter retries context-capacity failures with smaller budgets", async () => {
+test("ExpertAI adapter retries context-capacity failures with smaller budgets", async () => {
   const budgets: number[] = [];
   let calls = 0;
   globalThis.fetch = (async (_url, init) => {
@@ -106,7 +111,7 @@ test("Kilo adapter retries context-capacity failures with smaller budgets", asyn
   assert.deepEqual(budgets, [8192, 6144]);
 });
 
-test("Kilo adapter forwards image attachments in OpenAI-compatible format", async () => {
+test("ExpertAI adapter forwards image attachments in OpenAI-compatible format", async () => {
   let sawImage = false;
   globalThis.fetch = (async (_url, init) => {
     const body = JSON.parse(String(init?.body ?? "{}")) as {
@@ -130,7 +135,7 @@ test("Kilo adapter forwards image attachments in OpenAI-compatible format", asyn
   assert.equal(sawImage, true);
 });
 
-test("Kilo free-model IP quota is identified separately and fails once", async () => {
+test("ExpertAI free-model IP quota is identified separately and fails once", async () => {
   let calls = 0;
   globalThis.fetch = (async () => {
     calls++;
@@ -141,12 +146,12 @@ test("Kilo free-model IP quota is identified separately and fails once", async (
       systemInstruction: { parts: [{ text: "You are ExpertAI." }] },
       contents: [{ role: "user", parts: [{ text: "Help." }] }],
     }),
-    /shared free-model IP quota/i,
+    /temporarily busy/i,
   );
   assert.equal(calls, 1);
 });
 
-test("Kilo upstream provider 429 is not mislabeled as the shared IP quota", async () => {
+test("ExpertAI upstream provider 429 is not mislabeled as the shared IP quota", async () => {
   globalThis.fetch = (async () =>
     Response.json({ error: { message: "The selected upstream model is temporarily rate limited." } }, { status: 429 })
   ) as typeof fetch;
@@ -155,11 +160,11 @@ test("Kilo upstream provider 429 is not mislabeled as the shared IP quota", asyn
       systemInstruction: { parts: [{ text: "You are ExpertAI." }] },
       contents: [{ role: "user", parts: [{ text: "Help." }] }],
     }),
-    /upstream model provider returned HTTP 429/i,
+    /temporarily busy/i,
   );
 });
 
-test("coding agent sends 8192 output tokens to Kilo and returns complete files", async () => {
+test("coding agent sends 8192 output tokens to ExpertAI and returns complete files", async () => {
   let model = "";
   let outputBudget = 0;
   globalThis.fetch = (async (url, init) => {
@@ -182,12 +187,12 @@ test("coding agent sends 8192 output tokens to Kilo and returns complete files",
   }) as typeof fetch;
 
   const result = await runAgent(input);
-  assert.equal(model, "kilo-auto/free");
+  assert.equal(model, "openai/gpt-oss-120b");
   assert.equal(outputBudget, 8192);
   assert.equal(result.files["index.html"], "<h1>Game</h1>");
 });
 
-test("coding agent stops immediately when Kilo's IP quota is exhausted", async () => {
+test("coding agent stops immediately when ExpertAI's IP quota is exhausted", async () => {
   let calls = 0;
   globalThis.fetch = (async () => {
     calls++;
@@ -237,7 +242,7 @@ test("Smart token estimate is conservative", () => {
   assert.equal(estimateSmartTokens("a".repeat(1000)), 500);
 });
 
-test("Kilo adapter drops unsupported JSON response mode and retries", async () => {
+test("ExpertAI adapter drops unsupported JSON response mode and retries", async () => {
   let calls = 0;
   const sawFormats: boolean[] = [];
   globalThis.fetch = (async (_url, init) => {
