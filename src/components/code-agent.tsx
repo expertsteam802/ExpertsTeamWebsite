@@ -3616,6 +3616,11 @@ export function CodeAgent() {
     }
     const text = (promptOverride ?? prompt).trim();
     if (!text || busy) return;
+
+    // A submitted message must always have a visible conversation surface.
+    // This also reopens the mobile drawer if it was initially closed.
+    setAgentPanelMode("chat");
+    setAssistantOpen(true);
     chatInteractionVersionRef.current += 1;
     const docsCommand = text.match(/^\/docs\s+(.+)$/i);
     const groundPackages = docsCommand ? docsCommand[1]!.split(/[\s,]+/).filter(Boolean).slice(0, 3) : [];
