@@ -3760,7 +3760,7 @@ export function CodeAgent() {
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
     } catch (error) {
       if (requestId !== agentRequestIdRef.current) return;
-      const detail = error instanceof Error ? error.message : "Kilo could not complete that request.";
+      const detail = error instanceof Error ? error.message : "ExpertAI could not complete that request.";
       const failedMessages: Message[] = [
         ...nextMessages,
         { role: "assistant", content: `I couldn't finish that change.\n\n${detail}` },
