@@ -3489,9 +3489,11 @@ export function CodeAgent() {
             prompt: agentPrompt,
             files,
             history: messages.slice(-8).map((message) => ({ ...message, content: message.content.slice(-3000) })),
+            referenceImages,
           },
         });
         if (requestId !== agentRequestIdRef.current) return;
+        setReferenceImages([]);
         const finalMessages: Message[] = [...nextMessages, { role: "assistant", content: result.message }];
         setMessages(finalMessages);
         setTypingMessageIndex(finalMessages.length - 1);
