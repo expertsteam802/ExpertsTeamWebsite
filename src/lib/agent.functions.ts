@@ -625,14 +625,14 @@ export const listGitHubRepositories = createServerFn({ method: "POST" })
 
 const githubRepoInput = z.object({
   projectId: z.string().uuid(),
-  repo: z.string().trim().regex(/^[A-Za-z0-9_.-]{1,100}\\/[A-Za-z0-9_.-]{1,100}$/),
+  repo: z.string().trim().regex(/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/),
   branch: z.string().trim().min(1).max(255).optional(),
 });
 
 function validateGitBranchName(branch: string) {
   if (branch.length > 255 || branch.startsWith("/") || branch.endsWith("/") ||
     branch.includes("//") || branch.includes("..") || branch.includes("@{") ||
-    /[ ~^:?*]/.test(branch) || branch.includes("\\\\") ||
+    /[ ~^:?*]/.test(branch) || branch.includes("\\") ||
     Array.from(branch).some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127) ||
     branch.split("/").some((part) => !part || part.startsWith(".") || part.endsWith(".lock"))) {
     throw new Error("The selected GitHub branch name is invalid.");
@@ -697,7 +697,7 @@ export const linkProjectGithubRepository = createServerFn({ method: "POST" })
 
 export const listProjectGithubBranches = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => z.object({ projectId: z.string().uuid(), repo: z.string().trim().regex(/^[A-Za-z0-9_.-]{1,100}\\/[A-Za-z0-9_.-]{1,100}$/) }).parse(input))
+  .validator((input: unknown) => z.object({ projectId: z.string().uuid(), repo: z.string().trim().regex(/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/) }).parse(input))
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
     const token = await resolveGitHubAccessToken(context.supabase, context.userId, "");
@@ -712,7 +712,7 @@ export const listProjectGithubBranches = createServerFn({ method: "POST" })
 export const createProjectGithubBranch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => z.object({
-    projectId: z.string().uuid(), repo: z.string().trim().regex(/^[A-Za-z0-9_.-]{1,100}\\/[A-Za-z0-9_.-]{1,100}$/),
+    projectId: z.string().uuid(), repo: z.string().trim().regex(/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/),
     branch: z.string().trim().min(1).max(255), fromBranch: z.string().trim().min(1).max(255).optional(),
   }).parse(input))
   .handler(async ({ data, context }) => {
@@ -720,7 +720,9 @@ export const createProjectGithubBranch = createServerFn({ method: "POST" })
     const token = await resolveGitHubAccessToken(context.supabase, context.userId, "");
     const branch = validateGitBranchName(data.branch);
     const [owner, name] = data.repo.split("/");
-    const baseBranch = validateGitBranchName(data.fromBranch?.trim() || "main");
+    const repoInfo = await githubApiRequest(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!));
+    const defaultBranch = String(repoInfo.default_branch || "main");
+    const baseBranch = validateGitBranchName(data.fromBranch?.trim() || defaultBranch);
     const base = await githubApiRequest(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!) + "/branches/" + encodeURIComponent(baseBranch));
     const created = await githubApiRequest(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!) + "/git/refs", {
       method: "POST", body: JSON.stringify({ ref: "refs/heads/" + branch, sha: base.commit.sha }),
@@ -728,11 +730,26 @@ export const createProjectGithubBranch = createServerFn({ method: "POST" })
     const db = context.supabase as any;
     const { error } = await db.from("project_repos").upsert({
       project_id: data.projectId, user_id: context.userId, repo_owner: owner, repo_name: name,
-      default_branch: baseBranch, active_branch: branch, last_synced_sha: created.object?.sha ?? base.commit.sha,
+      default_branch: defaultBranch, active_branch: branch, last_synced_sha: created.object?.sha ?? base.commit.sha,
       updated_at: new Date().toISOString(),
     }, { onConflict: "project_id" });
     if (error) throw new Error("Branch created on GitHub, but project link metadata could not be updated.");
     return { branch, sha: created.object?.sha ?? base.commit.sha };
+  });
+
+export const setProjectGithubActiveBranch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ projectId: z.string().uuid(), branch: z.string().trim().min(1).max(255) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const branch = validateGitBranchName(data.branch);
+    const db = context.supabase as any;
+    const { data: updated, error } = await db.from("project_repos")
+      .update({ active_branch: branch, updated_at: new Date().toISOString() })
+      .eq("project_id", data.projectId).eq("user_id", context.userId).select("*").maybeSingle();
+    if (error) throw new Error("Could not switch the linked GitHub branch.");
+    if (!updated) throw new Error("Link a GitHub repository before switching branches.");
+    return updated;
   });
 
 export const setProjectGithubAutoSync = createServerFn({ method: "POST" })
