@@ -6,20 +6,11 @@ import { generateGeminiContent } from "./gemini.server";
 import { compactSmartContents, estimateSmartTokens } from "./smart-processing.server";
 
 const originalFetch = globalThis.fetch;
-process.env["GROQ_API_KEY"] = "groq-test-key";
-const originalEnv = {
-  groqKey: process.env["GROQ_API_KEY"],
-  groqModel: process.env["GROQ_MODEL"],
-};
+const originalEnv = {};
 afterEach(() => {
   globalThis.fetch = originalFetch;
-  for (const [key, value] of Object.entries({
-    GROQ_API_KEY: originalEnv.groqKey,
-    GROQ_MODEL: originalEnv.groqModel,
-  })) {
-    if (value === undefined) delete process.env[key];
-    else process.env[key] = value;
-  }
+  delete process.env["GROQ_API_KEY"];
+  delete process.env["OPENROUTER_API_KEY"];
 });
 
 const input = { prompt: "Build a game", files: {}, history: [] };
