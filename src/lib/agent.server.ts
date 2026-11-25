@@ -291,7 +291,7 @@ export async function runAgent(
     "SELECTED PROJECT SOURCE:",
     ...selected.map(({ name, content }) => "--- " + name + " ---\n" + content),
   ].join("\n\n");
-  // The shared ExpertAI generator selects the configured Groq/OpenRouter route.
+  // The shared ExpertAI generator sends every request through the Kilo Gateway.
   const completedFiles: Record<string, string | null> = {};
   const handoffNotes: string[] = [];
   const blockedLockedFiles = new Set<string>();
