@@ -3477,7 +3477,9 @@ export function CodeAgent() {
       }
 
       activeProjectId = activeProjectId ?? (await persist());
+      if (requestId !== agentRequestIdRef.current) return;
       if (modeOverride === "build") await saveCheckpoint(`Before: ${text.slice(0, 96)}`, activeProjectId);
+      if (requestId !== agentRequestIdRef.current) return;
 
       if (modeOverride === "plan") {
         const result = await runCodeAgent({
@@ -3540,7 +3542,7 @@ export function CodeAgent() {
       setMessages(finalMessages);
       setTypingMessageIndex(finalMessages.length - 1);
       if (changed.length) {
-        setDirty(false);
+        setDirty(true);
         const firstExistingFile = changed.find((path) => updatedFiles[path] !== undefined);
         if (firstExistingFile) {
           setActiveFile(firstExistingFile);
@@ -3561,6 +3563,7 @@ export function CodeAgent() {
       ];
       setMessages(failedMessages);
       setTypingMessageIndex(failedMessages.length - 1);
+      setDirty(true);
       toast.error(detail);
       await persist({ messages: failedMessages }, activeProjectId ?? undefined).catch(() => undefined);
     } finally {
