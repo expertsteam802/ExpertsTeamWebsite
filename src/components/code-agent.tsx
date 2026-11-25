@@ -664,6 +664,9 @@ export function CodeAgent() {
   const busyRef = useRef(busy);
   busyRef.current = busy;
   const agentRequestIdRef = useRef(0);
+  // Incremented synchronously when the user sends a message. An in-flight
+  // automatic project restore must never replace a live conversation.
+  const chatInteractionVersionRef = useRef(0);
   const [panel, setPanel] = useState<Panel>("preview");
   const [splitTerminalOpen, setSplitTerminalOpen] = useState(false);
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile" | "custom">("desktop");
@@ -3611,6 +3614,7 @@ export function CodeAgent() {
     }
     const text = (promptOverride ?? prompt).trim();
     if (!text || busy) return;
+    chatInteractionVersionRef.current += 1;
     const docsCommand = text.match(/^\/docs\s+(.+)$/i);
     const groundPackages = docsCommand ? docsCommand[1]!.split(/[\s,]+/).filter(Boolean).slice(0, 3) : [];
     const expandedPrompt = pinMentionedContext(expandSlashCommand(text));
@@ -3790,6 +3794,9 @@ export function CodeAgent() {
   }
 
   async function openProject(project: ProjectRow) {
+    // If a message is sent while this async restore is in flight, preserve that
+    // conversation instead of replacing it with the older saved message array.
+    const chatVersionAtRestoreStart = chatInteractionVersionRef.current;
     // Prefer independently persisted file rows. Fall back to the legacy JSONB
     // snapshot for projects created before the per-file migration.
     let sourceFiles: ProjectFiles = {};
@@ -3835,7 +3842,9 @@ export function CodeAgent() {
     const latestPlan = [...savedMessages].reverse().find((message) => message.role === "assistant" && message.content.startsWith(planPrefix));
     setPlanDraft(latestPlan ? latestPlan.content.slice(planPrefix.length) : null);
     setAgentMode("build");
-    setMessages(savedMessages);
+    if (chatInteractionVersionRef.current === chatVersionAtRestoreStart) {
+      setMessages(savedMessages);
+    }
     setActiveFile(Object.keys(savedFiles)[0] ?? "index.html");
     setGithubRepo(project.github_repo?.split("/").pop() ?? "");
     setLogs([]);
