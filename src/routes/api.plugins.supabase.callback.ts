@@ -46,7 +46,6 @@ export const Route = createFileRoute("/api/plugins/supabase/callback")({
           refresh_token: token.refresh_token ?? null,
           token_type: token.token_type ?? "bearer",
           scope: token.scope ?? null,
-          scope: token.scope ?? null,
           expires_at: token.expires_in ? Date.now() + token.expires_in * 1000 : null,
         },
       });
