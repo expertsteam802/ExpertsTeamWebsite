@@ -750,11 +750,19 @@ export const setProjectGithubActiveBranch = createServerFn({ method: "POST" })
     const branch = validateGitBranchName(data.branch);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = context.supabase as any;
+    const { data: current, error: currentError } = await db.from("project_repos")
+      .select("repo_owner,repo_name").eq("project_id", data.projectId)
+      .eq("user_id", context.userId).maybeSingle();
+    if (currentError) throw new Error("Could not load the linked GitHub repository.");
+    if (!current) throw new Error("Link a GitHub repository before switching branches.");
+    const token = await resolveGitHubAccessToken(context.supabase, context.userId, "");
+    await githubApiRequest(token, "/repos/" + encodeURIComponent(current.repo_owner) + "/" +
+      encodeURIComponent(current.repo_name) + "/branches/" + encodeURIComponent(branch));
     const { data: updated, error } = await db.from("project_repos")
       .update({ active_branch: branch, updated_at: new Date().toISOString() })
       .eq("project_id", data.projectId).eq("user_id", context.userId).select("*").maybeSingle();
     if (error) throw new Error("Could not switch the linked GitHub branch.");
-    if (!updated) throw new Error("Link a GitHub repository before switching branches.");
+    if (!updated) throw new Error("The project GitHub link was removed before the branch could be switched.");
     return updated;
   });
 
