@@ -458,6 +458,7 @@ export async function pushToGithub({
   binaryAssets = [],
   message,
   branch: requestedBranch,
+  makePrivate = true,
 }: {
   token: string;
   repo: string;
@@ -465,6 +466,7 @@ export async function pushToGithub({
   binaryAssets?: Array<{ path: string; buffer: Buffer }>;
   message: string;
   branch?: string;
+  makePrivate?: boolean;
 }) {
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -502,6 +504,7 @@ export async function pushToGithub({
       method: "POST",
       body: JSON.stringify({
         name: repository,
+        private: makePrivate,
         auto_init: true,
         description: "Built with the ExpertsTeam agent",
       }),
@@ -659,6 +662,7 @@ export async function pushToGithub({
     url: `https://github.com/${owner}/${repository}`,
     pagesUrl: `https://${owner}.github.io/${repository}/`,
     branch,
+    defaultBranch: repoInfo.default_branch || "main",
     commitSha: commit.sha,
     commitUrl: `https://github.com/${owner}/${repository}/commit/${commit.sha}`,
   };

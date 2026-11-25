@@ -671,6 +671,8 @@ export function CodeAgent() {
   const [githubBranch, setGithubBranch] = useState("main");
   const [githubNewBranch, setGithubNewBranch] = useState("");
   const [githubCommitMessage, setGithubCommitMessage] = useState("");
+  const [githubGeneratingMessage, setGithubGeneratingMessage] = useState(false);
+  const [githubPrivate, setGithubPrivate] = useState(true);
   const [githubRepoSearch, setGithubRepoSearch] = useState("");
   const [githubRepositories, setGithubRepositories] = useState<{ fullName: string; private: boolean; url: string; defaultBranch: string }[]>([]);
   const [loadingGithubRepositories, setLoadingGithubRepositories] = useState(false);
@@ -3100,7 +3102,7 @@ export function CodeAgent() {
       const result = await push({
         data: {
           projectId: activeProjectId, token: githubToken, repo: githubRepo,
-          branch: githubBranch.trim() || undefined, message: githubCommitMessage.trim(),
+          branch: githubBranch.trim() || undefined, message: githubCommitMessage.trim(), makePrivate: githubPrivate,
         },
       });
       if (!result.ok) throw new Error(result.error || "GitHub push failed");
@@ -3241,6 +3243,30 @@ export function CodeAgent() {
       toast.error(error instanceof Error ? error.message : "Could not load GitHub repositories.");
     } finally {
       setLoadingGithubRepositories(false);
+    }
+  }
+
+  async function generateGithubCommitMessage() {
+    if (githubGeneratingMessage) return;
+    setGithubGeneratingMessage(true);
+    try {
+      const changed = latestFileDiffs.slice(0, 16).map((diff) =>
+        diff.path + ": " + (diff.before === "" ? "added" : diff.after === "" ? "deleted" : "modified") +
+        "\\nAfter: " + diff.after.slice(0, 900)
+      ).join("\\n\\n");
+      const result = await runCodeAgent({ data: {
+        prompt: "Write one concise Conventional Commit message for these project changes. Return exactly one line, no Markdown or quotes, format type(scope): imperative summary, maximum 72 characters. If the scope is unclear, omit it.\\n\\nChanged files:\\n" +
+          (changed || Object.keys(files).slice(0, 20).join("\\n")),
+        mode: "chat", modelTier: "fast", files, history: [], groundPackages: [],
+      }});
+      const line = result.message.split("\\n").map((value) => value.trim()).find(Boolean)?.replace(/^["'`]+|["'`]+$/g, "");
+      if (!line) throw new Error("The AI did not return a commit message.");
+      setGithubCommitMessage(line.slice(0, 500));
+      toast.success("AI commit message generated.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not generate a commit message.");
+    } finally {
+      setGithubGeneratingMessage(false);
     }
   }
 
@@ -5965,7 +5991,11 @@ export function CodeAgent() {
             </label>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1.5">
-                <Label htmlFor="github-commit-message">Commit message</Label>
+                <div className="flex items-center justify-between gap-2"><Label htmlFor="github-commit-message">Commit message</Label>
+                  <Button type="button" size="sm" variant="outline" className="h-7 border-cyan-400/20 px-2 text-[10px] text-cyan-100" onClick={() => void generateGithubCommitMessage()} disabled={githubGeneratingMessage}>
+                    {githubGeneratingMessage ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Sparkles className="mr-1 h-3 w-3" />}AI Write
+                  </Button>
+                </div>
                 <Input id="github-commit-message" value={githubCommitMessage} onChange={(event) => setGithubCommitMessage(event.target.value)} placeholder="feat: describe your changes" className="border-white/10 bg-white/5" />
               </div>
               <div className="space-y-1.5">
@@ -5974,6 +6004,12 @@ export function CodeAgent() {
               </div>
             </div>
             {githubLink?.last_synced_sha && <p className="text-[10px] text-slate-500">Last synced: {githubLink.last_synced_sha.slice(0, 7)} · {githubLink.active_branch}</p>}
+            <label className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs">
+              <span>New repository visibility</span>
+              <select value={githubPrivate ? "private" : "public"} onChange={(event) => setGithubPrivate(event.target.value === "private")} className="rounded-md border border-white/10 bg-[#0b1320] px-2 py-1 text-xs text-slate-100">
+                <option value="private">Private</option><option value="public">Public</option>
+              </select>
+            </label>
             <Button
               type="button"
               variant="outline"

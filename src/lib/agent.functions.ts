@@ -774,6 +774,7 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
     repo: z.string().trim().regex(/^(?:[A-Za-z0-9._-]{1,100}\/)?[A-Za-z0-9._-]{1,100}$/),
     branch: z.string().trim().min(1).max(255).optional(),
     message: z.string().trim().max(500).optional().default(""),
+    makePrivate: z.boolean().optional().default(true),
   }).parse(input))
   .handler(async ({ data, context }) => {
     const token = await resolveGitHubAccessToken(context.supabase, context.userId, data.token);
@@ -799,13 +800,13 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
       const { pushToGithub } = await import("./agent.server");
       const pushed = await pushToGithub({
         token, repo: data.repo, files, binaryAssets, branch: data.branch,
-        message: data.message || "feat: update project from ExpertsTeam",
+        message: data.message || "feat: update project from ExpertsTeam", makePrivate: data.makePrivate,
       });
       const [owner, repository] = data.repo.split("/");
       const db = context.supabase as any;
       const { error: linkError } = await db.from("project_repos").upsert({
         project_id: data.projectId, user_id: context.userId, repo_owner: owner, repo_name: repository,
-        default_branch: pushed.branch, active_branch: pushed.branch, last_synced_sha: pushed.commitSha,
+        default_branch: pushed.defaultBranch || pushed.branch, active_branch: pushed.branch, last_synced_sha: pushed.commitSha,
         updated_at: new Date().toISOString(),
       }, { onConflict: "project_id" });
       if (linkError) throw new Error("GitHub push succeeded, but sync metadata could not be saved. Refresh repository status before pushing again.");
