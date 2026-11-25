@@ -6,6 +6,42 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+export const resolvePublishedAppHost = createServerFn({ method: "GET" })
+  .validator((input: unknown) => z.object({ host: z.string().trim().min(1).max(253) }).parse(input))
+  .handler(async ({ data }) => {
+    const host = data.host.toLowerCase().replace(/\.$/, "");
+    if (!/^(?=.{1,253}$)[a-z0-9.-]+$/.test(host)) return { slug: null as string | null };
+    const reserved = new Set(["www", "api", "admin", "auth", "mail", "status", "cdn", "assets"]);
+    let slug: string | null = null;
+    const configuredDomain = process.env["PUBLIC_APP_DOMAIN"]?.trim().toLowerCase()
+      .replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (configuredDomain && host.endsWith("." + configuredDomain)) {
+      const candidate = host.slice(0, -(configuredDomain.length + 1));
+      if (!candidate.includes(".") && /^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(candidate) && !reserved.has(candidate)) {
+        slug = candidate;
+      }
+    } else {
+      const { data: domain, error: domainError } = await supabaseAdmin
+        .from("agent_project_domains")
+        .select("slug")
+        .eq("domain", host)
+        .eq("status", "active")
+        .maybeSingle();
+      if (domainError) throw new Error("Could not resolve the published custom domain.");
+      if (typeof domain?.slug === "string") slug = domain.slug;
+    }
+    if (!slug) return { slug: null as string | null };
+    const { data: project, error: projectError } = await supabaseAdmin
+      .from("agent_projects")
+      .select("slug")
+      .eq("slug", slug)
+      .eq("published", true)
+      .limit(1)
+      .maybeSingle();
+    if (projectError) throw new Error("Could not resolve the published application.");
+    return { slug: typeof project?.slug === "string" ? project.slug : null };
+  });
+
 export const setStagingPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => z.object({
