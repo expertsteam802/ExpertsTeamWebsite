@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Database, Download, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { Database, Download, KeyRound, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ export function SupabaseDatabasePanel({
   projectId,
   projectFiles,
   onMigrationApplied,
+  onOpenEnvironment,
 }: {
   projectRef: string | null;
   open: boolean;
@@ -31,6 +32,7 @@ export function SupabaseDatabasePanel({
   projectId: string | null;
   projectFiles: Record<string, string>;
   onMigrationApplied: (sql: string) => Promise<void>;
+  onOpenEnvironment: () => void;
 }) {
   const runDatabase = useServerFn(manageSupabaseDatabase);
   const runAgent = useServerFn(runCodingAgent);
@@ -360,7 +362,7 @@ export function SupabaseDatabasePanel({
         <DialogHeader className="border-b border-slate-800 px-5 py-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <DialogTitle className="flex items-center gap-2"><Database className="h-4 w-4 text-cyan-300" /> Supabase Database</DialogTitle>
-            <div className="flex items-center gap-2"><StorageBucketPanel projectRef={projectRef} /><WebhookTesterPanel /></div>
+            <div className="flex items-center gap-2"><Button type="button" size="sm" variant="outline" className="h-7 border-slate-700 text-[10px]" onClick={onOpenEnvironment}><KeyRound className="mr-1 h-3 w-3" />Environment</Button><StorageBucketPanel projectRef={projectRef} /><WebhookTesterPanel /></div>
           </div>
           <p className="text-[10px] text-slate-500">{projectRef ? "Connected project · " + projectRef : "Select a connected Supabase project in the Builder first."}</p>
         </DialogHeader>
