@@ -590,7 +590,7 @@ export function CodeAgent() {
       const minutes = Number(terminal.idleTimeoutMinutes ?? 0);
       return Number.isInteger(minutes) && minutes >= 0 && minutes <= 1440 ? minutes : 0;
     },
-    refetchInterval: 60_000,
+    refetchInterval: 30_000,
     staleTime: 0,
   });
 
@@ -3086,7 +3086,7 @@ export function CodeAgent() {
   });
   useEffect(() => {
     if (!dirty || busy || !user || autoSaveStatus === "saving") return;
-    const retryDelay = autoSaveStatus === "error" ? Math.min(60_000, 3_000 * 2 ** Math.min(autoSaveRetryCount, 4)) : 1_200;
+    const retryDelay = autoSaveStatus === "error" ? Math.min(30_000, 3_000 * 2 ** Math.min(autoSaveRetryCount, 4)) : 1_200;
     const timeout = window.setTimeout(async () => {
       setAutoSaveStatus("saving");
       try {
