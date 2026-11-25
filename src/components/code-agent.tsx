@@ -3606,7 +3606,9 @@ export function CodeAgent() {
     return /\b(build|create|make|implement|add|remove|delete|fix|change|update|refactor|debug|design|generate|write code|develop|integrate|connect|deploy|publish|test|run|install|upgrade|migrate|optimi[sz]e|redesign|rebuild)\b/i.test(request);
   }
 
-  function handleSendMessage() { void sendPrompt(); }\n\n  async function sendPrompt(modeOverride: "build" | "plan" = agentMode, promptOverride?: string) {
+  function handleSendMessage() { void sendPrompt(); }
+
+  async function sendPrompt(modeOverride: "build" | "plan" = agentMode, promptOverride?: string) {
     if (CODING_AGENT_UNDER_DEVELOPMENT) return;
     if (projectRestoring) {
       toast.info("Your project is still loading. Please send your message when the workspace is ready.");
