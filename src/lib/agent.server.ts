@@ -1,6 +1,6 @@
 import { posix as path } from "node:path";
 
-import { generateGeminiContent } from "./gemini.server";
+import { generateExpertAiContent } from "./kilo-gateway.server";
 
 type AgentInput = {
   prompt: string;
@@ -343,7 +343,7 @@ export async function runAgent(
       "\nDo not claim completion while required screens, files, tests or interactions remain. Never claim tests, builds, runtime behavior, browser verification, or deployment were executed unless an actual tool result in this run proves it. When you only generated or saved source files, say implementation was written and clearly state that runtime verification remains outstanding.";
 
     try {
-      const response = await generateGeminiContent(
+      const response = await generateExpertAiContent(
         {
           systemInstruction: { parts: [{ text: systemPrompt }] },
           generationConfig: { responseMimeType: "application/json", maxOutputTokens: agentOutputBudget },
@@ -765,7 +765,7 @@ export async function runAgentSelfHeal(input: {
     "If the error cannot be confidently fixed from the supplied context, return {\"message\":\"Manual review required\",\"files\":{}}.",
     "Do not claim the repair was tested or verified."
   ].join("\n");
-  const response = await generateGeminiContent({
+  const response = await generateExpertAiContent({
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents: [{ role: "user", parts: [{ text: errorText + "\n\nPROJECT FILES:\n" + context }] }],
     generationConfig: { maxOutputTokens: 3600, responseMimeType: "application/json" },
@@ -817,7 +817,7 @@ export async function runAgentChat(
     "Use the project context only to answer accurately. Never claim that tests, builds, deployments, or commands were run.",
     "Be direct, concise, friendly, and honest. Represent ExpertsTeam as a serious software and AI product company."
   ].join("\n");
-  const response = await generateGeminiContent({
+  const response = await generateExpertAiContent({
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents: [
       ...history.slice(-8).map((message) => ({
@@ -887,7 +887,7 @@ export async function runAgentPlan(
       ],
     },
   ];
-  const response = await generateGeminiContent({
+  const response = await generateExpertAiContent({
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents,
     generationConfig: { maxOutputTokens: 3000 },
