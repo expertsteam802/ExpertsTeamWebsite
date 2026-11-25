@@ -193,7 +193,8 @@ export const importGitHubProject = createServerFn({ method: "POST" })
     if (!githubToken) {
       // Public repositories remain importable without OAuth; use the stored account token for private repositories.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const db = context.supabase as any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = context.supabase as any;
       const { data: connection, error: connectionError } = await db
         .from("user_plugin_connections")
         .select("id")
@@ -653,7 +654,7 @@ async function githubApiRequest(token: string, path: string, init: RequestInit =
     },
     signal: AbortSignal.timeout(20000),
   });
-  const body = await response.json().catch(() => ({})) as Record<string, any>;
+  const body = await response.json().catch(() => ({})) as Record<string, unknown>;
   if (!response.ok) {
     const message = typeof body.message === "string" ? body.message : "GitHub API request failed.";
     throw new Error("GitHub " + response.status + ": " + message.slice(0, 500));
@@ -666,6 +667,7 @@ export const getProjectGithubLink = createServerFn({ method: "POST" })
   .validator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = context.supabase as any;
     const { data: link, error } = await db.from("project_repos").select("*")
       .eq("project_id", data.projectId).eq("user_id", context.userId).maybeSingle();
@@ -685,6 +687,7 @@ export const linkProjectGithubRepository = createServerFn({ method: "POST" })
     const activeBranch = validateGitBranchName(data.branch?.trim() || defaultBranch);
     const branch = await githubApiRequest(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!) + "/branches/" + encodeURIComponent(activeBranch));
     const sha = branch.commit?.sha ?? null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = context.supabase as any;
     const { data: saved, error } = await db.from("project_repos").upsert({
       project_id: data.projectId, user_id: context.userId, repo_owner: owner, repo_name: name,
@@ -703,10 +706,11 @@ export const listProjectGithubBranches = createServerFn({ method: "POST" })
     const token = await resolveGitHubAccessToken(context.supabase, context.userId, "");
     const [owner, name] = data.repo.split("/");
     const rows = await githubApiRequest(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!) + "/branches?per_page=100");
-    return (Array.isArray(rows) ? rows : []).map((row: any) => ({
+    const branchRows = Array.isArray(rows) ? rows as Array<{ name?: string; commit?: { sha?: string }; protected?: boolean }> : [];
+    return branchRows.map((row) => ({
       name: String(row.name ?? ""), sha: String(row.commit?.sha ?? ""),
       protected: Boolean(row.protected),
-    })).filter((row: any) => row.name);
+    })).filter((row) => row.name);
   });
 
 export const createProjectGithubBranch = createServerFn({ method: "POST" })
@@ -727,6 +731,7 @@ export const createProjectGithubBranch = createServerFn({ method: "POST" })
     const created = await githubApiRequest(token, "/repos/" + encodeURIComponent(owner!) + "/" + encodeURIComponent(name!) + "/git/refs", {
       method: "POST", body: JSON.stringify({ ref: "refs/heads/" + branch, sha: base.commit.sha }),
     });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = context.supabase as any;
     const { error } = await db.from("project_repos").upsert({
       project_id: data.projectId, user_id: context.userId, repo_owner: owner, repo_name: name,
@@ -743,6 +748,7 @@ export const setProjectGithubActiveBranch = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
     const branch = validateGitBranchName(data.branch);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = context.supabase as any;
     const { data: updated, error } = await db.from("project_repos")
       .update({ active_branch: branch, updated_at: new Date().toISOString() })
@@ -757,6 +763,7 @@ export const setProjectGithubAutoSync = createServerFn({ method: "POST" })
   .validator((input: unknown) => z.object({ projectId: z.string().uuid(), enabled: z.boolean() }).parse(input))
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = context.supabase as any;
     const { data: updated, error } = await db.from("project_repos")
       .update({ auto_sync_enabled: data.enabled, updated_at: new Date().toISOString() })
@@ -803,7 +810,8 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
         message: data.message || "feat: update project from ExpertsTeam", makePrivate: data.makePrivate,
       });
       const [owner, repository] = data.repo.split("/");
-      const db = context.supabase as any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = context.supabase as any;
       const { error: linkError } = await db.from("project_repos").upsert({
         project_id: data.projectId, user_id: context.userId, repo_owner: owner, repo_name: repository,
         default_branch: pushed.defaultBranch || pushed.branch, active_branch: pushed.branch, last_synced_sha: pushed.commitSha,
