@@ -66,7 +66,7 @@ export async function generateOpenRouterContent(request: GeminiRequest): Promise
   ];
 
   if (!providers.length) {
-    throw new Error("ExpertAI is not configured yet. Add GROQ_API_KEY or OPENROUTER_API_KEY to the server environment.");
+    throw new Error("ExpertAI guest service is temporarily unavailable. Please try again later.");
   }
 
   let lastError = "No AI route could complete the request.";
