@@ -575,7 +575,7 @@ export function CodeAgent() {
   const [projectId, setProjectId] = useState<string | null>(null);
   const { data: githubLink, refetch: refetchGithubLink } = useQuery({
     queryKey: ["project-github-link", projectId],
-    enabled: Boolean(projectId && githubOpen && githubPluginConnection),
+    enabled: Boolean(projectId && githubPluginConnection),
     queryFn: async () => getGithubLink({ data: { projectId: projectId! } }),
     staleTime: 15_000,
   });
@@ -3252,14 +3252,14 @@ export function CodeAgent() {
     try {
       const changed = latestFileDiffs.slice(0, 16).map((diff) =>
         diff.path + ": " + (diff.before === "" ? "added" : diff.after === "" ? "deleted" : "modified") +
-        "\\nAfter: " + diff.after.slice(0, 900)
-      ).join("\\n\\n");
+        "\nAfter: " + diff.after.slice(0, 900)
+      ).join("\n\n");
       const result = await runCodeAgent({ data: {
-        prompt: "Write one concise Conventional Commit message for these project changes. Return exactly one line, no Markdown or quotes, format type(scope): imperative summary, maximum 72 characters. If the scope is unclear, omit it.\\n\\nChanged files:\\n" +
-          (changed || Object.keys(files).slice(0, 20).join("\\n")),
+        prompt: "Write one concise Conventional Commit message for these project changes. Return exactly one line, no Markdown or quotes, format type(scope): imperative summary, maximum 72 characters. If the scope is unclear, omit it.\n\nChanged files:\n" +
+          (changed || Object.keys(files).slice(0, 20).join("\n")),
         mode: "chat", modelTier: "fast", files, history: [], groundPackages: [],
       }});
-      const line = result.message.split("\\n").map((value) => value.trim()).find(Boolean)?.replace(/^["'`]+|["'`]+$/g, "");
+      const line = result.message.split("\n").map((value) => value.trim()).find(Boolean)?.replace(/^["'`]+|["'`]+$/g, "");
       if (!line) throw new Error("The AI did not return a commit message.");
       setGithubCommitMessage(line.slice(0, 500));
       toast.success("AI commit message generated.");
@@ -3671,6 +3671,22 @@ export function CodeAgent() {
       // Persist the complete resulting project tree and conversation before
       // reporting success, so Explorer, editor and preview share saved files.
       await persist({ files: updatedFiles, messages: finalMessages }, activeProjectId);
+      if (changed.length && activeProjectId && githubPluginConnection && githubLink?.auto_sync_enabled) {
+        try {
+          const sync = await push({ data: {
+            projectId: activeProjectId,
+            repo: githubLink.repo_owner + "/" + githubLink.repo_name,
+            branch: githubLink.active_branch,
+            message: "feat: sync AI workspace changes",
+            makePrivate: true,
+          }});
+          if (!sync.ok) throw new Error(sync.error || "GitHub auto-sync failed.");
+          await queryClient.invalidateQueries({ queryKey: ["project-github-link", activeProjectId] });
+          toast.success("AI changes synced to GitHub · " + sync.commitSha.slice(0, 7));
+        } catch (syncError) {
+          toast.warning("Your AI changes are saved in ExpertsTeam, but GitHub auto-sync failed: " + (syncError instanceof Error ? syncError.message : "unknown error"));
+        }
+      }
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
     } catch (error) {
       if (requestId !== agentRequestIdRef.current) return;
