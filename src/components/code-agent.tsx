@@ -2320,20 +2320,34 @@ export function CodeAgent() {
     const hasRuntimeScript = Boolean(packageManifest.scripts?.dev || packageManifest.scripts?.start);
     const hasHtmlEntry = Boolean(files["index.html"] || Object.keys(files).some((filePath) => filePath.toLowerCase().endsWith(".html")));
 
+    if (runtimeBusy) return;
+
     // Plain HTML/CSS/JS runs from srcDoc with no cloud VM or sandbox allocation.
     if (hasHtmlEntry && !hasRuntimeScript) {
-      switchPanel("preview");
-      setRuntimeUrl(null);
-      setRemoteVisualSelectSupported(false);
-      setPreviewAddress("");
-      setRuntimeStatus("Running · browser preview (no cloud VM)");
-      setLogs([{ type: "runtime", message: "HTML, CSS and JavaScript are running directly in your browser. No cloud VM or sandbox quota is used." }]);
-      setPreviewKey((current) => current + 1);
-      toast.success("Browser preview is running");
+      setRuntimeBusy(true);
+      try {
+        if (projectId && runtimeUrl) {
+          try {
+            await stopPreview({ data: { projectId } });
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "The previous Daytona preview could not be stopped.";
+            setLogs((current) => [...current.slice(-199), { type: "warn", message }]);
+          }
+        }
+        switchPanel("preview");
+        setRuntimeUrl(null);
+        setRemoteVisualSelectSupported(false);
+        setPreviewAddress("");
+        setRuntimeStatus("Running · browser preview (no cloud VM)");
+        setLogs((current) => [...current.slice(-199), { type: "runtime", message: "HTML, CSS and JavaScript are running directly in your browser. No cloud VM or sandbox quota is used." }]);
+        setPreviewKey((current) => current + 1);
+        toast.success("Browser preview is running");
+      } finally {
+        setRuntimeBusy(false);
+      }
       return;
     }
 
-    if (runtimeBusy) return;
     setRuntimeBusy(true);
     setRuntimeStatus("Preparing Daytona runtime…");
     switchPanel("preview");
@@ -2369,7 +2383,6 @@ export function CodeAgent() {
       setRuntimeUrl(null);
       setPreviewAddress("");
       setRuntimeStatus("Stopped · project files preserved");
-      setTerminalReady(false);
       toast.success("Preview stopped");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not stop the preview.");
