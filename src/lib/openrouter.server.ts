@@ -39,7 +39,7 @@ function toMessages(request: GeminiRequest): OpenRouterMessage[] {
   return messages;
 }
 
-/** Guest ExpertAI tries Groq first, then OpenRouter as a fallback. */
+/** ExpertAI uses Groq first, then OpenRouter as a fallback for every session. */
 export async function generateOpenRouterContent(request: GeminiRequest): Promise<GeminiResponse> {
   const activeRequest = compactSmartRequest(request);
   const messages = toMessages(activeRequest);
@@ -66,7 +66,7 @@ export async function generateOpenRouterContent(request: GeminiRequest): Promise
   ];
 
   if (!providers.length) {
-    throw new Error("ExpertAI guest service is temporarily unavailable. Please try again later.");
+    throw new Error("ExpertAI is not configured yet. Add GROQ_API_KEY or OPENROUTER_API_KEY to the server environment.");
   }
 
   let lastError = "No AI route could complete the request.";
@@ -94,7 +94,7 @@ export async function generateOpenRouterContent(request: GeminiRequest): Promise
         method: "POST",
         headers,
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(55000),
+        signal: AbortSignal.timeout(45000),
       });
 
       if (!response.ok) {
@@ -112,7 +112,7 @@ export async function generateOpenRouterContent(request: GeminiRequest): Promise
             method: "POST",
             headers,
             body: JSON.stringify(body),
-            signal: AbortSignal.timeout(55000),
+            signal: AbortSignal.timeout(45000),
           });
         }
       }
