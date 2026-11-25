@@ -298,7 +298,7 @@ export async function runAgent(
   const blockedLockedFiles = new Set<string>();
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
-  let agentOutputBudget = 8192;
+  const agentOutputBudget = 8192;
   let maxFilesPerRound = 3;
   const maxRounds = 16;
 
