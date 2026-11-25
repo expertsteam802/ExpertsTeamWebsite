@@ -199,7 +199,7 @@ function parseAgentFiles(text: string): {
     }
     const files: Record<string, string | null> = {};
     for (const [path, content] of Object.entries(parsed.files)) {
-      if (!isSafeProjectPath(path) || isSensitiveProjectPath(path)) throw new Error("Invalid or sensitive file path: " + path);
+      if (!isSafeProjectPath(path) || isSensitiveProjectPath(path)) throw new Error("Invalid file path (unsafe or sensitive): " + path);
       if (typeof content !== "string" && content !== null)
         throw new Error("Invalid content for " + path);
       files[path] = content;
