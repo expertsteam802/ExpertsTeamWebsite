@@ -1839,7 +1839,10 @@ export function CodeAgent() {
         // first prompt can be overwritten by openProject's later setMessages(savedMessages).
         projectRestoreStartedRef.current = true;
         setProjectRestoring(true);
-        void openProject(mostRecentSavedProject).finally(() => {
+        void openProject(mostRecentSavedProject).catch((error) => {
+          projectRestoreStartedRef.current = false;
+          toast.error(error instanceof Error ? error.message : "Could not restore your saved project.");
+        }).finally(() => {
           setProjectRestoring(false);
         });
         return;
