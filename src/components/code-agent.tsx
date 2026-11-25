@@ -968,6 +968,7 @@ export function CodeAgent() {
   const [fileLanguage, setFileLanguage] = useState<Extension[]>([]);
   const runtimeFilesRef = useRef<ProjectFiles>({});
   const projectRestoreStartedRef = useRef(false);
+  const [projectRestoring, setProjectRestoring] = useState(false);
   const openTerminalRef = useRef<() => Promise<void>>(async () => {});
   const runtimeSyncQueueRef = useRef<Promise<void>>(Promise.resolve());
 
@@ -1834,7 +1835,13 @@ export function CodeAgent() {
     if (!projectId && projects.length > 0) {
       const mostRecentSavedProject = projects[0];
       if (mostRecentSavedProject) {
-        void openProject(mostRecentSavedProject);
+        // Lock the composer before awaiting file restoration. Otherwise a fast
+        // first prompt can be overwritten by openProject's later setMessages(savedMessages).
+        projectRestoreStartedRef.current = true;
+        setProjectRestoring(true);
+        void openProject(mostRecentSavedProject).finally(() => {
+          setProjectRestoring(false);
+        });
         return;
       }
       toast.error("Your saved projects were found, but none currently contains recoverable source files. No new project was created.");
@@ -3595,6 +3602,10 @@ export function CodeAgent() {
 
   async function sendPrompt(modeOverride: "build" | "plan" = agentMode, promptOverride?: string) {
     if (CODING_AGENT_UNDER_DEVELOPMENT) return;
+    if (projectRestoring) {
+      toast.info("Your project is still loading. Please send your message when the workspace is ready.");
+      return;
+    }
     const text = (promptOverride ?? prompt).trim();
     if (!text || busy) return;
     const docsCommand = text.match(/^\/docs\s+(.+)$/i);
@@ -4962,8 +4973,8 @@ export function CodeAgent() {
                     )}
                     <div className="rounded-xl border border-slate-700 bg-[#0B0F17] p-2 shadow-[0_-8px_30px_rgba(0,0,0,.16)] focus-within:border-blue-400/50">
                       <div className="relative">
-                        <Textarea value={prompt} onChange={(event) => { setPrompt(event.target.value); event.target.style.height = "auto"; event.target.style.height = Math.min(event.target.scrollHeight, 160) + "px"; }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); if (!busy) void sendPrompt(); } }} placeholder="Ask ExpertAI anything..." className="min-h-[72px] max-h-40 resize-y border-0 bg-transparent pb-10 pr-14 text-xs leading-5 text-white shadow-none focus-visible:ring-0" disabled={false} />
-                        {busy ? <button type="button" onClick={() => { agentRequestIdRef.current += 1; setBusy(false); toast.info("Stopped waiting for the Agent response. Any late result will be ignored."); }} className="absolute bottom-2 right-2 inline-flex h-8 items-center gap-1.5 rounded-lg border border-rose-400/30 bg-rose-500/15 px-3 text-[10px] font-semibold text-rose-100 shadow-lg hover:bg-rose-500/25"><Square className="h-3 w-3 fill-current" />Stop</button> : <button type="button" onClick={() => void sendPrompt()} disabled={!prompt.trim()} className="absolute bottom-2 right-2 inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[10px] font-semibold text-white shadow-lg hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-3.5 w-3.5" />Send</button>}
+                        <Textarea value={prompt} onChange={(event) => { setPrompt(event.target.value); event.target.style.height = "auto"; event.target.style.height = Math.min(event.target.scrollHeight, 160) + "px"; }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); if (!busy && !projectRestoring) void sendPrompt(); } }} placeholder={projectRestoring ? "Loading your project…" : "Ask ExpertAI anything..."} className="min-h-[72px] max-h-40 resize-y border-0 bg-transparent pb-10 pr-14 text-xs leading-5 text-white shadow-none focus-visible:ring-0" disabled={projectRestoring} />
+                        {busy ? <button type="button" onClick={() => { agentRequestIdRef.current += 1; setBusy(false); toast.info("Stopped waiting for the Agent response. Any late result will be ignored."); }} className="absolute bottom-2 right-2 inline-flex h-8 items-center gap-1.5 rounded-lg border border-rose-400/30 bg-rose-500/15 px-3 text-[10px] font-semibold text-rose-100 shadow-lg hover:bg-rose-500/25"><Square className="h-3 w-3 fill-current" />Stop</button> : <button type="button" onClick={() => void sendPrompt()} disabled={!prompt.trim() || projectRestoring} className="absolute bottom-2 right-2 inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[10px] font-semibold text-white shadow-lg hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-3.5 w-3.5" />Send</button>}
                       </div>
                       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/60 px-1 pt-2">
                         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
