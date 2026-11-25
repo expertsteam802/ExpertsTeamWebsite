@@ -123,6 +123,11 @@ function isSafeProjectPath(path: string): boolean {
   );
 }
 
+function isSensitiveProjectPath(filePath: string): boolean {
+  const sensitiveName = /^(?:\.env(?:$|\.(?!.*(?:example|sample|template)$).*)|\.npmrc|\.netrc|\.pypirc|id_rsa(?:\.pub)?|id_ed25519(?:\.pub)?|credentials?(?:\..*)?|secrets?(?:\..*)?)$/i;
+  return filePath.replace(/\\/g, "/").split("/").some((segment) => sensitiveName.test(segment));
+}
+
 function skipWhitespace(source: string, start: number): number {
   let index = start;
   while (/\s/.test(source[index] ?? "")) index++;
@@ -194,7 +199,7 @@ function parseAgentFiles(text: string): {
     }
     const files: Record<string, string | null> = {};
     for (const [path, content] of Object.entries(parsed.files)) {
-      if (!isSafeProjectPath(path)) throw new Error("Invalid file path: " + path);
+      if (!isSafeProjectPath(path) || isSensitiveProjectPath(path)) throw new Error("Invalid or sensitive file path: " + path);
       if (typeof content !== "string" && content !== null)
         throw new Error("Invalid content for " + path);
       files[path] = content;
@@ -237,7 +242,7 @@ export async function runAgent(
     );
   if (cleanPrompt.length > 100_000) throw new Error("That request exceeds the 100,000-character transport safety envelope.");
   const lockedFilePaths = getLockedProjectFiles(files);
-  const entries = Object.entries(files).filter(([filePath]) => filePath !== ".experts-locks.json");
+  const entries = Object.entries(files).filter(([filePath]) => filePath !== ".experts-locks.json" && !isSensitiveProjectPath(filePath));
   if (entries.length > 2_000 || entries.some(([path, content]) => !isSafeProjectPath(path) || Buffer.byteLength(content, "utf8") > 10_000_000)) {
     throw new Error("One or more project files exceed the 10 MB per-file safety envelope or have an invalid path.");
   }
@@ -278,10 +283,14 @@ export async function runAgent(
     selected.push({ name: entry.name, content });
     remainingCharacters -= content.length;
   }
-  const fileDump = selected
-    .map(({ name, content }) => "--- " + name + " ---\n" + content)
-    .join("\n\n");
-
+  const fileInventory = entries.map(([name]) => name).slice(0, 500).join("\n");
+  const omittedFileCount = Math.max(0, entries.length - 500);
+  const fileDump = [
+    "PROJECT FILE INVENTORY (all paths are listed; full source context is supplied only for selected files):",
+    fileInventory + (omittedFileCount ? "\n...and " + omittedFileCount + " more file(s)" : ""),
+    "SELECTED PROJECT SOURCE:",
+    ...selected.map(({ name, content }) => "--- " + name + " ---\n" + content),
+  ].join("\n\n");
   // All coding-agent generations use Kilo Gateway only.
   const providerSequence = ["kilo"];
   const completedFiles: Record<string, string | null> = {};
@@ -325,7 +334,7 @@ export async function runAgent(
       "\n\nResponse style: keep progress notes and explanations concise, direct, and useful. Use short sentences and small lists. Do not add long introductions, repeat the request, or explain obvious steps. Put implementation effort into complete working files, not verbose commentary.\n" +
       "Project rules: if a .expertrules file is present in the supplied files, read it first and obey its valid project-specific conventions unless they conflict with security, platform policies, or the user request.\n" +
       "Smart Processing rules:\n" +
-      "- Work in resumable batches of no more than 3 complete files per response.\n" +
+      "- Work in resumable batches of no more than " + maxFilesPerRound + " complete file(s) per response.\n" +
       '- Return JSON: {"message":"...","files":{"path":"full file content"},"complete":false}.\n' +
       "- Set complete:true only after all necessary files have been supplied across continuation rounds.\n" +
       "- Never intentionally truncate a file. Finish the current file, stop, and set complete:false if output budget is low.\n" +
@@ -376,7 +385,7 @@ export async function runAgent(
           ? (process.env["KILO_ARCHITECT_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free")
           : modelTier === "balanced"
             ? (process.env["KILO_BALANCED_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free")
-            : (process.env["KILO_FAST_MODEL"] || "kilo-auto/free"),
+            : (process.env["KILO_FAST_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free"),
       );
 
       const candidate = response.candidates?.[0];
@@ -406,7 +415,7 @@ export async function runAgent(
         lastFailure =
           "A model reached its output limit; retrying with a single-file batch and the full output budget.";
       } else if (!Object.keys(parsed.files).length) {
-        lastFailure = "A model returned incomplete file data; switching providers and retrying.";
+        lastFailure = "A model returned incomplete file data; retrying with a smaller file batch.";
       }
     } catch (error) {
       if (error instanceof Error && /Invalid file path|Invalid content/.test(error.message)) {
@@ -727,9 +736,9 @@ export async function runAgentChat(
     ],
     generationConfig: { maxOutputTokens: 1600 },
   }, undefined, ["kilo"], modelTier === "architect"
-    ? (process.env["KILO_ARCHITECT_MODEL"] || "kilo-auto/free")
+    ? (process.env["KILO_ARCHITECT_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free")
     : modelTier === "balanced"
-      ? (process.env["KILO_BALANCED_MODEL"] || "kilo-auto/free")
+      ? (process.env["KILO_BALANCED_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free")
       : (process.env["KILO_FAST_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free"));
   const message = response.candidates?.[0]?.content?.parts
     ?.filter((part) => !part.thought)
@@ -788,7 +797,7 @@ export async function runAgentPlan(
     ? (process.env["KILO_ARCHITECT_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free")
     : modelTier === "balanced"
       ? (process.env["KILO_BALANCED_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free")
-      : (process.env["KILO_FAST_MODEL"] || "kilo-auto/free"));
+      : (process.env["KILO_FAST_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free"));
   const message = response.candidates?.[0]?.content?.parts
     ?.filter((part) => !part.thought)
     .map((part) => part.text ?? "")
