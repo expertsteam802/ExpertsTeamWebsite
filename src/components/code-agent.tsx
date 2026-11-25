@@ -3865,7 +3865,17 @@ export function CodeAgent() {
     setThumbnailUrl(project.thumbnail_url);
     setName(project.name);
     setFiles(savedFiles);
-    const savedMessages = Array.isArray(project.messages) ? (project.messages as Message[]) : [];
+    const savedMessages = Array.isArray(project.messages)
+      ? project.messages.filter((message): message is Message =>
+          Boolean(
+            message &&
+            typeof message === "object" &&
+            (message.role === "user" || message.role === "assistant") &&
+            typeof message.content === "string" &&
+            message.content.trim().length > 0,
+          ),
+        ).slice(-100)
+      : [];
     const planPrefix = "Plan ready for your review. No project files were changed.\n\n";
     const latestPlan = [...savedMessages].reverse().find((message) => message.role === "assistant" && message.content.startsWith(planPrefix));
     setPlanDraft(latestPlan ? latestPlan.content.slice(planPrefix.length) : null);
