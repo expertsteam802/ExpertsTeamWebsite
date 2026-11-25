@@ -1,46 +1,16 @@
-# ExpertAI provider configuration
+# ExpertAI Kilo Gateway configuration
 
-## Guest chat — Groq primary, OpenRouter fallback
+ExpertsTeam Agent Studio uses **Kilo Gateway as its sole AI provider** for signed-in chat, guest chat, Plan, Build, image-reference understanding, and streaming responses.
 
-Guest ExpertAI requests are sent from the server. The adapter tries Groq first and falls back to OpenRouter if Groq is unavailable, rate-limited or returns an upstream error. Visitors never need provider API keys or accounts.
+## Gateway
 
-Set these variables in Vercel for **Production** (and Preview/Development if you test those environments):
+- Endpoint: `https://ai-gateway.kilo.ai/api/v1/chat/completions`
+- Default model: `openai/gpt-oss-120b`
+- Optional server-only model override: `KILO_GATEWAY_MODEL`
+- Authentication: the current Kilo anonymous gateway route does not send a provider API key.
 
-| Variable | Value | Required |
-| --- | --- | --- |
-| `GROQ_API_KEY` | Server-side Groq API key | Recommended primary route |
-| `GROQ_MODEL` | `openai/gpt-oss-120b` | No |
-| `OPENROUTER_API_KEY` | Server-side OpenRouter API key | Recommended fallback |
-| `OPENROUTER_MODEL` | `openrouter/free` | No |
+No Gemini API, Groq API, OpenRouter API, or alternate-provider fallback is integrated. If Kilo Gateway is unavailable or rate-limited, the request returns a clear error rather than silently switching providers.
 
-At least one provider key is required. For resilience, configure both. The default models are selected in server code; model availability, rate limits and free quotas can change. Do not promise uninterrupted or unlimited guest access based on free-tier availability.
+Keep any future Kilo credentials server-side only. Never expose secrets through `VITE_` variables or commit them to the repository.
 
-Keep every provider key server-only. Never prefix a key with `VITE_`, expose it to browser code, or commit it to Git.
-
-## Signed-in chat and coding agent
-
-Signed-in chat and the coding agent use the server-side provider route configured by the application. Keep its gateway credentials server-only as well. The interactive terminal/CLI used inside the builder is a separate runtime from chat completion routing.
-
-## Supabase server configuration
-
-Guest requests require these server-side variables in Vercel:
-
-- `SUPABASE_URL` (or the existing `VITE_SUPABASE_URL` fallback)
-- `SUPABASE_PUBLISHABLE_KEY` (or the existing `VITE_SUPABASE_PUBLISHABLE_KEY` fallback)
-- `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY`
-
-Never expose a Supabase secret/service-role key through a `VITE_*` variable. The secret key is used only by the server to check and consume guest credits.
-
-Guest chat currently has a 15-message allowance per rolling 24-hour period. Authenticated users follow their separate account entitlement and credit logic.
-
-## Verification after deployment
-
-1. Confirm at least one guest provider key is configured; both are recommended.
-2. Open a private/incognito browser window and send a text-only guest message without signing in.
-3. Confirm the response streams and the guest allowance is consumed only for a completed/accepted request.
-4. If both keys are configured, temporarily test with an invalid primary key in Preview and confirm the fallback route responds.
-5. Confirm an invalid/missing guest session is rejected.
-6. Test the 15-message guest limit in a safe test environment.
-7. Sign in and verify authenticated chat and the coding agent independently.
-8. Check server logs for provider status codes; never log API keys, prompts or uploaded content.
-
+Guest usage limits are enforced separately through Supabase server-side credentials and RPCs.
