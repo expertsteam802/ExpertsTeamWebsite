@@ -590,7 +590,7 @@ export function CodeAgent() {
       const minutes = Number(terminal.idleTimeoutMinutes ?? 0);
       return Number.isInteger(minutes) && minutes >= 0 && minutes <= 1440 ? minutes : 0;
     },
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
     staleTime: 0,
   });
 
@@ -3086,7 +3086,7 @@ export function CodeAgent() {
   });
   useEffect(() => {
     if (!dirty || busy || !user || autoSaveStatus === "saving") return;
-    const retryDelay = autoSaveStatus === "error" ? Math.min(30_000, 3_000 * 2 ** Math.min(autoSaveRetryCount, 4)) : 1_200;
+    const retryDelay = autoSaveStatus === "error" ? Math.min(60_000, 3_000 * 2 ** Math.min(autoSaveRetryCount, 4)) : 1_200;
     const timeout = window.setTimeout(async () => {
       setAutoSaveStatus("saving");
       try {
@@ -3647,7 +3647,7 @@ export function CodeAgent() {
       // Ordinary conversation must never create a checkpoint, touch files, or start a terminal.
       if (modeOverride === "build" && !isAgentBuildRequest(text) && !/^\/(fix|refactor|seo|responsive|test|docs|svg|auth|api|pwa|payments)\b/i.test(text) && referenceImages.length === 0) {
         const controller = new AbortController();
-        const timeoutId = window.setTimeout(() => controller.abort(), 30_000);
+        const timeoutId = window.setTimeout(() => controller.abort(), 60_000);
         let result: { reply: string; updatedFiles: Record<string, string | null> };
         try {
           const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -3663,7 +3663,7 @@ export function CodeAgent() {
           if (!payload.reply || typeof payload.reply !== "string") throw new Error("API Error (500): Invalid chat response.");
           result = { reply: payload.reply, updatedFiles: payload.updatedFiles ?? {} };
         } catch (error) {
-          if (controller.signal.aborted) throw new Error("ExpertAI timed out after 30 seconds. Please try again.");
+          if (controller.signal.aborted) throw new Error("ExpertAI timed out after 60 seconds. Please try again.");
           if (error instanceof TypeError) throw new Error("Could not reach /api/ai/chat. Check your connection and try again.");
           throw error;
         } finally { window.clearTimeout(timeoutId); }
