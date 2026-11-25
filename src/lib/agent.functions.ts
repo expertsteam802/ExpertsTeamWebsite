@@ -73,7 +73,7 @@ export const runCodingAgent = createServerFn({ method: "POST" })
     const creditCost = tierModel === "kilo-auto/free"
       ? 1
       : data.modelTier === "architect" ? 3 : data.modelTier === "balanced" ? 2 : 1;
-    if (!isAdmin && data.mode !== "chat" && profile.ai_credits < creditCost)
+    if (!isAdmin && profile.ai_credits < creditCost)
       throw new Error(
         `This model requires ${creditCost} AI credits. Earn more credits from partner offers or choose Fast.`,
       );
@@ -109,7 +109,7 @@ export const runCodingAgent = createServerFn({ method: "POST" })
       : data.mode === "chat"
         ? await runAgentChat(agentData)
         : await runAgent(agentData);
-    if (!isAdmin && data.mode !== "chat") {
+    if (!isAdmin) {
       const consumeCredits = context.supabase.rpc as unknown as (
         functionName: string,
         args: Record<string, unknown>,
