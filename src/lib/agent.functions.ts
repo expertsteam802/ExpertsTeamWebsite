@@ -245,7 +245,7 @@ export const importGitHubProject = createServerFn({ method: "POST" })
     const selectedBranch = data.branch?.trim() || defaultBranch;
     if (selectedBranch.length > 255 || selectedBranch.startsWith("/") || selectedBranch.endsWith("/") ||
       selectedBranch.includes("//") || selectedBranch.includes("..") || selectedBranch.includes("@{") ||
-      /[ ~^:?*]/.test(selectedBranch) || selectedBranch.includes("\\") || /[\x00-\x1f\x7f]/.test(selectedBranch) ||
+      /[ ~^:?*]/.test(selectedBranch) || selectedBranch.includes("\\") || Array.from(selectedBranch).some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127) ||
       selectedBranch.split("/").some((part) => !part || part.startsWith(".") || part.endsWith(".lock"))) {
       throw new Error("The selected GitHub branch name is invalid.");
     }
