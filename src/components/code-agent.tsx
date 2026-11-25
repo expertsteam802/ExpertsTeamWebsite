@@ -4999,9 +4999,10 @@ export function CodeAgent() {
         }
         .expert-agent-shell.expert-agent-light { background:#0B0F17!important;color:#e5edf8!important; }
         .expert-agent-topbar {
+          display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
           box-sizing:border-box;height:48px!important;min-height:48px!important;max-height:48px!important;
-          flex:0 0 48px!important;flex-wrap:nowrap!important;gap:10px!important;padding:0 12px!important;
-          overflow:hidden;background:#111827!important;border-bottom:1px solid #1E293B!important;box-shadow:none!important;
+          flex:0 0 48px!important;flex-wrap:nowrap!important;gap:8px!important;padding:0 12px!important;
+          align-items:center!important;overflow:hidden;background:#111827!important;border-bottom:1px solid #1E293B!important;box-shadow:none!important;
         }
         .expert-agent-topbar .expert-agent-brand-mark { width:27px!important;height:27px!important; }
         .expert-agent-topbar > div:first-child { min-width:0;flex:1 1 auto;gap:9px!important; }
@@ -5009,7 +5010,7 @@ export function CodeAgent() {
         .expert-agent-topbar > div:first-child > div > div:first-child { display:none!important; }
         .expert-agent-topbar > div:first-child > div > div:nth-child(2) { gap:7px!important; }
         .expert-agent-topbar .text-sm.font-semibold { max-width:190px;color:#f1f5f9!important; }
-        .expert-agent-topbar .et-studio-header-actions { display:flex;align-items:center;gap:7px;flex:0 0 auto; }
+        .expert-agent-topbar .et-studio-header-center { justify-self:center;min-width:0; }\n        .expert-agent-topbar .et-studio-header-actions { display:flex;align-items:center;justify-self:end;gap:7px;min-width:0; }
         .expert-agent-topbar > div:nth-of-type(2) { gap:7px!important;flex:0 0 auto; }
         .expert-agent-topbar > div:nth-of-type(2) > a,.expert-agent-topbar > div:nth-of-type(2) > span { display:none!important; }
         .expert-agent-topbar button,.expert-agent-topbar a { white-space:nowrap; }
