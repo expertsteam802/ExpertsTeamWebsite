@@ -767,6 +767,7 @@ export const createProjectGithubPullRequest = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
     const token = await resolveGitHubAccessToken(context.supabase, context.userId, "");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = context.supabase as any;
     const { data: link, error } = await db.from("project_repos").select("repo_owner,repo_name,default_branch")
       .eq("project_id", data.projectId).eq("user_id", context.userId).maybeSingle();
