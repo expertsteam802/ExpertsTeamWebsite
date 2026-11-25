@@ -133,12 +133,12 @@ export async function generateGeminiContent(
         const freeIpLimit = /free model|free models|per.?ip|ip address/i.test(providerMessage);
         throw new Error(
           freeIpLimit
-            ? "ExpertAI is temporarily at its shared free-model request limit. Please wait a little and try again."
-            : "ExpertAI is receiving too many requests right now. Please wait briefly and try again."
+            ? "Kilo's shared free-model IP quota is exhausted. ExpertsTeam sends chat requests through its server, so visitors may share this hourly allowance. This is an upstream Kilo limit, not an OpenCode error. Please wait for Kilo's quota window to reset."
+            : "Kilo or the selected upstream model provider returned HTTP 429 (rate limited). This is separate from the OpenCode terminal connection. Please wait briefly and retry."
         );
       }
       if (response.status === 402 || response.status === 403) {
-        throw new Error("ExpertAI is temporarily unavailable for this request (HTTP " + response.status + "). Please try again later.");
+        throw new Error("Kilo free access is unavailable for this request (HTTP " + response.status + "). Please try again later.");
       }
       if (response.status === 400 && /unsupported.*image|image.*not supported|vision.*not supported/i.test(detail)) {
         throw new Error("The selected Kilo free model does not support image input. Try a text description or retry when a vision-capable free model is available.");
@@ -150,7 +150,7 @@ export async function generateGeminiContent(
       if (isRetryableCapacityError(response.status, detail)) {
         throw new Error("This free model cannot fit the current request, even after reducing context. Shorten the request or remove some attachments.");
       }
-      throw new Error("ExpertAI service HTTP " + response.status + ": " + detail);
+      throw new Error("Kilo Gateway HTTP " + response.status + ": " + detail);
     }
     const data = await response.json() as {
       choices?: { finish_reason?: string; message?: { content?: string | { type?: string; text?: string }[] | null } }[];
@@ -158,8 +158,8 @@ export async function generateGeminiContent(
     const choice = data.choices?.[0];
     const raw = choice?.message?.content;
     const output = typeof raw === "string" ? raw : raw?.map((part) => part.text ?? "").join("");
-    if (!output?.trim()) throw new Error("ExpertAI returned an empty response.");
+    if (!output?.trim()) throw new Error("Kilo returned an empty response.");
     return asGeminiResponse(output, choice?.finish_reason === "length" ? "MAX_TOKENS" : "STOP");
   }
-  throw new Error("ExpertAI could not process this request: " + lastCapacityError);
+  throw new Error("Kilo could not process this request: " + lastCapacityError);
 }
