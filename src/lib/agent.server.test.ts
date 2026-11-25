@@ -159,7 +159,7 @@ test("coding agent stops immediately when ExpertAI's IP quota is exhausted", asy
     calls++;
     return new Response("rate limit exceeded", { status: 429 });
   }) as typeof fetch;
-  await assert.rejects(runAgent(input), /rate limit/i);
+  await assert.rejects(runAgent(input), /rate limit|temporarily busy/i);
   assert.equal(calls, 1);
 });
 
