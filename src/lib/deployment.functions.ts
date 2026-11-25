@@ -159,7 +159,9 @@ export const verifyProjectCustomDomain = createServerFn({ method: "POST" })
       } catch { /* DNS has not propagated yet. */ }
     }
     if (!dnsReady) {
-      await supabaseAdmin.from("agent_project_domains").update({ netlify_added: true, updated_at: new Date().toISOString() }).eq("id", row.id);
+      const { error: pendingUpdateError } = await supabaseAdmin.from("agent_project_domains")
+        .update({ netlify_added: true, updated_at: new Date().toISOString() }).eq("id", row.id);
+      if (pendingUpdateError) throw new Error("DNS is not ready, and the domain status could not be saved.");
       return { status: "pending", step: "dns", domain: row.domain, verificationHost: row.verification_host, verificationToken: row.verification_token, dnsTarget: row.dns_target };
     }
 
@@ -167,13 +169,14 @@ export const verifyProjectCustomDomain = createServerFn({ method: "POST" })
     const refreshed = await netlifyRequest("", "GET");
     const sslReady = Boolean(refreshed.ssl);
     const nextStatus = sslReady ? "active" : "pending";
-    await supabaseAdmin.from("agent_project_domains").update({
+    const { error: statusUpdateError } = await supabaseAdmin.from("agent_project_domains").update({
       netlify_added: true,
       ssl_ready: sslReady,
       status: nextStatus,
       verified_at: sslReady ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
     }).eq("id", row.id);
+    if (statusUpdateError) throw new Error("The domain passed DNS checks, but its verification status could not be saved.");
     return { status: nextStatus, step: sslReady ? "complete" : "ssl", sslReady, domain: row.domain, dnsTarget: row.dns_target };
   });
 
