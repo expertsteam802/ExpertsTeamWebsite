@@ -3665,6 +3665,17 @@ export function CodeAgent() {
         const finalMessages: Message[] = [...nextMessages, { role: "assistant", content: result.reply }];
         setMessages(finalMessages);
         setTypingMessageIndex(finalMessages.length - 1);
+        if (Object.keys(result.updatedFiles).length) {
+          const updatedFiles = { ...files };
+          for (const [path, content] of Object.entries(result.updatedFiles)) {
+            if (content === null) delete updatedFiles[path];
+            else updatedFiles[path] = content;
+          }
+          setFiles(updatedFiles);
+          setDirty(true);
+          setPreviewKey((value) => value + 1);
+          void persist({ files: updatedFiles, messages: finalMessages }, activeProjectId ?? undefined).catch(() => undefined);
+        }
         // Render the reply immediately. Conversation persistence must never keep
         // the composer in a permanent loading state if Supabase is slow.
         void persist({ messages: finalMessages }, activeProjectId ?? undefined).catch((saveError) => {
@@ -3773,7 +3784,7 @@ export function CodeAgent() {
       const detail = error instanceof Error ? error.message : "ExpertAI could not complete that request.";
       const failedMessages: Message[] = [
         ...nextMessages,
-        { role: "assistant", content: `I couldn't finish that change.\n\n${detail}` },
+        { role: "assistant", content: `I couldn't finish that change.\n\n${detail}`, error: true },
       ];
       setMessages(failedMessages);
       setTypingMessageIndex(failedMessages.length - 1);
@@ -4906,7 +4917,7 @@ export function CodeAgent() {
                     ) : messages.map((message, index) => (
                       <div key={`${message.role}-${index}-${message.content}`} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                         <div
-                          className={`max-w-[94%] rounded-2xl px-3.5 py-3 text-xs leading-6 ${message.role === "user" ? "rounded-br-md bg-cyan-400/15 text-cyan-50" : "rounded-bl-md border border-white/[0.07] bg-white/[0.035] text-slate-200"}`}
+                          className={`max-w-[94%] rounded-2xl px-3.5 py-3 text-xs leading-6 ${message.role === "user" ? "rounded-br-md bg-cyan-400/15 text-cyan-50" : message.error ? "rounded-bl-md border border-red-400/40 bg-red-500/10 text-red-100" : "rounded-bl-md border border-white/[0.07] bg-white/[0.035] text-slate-200"}`}
                         >
                           <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-slate-500">{message.role === "user" ? "You" : "ExpertsTeam Agent"}</div>
                           <p className="whitespace-pre-wrap break-words"><TypewriterText text={message.content} animate={message.role === "assistant" && typingMessageIndex === index} onComplete={() => setTypingMessageIndex((current) => current === index ? null : current)} /></p>
