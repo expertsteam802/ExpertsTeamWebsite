@@ -213,6 +213,11 @@ export const manageSupabaseDatabase = createServerFn({ method: "POST" })
         /^(CREATE\s+TABLE\b|CREATE\s+(?:UNIQUE\s+)?INDEX\b|CREATE\s+POLICY\b|CREATE\s+TYPE\b|ALTER\s+TABLE\b[^;]*\b(?:ENABLE\s+ROW\s+LEVEL\s+SECURITY|ADD\s+COLUMN|ADD\s+CONSTRAINT|ALTER\s+COLUMN)\b|COMMENT\s+ON\s+(?:TABLE|COLUMN)\b)/i.test(statement)
       );
       if (!allowed) throw new Error("For safety, only CREATE TABLE, CREATE INDEX, CREATE POLICY, CREATE TYPE, safe ALTER TABLE, and COMMENT statements are accepted. Destructive SQL and arbitrary commands are blocked.");
+      const permissivePolicy = statements.some((statement) =>
+        /^CREATE\s+POLICY\b/i.test(statement) &&
+        /\b(?:USING|WITH\s+CHECK)\s*\(\s*(?:true|1\s*=\s*1)\s*\)/i.test(statement)
+      );
+      if (permissivePolicy) throw new Error("Permissive RLS policies such as USING (true) or WITH CHECK (true) are blocked. Scope policies to the authenticated user or intended role.");
       const result = await runManagementQuery(accessToken, data.projectRef, sql, [], true);
       return { tables: [], columns: [], rows: [], primaryKey: null, result };
     }
