@@ -595,6 +595,10 @@ export function CodeAgent() {
   });
 
   const [projectId, setProjectId] = useState<string | null>(null);
+  // These values are read by the query's enabled expression during this render,
+  // so they must be initialized before the query is declared.
+  const [githubOpen, setGithubOpen] = useState(false);
+  const [githubRepo, setGithubRepo] = useState("");
   const { data: githubLink, refetch: refetchGithubLink } = useQuery({
     queryKey: ["project-github-link", projectId],
     enabled: Boolean(projectId && githubPluginConnection),
@@ -674,7 +678,6 @@ export function CodeAgent() {
   const [autoHealEnabled, setAutoHealEnabled] = useState(true);
   const autoHealAttemptedErrorsRef = useRef(new Set<string>());
   const [previewKey, setPreviewKey] = useState(0);
-  const [githubOpen, setGithubOpen] = useState(false);
   const [deploymentOpen, setDeploymentOpen] = useState(false);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [checkpointDiffOpen, setCheckpointDiffOpen] = useState(false);
@@ -689,7 +692,6 @@ export function CodeAgent() {
   const [vaultImportOpen, setVaultImportOpen] = useState(false);
   const [importingVault, setImportingVault] = useState(false);
   const [githubToken, setGithubToken] = useState("");
-  const [githubRepo, setGithubRepo] = useState("");
   const [githubBranch, setGithubBranch] = useState("main");
   const [githubNewBranch, setGithubNewBranch] = useState("");
   const [githubCommitMessage, setGithubCommitMessage] = useState("");
