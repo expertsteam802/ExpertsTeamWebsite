@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Database, Download, ExternalLink, KeyRound, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -40,6 +41,7 @@ export function SupabaseDatabasePanel({
   selectedConnectionId: string | null;
   onSelectConnection: (id: string) => void;
 }) {
+  const queryClient = useQueryClient();
   const runDatabase = useServerFn(manageSupabaseDatabase);
   const runAgent = useServerFn(runCodingAgent);
 
@@ -158,6 +160,7 @@ export function SupabaseDatabasePanel({
           ].join("\n"),
         },
       });
+      await queryClient.invalidateQueries({ queryKey: ["profile"] });
       const message = result.message || "";
       const fence = String.fromCharCode(96).repeat(3);
       const match = message.match(new RegExp(fence + "(?:sql|postgres|postgresql)?\\s*([\\s\\S]*?)" + fence, "i"));
@@ -215,6 +218,7 @@ export function SupabaseDatabasePanel({
           ].join("\n"),
         },
       });
+      await queryClient.invalidateQueries({ queryKey: ["profile"] });
       const message = result.message || "";
       const fence = String.fromCharCode(96).repeat(3);
       const match = message.match(new RegExp(fence + "(?:json)?\\s*([\\s\\S]*?)" + fence, "i"));
