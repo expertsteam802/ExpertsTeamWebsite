@@ -19,7 +19,7 @@ type GatewayMessage = {
 };
 
 const KILO_GATEWAY_URL = "https://ai-gateway.kilo.ai/api/v1/chat/completions";
-const DEFAULT_KILO_MODEL = "openai/gpt-oss-120b";
+const DEFAULT_KILO_MODEL = "kilo-auto/free";
 
 function toMessages(request: GatewayRequest): GatewayMessage[] {
   const system = request.systemInstruction.parts.map((part) => part.text).join("\n").slice(0, 12000);
@@ -47,10 +47,6 @@ function toMessages(request: GatewayRequest): GatewayMessage[] {
 
 /** The single AI transport for ExpertsTeam: Kilo Gateway only, with no provider fallback. */
 export async function generateExpertAiContent(request: GatewayRequest): Promise<GatewayResponse> {
-  const apiKey = process.env["KILO_API_KEY"]?.trim();
-  if (!apiKey) {
-    throw new Error("Kilo Gateway is not configured. Add the KILO_API_KEY environment variable to the server deployment, then redeploy.");
-  }
   const activeRequest = compactSmartRequest(request);
   const body: Record<string, unknown> = {
     model: process.env["KILO_GATEWAY_MODEL"]?.trim() || DEFAULT_KILO_MODEL,
@@ -63,10 +59,7 @@ export async function generateExpertAiContent(request: GatewayRequest): Promise<
 
   const send = (payload: Record<string, unknown>) => fetch(KILO_GATEWAY_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(45000),
   });
@@ -92,7 +85,7 @@ export async function generateExpertAiContent(request: GatewayRequest): Promise<
     const detail = (await response.text()).slice(0, 1200);
     console.error("[Kilo Gateway] HTTP", response.status, detail);
     if (response.status === 429) throw new Error("Kilo Gateway is temporarily busy (HTTP 429). Please retry shortly.");
-    if (response.status === 401) throw new Error("Kilo Gateway authentication failed (HTTP 401). Check that KILO_API_KEY is a valid, active Kilo Gateway API key.");
+    if (response.status === 401) throw new Error("Kilo Gateway rejected anonymous access (HTTP 401). Ensure the request uses the free model tier kilo-auto/free.");
     if (response.status === 403) throw new Error("Kilo Gateway denied this model or account (HTTP 403). Check your Kilo account and model access.");
     if (response.status >= 500) throw new Error("Kilo Gateway is temporarily unavailable (HTTP " + response.status + ").");
     throw new Error("Kilo Gateway request failed (HTTP " + response.status + "): " + detail);
