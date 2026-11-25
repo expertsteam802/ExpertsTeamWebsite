@@ -210,7 +210,7 @@ function parseAgentFiles(text: string): {
       complete: parsed.complete === true,
     };
   } catch (error) {
-    if (error instanceof Error && /Invalid file path|Invalid content/.test(error.message))
+    if (error instanceof Error && /Invalid.*file path|Invalid content/.test(error.message))
       throw error;
     return { files: recoverCompleteFiles(text), complete: false };
   }
@@ -680,7 +680,7 @@ export async function runAgentSelfHeal(input: {
     .filter(([name]) => {
       if (lockedFilePaths.has(name)) return false;
       const parts = name.split("/");
-      return isSafeProjectPath(name) && !parts.some((part) =>
+      return isSafeProjectPath(name) && !isSensitiveProjectPath(name) && !parts.some((part) =>
         part === ".env" || part.startsWith(".env.") ||
         part.toLowerCase().startsWith("secret") || part.toLowerCase().startsWith("credential") ||
         ["node_modules", "dist", ".git", ".experts-terminal"].includes(part)
@@ -744,7 +744,7 @@ export async function runAgentChat(
   { prompt, files, history, modelTier = "fast" }: AgentInput,
 ) {
   const selectedFiles = Object.entries(files)
-    .filter(([name]) => !/node_modules|(^|\/)dist\//i.test(name))
+    .filter(([name]) => !/node_modules|(^|\/)dist\//i.test(name) && !isSensitiveProjectPath(name))
     .slice(0, 12);
   const projectContext = selectedFiles.map(([name, content]) =>
     "--- " + name + " ---\n" + content.slice(0, 1800)
@@ -793,7 +793,7 @@ export async function runAgentPlan(
     ? suppliedReferenceImages
     : referenceImage ? [referenceImage] : [];
   const selectedFiles = Object.entries(files)
-    .filter(([name]) => !/node_modules|(^|\/)dist\//i.test(name))
+    .filter(([name]) => !/node_modules|(^|\/)dist\//i.test(name) && !isSensitiveProjectPath(name))
     .sort((left, right) => {
       const priority = (name: string) => /^(package\.json|index\.html|vite\.config|src\/main|src\/App|src\/index\.css)/i.test(name) ? 0 : 1;
       return priority(left[0]) - priority(right[0]);
