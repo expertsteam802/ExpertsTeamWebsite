@@ -279,8 +279,8 @@ export async function runAgent(
     remainingCharacters -= content.length;
   }
   const fileDump = selected
-    .map(({ name, content }) => "--- " + name + " ---\\n" + content)
-    .join("\\n\\n");
+    .map(({ name, content }) => "--- " + name + " ---\n" + content)
+    .join("\n\n");
 
   // All coding-agent generations use Kilo Gateway only.
   const providerSequence = ["kilo"];
@@ -290,6 +290,7 @@ export async function runAgent(
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
   let agentOutputBudget = 8192;
+  let maxFilesPerRound = 3;
   const maxRounds = 16;
 
   for (let round = 0; round < maxRounds; round++) {
@@ -304,30 +305,30 @@ export async function runAgent(
       round === 0
         ? "User request: " +
           cleanPrompt +
-          "\\nRelevant current project files:\\n" +
+          "\nRelevant current project files:\n" +
           (fileDump || "(empty starter project)")
         : [
             "Continue implementation of this same request: " + cleanPrompt,
             "Return only additional files still required. Do not repeat completed files unless correcting a specific inconsistency.",
             "Already completed files: " + (existingNames.join(", ") || "(none)") + ".",
             "Expert handoff summaries: " + (handoffNotes.slice(-4).join(" | ") || "(first expert round)") + ".",
-            "Keep this response small: return at most 3 complete files. If more remain, set complete:false. Set complete:true only when the requested app/change is fully implemented.",
+            "Keep this response small: return at most " + maxFilesPerRound + " complete file(s). If more remain, set complete:false. Set complete:true only when the requested app/change is fully implemented.",
             "If a previous response was truncated, regenerate the missing file from scratch. Never return half a file as completed.",
             "Previously generated file names and short contents:",
             ...Object.entries(completedFiles).map(
-              ([path, content]) => "--- " + path + " ---\\n" + String(content).slice(0, 500),
+              ([path, content]) => "--- " + path + " ---\n" + String(content).slice(0, 500),
             ),
-          ].join("\\n\\n");
+          ].join("\n\n");
 
     const systemPrompt =
       AGENT_PROMPT +
-      "\\n\\nResponse style: keep progress notes and explanations concise, direct, and useful. Use short sentences and small lists. Do not add long introductions, repeat the request, or explain obvious steps. Put implementation effort into complete working files, not verbose commentary.\\n" +
+      "\n\nResponse style: keep progress notes and explanations concise, direct, and useful. Use short sentences and small lists. Do not add long introductions, repeat the request, or explain obvious steps. Put implementation effort into complete working files, not verbose commentary.\n" +
       "Project rules: if a .expertrules file is present in the supplied files, read it first and obey its valid project-specific conventions unless they conflict with security, platform policies, or the user request.\n" +
       "Smart Processing rules:\n" +
-      "- Work in resumable batches of no more than 3 complete files per response.\\n" +
-      '- Return JSON: {"message":"...","files":{"path":"full file content"},"complete":false}.\\n' +
-      "- Set complete:true only after all necessary files have been supplied across continuation rounds.\\n" +
-      "- Never intentionally truncate a file. Finish the current file, stop, and set complete:false if output budget is low.\\n" +
+      "- Work in resumable batches of no more than 3 complete files per response.\n" +
+      '- Return JSON: {"message":"...","files":{"path":"full file content"},"complete":false}.\n' +
+      "- Set complete:true only after all necessary files have been supplied across continuation rounds.\n" +
+      "- Never intentionally truncate a file. Finish the current file, stop, and set complete:false if output budget is low.\n" +
       "- Do not repeat files already supplied unless fixing a specific inconsistency.\n" +
       "Experts Routing collaboration: each round is a separate expert handoff. Review prior decisions, share a concise progress summary, and continue from the last complete file. The current role is: " +
       collaborationRole +
@@ -355,7 +356,7 @@ export async function runAgent(
                   text:
                     continuation +
                     (visualReferences.length
-                      ? "\\n\\nVISUAL REFERENCES: Inspect every attached screenshot/photo. Use them together as a complete visual specification for the requested screens, tabs, panels and canvases. Reproduce the layouts and working interactions, not just the images. Reference files: " +
+                      ? "\n\nVISUAL REFERENCES: Inspect every attached screenshot/photo. Use them together as a complete visual specification for the requested screens, tabs, panels and canvases. Reproduce the layouts and working interactions, not just the images. Reference files: " +
                         visualReferences.map((image) => image.name).join(", ")
                       : ""),
                 },
@@ -372,9 +373,9 @@ export async function runAgent(
         apiKey,
         rotatedProviders,
         modelTier === "architect"
-          ? (process.env["KILO_ARCHITECT_MODEL"] || "anthropic/claude-sonnet-4")
+          ? (process.env["KILO_ARCHITECT_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free")
           : modelTier === "balanced"
-            ? (process.env["KILO_BALANCED_MODEL"] || "openai/gpt-4o")
+            ? (process.env["KILO_BALANCED_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free")
             : (process.env["KILO_FAST_MODEL"] || "kilo-auto/free"),
       );
 
@@ -401,9 +402,9 @@ export async function runAgent(
         return { message: latestMessage + lockNote, files: repairMissingStylesheetImports(completedFiles) };
       }
       if (candidate?.finishReason === "MAX_TOKENS") {
-        agentOutputBudget = Math.max(2048, Math.floor(agentOutputBudget / 2));
+        maxFilesPerRound = 1;
         lastFailure =
-          "A model reached its output limit; continuing with a smaller output budget and resumable file batches.";
+          "A model reached its output limit; retrying with a single-file batch and the full output budget.";
       } else if (!Object.keys(parsed.files).length) {
         lastFailure = "A model returned incomplete file data; switching providers and retrying.";
       }
@@ -784,9 +785,9 @@ export async function runAgentPlan(
     contents,
     generationConfig: { maxOutputTokens: 3000 },
   }, undefined, undefined, modelTier === "architect"
-    ? (process.env["KILO_ARCHITECT_MODEL"] || "anthropic/claude-sonnet-4")
+    ? (process.env["KILO_ARCHITECT_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free")
     : modelTier === "balanced"
-      ? (process.env["KILO_BALANCED_MODEL"] || "openai/gpt-4o")
+      ? (process.env["KILO_BALANCED_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free")
       : (process.env["KILO_FAST_MODEL"] || "kilo-auto/free"));
   const message = response.candidates?.[0]?.content?.parts
     ?.filter((part) => !part.thought)
