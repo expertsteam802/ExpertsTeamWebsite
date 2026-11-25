@@ -84,7 +84,8 @@ export const Route = createFileRoute("/api/ai/chat")({
           return Response.json({ reply: result.message, updatedFiles: {} }, { status: 200 });
         } catch (error) {
           console.error("[ExpertAI chat API] Request failed:", error);
-          const message = error instanceof Error ? error.message : "ExpertAI could not complete your request.";
+          const rawMessage = error instanceof Error ? error.message : "ExpertAI could not complete your request.";
+          const message = rawMessage.replace(/Kilo(?: Gateway)?/gi, "ExpertAI");
           return Response.json({ error: message }, { status: 500 });
         }
       },
