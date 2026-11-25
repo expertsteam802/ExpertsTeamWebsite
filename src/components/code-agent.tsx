@@ -90,6 +90,7 @@ import {
   setProjectGithubActiveBranch,
   linkProjectGithubRepository,
   setProjectGithubAutoSync,
+  createProjectGithubPullRequest,
   importGitHubProject,
   publishAgentProject,
   runCodingAgent,
@@ -535,6 +536,7 @@ export function CodeAgent() {
   const setGithubActiveBranch = useServerFn(setProjectGithubActiveBranch);
   const linkGithubRepo = useServerFn(linkProjectGithubRepository);
   const setGithubAutoSync = useServerFn(setProjectGithubAutoSync);
+  const createGithubPullRequest = useServerFn(createProjectGithubPullRequest);
   const importGithub = useServerFn(importGitHubProject);
   const publish = useServerFn(publishAgentProject);
   const startPreview = useServerFn(startAgentPreview);
@@ -3246,6 +3248,29 @@ export function CodeAgent() {
     }
   }
 
+  async function openGithubPullRequest() {
+    if (!projectId || !githubLink) return;
+    try {
+      const summary = latestFileDiffs.slice(0, 20).map((diff) =>
+        "- " + diff.path + " (" + (diff.before === "" ? "added" : diff.after === "" ? "deleted" : "modified") + ")"
+      ).join("\n");
+      const ai = await runCodeAgent({ data: {
+        prompt: "Write a concise GitHub pull request description in Markdown with Summary and Testing sections. Do not claim tests ran. Describe only these changes:\n" + (summary || "Changes on branch " + githubLink.active_branch),
+        mode: "chat", modelTier: "fast", files, history: [], groundPackages: [],
+      }});
+      const pr = await createGithubPullRequest({ data: {
+        projectId,
+        headBranch: githubLink.active_branch,
+        baseBranch: githubLink.default_branch,
+        title: githubCommitMessage.trim() || ("feat: " + githubLink.active_branch.replace(/^feature\//, "").replace(/[-_/]+/g, " ")),
+        body: ai.message,
+      }});
+      toast.success("Pull request #" + pr.number + " created.", { action: { label: "Open PR", onClick: () => window.open(pr.url, "_blank", "noopener,noreferrer") } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not open a GitHub pull request.");
+    }
+  }
+
   async function generateGithubCommitMessage() {
     if (githubGeneratingMessage) return;
     setGithubGeneratingMessage(true);
@@ -4053,7 +4078,7 @@ export function CodeAgent() {
         <div className="et-studio-header-actions relative z-20 flex shrink-0 items-center justify-end gap-1.5 whitespace-nowrap">
           <Button type="button" size="sm" variant="outline" onClick={() => setCreditsOfferwallOpen(true)} className="h-8 border-amber-300/25 bg-amber-300/[0.08] px-3 text-[10px] font-semibold text-amber-100 hover:bg-amber-300/[0.14]" title="Earn free AI credits"><Coins className="mr-1 h-3.5 w-3.5" />{displayedCredits} · Earn Free</Button>
           <Button type="button" size="sm" variant="outline" onClick={() => setDatabasePanelOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700"><Settings2 className="mr-1.5 h-3.5 w-3.5" />DB &amp; Auth</Button>
-          <Button type="button" size="sm" variant="outline" onClick={() => setGithubOpen(true)} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700"><Github className="mr-1.5 h-3.5 w-3.5" />GitHub</Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => setGithubOpen(true)} aria-label={githubLink ? "GitHub linked on " + githubLink.active_branch : "Connect GitHub"} className="h-8 border-slate-700 bg-slate-800/70 px-3 text-[11px] text-slate-200 hover:border-blue-500/50 hover:bg-slate-700"><Github className="mr-1.5 h-3.5 w-3.5" />GitHub{githubLink && <><span className="ml-1 rounded bg-white/10 px-1.5 py-0.5 text-[10px]">{githubLink.active_branch}</span><span className={"ml-1 h-1.5 w-1.5 rounded-full " + (dirty ? "bg-amber-400" : "bg-emerald-400")} /></>}</Button>
           <Button type="button" size="sm" onClick={() => setDeploymentOpen(true)} className="h-8 bg-blue-600 px-3 text-[11px] font-semibold text-white hover:bg-blue-500"><ExternalLink className="mr-1.5 h-3.5 w-3.5" />Deploy ↑</Button>
           <Dialog open={deploymentOpen} onOpenChange={setDeploymentOpen}>
             <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto border-slate-700 bg-[#0b1422] text-white">
@@ -6036,6 +6061,9 @@ export function CodeAgent() {
               {pullingGithub ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
               {pullingGithub ? "Pulling latest…" : "Pull latest from GitHub"}
             </Button>
+            {githubLink && githubLink.active_branch !== githubLink.default_branch && <Button type="button" variant="outline" className="w-full border-violet-400/30 text-violet-200" onClick={() => void openGithubPullRequest()} disabled={!githubPluginConnection}>
+              <ExternalLink className="mr-2 h-4 w-4" />Open Pull Request
+            </Button>}
             <Button
               className="w-full bg-white text-slate-950 hover:bg-slate-200"
               disabled={githubMutation.isPending || !(githubToken.trim() || githubPluginConnection) || !githubRepo.trim()}

@@ -757,6 +757,32 @@ export const setProjectGithubActiveBranch = createServerFn({ method: "POST" })
     return updated;
   });
 
+export const createProjectGithubPullRequest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({
+    projectId: z.string().uuid(), headBranch: z.string().trim().min(1).max(255),
+    baseBranch: z.string().trim().min(1).max(255), title: z.string().trim().min(1).max(240),
+    body: z.string().max(20_000).optional().default(""),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const token = await resolveGitHubAccessToken(context.supabase, context.userId, "");
+    const db = context.supabase as any;
+    const { data: link, error } = await db.from("project_repos").select("repo_owner,repo_name,default_branch")
+      .eq("project_id", data.projectId).eq("user_id", context.userId).maybeSingle();
+    if (error || !link) throw new Error("Link a GitHub repository to this project before opening a pull request.");
+    const headBranch = validateGitBranchName(data.headBranch);
+    const baseBranch = validateGitBranchName(data.baseBranch);
+    if (headBranch === baseBranch) throw new Error("Choose a feature branch that differs from the base branch.");
+    const pr = await githubApiRequest<{ html_url?: string; number?: number; title?: string }>(
+      token,
+      "/repos/" + encodeURIComponent(link.repo_owner) + "/" + encodeURIComponent(link.repo_name) + "/pulls",
+      { method: "POST", body: JSON.stringify({ title: data.title, body: data.body, head: headBranch, base: baseBranch }) },
+    );
+    if (!pr.html_url || !pr.number) throw new Error("GitHub did not return the created pull request.");
+    return { url: pr.html_url, number: pr.number, title: pr.title ?? data.title };
+  });
+
 export const setProjectGithubAutoSync = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => z.object({ projectId: z.string().uuid(), enabled: z.boolean() }).parse(input))
