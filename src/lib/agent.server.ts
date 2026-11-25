@@ -779,8 +779,14 @@ export async function runAgentSelfHeal(input: {
 
 /** Conversational Agent response. This path is read-only: it never returns file patches or invokes a terminal. */
 export async function runAgentChat(
-  { prompt, files, history, modelTier = "fast" }: AgentInput,
+  { prompt, files, history, referenceImage, referenceImages: suppliedReferenceImages, modelTier = "fast" }: AgentInput,
 ) {
+  const visualReferences = suppliedReferenceImages?.length
+    ? suppliedReferenceImages
+    : referenceImage ? [referenceImage] : [];
+  if (visualReferences.length > 3 || visualReferences.reduce((total, image) => total + image.data.length, 0) > 8_000_000) {
+    throw new Error("Use up to three visual references with a combined size under 8 MB.");
+  }
   const selectedFiles = Object.entries(files)
     .filter(([name]) => !/node_modules|(^|\/)dist\//i.test(name) && !isSensitiveProjectPath(name))
     .slice(0, 12);
@@ -804,9 +810,14 @@ export async function runAgentChat(
       })),
       {
         role: "user" as const,
-        parts: [{
-          text: "USER MESSAGE:\n" + prompt + "\n\nCURRENT PROJECT CONTEXT (read-only):\n" + (projectContext || "(empty project)")
-        }]
+        parts: [
+          {
+            text: "USER MESSAGE:\n" + prompt + "\n\nCURRENT PROJECT CONTEXT (read-only):\n" + (projectContext || "(empty project)")
+          },
+          ...visualReferences.map((image) => ({
+            inlineData: { mimeType: image.mimeType, data: image.data },
+          })),
+        ]
       }
     ],
     generationConfig: { maxOutputTokens: 1600 },
