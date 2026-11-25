@@ -1902,7 +1902,7 @@ export function CodeAgent() {
       }
       const path = safePath(relativePath);
       if (!path) { skipped += 1; continue; }
-      const textLike = file.type.startsWith("text/") || /\\.(?:[cm]?[jt]sx?|json|css|scss|html?|md|mdx|xml|ya?ml|toml|ini|py|java|c|h|cpp|cs|go|rs|php|sql|sh|bat|ps1|svg|txt|env\\.example)$/i.test(path);
+    const textLike = file.type.startsWith("text/") || /\.(?:[cm]?[jt]sx?|json|css|scss|html?|md|mdx|xml|ya?ml|toml|ini|py|java|c|h|cpp|cs|go|rs|php|sql|sh|bat|ps1|svg|txt|env\.example)$/i.test(path);
       try {
         if (textLike) {
           nextFiles[path] = await file.text();
@@ -2135,7 +2135,7 @@ export function CodeAgent() {
       });
       const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
       setWebhookTestOutput((output || "(The endpoint returned an empty response.)").slice(0, 12000));
-      const statusCode = Number(output.match(/HTTP_STATUS:(\\d{3})/)?.[1] ?? 0);
+      const statusCode = Number(output.match(/HTTP_STATUS:(\d{3})/)?.[1] ?? 0);
       if (result.exitCode === 0 && statusCode >= 200 && statusCode < 400) {
         toast.success("Webhook test returned HTTP " + statusCode + ".");
       } else {
