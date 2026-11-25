@@ -697,7 +697,7 @@ export const linkProjectGithubRepository = createServerFn({ method: "POST" })
 
 export const listProjectGithubBranches = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => z.object({ projectId: z.string().uuid(), repo: z.string().trim().regex(/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/) }).parse(input))
+  .validator((input: unknown) => z.object({ projectId: z.string().uuid(), repo: z.string().trim().refine((value) => { const parts = value.split("/"); return parts.length === 2 && parts.every((part) => /^[A-Za-z0-9_.-]{1,100}$/.test(part)); }, "Use owner/repository.") }).parse(input))
   .handler(async ({ data, context }) => {
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
     const token = await resolveGitHubAccessToken(context.supabase, context.userId, "");
