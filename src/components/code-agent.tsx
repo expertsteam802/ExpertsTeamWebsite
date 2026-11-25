@@ -4967,7 +4967,13 @@ export function CodeAgent() {
                           <button type="button" onClick={toggleVoicePrompt} disabled={busy} aria-pressed={voiceListening} title={voiceListening ? "Stop voice input" : "Voice to prompt"} className={voiceListening ? "inline-flex items-center gap-1 rounded-lg border border-rose-400/40 bg-rose-400/10 px-2.5 py-2 text-[10px] text-rose-200" : "inline-flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}><Mic className="h-3 w-3" />{voiceListening ? "Listening…" : "Voice"}</button>
                           <label className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1.5 text-[10px] text-slate-300"><span className="text-slate-500">Model</span><select aria-label="AI model tier" value={modelTier} onChange={(event) => setModelTier(event.target.value as "fast" | "balanced" | "architect")} disabled={busy} className="max-w-[112px] bg-transparent text-[10px] text-white outline-none"><option value="fast" className="bg-[#0B0F17] text-white">Fast · 1 EC</option><option value="balanced" className="bg-[#0B0F17] text-white">Balanced · 2 EC</option><option value="architect" className="bg-[#0B0F17] text-white">Architect · 3 EC</option></select></label>
                           <AgentPromptLibrary currentPrompt={prompt} onUse={setPrompt} />
-                          <button type="button" onClick={() => setAgentMode((mode) => mode === "plan" ? "build" : "plan")} disabled={busy} className={agentMode === "plan" ? "rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-2.5 py-2 text-[10px] font-semibold text-emerald-200" : "rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}>{agentMode === "plan" ? "Plan mode on" : "Plan first"}</button>
+                          <label className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1.5 text-[10px] text-slate-300">
+                            <span className="text-slate-500">Mode</span>
+                            <select aria-label="Agent mode" value={agentMode} onChange={(event) => setAgentMode(event.target.value as "build" | "plan")} disabled={busy} className="max-w-[92px] bg-[#0B0F17] text-[10px] text-white outline-none">
+                              <option value="build" className="bg-[#0B0F17] text-white">Build</option>
+                              <option value="plan" className="bg-[#0B0F17] text-white">Plan</option>
+                            </select>
+                          </label>
                           <button type="button" onClick={() => { setSelectedPreviewElement(null); setVisualSelectMode(true); switchPanel("preview"); }} disabled={busy} aria-pressed={visualSelectMode} className={visualSelectMode ? "inline-flex items-center gap-1.5 rounded-lg border border-blue-400/40 bg-blue-400/15 px-2.5 py-2 text-[10px] font-semibold text-blue-200" : "inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}><MousePointer2 className="h-3 w-3" /> Select Element</button>
                           <button type="button" onClick={() => { setTutorMode((enabled) => !enabled); }} disabled={busy} aria-pressed={tutorMode} className={tutorMode ? "rounded-lg border border-blue-300/30 bg-blue-300/10 px-2.5 py-2 text-[10px] font-semibold text-blue-200" : "rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}>Tutor Mode</button>
                           <input ref={referenceInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={(event) => { void attachReferenceImages(event.target.files); event.currentTarget.value = ""; }} />
@@ -6042,7 +6048,7 @@ export function CodeAgent() {
             <div className="space-y-1.5">
               <Label htmlFor="github-branch">Active branch</Label>
               <select id="github-branch" value={githubBranch} onChange={(event) => void switchGithubBranch(event.target.value)} className="h-10 w-full rounded-md border border-white/10 bg-[#0b1320] px-3 text-sm text-slate-100">
-                {(githubBranches.length ? githubBranches.map((branch) => branch.name) : [githubLink?.active_branch || githubLink?.default_branch || "main"]).map((branch) => <option key={branch} value={branch}>{branch}</option>)}
+                {(githubBranches.length ? githubBranches.map((branch) => branch.name) : [githubLink?.active_branch || githubLink?.default_branch || "main"]).map((branch) => <option key={branch} value={branch} className="bg-[#0b1320] text-white">{branch}</option>)}
               </select>
               <div className="flex gap-2">
                 <Input value={githubNewBranch} onChange={(event) => setGithubNewBranch(event.target.value)} placeholder="feature/new-feature" className="border-white/10 bg-white/5" />
@@ -6051,8 +6057,8 @@ export function CodeAgent() {
             </div>
             {!githubLink && <Button type="button" variant="outline" className="w-full border-emerald-400/30 text-emerald-200" onClick={() => void linkGithubRepository()} disabled={!projectId || !githubPluginConnection || !githubRepo.trim()}>Link repository to this project</Button>}
             <label className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs">
-              <span>Auto-sync preference (automatic push is not active yet)</span>
-              <input type="checkbox" checked={githubLink?.auto_sync_enabled ?? true} onChange={(event) => void toggleGithubAutoSync(event.target.checked)} disabled={!githubLink} className="accent-cyan-400" />
+              <span>Auto-sync AI build changes</span>
+              <input type="checkbox" checked={githubLink?.auto_sync_enabled ?? false} onChange={(event) => void toggleGithubAutoSync(event.target.checked)} disabled={!githubLink} className="accent-cyan-400" />
             </label>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1.5">
