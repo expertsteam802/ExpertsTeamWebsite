@@ -291,8 +291,7 @@ export async function runAgent(
     "SELECTED PROJECT SOURCE:",
     ...selected.map(({ name, content }) => "--- " + name + " ---\n" + content),
   ].join("\n\n");
-  // All coding-agent generations use Kilo Gateway only.
-  const providerSequence = ["kilo"];
+  // The shared ExpertAI generator selects the configured Groq/OpenRouter route.
   const completedFiles: Record<string, string | null> = {};
   const handoffNotes: string[] = [];
   const blockedLockedFiles = new Set<string>();
@@ -380,12 +379,6 @@ export async function runAgent(
           ],
         },
         apiKey,
-        rotatedProviders,
-        modelTier === "architect"
-          ? (process.env["KILO_ARCHITECT_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free")
-          : modelTier === "balanced"
-            ? (process.env["KILO_BALANCED_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free")
-            : (process.env["KILO_FAST_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free"),
       );
 
       const candidate = response.candidates?.[0];
@@ -406,7 +399,7 @@ export async function runAgent(
 
       if (parsed.complete && candidate?.finishReason !== "MAX_TOKENS") {
         if (!Object.keys(completedFiles).length) {
-          lastFailure = "Kilo marked the build complete but returned no file changes.";
+          lastFailure = "The model marked the build complete but returned no file changes.";
           continue;
         }
         const lockNote = blockedLockedFiles.size
@@ -447,7 +440,7 @@ export async function runAgent(
       ? "AI providers could not produce complete files. " +
           lastFailure +
           " Your existing files were not replaced."
-      : "Kilo did not return any complete files. Your existing files were not replaced.",
+      : "ExpertAI did not return any complete files. Your existing files were not replaced.",
   );
 }
 
@@ -849,11 +842,7 @@ export async function runAgentChat(
       }
     ],
     generationConfig: { maxOutputTokens: 1600 },
-  }, undefined, ["kilo"], modelTier === "architect"
-    ? (process.env["KILO_ARCHITECT_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free")
-    : modelTier === "balanced"
-      ? (process.env["KILO_BALANCED_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free")
-      : (process.env["KILO_FAST_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free"));
+  });
   const message = response.candidates?.[0]?.content?.parts
     ?.filter((part) => !part.thought)
     .map((part) => part.text ?? "")
@@ -881,7 +870,7 @@ export async function runAgentPlan(
   ).join("\n\n").slice(0, 28000);
   const systemPrompt = [
     "You are the planning mode of the ExpertsTeam coding agent.",
-    "Use the Kilo Gateway only. You do not have or need a terminal, CLI, remote sandbox, or external project workspace.",
+    "Use the configured ExpertAI provider route. You do not have or need a terminal, CLI, remote sandbox, or external project workspace.",
     "Inspect the supplied project files and conversation. Produce a practical implementation plan for the user's latest request.",
     "Return readable Markdown, not JSON. Do not output code patches and do not create, edit, delete, or rename files.",
     "Be specific: affected files, components/routes, data flow, dependencies, risks, ordered implementation steps, and verification checks.",
@@ -907,11 +896,7 @@ export async function runAgentPlan(
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents,
     generationConfig: { maxOutputTokens: 3000 },
-  }, undefined, undefined, modelTier === "architect"
-    ? (process.env["KILO_ARCHITECT_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free")
-    : modelTier === "balanced"
-      ? (process.env["KILO_BALANCED_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free")
-      : (process.env["KILO_FAST_MODEL"] || process.env["KILO_MODEL"] || "kilo-auto/free"));
+  });
   const message = response.candidates?.[0]?.content?.parts
     ?.filter((part) => !part.thought)
     .map((part) => part.text ?? "")
