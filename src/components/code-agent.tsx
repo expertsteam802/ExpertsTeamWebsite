@@ -3334,6 +3334,7 @@ export function CodeAgent() {
       await setGithubActiveBranch({ data: { projectId, branch } });
       await refetchGithubLink();
     } catch (error) {
+      setGithubBranch(githubLink.active_branch);
       toast.error(error instanceof Error ? error.message : "Could not switch the linked branch.");
     }
   }
