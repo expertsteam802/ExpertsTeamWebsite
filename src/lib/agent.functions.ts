@@ -619,13 +619,27 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
     const token = await resolveGitHubAccessToken(context.supabase, context.userId, data.token);
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
     const files = await loadProjectSourceFiles(context.supabase, data.projectId, context.userId);
-    if (!Object.keys(files).length) throw new Error("This project has no saved source files to push.");
-    await assertBuilderResourcePolicy(context.supabase, context.userId, files);
+    const { data: assetRows, error: assetError } = await context.supabase
+      .from("agent_project_assets")
+      .select("file_path,storage_path,size_bytes")
+      .eq("project_id", data.projectId)
+      .eq("user_id", context.userId);
+    if (assetError) throw new Error("Could not load project binary assets for GitHub push.");
+    const binaryAssets: { path: string; buffer: Buffer }[] = [];
+    for (const asset of assetRows ?? []) {
+      const { data: blob, error: downloadError } = await context.supabase.storage
+        .from("builder-project-assets")
+        .download(asset.storage_path);
+      if (downloadError || !blob) throw new Error("Could not restore project asset " + asset.file_path + " for GitHub push.");
+      binaryAssets.push({ path: asset.file_path, buffer: Buffer.from(await blob.arrayBuffer()) });
+    }
+    if (!Object.keys(files).length && !binaryAssets.length) throw new Error("This project has no saved files to push.");
+    await assertBuilderResourcePolicy(context.supabase, context.userId, files, undefined, binaryAssets.map((asset) => asset.buffer.byteLength));
     try {
       const { pushToGithub } = await import("./agent.server");
       return {
         ok: true as const,
-        ...(await pushToGithub({ token, repo: data.repo, files, message: "Update from ExpertsTeam agent" })),
+        ...(await pushToGithub({ token, repo: data.repo, files, binaryAssets, message: "Update from ExpertsTeam agent" })),
       };
     } catch (error) {
       return { ok: false as const, error: error instanceof Error ? error.message : "Push failed" };
@@ -681,14 +695,17 @@ async function assertBuilderResourcePolicy(
   userId: string,
   files: Record<string, string>,
   prompt?: string,
+  binaryAssetSizes: number[] = [],
 ) {
   const limits = await getBuilderResourceLimits(supabase, userId);
   const entries = Object.entries(files);
-  const totalBytes = entries.reduce((sum, [, content]) => sum + Buffer.byteLength(content, "utf8"), 0);
+  const textSizes = entries.map(([, content]) => Buffer.byteLength(content, "utf8"));
+  const totalFiles = entries.length + binaryAssetSizes.length;
+  const totalBytes = [...textSizes, ...binaryAssetSizes].reduce((sum, size) => sum + size, 0);
 
-  if (limits.maxFiles && entries.length > limits.maxFiles) throw new Error("This project exceeds the administrator-configured file-count allowance.");
+  if (limits.maxFiles && totalFiles > limits.maxFiles) throw new Error("This project exceeds the administrator-configured file-count allowance.");
   if (limits.maxProjectMb && totalBytes > limits.maxProjectMb * 1_000_000) throw new Error("This project exceeds the administrator-configured project-size allowance.");
-  if (limits.maxFileMb && entries.some(([, content]) => Buffer.byteLength(content, "utf8") > limits.maxFileMb * 1_000_000)) throw new Error("A project file exceeds the administrator-configured per-file allowance.");
+  if (limits.maxFileMb && [...textSizes, ...binaryAssetSizes].some((size) => size > limits.maxFileMb * 1_000_000)) throw new Error("A project file exceeds the administrator-configured per-file allowance.");
   if (limits.maxPromptChars && prompt && prompt.length > limits.maxPromptChars) throw new Error("This request exceeds the administrator-configured prompt length.");
 }
 
