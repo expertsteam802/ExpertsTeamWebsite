@@ -2861,7 +2861,7 @@ export function CodeAgent() {
         await saveProjectFiles(projectId, user.id, importedFiles);
         const { error } = await supabase.from("agent_projects")
           .update({ updated_at: new Date().toISOString() })
-          .eq("id", activeProjectId).eq("user_id", user.id);
+          .eq("id", projectId).eq("user_id", user.id);
         if (error) throw error;
         setFiles(importedFiles);
         setActiveFile((current) => Object.prototype.hasOwnProperty.call(importedFiles, current)
@@ -5357,7 +5357,7 @@ export function CodeAgent() {
             <div className="space-y-1.5"><Label htmlFor="project-thumbnail-url">Image URL</Label><Input id="project-thumbnail-url" value={thumbnailUrlInput} onChange={(event) => setThumbnailUrlInput(event.target.value)} placeholder="https://example.com/project-cover.png" className="border-white/10 bg-white/5" /></div>
             {thumbnailUrlInput.trim() && <img src={thumbnailUrlInput} alt="Thumbnail preview" referrerPolicy="no-referrer" className="h-36 w-full rounded-lg border border-white/10 bg-black/20 object-cover" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} onLoad={(event) => { event.currentTarget.style.visibility = "visible"; }} />}
             <div className="flex flex-wrap gap-2"><Button onClick={() => void saveProjectThumbnailUrl()} disabled={savingThumbnailUrl} className="flex-1 bg-cyan-400 text-slate-950 hover:bg-cyan-300">{savingThumbnailUrl ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save image URL</Button><Button variant="outline" onClick={() => void setProjectThumbnail()} className="border-white/15 bg-white/5 text-white hover:bg-white/10"><ImagePlus className="mr-2 h-4 w-4" />Upload image</Button></div>
-            {thumbnailUrl && <Button variant="ghost" className="w-full text-slate-400 hover:text-red-300" onClick={async () => { if (!user || !projectId) { setThumbnailUrl(null); setThumbnailUrlInput(""); setThumbnailDialogOpen(false); return; } const { error } = await supabase.from("agent_projects").update({ thumbnail_url: null }).eq("id", activeProjectId).eq("user_id", user.id); if (error) { toast.error(error.message); return; } setThumbnailUrl(null); setThumbnailUrlInput(""); await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] }); setThumbnailDialogOpen(false); toast.success("Project thumbnail removed."); }}>Remove thumbnail</Button>}
+            {thumbnailUrl && <Button variant="ghost" className="w-full text-slate-400 hover:text-red-300" onClick={async () => { if (!user || !projectId) { setThumbnailUrl(null); setThumbnailUrlInput(""); setThumbnailDialogOpen(false); return; } const { error } = await supabase.from("agent_projects").update({ thumbnail_url: null }).eq("id", projectId).eq("user_id", user.id); if (error) { toast.error(error.message); return; } setThumbnailUrl(null); setThumbnailUrlInput(""); await queryClient.invalidateQueries({ queryKey: ["agent-projects", user.id] }); setThumbnailDialogOpen(false); toast.success("Project thumbnail removed."); }}>Remove thumbnail</Button>}
           </div>
         </DialogContent>
       </Dialog>
