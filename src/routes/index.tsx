@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
 import {
   ArrowRight,
   Bot,
@@ -23,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { supabase } from "@/integrations/supabase/client";
+import { resolvePublishedAppHost } from "@/lib/deployment.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -86,6 +89,23 @@ const CAPABILITIES = [
 
 function Index() {
   const settings = useSiteSettings();
+  const resolvePublishedHost = useServerFn(resolvePublishedAppHost);
+
+  useEffect(() => {
+    if (window.location.pathname !== "/") return;
+    let active = true;
+    const host = window.location.hostname.toLowerCase();
+    void resolvePublishedHost({ data: { host } })
+      .then(({ slug }) => {
+        if (active && slug) window.location.replace("/apps/" + encodeURIComponent(slug));
+      })
+      .catch((error) => {
+        console.error("[ExpertsTeam published app routing] Could not resolve this hostname:", error);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const { data: videos } = useQuery({
     queryKey: ["videos", "featured"],
