@@ -902,9 +902,7 @@ export function CodeAgent() {
   } | null>(null);
   const [fileLanguage, setFileLanguage] = useState<Extension[]>([]);
   const runtimeFilesRef = useRef<ProjectFiles>({});
-  const autoStartedProjectRef = useRef<string | null>(null);
-  const autoStartedKiloRef = useRef(false);
-  const autoConnectCliRef = useRef(false);
+  const projectRestoreStartedRef = useRef(false);
   const openTerminalRef = useRef<() => Promise<void>>(async () => {});
   const runtimeSyncQueueRef = useRef<Promise<void>>(Promise.resolve());
 
@@ -1812,7 +1810,6 @@ export function CodeAgent() {
       setRuntimeStatus("CLI connected");
       if (connection.toolkitStatus === "installing") toast.info("The CTF starter toolkit is installing in the Linux sandbox.");
     } catch (error) {
-      autoConnectCliRef.current = false;
       setShowConnectionCinematic(false);
       setRuntimeStatus("CLI connection failed");
       const message =
@@ -1825,14 +1822,13 @@ export function CodeAgent() {
 
   useEffect(() => {
     if (!terminalConnection || terminalConnection.projectId === projectId) return;
-    autoConnectCliRef.current = true;
     void openTerminalRef.current();
   }, [projectId, terminalConnection?.projectId]);
 
   // Restore the latest project first, then automatically connect the admin-selected
   // CLI (OpenCode/Kilo/Aider) once the workspace files are ready.
   useEffect(() => {
-    if (!user?.id || projectsLoading || autoStartedKiloRef.current) return;
+    if (!user?.id || projectsLoading || projectRestoreStartedRef.current) return;
     if (!projectId && projects.length > 0) {
       const mostRecentSavedProject = projects[0];
       if (mostRecentSavedProject) {
@@ -1842,20 +1838,10 @@ export function CodeAgent() {
       toast.error("Your saved projects were found, but none currently contains recoverable source files. No new project was created.");
       return;
     }
-    autoStartedKiloRef.current = true;
+    projectRestoreStartedRef.current = true;
   }, [user?.id, projectsLoading, projects, projectId]);
 
-  // Start the selected CLI automatically when Studio opens. A blank first-time
-  // workspace is persisted by openTerminal before the sandbox is created.
-  useEffect(() => {
-    if (!DAYTONA_RUNTIME_ENABLED) return;
-    if (!user?.id || projectsLoading || !autoStartedKiloRef.current) return;
-    if (autoConnectCliRef.current || terminalConnection) return;
-    if (!projectId && projects.length > 0) return;
-    if (!Object.keys(files).length) return;
-    autoConnectCliRef.current = true;
-    void openTerminalRef.current();
-  }, [user?.id, projectsLoading, projects.length, projectId, files, terminalConnection]);
+  // Terminal allocation is intentionally user-initiated from the Terminal workspace.
 
   async function importLocalProjectFiles(selectedFiles: FileList | File[]) {
     const incoming = Array.from(selectedFiles);
@@ -2351,7 +2337,6 @@ export function CodeAgent() {
     setLogs([]);
     try {
       const activeProjectId = await persist({ files });
-      autoStartedProjectRef.current = activeProjectId;
       const result = await startPreview({ data: { projectId: activeProjectId } });
       setRuntimeUrl(result.url);
       setRemoteVisualSelectSupported(Boolean(result.visualSelectSupported));
@@ -2371,21 +2356,7 @@ export function CodeAgent() {
     }
   }
 
-  useEffect(() => {
-    if (!DAYTONA_RUNTIME_ENABLED) return;
-    if (!projectId || autoStartedProjectRef.current === projectId) return;
-    let scripts: Record<string, string> = {};
-    try {
-      const manifest = JSON.parse(files["package.json"] ?? "{}") as { scripts?: Record<string, string> };
-      scripts = manifest.scripts ?? {};
-    } catch {
-      return;
-    }
-    const startCommand = scripts.dev || scripts.start || "";
-    if (!/(vite|next|react-scripts|parcel|nodemon|\bnode\s+|tsx\s+|nest\s+start|fastify)/i.test(startCommand)) return;
-    autoStartedProjectRef.current = projectId;
-    void runProject();
-  }, [projectId, files]);
+  // Daytona preview starts only when the user presses Run; opening a project does not allocate a sandbox.
 
   async function stopProject() {
     if (!projectId || runtimeBusy) return;
@@ -2405,8 +2376,6 @@ export function CodeAgent() {
   }
 
   function resetRuntimeForProjectChange() {
-    autoStartedProjectRef.current = null;
-    autoConnectCliRef.current = false;
     if (projectId && runtimeUrl) void stopPreview({ data: { projectId } }).catch(() => undefined);
     // Keep the user-scoped terminal connection alive while the project folder changes.
     setRuntimeUrl(null);
