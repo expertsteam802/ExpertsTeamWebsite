@@ -2322,7 +2322,7 @@ export function CodeAgent() {
       .eq("user_id", user.id);
     if (error) throw new Error("Could not load preview assets: " + error.message);
     const totalBytes = (assets ?? []).reduce((sum, asset) => sum + Number(asset.size_bytes || 0), 0);
-    if (totalBytes > 15_000_000) throw new Error("This browser-only preview has more than 15 MB of binary assets. Use the Run action with a server preview for this project.");
+    if (totalBytes > 15_000_000) throw new Error("This browser-only preview supports up to 15 MB of binary assets. Reduce the asset size or add a project dev/start script for a server preview.");
     const urls: Record<string, string> = {};
     for (const asset of assets ?? []) {
       const { data: blob, error: downloadError } = await supabase.storage
@@ -2366,7 +2366,11 @@ export function CodeAgent() {
           setPreviewAssetDataUrls(await loadPreviewAssetDataUrls());
         } catch (error) {
           setPreviewAssetDataUrls({});
-          toast.warning(error instanceof Error ? error.message : "Some binary assets could not be loaded into the browser preview.");
+          const message = error instanceof Error ? error.message : "Binary assets could not be loaded into the browser preview.";
+          setRuntimeStatus("Preview unavailable");
+          setLogs([{ type: "error", message }]);
+          toast.error(message);
+          return;
         }
         switchPanel("preview");
         setRuntimeUrl(null);
