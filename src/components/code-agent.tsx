@@ -1404,6 +1404,10 @@ export function CodeAgent() {
     const session = terminalConnection;
     if (!session) return;
     return () => {
+      if (busy) {
+        void stopTerminal({ data: { sandboxName: session.sandboxName } }).catch(() => undefined);
+        return;
+      }
       if (terminalSessionClosingRef.current.has(session.sandboxName)) {
         terminalSessionClosingRef.current.delete(session.sandboxName);
         return;
@@ -1425,7 +1429,7 @@ export function CodeAgent() {
         })
         .catch(() => undefined);
     };
-  }, [syncTerminalFiles, stopTerminal, terminalConnection?.sandboxName, terminalConnection?.projectId, user?.id]);
+  }, [syncTerminalFiles, stopTerminal, terminalConnection?.sandboxName, terminalConnection?.projectId, user?.id, busy]);
 
 
   // Agent builds run through the server-side Kilo gateway. Do not pull the
@@ -1847,6 +1851,7 @@ export function CodeAgent() {
     if (!window.confirm("Import " + imported + " file(s) into this project? Existing paths will be replaced. Large JPEG, PNG and WebP assets will be optimized when this can reduce their size without changing file paths.")) return;
 
     let imageBytesSaved = 0;
+    let activeProjectId = projectId;
     for (let index = 0; index < binaryFiles.length; index++) {
       const asset = binaryFiles[index]!;
       if (!asset.mimeType.startsWith("image/")) continue;
@@ -1863,7 +1868,7 @@ export function CodeAgent() {
       } else {
         // Create a project first when this is a new workspace; existing projects
         // stage the complete tree so text files and binary assets finalize together.
-        const activeProjectId = projectId ?? await persist({ files: nextFiles });
+        activeProjectId = activeProjectId ?? await persist({ files: nextFiles });
         const { data: oldAssets, error: oldAssetsError } = await supabase
           .from("agent_project_assets")
           .select("file_path,storage_path,mime_type,size_bytes,sha256")
