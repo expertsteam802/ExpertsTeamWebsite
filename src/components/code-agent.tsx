@@ -3450,7 +3450,13 @@ export function CodeAgent() {
   }
 
   function isAgentBuildRequest(value: string) {
-    return /\b(build|create|make|implement|add|remove|delete|fix|change|update|refactor|debug|design|generate|write code|develop|integrate|connect|deploy|publish|test|run|install|upgrade|migrate|optimi[sz]e|redesign|rebuild)\b/i.test(value);
+    const request = value.trim();
+    // Questions and requests for explanations belong in chat, even when they
+    // mention implementation verbs ("how do I build...", "what should I change?").
+    if (/^(?:how|why|what|when|where|who|which)\b/i.test(request)) return false;
+    if (/^(?:(?:please|can you|could you|would you)\s+)?(?:explain|tell me|describe|show me how|help me understand)\b/i.test(request)) return false;
+    if (/^(?:can|could|would)\s+you\s+(?:please\s+)?(?:explain|tell me|describe|show me how|help me understand)\b/i.test(request)) return false;
+    return /\b(build|create|make|implement|add|remove|delete|fix|change|update|refactor|debug|design|generate|write code|develop|integrate|connect|deploy|publish|test|run|install|upgrade|migrate|optimi[sz]e|redesign|rebuild)\b/i.test(request);
   }
 
   async function sendPrompt(modeOverride: "build" | "plan" = agentMode, promptOverride?: string) {
