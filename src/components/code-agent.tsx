@@ -84,6 +84,10 @@ import type { Json } from "@/integrations/supabase/types";
 import {
   pushProjectToGithub,
   listGitHubRepositories,
+  getProjectGithubLink,
+  listProjectGithubBranches,
+  createProjectGithubBranch,
+  setProjectGithubAutoSync,
   importGitHubProject,
   publishAgentProject,
   runCodingAgent,
@@ -523,6 +527,10 @@ export function CodeAgent() {
   const beginGithubOAuth = useServerFn(beginGitHubPluginOAuth);
   const push = useServerFn(pushProjectToGithub);
   const listGithubRepos = useServerFn(listGitHubRepositories);
+  const getGithubLink = useServerFn(getProjectGithubLink);
+  const listGithubBranches = useServerFn(listProjectGithubBranches);
+  const createGithubBranch = useServerFn(createProjectGithubBranch);
+  const setGithubAutoSync = useServerFn(setProjectGithubAutoSync);
   const importGithub = useServerFn(importGitHubProject);
   const publish = useServerFn(publishAgentProject);
   const startPreview = useServerFn(startAgentPreview);
@@ -561,6 +569,24 @@ export function CodeAgent() {
   });
 
   const [projectId, setProjectId] = useState<string | null>(null);
+  const { data: githubLink, refetch: refetchGithubLink } = useQuery({
+    queryKey: ["project-github-link", projectId],
+    enabled: Boolean(projectId && githubOpen && githubPluginConnection),
+    queryFn: async () => getGithubLink({ data: { projectId: projectId! } }),
+    staleTime: 15_000,
+  });
+  const { data: githubBranches = [], refetch: refetchGithubBranches } = useQuery({
+    queryKey: ["project-github-branches", projectId, githubRepo],
+    enabled: Boolean(projectId && githubOpen && githubPluginConnection && githubRepo.includes("/")),
+    queryFn: async () => listGithubBranches({ data: { projectId: projectId!, repo: githubRepo } }),
+    staleTime: 15_000,
+  });
+  useEffect(() => {
+    if (!githubLink) return;
+    const fullName = githubLink.repo_owner + "/" + githubLink.repo_name;
+    setGithubRepo(fullName);
+    setGithubBranch(githubLink.active_branch || githubLink.default_branch || "main");
+  }, [githubLink?.project_id, githubLink?.active_branch, githubLink?.default_branch, githubLink?.repo_owner, githubLink?.repo_name]);
   const [name, setName] = useState("Untitled project");
   const [files, setFiles] = useState<ProjectFiles>(STARTER_FILES);
   const [activeFile, setActiveFile] = useState("index.html");
@@ -639,7 +665,9 @@ export function CodeAgent() {
   const [githubToken, setGithubToken] = useState("");
   const [githubRepo, setGithubRepo] = useState("");
   const [githubBranch, setGithubBranch] = useState("main");
+  const [githubNewBranch, setGithubNewBranch] = useState("");
   const [githubCommitMessage, setGithubCommitMessage] = useState("");
+  const [githubRepoSearch, setGithubRepoSearch] = useState("");
   const [githubRepositories, setGithubRepositories] = useState<{ fullName: string; private: boolean; url: string; defaultBranch: string }[]>([]);
   const [loadingGithubRepositories, setLoadingGithubRepositories] = useState(false);
   const [pullingGithub, setPullingGithub] = useState(false);
@@ -3199,12 +3227,46 @@ export function CodeAgent() {
     try {
       const repositories = await listGithubRepos({ data: { token } });
       setGithubRepositories(repositories);
+      if (githubRepoSearch.trim()) {
+        const needle = githubRepoSearch.trim().toLowerCase();
+        setGithubRepositories(repositories.filter((repository) => repository.fullName.toLowerCase().includes(needle)));
+      }
       if (!repositories.length) toast.info("No repositories with push access were found.");
       else toast.success("Loaded " + repositories.length + " GitHub repositories.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not load GitHub repositories.");
     } finally {
       setLoadingGithubRepositories(false);
+    }
+  }
+
+  async function createGithubBranchFromStudio() {
+    if (!projectId || !githubRepo.trim() || !githubNewBranch.trim()) {
+      toast.error("Choose a linked repository and enter a branch name.");
+      return;
+    }
+    try {
+      const result = await createGithubBranch({ data: {
+        projectId, repo: githubRepo.trim(), branch: githubNewBranch.trim(),
+        fromBranch: githubBranch.trim() || githubLink?.default_branch || "main",
+      }});
+      setGithubBranch(result.branch);
+      setGithubNewBranch("");
+      await Promise.all([refetchGithubBranches(), refetchGithubLink()]);
+      toast.success("Created branch " + result.branch + ".");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create branch.");
+    }
+  }
+
+  async function toggleGithubAutoSync(enabled: boolean) {
+    if (!projectId) return;
+    try {
+      await setGithubAutoSync({ data: { projectId, enabled } });
+      await refetchGithubLink();
+      toast.success(enabled ? "Auto-sync enabled." : "Auto-sync paused.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update auto-sync.");
     }
   }
 
@@ -5797,10 +5859,16 @@ export function CodeAgent() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Github className="h-5 w-5" />
-              Push project to GitHub
+              GitHub · Two-way sync
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {githubLink && <div className="flex items-center justify-between gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-2 text-xs">
+              <a href={"https://github.com/" + githubLink.repo_owner + "/" + githubLink.repo_name} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-2 text-emerald-200 hover:underline">
+                <Github className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{githubLink.repo_owner}/{githubLink.repo_name}</span><ExternalLink className="h-3 w-3 shrink-0" />
+              </a>
+              <span className="shrink-0 text-[10px] text-emerald-300">Linked</span>
+            </div>}
             <div className="space-y-1.5">
               <Label htmlFor="github-repo">Repository (owner/name)</Label>
               <Input
@@ -5819,6 +5887,7 @@ export function CodeAgent() {
                   Refresh list
                 </Button>
               </div>
+              <Input value={githubRepoSearch} onChange={(event) => setGithubRepoSearch(event.target.value)} placeholder="Search repositories…" className="border-white/10 bg-white/5" />
               <select
                 id="github-repository-picker"
                 value={githubRepo}
@@ -5826,7 +5895,7 @@ export function CodeAgent() {
                 className="h-10 w-full rounded-md border border-white/10 bg-[#0b1320] px-3 text-sm text-slate-100"
               >
                 <option value="">Choose a repository…</option>
-                {githubRepositories.map((repository) => (
+                {githubRepositories.filter((repository) => repository.fullName.toLowerCase().includes(githubRepoSearch.trim().toLowerCase())).map((repository) => (
                   <option key={repository.fullName} value={repository.fullName}>
                     {repository.fullName}{repository.private ? " · Private" : ""}
                   </option>
@@ -5852,7 +5921,32 @@ export function CodeAgent() {
                 and is not saved in your project.
               </p>
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="github-branch">Active branch</Label>
+              <select id="github-branch" value={githubBranch} onChange={(event) => setGithubBranch(event.target.value)} className="h-10 w-full rounded-md border border-white/10 bg-[#0b1320] px-3 text-sm text-slate-100">
+                {(githubBranches.length ? githubBranches.map((branch) => branch.name) : [githubLink?.active_branch || githubLink?.default_branch || "main"]).map((branch) => <option key={branch} value={branch}>{branch}</option>)}
+              </select>
+              <div className="flex gap-2">
+                <Input value={githubNewBranch} onChange={(event) => setGithubNewBranch(event.target.value)} placeholder="feature/new-feature" className="border-white/10 bg-white/5" />
+                <Button type="button" variant="outline" onClick={() => void createGithubBranchFromStudio()} disabled={!githubRepo.trim() || !githubNewBranch.trim() || !githubPluginConnection}>+ Branch</Button>
+              </div>
+            </div>
+            <label className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs">
+              <span>Auto-sync after AI prompts</span>
+              <input type="checkbox" checked={githubLink?.auto_sync_enabled ?? true} onChange={(event) => void toggleGithubAutoSync(event.target.checked)} disabled={!githubLink} className="accent-cyan-400" />
+            </label>
             <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="github-commit-message">Commit message</Label>
+                <Input id="github-commit-message" value={githubCommitMessage} onChange={(event) => setGithubCommitMessage(event.target.value)} placeholder="feat: describe your changes" className="border-white/10 bg-white/5" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="github-branch-state">Selected branch</Label>
+                <Input id="github-branch-state" value={githubBranch} readOnly className="border-white/10 bg-white/5" />
+              </div>
+            </div>
+            {githubLink?.last_synced_sha && <p className="text-[10px] text-slate-500">Last synced: {githubLink.last_synced_sha.slice(0, 7)} · {githubLink.active_branch}</p>}
+            <div className="hidden">
               <div className="space-y-1.5">
                 <Label htmlFor="github-branch">Branch</Label>
                 <Input id="github-branch" value={githubBranch} onChange={(event) => setGithubBranch(event.target.value)} placeholder="main" className="border-white/10 bg-white/5" />
