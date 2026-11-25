@@ -5010,7 +5010,8 @@ export function CodeAgent() {
         .expert-agent-topbar > div:first-child > div > div:first-child { display:none!important; }
         .expert-agent-topbar > div:first-child > div > div:nth-child(2) { gap:7px!important; }
         .expert-agent-topbar .text-sm.font-semibold { max-width:190px;color:#f1f5f9!important; }
-        .expert-agent-topbar .et-studio-header-center { justify-self:center;min-width:0; }\n        .expert-agent-topbar .et-studio-header-actions { display:flex;align-items:center;justify-self:end;gap:7px;min-width:0; }
+        .expert-agent-topbar .et-studio-header-center { justify-self:center;min-width:0; }
+        .expert-agent-topbar .et-studio-header-actions { display:flex;align-items:center;justify-self:end;gap:7px;min-width:0; }
         .expert-agent-topbar > div:nth-of-type(2) { gap:7px!important;flex:0 0 auto; }
         .expert-agent-topbar > div:nth-of-type(2) > a,.expert-agent-topbar > div:nth-of-type(2) > span { display:none!important; }
         .expert-agent-topbar button,.expert-agent-topbar a { white-space:nowrap; }
