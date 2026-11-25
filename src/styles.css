@@ -996,6 +996,34 @@ html, body, .et-shell, .et-topbar, .et-secondary-sidebar, .et-main,
 }
 
 
+/* Agent chat visibility/layout hardening.
+   The conversation viewport must always occupy the space between the header
+   and composer; keep it visible and independently scrollable at every width. */
+.expert-agent-assistant > div[aria-live="polite"] {
+  display: flex !important;
+  flex: 1 1 0% !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+  min-height: 220px !important;
+  width: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 1 !important;
+  color: #e2e8f0 !important;
+}
+.expert-agent-assistant > div[aria-live="polite"] > :first-child {
+  flex-shrink: 0;
+}
+.expert-agent-assistant > div[aria-live="polite"] p {
+  color: inherit;
+}
+.expert-agent-assistant {
+  min-height: 0 !important;
+}
+
 /* ExpertsTeam Builder — cohesive Bolt-style workspace chrome.
    Keep the existing blue/cyan brand accent while using compact, neutral
    workbench surfaces, clear active states, and predictable panel sizing. */
