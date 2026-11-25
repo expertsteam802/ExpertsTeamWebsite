@@ -367,6 +367,24 @@ const suggestions = [
   "Make this project look more professional",
 ];
 
+function withAgentRequestTimeout<T>(request: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      reject(new Error("The Agent request timed out after 70 seconds. Your message is still visible; retry when the AI gateway is available."));
+    }, timeoutMs);
+    request.then(
+      (value) => {
+        window.clearTimeout(timeout);
+        resolve(value);
+      },
+      (error: unknown) => {
+        window.clearTimeout(timeout);
+        reject(error);
+      },
+    );
+  });
+}
+
 function publishedProjectUrl(slug: string) {
   return `https://expertsteam.giize.com/apps/${encodeURIComponent(slug)}`;
 }
@@ -523,7 +541,9 @@ export function CodeAgent() {
     .replace(/[^a-zA-Z0-9_-]/g, "")
     .slice(0, 39) || "user";
   const queryClient = useQueryClient();
-  const runCodeAgent = useServerFn(runCodingAgent);
+  const runCodeAgentRequest = useServerFn(runCodingAgent);
+  const runCodeAgent = (input: Parameters<typeof runCodeAgentRequest>[0]) =>
+    withAgentRequestTimeout(runCodeAgentRequest(input), 70000);
   const runTerminalCommand = useServerFn(runAgentTerminalCommand);
   const forwardProjectPort = useServerFn(getAgentProjectPortForwardUrl);
   const repairRuntimeError = useServerFn(runAgentSelfHeal);
@@ -3614,8 +3634,12 @@ export function CodeAgent() {
         const finalMessages: Message[] = [...nextMessages, { role: "assistant", content: result.message }];
         setMessages(finalMessages);
         setTypingMessageIndex(finalMessages.length - 1);
-        await persist({ messages: finalMessages }, activeProjectId ?? undefined);
-        await queryClient.invalidateQueries({ queryKey: ["profile"] });
+        // Render the reply immediately. Conversation persistence must never keep
+        // the composer in a permanent loading state if Supabase is slow.
+        void persist({ messages: finalMessages }, activeProjectId ?? undefined).catch((saveError) => {
+          toast.error("Reply received, but chat history could not be saved: " + (saveError instanceof Error ? saveError.message : "unknown error"));
+        });
+        void queryClient.invalidateQueries({ queryKey: ["profile"] });
         return;
       }
 
@@ -3724,7 +3748,7 @@ export function CodeAgent() {
       setTypingMessageIndex(failedMessages.length - 1);
       setDirty(true);
       toast.error(detail);
-      await persist({ messages: failedMessages }, activeProjectId ?? undefined).catch(() => undefined);
+      void persist({ messages: failedMessages }, activeProjectId ?? undefined).catch(() => undefined);
     } finally {
       if (requestId === agentRequestIdRef.current) setBusy(false);
     }
@@ -4941,7 +4965,7 @@ export function CodeAgent() {
                       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/60 px-1 pt-2">
                         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                           <button type="button" onClick={toggleVoicePrompt} disabled={busy} aria-pressed={voiceListening} title={voiceListening ? "Stop voice input" : "Voice to prompt"} className={voiceListening ? "inline-flex items-center gap-1 rounded-lg border border-rose-400/40 bg-rose-400/10 px-2.5 py-2 text-[10px] text-rose-200" : "inline-flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}><Mic className="h-3 w-3" />{voiceListening ? "Listening…" : "Voice"}</button>
-                          <label className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1.5 text-[10px] text-slate-300"><span className="text-slate-500">Model</span><select aria-label="AI model tier" value={modelTier} onChange={(event) => setModelTier(event.target.value as "fast" | "balanced" | "architect")} disabled={busy} className="max-w-[112px] bg-transparent text-[10px] text-white outline-none"><option value="fast">Fast · 1 EC</option><option value="balanced">Balanced · 2 EC</option><option value="architect">Architect · 3 EC</option></select></label>
+                          <label className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1.5 text-[10px] text-slate-300"><span className="text-slate-500">Model</span><select aria-label="AI model tier" value={modelTier} onChange={(event) => setModelTier(event.target.value as "fast" | "balanced" | "architect")} disabled={busy} className="max-w-[112px] bg-transparent text-[10px] text-white outline-none"><option value="fast" className="bg-[#0B0F17] text-white">Fast · 1 EC</option><option value="balanced" className="bg-[#0B0F17] text-white">Balanced · 2 EC</option><option value="architect" className="bg-[#0B0F17] text-white">Architect · 3 EC</option></select></label>
                           <AgentPromptLibrary currentPrompt={prompt} onUse={setPrompt} />
                           <button type="button" onClick={() => setAgentMode((mode) => mode === "plan" ? "build" : "plan")} disabled={busy} className={agentMode === "plan" ? "rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-2.5 py-2 text-[10px] font-semibold text-emerald-200" : "rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}>{agentMode === "plan" ? "Plan mode on" : "Plan first"}</button>
                           <button type="button" onClick={() => { setSelectedPreviewElement(null); setVisualSelectMode(true); switchPanel("preview"); }} disabled={busy} aria-pressed={visualSelectMode} className={visualSelectMode ? "inline-flex items-center gap-1.5 rounded-lg border border-blue-400/40 bg-blue-400/15 px-2.5 py-2 text-[10px] font-semibold text-blue-200" : "inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-2 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"}><MousePointer2 className="h-3 w-3" /> Select Element</button>
