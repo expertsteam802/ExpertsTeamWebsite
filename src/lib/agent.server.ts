@@ -613,7 +613,7 @@ export async function pushToGithub({
   };
 }
 
-const PAGES_WORKFLOW = \`name: Deploy to GitHub Pages
+const PAGES_WORKFLOW = `name: Deploy to GitHub Pages
 on:
   push:
     branches: ["__DEFAULT_BRANCH__"]
@@ -667,7 +667,7 @@ jobs:
           path: "_site"
       - id: deployment
         uses: actions/deploy-pages@v4
-\`;
+`;
 
 
 /** Low-cost, no-user-credit runtime repair. Returns only changed existing files. */
