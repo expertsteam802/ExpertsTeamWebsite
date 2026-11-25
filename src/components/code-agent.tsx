@@ -2334,7 +2334,7 @@ export function CodeAgent() {
       for (let offset = 0; offset < bytes.length; offset += 0x8000) {
         binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length)));
       }
-      urls[asset.file_path.replace(/^\\.\\//, "").replace(/^\\/+/, "")] =
+      urls[asset.file_path.replace(/^\.?\//, "").replace(/^\/+/, "")] =
         "data:" + (asset.mime_type || "application/octet-stream") + ";base64," + btoa(binary);
     }
     return urls;
