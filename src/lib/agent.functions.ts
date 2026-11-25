@@ -245,12 +245,16 @@ export const importGitHubProject = createServerFn({ method: "POST" })
     const selectedBranch = data.branch?.trim() || defaultBranch;
     if (selectedBranch.length > 255 || selectedBranch.startsWith("/") || selectedBranch.endsWith("/") ||
       selectedBranch.includes("//") || selectedBranch.includes("..") || selectedBranch.includes("@{") ||
-      /[\\s~^:?*\[\\\\\x00-\x1f]/.test(selectedBranch) ||
+      /[ ~^:?*]/.test(selectedBranch) || selectedBranch.includes("\\") || /[\x00-\x1f\x7f]/.test(selectedBranch) ||
       selectedBranch.split("/").some((part) => !part || part.startsWith(".") || part.endsWith(".lock"))) {
       throw new Error("The selected GitHub branch name is invalid.");
     }
     const encodedBranch = encodeURIComponent(selectedBranch);
-    const treeResponse = await request(apiBase + "/git/trees/" + encodedBranch + "?recursive=1");
+    const branchResponse = await request(apiBase + "/branches/" + encodedBranch);
+    const branchInfo = (await branchResponse.json()) as { commit?: { commit?: { tree?: { sha?: string } } } };
+    const rootTreeSha = branchInfo.commit?.commit?.tree?.sha;
+    if (!rootTreeSha) throw new Error("GitHub did not return the selected branch tree.");
+    const treeResponse = await request(apiBase + "/git/trees/" + encodeURIComponent(rootTreeSha) + "?recursive=1");
     const tree = (await treeResponse.json()) as {
       truncated?: boolean;
       tree?: Array<{ path?: string; type?: string; size?: number; sha?: string }>;
@@ -261,10 +265,6 @@ export const importGitHubProject = createServerFn({ method: "POST" })
     // Fall back to walking individual tree objects so nested directories are
     // not silently omitted or rejected solely because of that API response cap.
     if (tree.truncated) {
-      const branchResponse = await request(apiBase + "/branches/" + encodedBranch);
-      const branch = (await branchResponse.json()) as { commit?: { commit?: { tree?: { sha?: string } } } };
-      const rootTreeSha = branch.commit?.commit?.tree?.sha;
-      if (!rootTreeSha) throw new Error("GitHub did not return the repository tree.");
       const pending: { sha: string; prefix: string }[] = [{ sha: rootTreeSha, prefix: "" }];
       const visited = new Set<string>();
       const expanded: Array<{ path: string; type: string; size?: number }> = [];

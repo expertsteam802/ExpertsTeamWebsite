@@ -517,7 +517,7 @@ export async function pushToGithub({
   const branch = requestedBranch?.trim() || repoInfo.default_branch || "main";
   if (branch.length > 255 || branch.startsWith("/") || branch.endsWith("/") ||
     branch.includes("//") || branch.includes("..") || branch.includes("@{") ||
-    /[\\s~^:?*\[\\\\\x00-\x1f]/.test(branch) ||
+    /[ ~^:?*]/.test(branch) || branch.includes("\\") || /[\x00-\x1f\x7f]/.test(branch) ||
     branch.split("/").some((part) => !part || part.startsWith(".") || part.endsWith(".lock"))) {
     throw new Error("The selected GitHub branch name is invalid.");
   }
