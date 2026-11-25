@@ -459,6 +459,7 @@ export async function pushToGithub({
   message,
   branch: requestedBranch,
   makePrivate = true,
+  expectedBaseSha,
 }: {
   token: string;
   repo: string;
@@ -467,6 +468,7 @@ export async function pushToGithub({
   message: string;
   branch?: string;
   makePrivate?: boolean;
+  expectedBaseSha?: string | null;
 }) {
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -569,6 +571,15 @@ export async function pushToGithub({
     throw new Error("Branch " + branch + " does not exist in this repository. Create it or select an existing branch first.");
   } else if (refResponse.status !== 404) {
     throw new Error(`GitHub could not read branch ${branch} (${refResponse.status}).`);
+  }
+
+  // Refuse to overwrite remote work when the branch moved since the last
+  // successful sync. The caller can then pull/reconcile before retrying.
+  if (expectedBaseSha && parentCommit && parentCommit !== expectedBaseSha) {
+    throw new Error(
+      "GitHub branch " + branch + " has new commits since the last ExpertsTeam sync. " +
+      "No files were pushed; pull the latest repository changes and resolve the differences before retrying.",
+    );
   }
 
   // Remove only paths previously managed by ExpertsTeam. Untracked repository files are preserved.
