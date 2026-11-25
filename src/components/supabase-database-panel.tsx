@@ -25,6 +25,9 @@ export function SupabaseDatabasePanel({
   projectFiles,
   onMigrationApplied,
   onOpenEnvironment,
+  connections,
+  selectedConnectionId,
+  onSelectConnection,
 }: {
   projectRef: string | null;
   open: boolean;
@@ -33,6 +36,9 @@ export function SupabaseDatabasePanel({
   projectFiles: Record<string, string>;
   onMigrationApplied: (sql: string) => Promise<void>;
   onOpenEnvironment: () => void;
+  connections: { id: string; display_name: string; project_ref: string }[];
+  selectedConnectionId: string | null;
+  onSelectConnection: (id: string) => void;
 }) {
   const runDatabase = useServerFn(manageSupabaseDatabase);
   const runAgent = useServerFn(runCodingAgent);
@@ -362,13 +368,21 @@ export function SupabaseDatabasePanel({
         <DialogHeader className="border-b border-slate-800 px-5 py-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <DialogTitle className="flex items-center gap-2"><Database className="h-4 w-4 text-cyan-300" /> Supabase Database</DialogTitle>
-            <div className="flex items-center gap-2"><Button type="button" size="sm" variant="outline" className="h-7 border-slate-700 text-[10px]" onClick={onOpenEnvironment}><KeyRound className="mr-1 h-3 w-3" />Environment</Button><StorageBucketPanel projectRef={projectRef} /><WebhookTesterPanel /></div>
+            <div className="flex flex-wrap items-center gap-2">
+              <select aria-label="Supabase project connection" value={selectedConnectionId ?? ""} onChange={(event) => onSelectConnection(event.target.value)} className="h-7 max-w-[220px] rounded-md border border-slate-700 bg-[#080e19] px-2 text-[10px] text-slate-200">
+                <option value="">Choose Supabase project…</option>
+                {connections.map((connection) => <option key={connection.id} value={connection.id}>{connection.display_name} · {connection.project_ref}</option>)}
+              </select>
+              <Button type="button" size="sm" variant="outline" className="h-7 border-slate-700 text-[10px]" onClick={onOpenEnvironment}><KeyRound className="mr-1 h-3 w-3" />Environment</Button>
+              <StorageBucketPanel projectRef={projectRef} />
+              <WebhookTesterPanel />
+            </div>
           </div>
           <p className="text-[10px] text-slate-500">{projectRef ? "Connected project · " + projectRef : "Select a connected Supabase project in the Builder first."}</p>
         </DialogHeader>
         {!projectRef ? (
           <div className="flex flex-col items-center gap-3 p-8 text-center text-xs text-slate-400">
-            <p>Connect a Supabase project under Connections &amp; Integrations, then select it in the Builder.</p>
+            <p>Connect a Supabase project under Connections &amp; Integrations, then choose it from the selector above.</p>
             <Button type="button" variant="outline" className="border-slate-700 text-slate-200" onClick={() => window.location.assign("/connections")}><ExternalLink className="mr-2 h-3.5 w-3.5" />Open Connections &amp; Integrations</Button>
           </div>
         ) : (
