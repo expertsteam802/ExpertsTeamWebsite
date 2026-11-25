@@ -813,6 +813,22 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const token = await resolveGitHubAccessToken(context.supabase, context.userId, data.token);
     await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    // Compare against the last successful sync only when this is the same linked
+    // repository and branch. A stale baseline must never silently overwrite GitHub.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const syncDb = context.supabase as any;
+    const { data: syncLink, error: syncLinkError } = await syncDb.from("project_repos")
+      .select("repo_owner,repo_name,active_branch,last_synced_sha")
+      .eq("project_id", data.projectId).eq("user_id", context.userId).maybeSingle();
+    if (syncLinkError) throw new Error("Could not verify the last GitHub sync before pushing.");
+    const [requestedOwner, requestedRepository] = data.repo.split("/");
+    const requestedBranch = data.branch || syncLink?.active_branch;
+    const expectedBaseSha = syncLink &&
+      syncLink.repo_owner.toLowerCase() === requestedOwner?.toLowerCase() &&
+      syncLink.repo_name.toLowerCase() === requestedRepository?.toLowerCase() &&
+      syncLink.active_branch === requestedBranch
+        ? syncLink.last_synced_sha
+        : null;
     const files = await loadProjectSourceFiles(context.supabase, data.projectId, context.userId);
     const { data: assetRows, error: assetError } = await context.supabase
       .from("agent_project_assets")
@@ -833,7 +849,7 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
     try {
       const { pushToGithub } = await import("./agent.server");
       const pushed = await pushToGithub({
-        token, repo: data.repo, files, binaryAssets, branch: data.branch,
+        token, repo: data.repo, files, binaryAssets, branch: data.branch, expectedBaseSha,
         message: data.message || "feat: update project from ExpertsTeam", makePrivate: data.makePrivate,
       });
       const [owner, repository] = data.repo.split("/");
