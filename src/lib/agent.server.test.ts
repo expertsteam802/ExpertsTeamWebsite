@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 
 import { repairMissingStylesheetImports, runAgent, runAgentChat } from "./agent.server";
-import { generateGeminiContent } from "./gemini.server";
+import { generateExpertAiContent } from "./kilo-gateway.server";
 import { compactSmartContents, estimateSmartTokens } from "./smart-processing.server";
 
 const originalFetch = globalThis.fetch;
@@ -64,7 +64,7 @@ test("ExpertAI anonymous gateway receives a larger output budget and returns nor
     });
   }) as typeof fetch;
 
-  const response = await generateGeminiContent({
+  const response = await generateExpertAiContent({
     systemInstruction: { parts: [{ text: "You are ExpertAI." }] },
     contents: [{ role: "user", parts: [{ text: "Say hello." }] }],
     generationConfig: { maxOutputTokens: 8192 },
@@ -89,7 +89,7 @@ test("ExpertAI adapter forwards image attachments in OpenAI-compatible format", 
     return Response.json({ choices: [{ finish_reason: "stop", message: { content: "Image received." } }] });
   }) as typeof fetch;
 
-  await generateGeminiContent({
+  await generateExpertAiContent({
     systemInstruction: { parts: [{ text: "You are ExpertAI." }] },
     contents: [{ role: "user", parts: [
       { text: "Describe this image." },
@@ -106,7 +106,7 @@ test("ExpertAI free-model IP quota is identified separately and fails once", asy
     return Response.json({ error: { message: "Rate limit exceeded for free models per IP address." } }, { status: 429 });
   }) as typeof fetch;
   await assert.rejects(
-    generateGeminiContent({
+    generateExpertAiContent({
       systemInstruction: { parts: [{ text: "You are ExpertAI." }] },
       contents: [{ role: "user", parts: [{ text: "Help." }] }],
     }),
@@ -120,7 +120,7 @@ test("ExpertAI upstream provider 429 is not mislabeled as the shared IP quota", 
     Response.json({ error: { message: "The selected upstream model is temporarily rate limited." } }, { status: 429 })
   ) as typeof fetch;
   await assert.rejects(
-    generateGeminiContent({
+    generateExpertAiContent({
       systemInstruction: { parts: [{ text: "You are ExpertAI." }] },
       contents: [{ role: "user", parts: [{ text: "Help." }] }],
     }),
@@ -216,7 +216,7 @@ test("ExpertAI adapter drops unsupported JSON response mode and retries", async 
     if (calls === 1) return new Response("unsupported parameter response_format", { status: 400 });
     return Response.json({ choices: [{ finish_reason: "stop", message: { content: "{\"ok\":true}" } }] });
   }) as typeof fetch;
-  const response = await generateGeminiContent({
+  const response = await generateExpertAiContent({
     systemInstruction: { parts: [{ text: "Return JSON." }] },
     contents: [{ role: "user", parts: [{ text: "Return ok true." }] }],
     generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1024 },
