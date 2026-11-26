@@ -113,21 +113,13 @@ export async function syncBrowserProject(projectId: string, files: BrowserProjec
       runtimeState.devProcess = null;
       runtimeState.shellProcess = null;
       await clearRuntimeFiles();
-      await runtime.fs.mkdir(runtime.workdir, { recursive: true });
-      // Mount points are relative to the WebContainer filesystem root.
       // Write directly into workdir so npm's default cwd always contains the project.
-      await runtime.fs.mkdir(runtime.workdir, { recursive: true });
       for (const [rawPath, contents] of Object.entries(files)) {
         const safePath = normalizePath(rawPath);
         const parent = safePath.split("/").slice(0, -1).join("/");
         if (parent) await runtime.fs.mkdir(runtime.workdir + "/" + parent, { recursive: true });
         await runtime.fs.writeFile(runtime.workdir + "/" + safePath, contents);
       }
-      runtimeState.activeProjectId = projectId;
-      runtimeState.installedDependencySignature = null;
-      runtimeState.activePaths = new Set(Object.keys(files).map(normalizePath));
-      runtimeState.lastSyncedFiles = new Map(Object.entries(files).map(([path, contents]) => [normalizePath(path), contents]));
-      return;
       runtimeState.activeProjectId = projectId;
       runtimeState.installedDependencySignature = null;
       runtimeState.activePaths = new Set(Object.keys(files).map(normalizePath));
@@ -222,12 +214,6 @@ export async function startBrowserPreview(
 ) {
   await syncBrowserProject(projectId, files);
   const runtime = await getBrowserRuntime();
-  // Fail with a precise sync error rather than letting npm emit a confusing ENOENT.
-  try {
-    await runtime.fs.readFile(runtime.workdir + "/package.json", "utf-8");
-  } catch {
-    throw new Error("Project files were not mounted into the browser runtime: package.json is missing from " + runtime.workdir + ". Re-sync the project and try again.");
-  }
   runtimeState.previewPortUnsubscribe?.();
   runtimeState.previewPortUnsubscribe = null;
   runtimeState.devProcess?.kill();
@@ -254,6 +240,13 @@ export async function startBrowserPreview(
       await runtime.fs.writeFile(runtime.workdir + "/index.html", '<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ExpertsTeam Preview</title></head><body><h1>Project preview</h1></body></html>');
     }
     packageJson = starterPackage;
+  }
+
+  // Verify the manifest exists in npm's actual default working directory.
+  try {
+    await runtime.fs.readFile(runtime.workdir + "/package.json", "utf-8");
+  } catch {
+    throw new Error("Project files were not synced into the browser runtime: package.json is missing from " + runtime.workdir + ".");
   }
 
   if (!packageJson.scripts?.dev && !packageJson.scripts?.start) {
