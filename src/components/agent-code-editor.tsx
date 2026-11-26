@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ArrowLeft,
   Code2,
   Download,
   File,
@@ -15,6 +16,7 @@ import CodeMirror from "@uiw/react-codemirror";
 import { EditorView } from "@codemirror/view";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { Button } from "@/components/ui/button";
+import { Link } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
 import { MonacoEditor } from "@/components/monaco-editor";
 import type { ProjectFiles } from "@/lib/sandbox";
@@ -170,6 +172,7 @@ export function AgentCodeEditor({ projectId }: { projectId: string }) {
     <main className="flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-[#0b0e14] text-slate-100">
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-white/10 bg-[#10141d] px-3">
         <div className="flex min-w-0 items-center gap-2">
+          <Link to="/ai" aria-label="Back to projects" className="flex h-8 items-center gap-1 rounded-md px-2 text-xs text-slate-400 hover:bg-white/10 hover:text-white"><ArrowLeft size={14} /><span className="hidden sm:inline">Projects</span></Link>
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-500/15 text-blue-300"><Code2 size={16} /></div>
           <span className="truncate text-sm font-semibold">{projectQuery.data?.project.name ?? "Agent Studio"}</span>
           <span className="hidden rounded border border-white/10 px-2 py-0.5 text-[10px] text-slate-400 sm:inline">Code Editor</span>
