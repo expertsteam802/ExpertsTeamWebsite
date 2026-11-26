@@ -177,7 +177,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
           private: true,
           type: "module",
           scripts: { dev: "vite --host 0.0.0.0" },
-          devDependencies: { vite: "^6.4.1" },
+          devDependencies: { vite: "^6.4.6" },
         }, null, 2);
       }
       if (!previewFiles["index.html"] && !Object.keys(files).some((path) => path.endsWith(".html"))) {
