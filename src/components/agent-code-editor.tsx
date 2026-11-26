@@ -194,7 +194,13 @@ export function AgentCodeEditor({ projectId }: { projectId: string }) {
       setCloudFiles(previewFiles);
       await saveProjectFiles(projectId, user!.id, previewFiles);
       const publicEnvironment = await getProjectPublicEnvironment({ data: { projectId } });
-      const result = await startBrowserPreview(projectId, { ...previewFiles, ...binaryAssets }, publicEnvironment);
+      const result = await startBrowserPreview(
+        projectId,
+        { ...previewFiles, ...binaryAssets },
+        publicEnvironment,
+        undefined,
+        (url) => setPreviewUrl(url ?? ""),
+      );
       setPreviewUrl(result.url);
       setPreviewVisible(true);
       toast.success("Browser preview is running.");
