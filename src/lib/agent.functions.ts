@@ -119,6 +119,21 @@ export const runCodingAgent = createServerFn({ method: "POST" })
     return result;
   });
 
+export const getProjectPublicEnvironment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
+    const { loadProjectPublicEnvironment } = await import("./project-secrets.server");
+    // Only explicitly public project variables are returned to the browser runtime.
+    return loadProjectPublicEnvironment(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      context.supabase as any,
+      context.userId,
+      data.projectId,
+    );
+  });
+
 export const runAgentSelfHeal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
