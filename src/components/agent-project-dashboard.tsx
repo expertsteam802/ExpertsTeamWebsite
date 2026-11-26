@@ -11,6 +11,7 @@ import { runCodingAgent } from "@/lib/agent.functions";
 import { createFrameworkStarterFiles, detectAgentFramework, FRAMEWORK_OPTIONS, type AgentFramework } from "@/lib/framework-scaffolds";
 import { saveProjectFiles } from "@/lib/project-files";
 import { listConnectedGitHubRepositories, importConnectedGitHubRepository } from "@/lib/github-import.functions";
+import { projectSlug } from "@/lib/agent-project-slug";
 
 type AgentProject = { id:string; name:string; description:string; framework:string; updated_at:string; thumbnail_url:string|null };
 
@@ -203,7 +204,7 @@ export function AgentProjectDashboard() {
       // AI generation must never keep the user stranded on the welcome dashboard.
       await queryClient.invalidateQueries({queryKey:["agent-studio-projects",user.id]});
       setReferenceImages([]);
-      await navigate({to:"/ai/$projectId",params:{projectId:data.id}});
+      await navigate({to:"/agent/$projectName",params:{projectName:projectSlug({id:data.id,name}, [...(projects.data ?? []), {id:data.id,name}])}});
       toast.success(blank?"Blank project created.":"Workspace opened. Building your project…");
 
       if(!blank){
@@ -289,7 +290,7 @@ export function AgentProjectDashboard() {
       await queryClient.invalidateQueries({ queryKey: ["agent-studio-projects", user.id] });
       setGithubOpen(false);
       toast.success(`Imported ${imported.importedCount} files from ${repo.full_name}.`);
-      void navigate({ to: "/ai/$projectId", params: { projectId: data.id } });
+      void navigate({ to: "/agent/$projectName", params: { projectName: projectSlug({ id: data.id, name: repo.name }, [...(projects.data ?? []), { id: data.id, name: repo.name }]) } });
     } catch (error) {
       setGithubError(error instanceof Error ? error.message : "Could not import this repository.");
       toast.error(error instanceof Error ? error.message : "Could not import this repository.");
@@ -303,7 +304,7 @@ export function AgentProjectDashboard() {
   );
 
   const copyProjectLink=async(id:string)=>{
-    try{await navigator.clipboard.writeText(new URL("/ai/"+id,window.location.origin).toString());toast.success("Project link copied.");}
+    try{await navigator.clipboard.writeText(new URL("/agent/"+projectSlug(projects.data?.find((project) => project.id === id) ?? {id,name:"project"}, projects.data ?? []),window.location.origin).toString());toast.success("Project link copied.");}
     catch{toast.error("Could not copy the project link.");}
   };
 
@@ -368,8 +369,8 @@ export function AgentProjectDashboard() {
           </div>
         </div>
         {projects.isLoading?<div className="py-16 text-center text-sm text-slate-500">Loading projects…</div>:projects.isError?<div className="py-16 text-center text-sm text-rose-300">Could not load projects. Refresh and try again.</div>:visibleProjects.length?<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{visibleProjects.map(project=><article key={project.id} className="group overflow-hidden rounded-xl border border-white/10 bg-[#111827] transition hover:border-emerald-400/30">
-          <div className="relative h-36 overflow-hidden bg-gradient-to-br from-slate-800 via-[#111827] to-emerald-950/40">{project.thumbnail_url?<img src={project.thumbnail_url} alt="" className="h-full w-full object-cover"/>:<div className="flex h-full items-center justify-center"><div className="rounded-2xl border border-white/10 bg-black/20 p-5 text-emerald-300"><FolderCode size={34}/></div></div>}<span className="absolute left-3 top-3 rounded-md border border-white/10 bg-black/50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-200">{project.framework||"Project"}</span><button type="button" onClick={()=>setMenuId(menuId===project.id?null:project.id)} className="absolute right-3 top-3 rounded-md bg-black/50 p-2 text-white hover:bg-black/70" aria-label="Project menu"><MoreHorizontal size={16}/></button>{menuId===project.id&&<div className="absolute right-3 top-12 z-10 min-w-36 rounded-lg border border-white/10 bg-[#0b0f17] p-1 shadow-xl"><Link to="/ai/$projectId" params={{projectId:project.id}} className="block rounded px-3 py-2 text-xs hover:bg-white/5">Open</Link><button type="button" onClick={()=>void copyProjectLink(project.id)} className="block w-full rounded px-3 py-2 text-left text-xs hover:bg-white/5">Copy link</button><button type="button" onClick={()=>toast.info("Rename, duplicate, showcase and delete actions are not wired yet.")} className="block w-full rounded px-3 py-2 text-left text-xs hover:bg-white/5">More actions…</button></div>}</div>
-          <div className="p-4"><h3 className="truncate text-sm font-semibold">{project.name}</h3><p className="mt-1 min-h-8 line-clamp-2 text-xs text-slate-500">{project.description||"No description yet"}</p><div className="mt-4 flex items-center justify-between border-t border-white/5 pt-3"><button type="button" onClick={()=>void copyProjectLink(project.id)} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white"><Copy size={13}/> Share</button><Link to="/ai/$projectId" params={{projectId:project.id}} className="flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">Open <ExternalLink size={13}/></Link></div></div>
+          <div className="relative h-36 overflow-hidden bg-gradient-to-br from-slate-800 via-[#111827] to-emerald-950/40">{project.thumbnail_url?<img src={project.thumbnail_url} alt="" className="h-full w-full object-cover"/>:<div className="flex h-full items-center justify-center"><div className="rounded-2xl border border-white/10 bg-black/20 p-5 text-emerald-300"><FolderCode size={34}/></div></div>}<span className="absolute left-3 top-3 rounded-md border border-white/10 bg-black/50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-200">{project.framework||"Project"}</span><button type="button" onClick={()=>setMenuId(menuId===project.id?null:project.id)} className="absolute right-3 top-3 rounded-md bg-black/50 p-2 text-white hover:bg-black/70" aria-label="Project menu"><MoreHorizontal size={16}/></button>{menuId===project.id&&<div className="absolute right-3 top-12 z-10 min-w-36 rounded-lg border border-white/10 bg-[#0b0f17] p-1 shadow-xl"><Link to="/agent/$projectName" params={{projectName:projectSlug(project, projects.data ?? [])}} className="block rounded px-3 py-2 text-xs hover:bg-white/5">Open</Link><button type="button" onClick={()=>void copyProjectLink(project.id)} className="block w-full rounded px-3 py-2 text-left text-xs hover:bg-white/5">Copy link</button><button type="button" onClick={()=>toast.info("Rename, duplicate, showcase and delete actions are not wired yet.")} className="block w-full rounded px-3 py-2 text-left text-xs hover:bg-white/5">More actions…</button></div>}</div>
+          <div className="p-4"><h3 className="truncate text-sm font-semibold">{project.name}</h3><p className="mt-1 min-h-8 line-clamp-2 text-xs text-slate-500">{project.description||"No description yet"}</p><div className="mt-4 flex items-center justify-between border-t border-white/5 pt-3"><button type="button" onClick={()=>void copyProjectLink(project.id)} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white"><Copy size={13}/> Share</button><Link to="/agent/$projectName" params={{projectName:projectSlug(project, projects.data ?? [])}} className="flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">Open <ExternalLink size={13}/></Link></div></div>
         </article>)}</div>:<div className="rounded-2xl border border-dashed border-white/10 px-5 py-16 text-center"><FolderCode className="mx-auto mb-3 h-9 w-9 text-slate-600"/><h3 className="font-medium">No projects found</h3><p className="mt-2 text-sm text-slate-500">Start with a prompt above or create a blank project.</p></div>}
       </section>
     </section>
