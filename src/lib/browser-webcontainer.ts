@@ -531,6 +531,7 @@ export async function openBrowserTerminal(
   const writer = process.input.getWriter();
   const reader = process.output.getReader();
   let interactive = false;
+  let handshakeBuffer = "";
   let resolveInteractive!: () => void;
   const interactiveReady = new Promise<void>((resolve) => {
     resolveInteractive = resolve;
@@ -543,11 +544,15 @@ export async function openBrowserTerminal(
         if (done) break;
         if (!value) continue;
 
-        // Match Bolt's JSH interactive handshake. Do not send keystrokes
-        // until the shell has finished initializing its interactive mode.
-        if (!interactive && /\x1b\]654;interactive\x07/.test(value)) {
-          interactive = true;
-          resolveInteractive();
+        // OSC sequences may be split across WebContainer output chunks.
+        // Keep a short tail until Bolt's JSH interactive marker is complete.
+        if (!interactive) {
+          handshakeBuffer = (handshakeBuffer + value).slice(-128);
+          if (/\x1b\]654;interactive\x07/.test(handshakeBuffer)) {
+            interactive = true;
+            resolveInteractive();
+            handshakeBuffer = "";
+          }
         }
         onOutput(value);
       }
