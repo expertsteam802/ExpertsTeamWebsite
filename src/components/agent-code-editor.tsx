@@ -25,6 +25,7 @@ import { MonacoEditor } from "@/components/monaco-editor";
 import type { ProjectFiles } from "@/lib/sandbox";
 import { loadProjectBinaryAssets, loadProjectFiles, saveProjectFiles } from "@/lib/project-files";
 import { startBrowserPreview, stopBrowserPreview } from "@/lib/browser-webcontainer";
+import { getProjectPublicEnvironment } from "@/lib/agent.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -192,7 +193,8 @@ export function AgentCodeEditor({ projectId }: { projectId: string }) {
       setFiles(previewFiles);
       setCloudFiles(previewFiles);
       await saveProjectFiles(projectId, user!.id, previewFiles);
-      const result = await startBrowserPreview(projectId, { ...previewFiles, ...binaryAssets });
+      const publicEnvironment = await getProjectPublicEnvironment({ data: { projectId } });
+      const result = await startBrowserPreview(projectId, { ...previewFiles, ...binaryAssets }, publicEnvironment);
       setPreviewUrl(result.url);
       setPreviewVisible(true);
       toast.success("Browser preview is running.");
