@@ -69,48 +69,38 @@ function ExpertBackground() {
       aurora("rgba(59, 130, 246, 0.34)", 2.7, 0.12);
       ctx.restore();
 
-      // Perspective floor grid converging at the 48% horizon.
-      const horizon = height * 0.48;
+      // Floating light forms replace the distracting perspective grids.
+      // Slow, translucent orbital halos and soft light blooms add depth without UI-like lines.
       ctx.save();
-      ctx.lineWidth = 1;
-      for (let i = -14; i <= 14; i++) {
-        const bottomX = width / 2 + i * width * 0.105;
+      const blooms = [
+        { x: 0.12, y: 0.36, r: 0.23, color: "rgba(16, 185, 129, 0.10)", phase: 0.2 },
+        { x: 0.86, y: 0.28, r: 0.27, color: "rgba(59, 130, 246, 0.11)", phase: 2.1 },
+        { x: 0.68, y: 0.72, r: 0.18, color: "rgba(45, 212, 191, 0.07)", phase: 4.0 },
+        { x: 0.28, y: 0.78, r: 0.16, color: "rgba(96, 165, 250, 0.06)", phase: 5.2 },
+      ];
+      for (const bloom of blooms) {
+        const driftX = Math.sin(t * 0.22 + bloom.phase) * width * 0.025;
+        const driftY = Math.cos(t * 0.18 + bloom.phase) * height * 0.018;
+        const x = width * bloom.x + driftX;
+        const y = height * bloom.y + driftY;
+        const radius = Math.min(width, height) * bloom.r;
+        const glow = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        glow.addColorStop(0, bloom.color);
+        glow.addColorStop(0.48, bloom.color.replace(/0\.\d+\)$/, "0.035)"));
+        glow.addColorStop(1, "rgba(4, 7, 15, 0)");
+        ctx.fillStyle = glow;
         ctx.beginPath();
-        ctx.moveTo(width / 2 + i * 1.4, horizon);
-        ctx.lineTo(bottomX, height * 1.08);
-        ctx.strokeStyle = "rgba(56, 189, 248, 0.13)";
-        ctx.stroke();
-      }
-      const scroll = (t * 0.18) % 1;
-      for (let i = 0; i < 18; i++) {
-        const p = (i / 18 + scroll) % 1;
-        const y = horizon + (p * p) * (height - horizon) * 1.08;
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(125, 211, 252, 0.055)";
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.strokeStyle = `rgba(56, 189, 248, ${0.035 + p * 0.11})`;
-        ctx.stroke();
-      }
-      // Faint ceiling grid adds depth without competing with the prompt.
-      for (let i = -10; i <= 10; i++) {
-        ctx.beginPath();
-        ctx.moveTo(width / 2 + i * 1.3, horizon);
-        ctx.lineTo(width / 2 + i * width * 0.09, -height * 0.12);
-        ctx.strokeStyle = "rgba(16, 185, 129, 0.055)";
-        ctx.stroke();
-      }
-      for (let i = 1; i <= 7; i++) {
-        const p = i / 7;
-        const y = horizon - p * p * horizon * 1.15;
-        ctx.beginPath();
-        ctx.moveTo(width * (0.5 - p * 0.58), y);
-        ctx.lineTo(width * (0.5 + p * 0.58), y);
-        ctx.strokeStyle = "rgba(16, 185, 129, 0.045)";
+        ctx.ellipse(x, y, radius * 0.72, radius * 0.19, Math.sin(t * 0.12 + bloom.phase) * 0.35, 0, Math.PI * 2);
         ctx.stroke();
       }
       ctx.restore();
 
-      // Twinkling particles and restrained constellation links.
+      // Twinkling particles: independent points, with no connecting lines or grid.
       const points = particles.map((p) => ({
         x: p.x * width + Math.sin(t * p.speed + p.phase) * 10,
         y: p.y * height + Math.cos(t * p.speed + p.phase) * 7,
@@ -120,16 +110,6 @@ function ExpertBackground() {
       ctx.save();
       for (let i = 0; i < points.length; i++) {
         const a = points[i];
-        for (let j = i + 1; j < Math.min(i + 4, points.length); j++) {
-          const b = points[j];
-          const dx = a.x - b.x, dy = a.y - b.y;
-          const dist = Math.hypot(dx, dy);
-          if (dist < 105) {
-            ctx.strokeStyle = `rgba(56, 189, 248, ${(1 - dist / 105) * 0.055})`;
-            ctx.lineWidth = 0.7;
-            ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-          }
-        }
         ctx.beginPath();
         ctx.arc(a.x, a.y, a.radius, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(186, 230, 253, ${a.alpha})`;
