@@ -1,4 +1,7 @@
+/* eslint-disable no-control-regex */
 import { WebContainer, configureAPIKey, type FileSystemTree, type WebContainerProcess } from "@webcontainer/api";
+
+export type BrowserPreviewPort = { port: number; url: string; ready: boolean };
 
 interface RuntimeState {
   bootPromise: Promise<WebContainer> | null;
@@ -233,6 +236,7 @@ export async function startBrowserPreview(
   environment: Record<string, string> = {},
   onOutput?: (chunk: string) => void,
   onPreviewUrl?: (url: string | null) => void,
+  onPreviewPorts?: (ports: BrowserPreviewPort[]) => void,
 ) {
   await syncBrowserProject(projectId, files);
   const runtime = await getBrowserRuntime();
@@ -339,6 +343,10 @@ export async function startBrowserPreview(
   let readyTimer = 0;
   let activePreviewPort: number | null = null;
   let failReady: ((error: Error) => void) | null = null;
+  const availablePorts = new Map<number, BrowserPreviewPort>();
+  const publishPorts = () => onPreviewPorts?.(
+    [...availablePorts.values()].sort((left, right) => left.port - right.port),
+  );
   const ready = new Promise<string>((resolve, reject) => {
     const cleanup = () => {
       window.clearTimeout(readyTimer);
@@ -348,20 +356,38 @@ export async function startBrowserPreview(
     failReady = (error) => { cleanup(); reject(error); };
     const unsubscribeReady = runtime.on("server-ready", (port, url) => {
       activePreviewPort = port;
+      const known = availablePorts.get(port);
+      availablePorts.set(port, { port, url, ready: true });
+      publishPorts();
       onPreviewUrl?.(url);
       cleanup();
-      resolve(url);
+      resolve(known?.url ?? url);
     });
     const unsubscribeError = runtime.on("error", ({ message }) => {
       cleanup();
       reject(new Error(message));
     });
-    // Follow the selected dev-server port only; apps may expose unrelated ports too.
+    // Match Bolt's preview store: retain every open port and remove it only
+    // when WebContainer reports close. Apps can expose multiple preview ports.
     runtimeState.previewPortUnsubscribe = runtime.on("port", (port, type, url) => {
-      if (activePreviewPort === null && type === "open") activePreviewPort = port;
-      if (port !== activePreviewPort) return;
-      if (type === "close") onPreviewUrl?.(null);
-      else onPreviewUrl?.(url);
+      if (type === "close") {
+        availablePorts.delete(port);
+        publishPorts();
+        if (activePreviewPort === port) {
+          const fallback = [...availablePorts.values()].find((item) => item.ready);
+          activePreviewPort = fallback?.port ?? null;
+          onPreviewUrl?.(fallback?.url ?? null);
+        }
+        return;
+      }
+      availablePorts.set(port, { port, url, ready: type === "open" });
+      if (activePreviewPort === null && type === "open") {
+        activePreviewPort = port;
+        onPreviewUrl?.(url);
+      } else if (activePreviewPort === port) {
+        onPreviewUrl?.(url);
+      }
+      publishPorts();
     });
     readyTimer = window.setTimeout(() => {
       cleanup();
@@ -391,7 +417,7 @@ export async function startBrowserPreview(
     }
   })();
   const url = await ready;
-  return { url, runtime };
+  return { url, runtime, ports: [...availablePorts.values()].sort((left, right) => left.port - right.port) };
 }
 
 
@@ -506,6 +532,7 @@ export async function openBrowserTerminal(
   const writer = process.input.getWriter();
   const reader = process.output.getReader();
   let interactive = false;
+  let handshakeBuffer = "";
   let resolveInteractive!: () => void;
   const interactiveReady = new Promise<void>((resolve) => {
     resolveInteractive = resolve;
@@ -518,11 +545,15 @@ export async function openBrowserTerminal(
         if (done) break;
         if (!value) continue;
 
-        // Match Bolt's JSH interactive handshake. Do not send keystrokes
-        // until the shell has finished initializing its interactive mode.
-        if (!interactive && /\x1b\]654;interactive\x07/.test(value)) {
-          interactive = true;
-          resolveInteractive();
+        // OSC sequences may be split across WebContainer output chunks.
+        // Keep a short tail until Bolt's JSH interactive marker is complete.
+        if (!interactive) {
+          handshakeBuffer = (handshakeBuffer + value).slice(-128);
+          if (/\x1b\]654;interactive\x07/.test(handshakeBuffer)) {
+            interactive = true;
+            resolveInteractive();
+            handshakeBuffer = "";
+          }
         }
         onOutput(value);
       }

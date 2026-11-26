@@ -1,3 +1,4 @@
+/* eslint-disable no-control-regex */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,7 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { loadProjectBinaryAssets, loadProjectFiles, saveProjectFiles } from "@/lib/project-files";
 import { getProjectPublicEnvironment, runCodingAgent } from "@/lib/agent.functions";
-import { openBrowserTerminal, startBrowserPreview, stopBrowserPreview, syncBrowserProject, watchBrowserProject } from "@/lib/browser-webcontainer";
+import { openBrowserTerminal, startBrowserPreview, stopBrowserPreview, syncBrowserProject, watchBrowserProject, type BrowserPreviewPort } from "@/lib/browser-webcontainer";
 import CodeMirror from "@uiw/react-codemirror";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { Terminal } from "@xterm/xterm";
@@ -49,6 +50,8 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
+  const [previewPorts, setPreviewPorts] = useState<BrowserPreviewPort[]>([]);
+  const [selectedPreviewPort, setSelectedPreviewPort] = useState<number | null>(null);
   const terminalHost = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const terminalSessionRef = useRef<{ write: (value: string) => void; resize: (size: { cols: number; rows: number }) => void; close: () => void } | null>(null);
@@ -206,6 +209,8 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     setBusy(true);
     setRuntimeOutput("");
     setPreviewUrl("");
+    setPreviewPorts([]);
+    setSelectedPreviewPort(null);
     try {
       const previewFiles = { ...files };
       if (!previewFiles["package.json"]) {
@@ -238,6 +243,14 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
           setRuntimeOutput((current) => (current + readable).slice(-12000));
         },
         (url) => setPreviewUrl(url ?? ""),
+        (ports) => {
+          setPreviewPorts(ports);
+          setSelectedPreviewPort((current) => {
+            const selected = ports.find((item) => item.port === current) ?? ports.find((item) => item.ready);
+            if (selected && selected.port !== current) setPreviewUrl(selected.url);
+            return selected?.port ?? null;
+          });
+        },
       );
       runtimeActiveRef.current = true;
       setRuntimeReady(true);
@@ -308,35 +321,98 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   if (projectQuery.isError || !projectQuery.data) return <main className="grid h-screen place-items-center bg-[#080b12] px-6 text-center text-sm text-rose-300">{(projectQuery.error as Error)?.message ?? "Project unavailable"}</main>;
 
   return (
-    <main className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[#080b12] text-slate-100">
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-white/10 bg-[#0d121d] px-3">
+    <main className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[#0b0b0c] text-[#e5e5e5]">
+      <header className="z-10 flex h-12 shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#111113] px-3">
         <div className="flex min-w-0 items-center gap-3">
-          <Link to="/ai" className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-slate-400 hover:bg-white/5 hover:text-white"><ArrowLeft size={14}/> Projects</Link>
+          <Link to="/ai" className="flex h-8 items-center gap-2 rounded-md px-2 text-xs text-[#a1a1aa] transition hover:bg-white/[0.06] hover:text-white"><ArrowLeft size={14}/> Projects</Link>
           <span className="h-5 w-px bg-white/10"/>
-          <Bot size={17} className="text-cyan-300"/>
-          <strong className="truncate text-sm">{projectQuery.data.project.name}</strong>
-          <span className="hidden rounded border border-cyan-400/20 bg-cyan-400/5 px-2 py-0.5 text-[10px] text-cyan-200 sm:inline">Agent Studio</span>
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 text-[11px] font-black text-black">E</div>
+          <strong className="max-w-[240px] truncate text-[13px] font-medium text-[#e4e4e7]">{projectQuery.data.project.name}</strong>
+          <span className="hidden rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-[#a1a1aa] sm:inline">Agent</span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-400"><span>⚡ {profile?.ai_credits ?? 0} credits</span><span className="hidden sm:inline">{saving ? "Saving…" : "Saved"} · {paths.length} files</span></div>
+        <div className="flex items-center gap-2">
+          <span className="hidden text-[11px] text-[#71717a] sm:inline">{saving ? "Saving changes…" : "All changes saved"} · {paths.length} files</span>
+          <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-[#a1a1aa]">⚡ {profile?.ai_credits ?? 0}</span>
+          <Button type="button" size="sm" onClick={() => void openPreview()} disabled={busy || paths.length===0} className="h-7 gap-1.5 rounded-md bg-[#e5e5e5] px-3 text-[11px] font-medium text-black hover:bg-white"><Play size={12}/> Run</Button>
+        </div>
       </header>
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <aside className="flex h-[48%] min-h-0 w-full shrink-0 flex-col border-b border-white/10 bg-[#0b101a] md:h-auto md:w-[390px] md:border-b-0 md:border-r">
-          <div className="flex h-11 shrink-0 items-center gap-2 border-b border-white/10 px-4"><Bot size={15} className="text-cyan-300"/><span className="text-xs font-semibold tracking-wide">AI AGENT</span><span className="ml-auto text-[10px] text-slate-500">Project conversation</span></div>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-            {messages.length === 0 && <div className="rounded-xl border border-cyan-400/15 bg-cyan-400/[0.04] p-4"><div className="mb-2 flex items-center gap-2 text-sm font-semibold"><Bot size={16} className="text-cyan-300"/> Ready to build</div><p className="text-xs leading-5 text-slate-400">Describe a feature, ask for a change, or tell the agent what to create. Your conversation is saved with this project.</p></div>}
-            {messages.map((message, index) => <article key={index} className={message.role === "user" ? "ml-7 rounded-xl border border-blue-400/15 bg-blue-400/[0.07] p-3" : "mr-3 rounded-xl border border-white/10 bg-white/[0.035] p-3"}><div className="mb-1.5 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">{message.role === "user" ? "You" : <><Bot size={12}/> ExpertsTeam Agent</>}</div><p className="whitespace-pre-wrap break-words text-xs leading-5 text-slate-200">{message.content}</p></article>)}
-            {busy && <div className="flex items-center gap-2 text-xs text-cyan-200"><LoaderCircle size={14} className="animate-spin"/> Agent is working…</div>}
+
+      <div className="flex min-h-0 flex-1">
+        <aside className="flex min-h-0 w-full max-w-[420px] shrink-0 flex-col border-r border-white/[0.08] bg-[#111113] max-md:max-w-[48%] max-sm:max-w-[54%]">
+          <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/[0.07] px-4">
+            <div className="flex items-center gap-2 text-[12px] font-medium text-[#e4e4e7]"><Bot size={15} className="text-cyan-300"/> Chat</div>
+            <span className="text-[10px] text-[#71717a]">ExpertsTeam Agent</span>
           </div>
-          <form className="shrink-0 border-t border-white/10 p-3" onSubmit={(event) => { event.preventDefault(); void sendMessage(); }}>
-            <Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="Ask ExpertsTeam Agent to build or change something…" rows={3} className="resize-none border-white/10 bg-[#080b12] text-xs text-slate-100 placeholder:text-slate-600 focus-visible:ring-cyan-500/30"/>
-            <div className="mt-2 flex items-center justify-between"><span className="text-[10px] text-slate-600">Fast model · 1 credit per build</span><Button type="submit" size="sm" disabled={!prompt.trim() || busy} className="h-8 gap-2 bg-cyan-500 text-slate-950 hover:bg-cyan-400"><Send size={13}/> Send</Button></div>
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5">
+            {messages.length === 0 && <div className="mx-auto mt-8 max-w-[280px] text-center"><div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04]"><Bot size={20} className="text-[#a1a1aa]"/></div><h2 className="text-[15px] font-medium text-[#e4e4e7]">What should we build?</h2><p className="mt-2 text-[12px] leading-5 text-[#85858d]">Describe your app or the change you want. The agent will work directly in this project and you can preview the result beside the chat.</p></div>}
+            {messages.map((message, index) => <article key={index} className={message.role === "user" ? "ml-5 rounded-xl bg-[#202024] px-3.5 py-3" : "mr-1 px-1 py-2"}>
+              <div className="mb-2 flex items-center gap-2 text-[10px] font-medium text-[#8b8b94]">{message.role === "user" ? "You" : <><Bot size={12} className="text-cyan-300"/> ExpertsTeam</>}</div>
+              <p className="whitespace-pre-wrap break-words text-[12px] leading-[1.65] text-[#dedee2]">{message.content}</p>
+            </article>)}
+            {busy && <div className="flex items-center gap-2 rounded-lg px-2 py-2 text-[11px] text-[#a1a1aa]"><LoaderCircle size={14} className="animate-spin"/> Working on your project…</div>}
+          </div>
+          <form className="shrink-0 border-t border-white/[0.07] p-3" onSubmit={(event) => { event.preventDefault(); void sendMessage(); }}>
+            <div className="rounded-xl border border-white/[0.12] bg-[#19191c] p-2 shadow-[0_8px_30px_rgba(0,0,0,0.22)] focus-within:border-white/25">
+              <Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="Ask ExpertsTeam to build anything…" rows={4} className="min-h-[88px] resize-none border-0 bg-transparent px-1 py-1 text-[12px] leading-5 text-white shadow-none placeholder:text-[#686870] focus-visible:ring-0"/>
+              <div className="flex items-center justify-between px-1 pt-1">
+                <span className="text-[10px] text-[#777780]">Kilo · Free model</span>
+                <Button type="submit" size="sm" disabled={!prompt.trim() || busy} className="h-7 gap-1.5 rounded-lg bg-[#e5e5e5] px-3 text-[11px] text-black hover:bg-white disabled:opacity-40"><Send size={12}/> Send</Button>
+              </div>
+            </div>
+            <p className="mt-2 text-center text-[9px] text-[#62626a]">AI can make mistakes. Review generated changes before publishing.</p>
           </form>
         </aside>
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#080b12]">
-          <nav className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 bg-[#0d121d] px-3"><div className="flex h-full items-stretch gap-1">{([{id:"preview",label:"Preview",icon:Eye},{id:"code",label:"Code",icon:Code2},{id:"terminal",label:"Terminal",icon:TerminalSquare}] as const).map((item) => { const Icon=item.icon; return <button key={item.id} type="button" onClick={() => setTab(item.id)} className={`inline-flex items-center gap-2 border-b-2 px-3 text-xs ${tab===item.id?"border-cyan-400 text-cyan-200":"border-transparent text-slate-500 hover:text-slate-200"}`}><Icon size={14}/>{item.label}</button>; })}</div><div className="flex items-center gap-2"><Button type="button" size="sm" onClick={() => void openPreview()} disabled={busy || paths.length===0} className="h-7 gap-1.5 bg-emerald-500 px-2 text-[11px] text-slate-950 hover:bg-emerald-400"><Play size={12}/> Run</Button><Button type="button" size="sm" variant="outline" onClick={() => void openTerminal()} disabled={busy || paths.length===0} className="h-7 gap-1.5 border-white/10 bg-transparent px-2 text-[11px] text-slate-300"><SquareTerminal size={12}/> Connect</Button></div></nav>
-          {tab === "preview" && <div className="flex min-h-0 flex-1 flex-col">{previewUrl ? <><div className="flex h-9 shrink-0 items-center justify-between border-b border-white/10 px-3 text-[11px] text-slate-500"><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-400"/> Live browser preview</span><a href={previewUrl} target="_blank" rel="noreferrer" className="hover:text-white">Open separately ↗</a></div><iframe title="Project preview" src={previewUrl} className="min-h-0 flex-1 border-0 bg-white" allow="clipboard-read; clipboard-write; fullscreen"/></> : <div className="grid flex-1 place-items-center p-8 text-center"><div>{runtimeOutput && <pre className="mb-4 max-h-40 max-w-xl overflow-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-black/30 p-3 text-left text-[10px] text-slate-400">{runtimeOutput}</pre>}<Eye size={30} className="mx-auto mb-3 text-slate-600"/><h2 className="text-sm font-semibold text-slate-300">Your live preview appears here</h2><p className="mt-2 max-w-sm text-xs leading-5 text-slate-500">Run the project in your browser. Your source files remain saved in Supabase.</p><Button type="button" onClick={() => void openPreview()} disabled={busy || paths.length===0} className="mt-4 bg-emerald-500 text-slate-950 hover:bg-emerald-400"><Play size={14} className="mr-2"/> Start preview</Button></div></div>}</div>}
-          {tab === "code" && <div className="flex min-h-0 flex-1"><aside className="w-52 shrink-0 overflow-y-auto border-r border-white/10 bg-[#0b101a] p-2"><div className="mb-2 flex items-center gap-2 px-2 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500"><Folder size={13}/> Files</div>{paths.map(path => <button key={path} type="button" onClick={() => setActivePath(path)} className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs ${activePath===path?"bg-cyan-400/10 text-cyan-200":"text-slate-400 hover:bg-white/5"}`}><FileCode2 size={13}/><span className="truncate">{path}</span></button>)}</aside><div className="flex min-w-0 flex-1 flex-col"><div className="flex h-9 shrink-0 items-center border-b border-white/10 px-3 text-xs text-slate-400">{activePath || "Select a file"}</div>{activePath ? <CodeMirror value={activeContent} height="100%" theme={oneDark} extensions={[]} onChange={(value) => setFiles(current => ({...current,[activePath]:value}))} basicSetup={{ lineNumbers:true, foldGutter:true }}/> : <div className="grid flex-1 place-items-center text-xs text-slate-500">No source files in this project yet.</div>}</div></div>}
-          <div className={`min-h-0 flex-1 flex-col ${tab === "terminal" ? "flex" : "hidden"}`}><div className="flex h-9 shrink-0 items-center justify-between border-b border-white/10 px-3 text-[11px] text-slate-500"><span className="flex items-center gap-2"><TerminalSquare size={13}/> Browser terminal · Shell</span><span>{terminalConnected ? "Browser runtime · Session kept alive" : "Not connected"}</span></div><div ref={terminalHost} className="min-h-0 flex-1 overflow-hidden p-2" /></div>
+
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#0b0b0c]">
+          <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#111113] px-3">
+            <div className="flex h-full items-stretch gap-1">
+              {([{id:"preview",label:"Preview",icon:Eye},{id:"code",label:"Code",icon:Code2},{id:"terminal",label:"Terminal",icon:TerminalSquare}] as const).map((item) => { const Icon=item.icon; return <button key={item.id} type="button" onClick={() => setTab(item.id)} className={`inline-flex items-center gap-2 border-b-2 px-3 text-[11px] transition ${tab===item.id?"border-white text-white":"border-transparent text-[#777780] hover:text-[#d4d4d8]"}`}><Icon size={13}/>{item.label}</button>; })}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="hidden text-[10px] text-[#71717a] sm:inline">{runtimeReady ? "Browser runtime ready" : "Local browser runtime"}</span>
+              <Button type="button" size="sm" variant="outline" onClick={() => void openTerminal()} disabled={busy} className="h-7 gap-1.5 rounded-md border-white/10 bg-transparent px-2.5 text-[10px] text-[#b4b4bc] hover:bg-white/[0.06] hover:text-white"><SquareTerminal size={12}/> Connect terminal</Button>
+            </div>
+          </div>
+
+          {tab === "preview" && <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex h-10 shrink-0 items-center gap-2 border-b border-white/[0.07] bg-[#101012] px-3">
+              <div className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#52525b]"/><span className="h-2 w-2 rounded-full bg-[#52525b]"/><span className="h-2 w-2 rounded-full bg-[#52525b]"/></div>
+              <div className="mx-auto flex h-7 min-w-0 max-w-[520px] flex-1 items-center justify-center rounded-md border border-white/[0.07] bg-[#19191c] px-3 text-[10px] text-[#777780]">
+                <span className="truncate">{previewUrl || "Preview URL will appear here when your app is running"}</span>
+              </div>
+              {previewPorts.length > 1 && <select aria-label="Preview port" value={selectedPreviewPort ?? ""} onChange={(event) => { const port = Number(event.target.value); const selected = previewPorts.find((item) => item.port === port); if (selected) { setSelectedPreviewPort(port); setPreviewUrl(selected.url); } }} className="h-7 max-w-20 rounded-md border border-white/10 bg-[#19191c] px-1.5 text-[10px] text-[#b4b4bc]">{previewPorts.filter((item) => item.ready).map((item) => <option key={item.port} value={item.port}>{item.port}</option>)}</select>}
+              {previewUrl && <a href={previewUrl} target="_blank" rel="noreferrer" title="Open preview in new tab" className="rounded-md px-2 py-1 text-[10px] text-[#a1a1aa] hover:bg-white/[0.06] hover:text-white">Open ↗</a>}
+            </div>
+            {previewUrl ? <iframe title="Project preview" src={previewUrl} className="min-h-0 flex-1 border-0 bg-white" allow="clipboard-read; clipboard-write; fullscreen"/> :
+              <div className="grid min-h-0 flex-1 place-items-center overflow-auto p-8 text-center">
+                <div className="max-w-[340px]">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.035]"><Eye size={21} className="text-[#8b8b94]"/></div>
+                  <h2 className="text-[14px] font-medium text-[#e4e4e7]">Your app preview</h2>
+                  <p className="mt-2 text-[11px] leading-5 text-[#777780]">Start the development server to see your app running here. The preview uses your browser's WebContainer runtime.</p>
+                  {runtimeOutput && <pre className="mt-4 max-h-36 overflow-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-black/30 p-3 text-left text-[10px] leading-4 text-[#a1a1aa]">{runtimeOutput}</pre>}
+                  <Button type="button" onClick={() => void openPreview()} disabled={busy || paths.length===0} className="mt-5 h-8 gap-2 rounded-md bg-[#e5e5e5] px-4 text-[11px] text-black hover:bg-white"><Play size={12}/> Start preview</Button>
+                </div>
+              </div>}
+          </div>}
+
+          {tab === "code" && <div className="flex min-h-0 flex-1">
+            <aside className="flex w-[220px] shrink-0 flex-col border-r border-white/[0.08] bg-[#101012] max-sm:w-[150px]">
+              <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.06] px-3"><span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#85858d]">Files</span><span className="text-[10px] text-[#66666e]">{paths.length}</span></div>
+              <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                {paths.map(path => <button key={path} type="button" onClick={() => setActivePath(path)} className={`flex w-full items-center gap-2 rounded-md px-2 py-[7px] text-left text-[11px] transition ${activePath===path?"bg-white/[0.09] text-white":"text-[#96969f] hover:bg-white/[0.04] hover:text-[#e4e4e7]"}`}><FileCode2 size={12} className="shrink-0"/><span className="truncate">{path}</span></button>)}
+                {!paths.length && <p className="px-2 py-3 text-[10px] text-[#66666e]">No files yet</p>}
+              </div>
+            </aside>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] px-3"><span className="truncate text-[11px] text-[#b4b4bc]">{activePath || "Select a file"}</span><span className="text-[10px] text-[#66666e]">Editing</span></div>
+              {activePath ? <CodeMirror value={activeContent} height="100%" theme={oneDark} extensions={[]} onChange={(value) => setFiles(current => ({...current,[activePath]:value}))} basicSetup={{ lineNumbers:true, foldGutter:true }}/> : <div className="grid flex-1 place-items-center text-[11px] text-[#71717a]">Select a file from the explorer</div>}
+            </div>
+          </div>}
+
+          <div className={`min-h-0 flex-1 flex-col ${tab === "terminal" ? "flex" : "hidden"}`}>
+            <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] px-3 text-[10px] text-[#85858d]"><span className="flex items-center gap-2"><TerminalSquare size={13}/> Terminal</span><span>{terminalConnected ? "Connected · WebContainer" : "Not connected"}</span></div>
+            <div ref={terminalHost} className="min-h-0 flex-1 overflow-hidden bg-[#0b0b0c] p-3"/>
+          </div>
         </section>
       </div>
     </main>
