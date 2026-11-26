@@ -180,7 +180,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
           devDependencies: { vite: "^6.4.6" },
         }, null, 2);
       }
-      if (!previewFiles["index.html"] && !Object.keys(files).some((path) => path.endsWith(".html"))) {
+      if (!previewFiles["index.html"]) {
         previewFiles["index.html"] = '<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ExpertsTeam Preview</title></head><body><h1>Project preview</h1></body></html>';
       }
       setFiles(previewFiles);
