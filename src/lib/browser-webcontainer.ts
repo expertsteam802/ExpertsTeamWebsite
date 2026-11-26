@@ -141,7 +141,6 @@ async function runCommand(
   command: string,
   args: string[],
   onOutput?: (chunk: string) => void,
-  onPreviewUrl?: (url: string | null) => void,
 ) {
   const process = await runtime.spawn(command, args);
   const reader = process.output.getReader();
@@ -165,6 +164,7 @@ export async function startBrowserPreview(
   files: BrowserProjectFiles,
   environment: Record<string, string> = {},
   onOutput?: (chunk: string) => void,
+  onPreviewUrl?: (url: string | null) => void,
 ) {
   await syncBrowserProject(projectId, files);
   const runtime = await getBrowserRuntime();
@@ -173,7 +173,7 @@ export async function startBrowserPreview(
   runtimeState.devProcess?.kill();
   runtimeState.devProcess = null;
 
-  let packageJson: { scripts?: Record<string, string>; dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+  let packageJson: { packageManager?: string; scripts?: Record<string, string>; dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
   try {
     const packageContent = files["package.json"];
     if (packageContent && typeof packageContent !== "string") throw new Error("package.json must be a text file.");
