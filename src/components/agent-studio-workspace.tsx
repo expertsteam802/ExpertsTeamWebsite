@@ -72,7 +72,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     setFiles(projectQuery.data.files);
     setMessages(projectQuery.data.messages);
     setActivePath(Object.keys(projectQuery.data.files).sort()[0] ?? "");
-  }, [projectQuery.data, projectId]);
+  }, [projectQuery.data, projectId, projectQuery.data?.project.updated_at]);
 
   useEffect(() => {
     if (!user || !projectQuery.data || hydratedRef.current !== projectId) return;
