@@ -224,6 +224,7 @@ export async function startBrowserPreview(
     ? [startScript, ...(runArgs.length > 2 ? runArgs.slice(2) : [])]
     : runArgs;
   let readyTimer = 0;
+  let activePreviewPort: number | null = null;
   let failReady: ((error: Error) => void) | null = null;
   const ready = new Promise<string>((resolve, reject) => {
     const cleanup = () => {
@@ -232,7 +233,9 @@ export async function startBrowserPreview(
       unsubscribeError();
     };
     failReady = (error) => { cleanup(); reject(error); };
-    const unsubscribeReady = runtime.on("server-ready", (_port, url) => {
+    const unsubscribeReady = runtime.on("server-ready", (port, url) => {
+      activePreviewPort = port;
+      onPreviewUrl?.(url);
       cleanup();
       resolve(url);
     });
@@ -240,9 +243,16 @@ export async function startBrowserPreview(
       cleanup();
       reject(new Error(message));
     });
-    // Follow port opens/closes after initial readiness, including dev-server restarts.
-    runtimeState.previewPortUnsubscribe = runtime.on("port", (_port, type, url) => {
-      onPreviewUrl?.(type === "open" ? url : null);
+    // Follow the selected dev-server port only; apps may expose unrelated ports too.
+    runtimeState.previewPortUnsubscribe = runtime.on("port", (port, type, url) => {
+      if (activePreviewPort === null && type === "open") activePreviewPort = port;
+      if (port !== activePreviewPort) return;
+      if (type === "close") {
+        activePreviewPort = null;
+        onPreviewUrl?.(null);
+      } else {
+        onPreviewUrl?.(url);
+      }
     });
     readyTimer = window.setTimeout(() => {
       cleanup();
