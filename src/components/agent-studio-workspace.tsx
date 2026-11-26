@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { loadProjectBinaryAssets, loadProjectFiles, saveProjectFiles } from "@/lib/project-files";
 import { getProjectPublicEnvironment, runCodingAgent } from "@/lib/agent.functions";
-import { openBrowserTerminal, startBrowserPreview, syncBrowserProject } from "@/lib/browser-webcontainer";
+import { openBrowserTerminal, startBrowserPreview, syncBrowserProject, watchBrowserProject } from "@/lib/browser-webcontainer";
 import CodeMirror from "@uiw/react-codemirror";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { Terminal } from "@xterm/xterm";
@@ -54,6 +54,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   const terminalSessionRef = useRef<{ write: (value: string) => void; resize: (size: { cols: number; rows: number }) => void; close: () => void } | null>(null);
   const runtimeActiveRef = useRef(false);
   const [runtimeOutput, setRuntimeOutput] = useState("");
+  const [runtimeReady, setRuntimeReady] = useState(false);
   const hydratedRef = useRef("");
 
   const projectQuery = useQuery({
@@ -111,6 +112,35 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     }, 180);
     return () => window.clearTimeout(timer);
   }, [files, binaryAssets, projectId]);
+
+  useEffect(() => {
+    if (!runtimeReady) return;
+    let disposed = false;
+    let closeWatcher: (() => void) | null = null;
+    void watchBrowserProject((path, contents) => {
+      if (disposed) return;
+      setFiles((current) => {
+        if (contents === null) {
+          if (!(path in current)) return current;
+          const next = { ...current };
+          delete next[path];
+          return next;
+        }
+        if (current[path] === contents) return current;
+        return { ...current, [path]: contents };
+      });
+    }).then((close) => {
+      if (disposed) close();
+      else closeWatcher = close;
+    }).catch((error) => {
+      console.error("[Agent Studio] Browser filesystem watcher failed:", error);
+      toast.error("The browser terminal is running, but terminal file changes may not sync until you refresh.");
+    });
+    return () => {
+      disposed = true;
+      closeWatcher?.();
+    };
+  }, [runtimeReady, projectId]);
 
   const persistConversation = useCallback(async (next: ChatMessage[]) => {
     if (!user) return;
@@ -188,6 +218,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       const publicEnvironment = await getProjectPublicEnvironment({ data: { projectId } });
       const result = await startBrowserPreview(projectId, { ...previewFiles, ...binaryAssets }, publicEnvironment, (chunk) => setRuntimeOutput((current) => (current + chunk).slice(-12000)));
       runtimeActiveRef.current = true;
+      setRuntimeReady(true);
       setPreviewUrl(result.url);
       setTab("preview");
       toast.success("Browser preview is running.");
@@ -204,6 +235,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       await saveProjectFiles(projectId, user!.id, files);
       await syncBrowserProject(projectId, { ...files, ...binaryAssets });
       runtimeActiveRef.current = true;
+      setRuntimeReady(true);
       setTab("terminal");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not open the browser terminal.");
