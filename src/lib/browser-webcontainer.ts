@@ -22,6 +22,14 @@ if (import.meta.hot) {
   import.meta.hot.data.expertsTeamRuntime = runtimeState;
 }
 
+function explainBootFailure(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/service.?worker|storage|cookie|partition|securityerror|not allowed/i.test(message)) {
+    return new Error("Your browser blocked the WebContainer project Service Worker or its isolated storage. ExpertsTeam cannot bypass that browser privacy rule. In Chrome, keep the default third-party Storage Partitioning enabled and retry in a normal browser window (not Incognito). Your project files remain safe in Supabase.");
+  }
+  return error instanceof Error ? error : new Error(message);
+}
+
 export function getBrowserRuntime() {
   if (typeof window === "undefined") {
     return Promise.reject(new Error("The browser runtime can only start in a browser tab."));
@@ -177,10 +185,14 @@ export async function startBrowserPreview(
   await runCommand(runtime, "npm", ["install", "--no-audit", "--no-fund"], onOutput);
 
   const startScript = packageJson.scripts?.dev ? "dev" : "start";
-  const isNext = /next/i.test((packageJson.dependencies?.next ?? packageJson.devDependencies?.next) || "");
-  const args = startScript === "dev"
-    ? ["run", startScript, "--", ...(isNext ? ["--hostname", "0.0.0.0"] : ["--host", "0.0.0.0"])]
-    : ["run", startScript];
+  const isNext = Boolean(packageJson.dependencies?.next || packageJson.devDependencies?.next);
+  const devCommand = packageJson.scripts?.dev ?? "";
+  const usesHostFlag = /vite|astro|svelte|nuxt|vue-cli-service|webpack-dev-server/i.test(devCommand);
+  const args = startScript === "dev" && isNext
+    ? ["run", startScript, "--", "--hostname", "0.0.0.0"]
+    : startScript === "dev" && usesHostFlag
+      ? ["run", startScript, "--", "--host", "0.0.0.0"]
+      : ["run", startScript];
   let readyTimer = 0;
   const ready = new Promise<string>((resolve, reject) => {
     const cleanup = () => {
