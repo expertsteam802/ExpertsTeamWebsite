@@ -195,18 +195,29 @@ export async function startBrowserPreview(
     throw new Error("This project has no dev or start script in package.json. Add a development script to run it.");
   }
 
-  onOutput?.("\r\nInstalling project dependencies…\r\n");
-  await runCommand(runtime, "npm", ["install", "--no-audit", "--no-fund"], onOutput);
+  const packageManager = packageJson.packageManager?.split("@")[0]
+    || (files["pnpm-lock.yaml"] ? "pnpm" : files["yarn.lock"] ? "yarn" : "npm");
+  const packageManagerCommand = packageManager === "pnpm" || packageManager === "yarn" ? packageManager : "npm";
+  const installArgs = packageManagerCommand === "pnpm"
+    ? ["install", "--no-frozen-lockfile"]
+    : packageManagerCommand === "yarn"
+      ? ["install"]
+      : ["install", "--no-audit", "--no-fund"];
+  onOutput?.("\r\nInstalling project dependencies with " + packageManagerCommand + "…\r\n");
+  await runCommand(runtime, packageManagerCommand, installArgs, onOutput);
 
   const startScript = packageJson.scripts?.dev ? "dev" : "start";
   const isNext = Boolean(packageJson.dependencies?.next || packageJson.devDependencies?.next);
   const devCommand = packageJson.scripts?.dev ?? "";
   const usesHostFlag = /vite|astro|svelte|nuxt|vue-cli-service|webpack-dev-server/i.test(devCommand);
-  const args = startScript === "dev" && isNext
+  const runArgs = startScript === "dev" && isNext
     ? ["run", startScript, "--", "--hostname", "0.0.0.0"]
     : startScript === "dev" && usesHostFlag
       ? ["run", startScript, "--", "--host", "0.0.0.0"]
       : ["run", startScript];
+  const args = packageManagerCommand === "yarn"
+    ? [startScript, ...(runArgs.length > 2 ? runArgs.slice(2) : [])]
+    : runArgs;
   let readyTimer = 0;
   let failReady: ((error: Error) => void) | null = null;
   const ready = new Promise<string>((resolve, reject) => {
@@ -230,7 +241,7 @@ export async function startBrowserPreview(
     }, 120000);
   });
   try {
-    runtimeState.devProcess = await runtime.spawn("npm", args, { env: environment });
+    runtimeState.devProcess = await runtime.spawn(packageManagerCommand, args, { env: environment });
   } catch (error) {
     failReady?.(error instanceof Error ? error : new Error(String(error)));
     await ready.catch(() => undefined);
