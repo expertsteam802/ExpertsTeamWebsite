@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Code2, FolderCode, Plus, Search, Copy, ExternalLink, Sparkles, Zap, Github, ImagePlus, MoreHorizontal } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +12,151 @@ import { createFrameworkStarterFiles, detectAgentFramework, FRAMEWORK_OPTIONS, t
 import { saveProjectFiles } from "@/lib/project-files";
 
 type AgentProject = { id:string; name:string; description:string; framework:string; updated_at:string; thumbnail_url:string|null };
+
+function ExpertBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    let width = 0, height = 0, frame = 0, raf = 0;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const particles = Array.from({ length: 76 }, (_, i) => ({
+      x: ((i * 7919) % 1000) / 1000,
+      y: ((i * 3571 + 173) % 1000) / 1000,
+      radius: 0.45 + ((i * 13) % 12) / 10,
+      phase: i * 1.71,
+      speed: 0.12 + ((i * 7) % 10) / 45,
+    }));
+    const resize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      canvas.style.width = width + "px";
+      canvas.style.height = height + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    const draw = () => {
+      frame += reducedMotion ? 0.25 : 1;
+      const t = frame * 0.006;
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#04070f";
+      ctx.fillRect(0, 0, width, height);
+
+      // Soft, layered aurora ribbons.
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      ctx.filter = "blur(42px)";
+      const aurora = (color: string, offset: number, lift: number) => {
+        const gradient = ctx.createLinearGradient(0, height * 0.04, width, height * 0.54);
+        gradient.addColorStop(0, "rgba(4, 7, 15, 0)");
+        gradient.addColorStop(0.32, color);
+        gradient.addColorStop(0.72, color);
+        gradient.addColorStop(1, "rgba(4, 7, 15, 0)");
+        ctx.beginPath();
+        ctx.moveTo(-width * 0.1, height * (0.25 + lift));
+        ctx.bezierCurveTo(width * 0.18, height * (0.02 + Math.sin(t + offset) * 0.08), width * 0.34, height * (0.45 + Math.cos(t * 0.8 + offset) * 0.08), width * 0.57, height * (0.2 + lift));
+        ctx.bezierCurveTo(width * 0.76, height * (0.02 + Math.sin(t * 0.7 + offset) * 0.1), width * 0.86, height * (0.36 + Math.cos(t + offset) * 0.08), width * 1.12, height * (0.12 + lift));
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = Math.max(54, width * 0.085);
+        ctx.lineCap = "round";
+        ctx.stroke();
+      };
+      aurora("rgba(16, 185, 129, 0.36)", 0.4, 0.02);
+      aurora("rgba(59, 130, 246, 0.34)", 2.7, 0.12);
+      ctx.restore();
+
+      // Perspective floor grid converging at the 48% horizon.
+      const horizon = height * 0.48;
+      ctx.save();
+      ctx.lineWidth = 1;
+      for (let i = -14; i <= 14; i++) {
+        const bottomX = width / 2 + i * width * 0.105;
+        ctx.beginPath();
+        ctx.moveTo(width / 2 + i * 1.4, horizon);
+        ctx.lineTo(bottomX, height * 1.08);
+        ctx.strokeStyle = "rgba(56, 189, 248, 0.13)";
+        ctx.stroke();
+      }
+      const scroll = (t * 0.18) % 1;
+      for (let i = 0; i < 18; i++) {
+        const p = (i / 18 + scroll) % 1;
+        const y = horizon + (p * p) * (height - horizon) * 1.08;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.strokeStyle = `rgba(56, 189, 248, ${0.035 + p * 0.11})`;
+        ctx.stroke();
+      }
+      // Faint ceiling grid adds depth without competing with the prompt.
+      for (let i = -10; i <= 10; i++) {
+        ctx.beginPath();
+        ctx.moveTo(width / 2 + i * 1.3, horizon);
+        ctx.lineTo(width / 2 + i * width * 0.09, -height * 0.12);
+        ctx.strokeStyle = "rgba(16, 185, 129, 0.055)";
+        ctx.stroke();
+      }
+      for (let i = 1; i <= 7; i++) {
+        const p = i / 7;
+        const y = horizon - p * p * horizon * 1.15;
+        ctx.beginPath();
+        ctx.moveTo(width * (0.5 - p * 0.58), y);
+        ctx.lineTo(width * (0.5 + p * 0.58), y);
+        ctx.strokeStyle = "rgba(16, 185, 129, 0.045)";
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Twinkling particles and restrained constellation links.
+      const points = particles.map((p) => ({
+        x: p.x * width + Math.sin(t * p.speed + p.phase) * 10,
+        y: p.y * height + Math.cos(t * p.speed + p.phase) * 7,
+        alpha: 0.16 + (Math.sin(t * 1.8 + p.phase) + 1) * 0.22,
+        radius: p.radius,
+      }));
+      ctx.save();
+      for (let i = 0; i < points.length; i++) {
+        const a = points[i];
+        for (let j = i + 1; j < Math.min(i + 4, points.length); j++) {
+          const b = points[j];
+          const dx = a.x - b.x, dy = a.y - b.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < 105) {
+            ctx.strokeStyle = `rgba(56, 189, 248, ${(1 - dist / 105) * 0.055})`;
+            ctx.lineWidth = 0.7;
+            ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+          }
+        }
+        ctx.beginPath();
+        ctx.arc(a.x, a.y, a.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(186, 230, 253, ${a.alpha})`;
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // Edge vignette preserves legibility in the central workspace.
+      const vignette = ctx.createRadialGradient(width * 0.5, height * 0.42, Math.min(width, height) * 0.12, width * 0.5, height * 0.5, Math.max(width, height) * 0.78);
+      vignette.addColorStop(0, "rgba(4, 7, 15, 0.02)");
+      vignette.addColorStop(0.58, "rgba(4, 7, 15, 0.18)");
+      vignette.addColorStop(1, "rgba(2, 4, 10, 0.88)");
+      ctx.fillStyle = vignette;
+      ctx.fillRect(0, 0, width, height);
+      if (!reducedMotion) raf = window.requestAnimationFrame(draw);
+    };
+    resize();
+    draw();
+    window.addEventListener("resize", resize);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+
+  return <canvas id="expert-bg-canvas" ref={canvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-0" />;
+}
 
 const templates = [
   { label:"🎮 3D Racing Game", prompt:"Build a polished 3D racing game with a playable car, track, lap counter, and responsive controls.", framework:"vite" },
@@ -82,15 +227,15 @@ export function AgentProjectDashboard() {
     catch{toast.error("Could not copy the project link.");}
   };
 
-  if(!user) return <main className="flex min-h-screen items-center justify-center bg-[#0b0f17] px-5 text-slate-100"><div className="max-w-sm text-center"><Code2 className="mx-auto mb-4 h-10 w-10 text-emerald-400"/><h1 className="text-xl font-semibold">Sign in to ExpertAI Studio</h1><p className="mt-2 text-sm text-slate-400">Your projects are saved in your private workspace.</p><Link to="/auth"><Button className="mt-5">Sign in</Button></Link></div></main>;
+  if(!user) return <main className="relative isolate min-h-screen overflow-hidden bg-[#04070f] px-5 text-slate-100"><ExpertBackground/><div className="relative z-10 flex min-h-screen items-center justify-center"><div className="max-w-sm text-center"><Code2 className="mx-auto mb-4 h-10 w-10 text-emerald-400"/><h1 className="text-xl font-semibold">Sign in to ExpertAI Studio</h1><p className="mt-2 text-sm text-slate-400">Your projects are saved in your private workspace.</p><Link to="/auth"><Button className="mt-5">Sign in</Button></Link></div></div></main>;
 
   return <main className="min-h-screen bg-[#0b0f17] text-slate-100">
-    <header className="sticky top-0 z-20 flex h-[52px] items-center justify-between border-b border-[#1e293b] bg-[#0b0f17] px-4 sm:px-7">
+    <header className="sticky top-0 z-20 flex h-[52px] items-center justify-between border-b border-[#1e293b]/80 bg-[#070b14]/75 backdrop-blur-xl px-4 sm:px-7">
       <div className="flex items-center gap-3"><div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-400/10 text-emerald-300"><Code2 size={18}/></div><span className="text-sm font-semibold">ExpertAI Studio</span><span className="hidden text-xs text-slate-500 sm:inline">·</span><Link to="/" className="hidden text-xs text-slate-400 hover:text-white sm:inline">← Back to ExpertsTeam</Link></div>
       <div className="flex items-center gap-3"><button type="button" onClick={()=>toast.info("Connect the ExpertsTeam Credits offerwall to enable free-credit earning here.")} className="rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1.5 text-xs font-semibold text-amber-200">⚡ Credits • +Earn Free</button><div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs font-bold">{(user.email??"U").slice(0,1).toUpperCase()}</div></div>
     </header>
 
-    <section className="mx-auto max-w-[1100px] px-4 pb-12 pt-14 sm:px-7 sm:pt-20">
+    <section className="relative z-10 mx-auto max-w-[1100px] px-4 pb-12 pt-14 sm:px-7 sm:pt-20">
       <div className="mx-auto max-w-[780px] text-center">
         <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/5 px-3 py-1 text-[11px] font-medium tracking-wide text-emerald-300"><Sparkles size={13}/> EXPERTSTEAM AI BUILDER</div>
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">What do you want to build today?</h1>
