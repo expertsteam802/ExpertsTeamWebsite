@@ -196,7 +196,21 @@ async function runCommand(
   args: string[],
   onOutput?: (chunk: string) => void,
 ) {
-  const process = await runtime.spawn(command, args);
+  // Keep package-manager output readable in every terminal renderer. Progress
+  // bars and ANSI cursor-control sequences otherwise appear as stray symbols
+  // in plain-text logs and can look corrupted in embedded terminals.
+  const process = await runtime.spawn(command, args, {
+    env: {
+      CI: "true",
+      TERM: "dumb",
+      NO_COLOR: "1",
+      FORCE_COLOR: "0",
+      npm_config_progress: "false",
+      npm_config_color: "false",
+      npm_config_fund: "false",
+      npm_config_audit: "false",
+    },
+  });
   const reader = process.output.getReader();
   void (async () => {
     try {
@@ -278,8 +292,8 @@ export async function startBrowserPreview(
       : packageManagerCommand === "yarn"
         ? ["install", ...(hasYarnLock ? [isYarnBerry ? "--immutable" : "--frozen-lockfile"] : [])]
         : hasNpmLock
-          ? ["ci", "--no-audit", "--no-fund"]
-          : ["install", "--no-audit", "--no-fund"];
+          ? ["ci", "--no-audit", "--no-fund", "--no-progress", "--no-color"]
+          : ["install", "--no-audit", "--no-fund", "--no-progress", "--no-color"];
     onOutput?.("\r\nInstalling project dependencies with " + packageManagerCommand + "…\r\n");
     await runCommand(runtime, packageManagerCommand, installArgs, onOutput);
     runtimeState.installedDependencySignature = installSignature;
