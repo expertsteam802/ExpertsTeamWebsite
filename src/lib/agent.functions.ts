@@ -97,7 +97,8 @@ export const runCodingAgent = createServerFn({ method: "POST" })
       }));
       groundedPrompt += "\n\nVERIFIED NPM PACKAGE DOCUMENTATION (retrieved from registry.npmjs.org; use version and API details from this source):\n" + docs.join("\n\n");
     }
-    const frameworkPrompt = data.framework ? "\n\nTARGET FRAMEWORK (must follow exactly): " + data.framework + ". Generate a complete idiomatic multi-file project for this framework; do not substitute another stack." : "";\n    const agentData = { ...data, prompt: groundedPrompt + frameworkPrompt };
+    const frameworkPrompt = data.framework ? "\n\nTARGET FRAMEWORK (must follow exactly): " + data.framework + ". Generate a complete idiomatic multi-file project for this framework; do not substitute another stack." : "";
+    const agentData = { ...data, prompt: groundedPrompt + frameworkPrompt };
     const { runAgent, runAgentPlan, runAgentChat } = await import("./agent.server");
     const result = data.mode === "plan"
       ? await runAgentPlan(agentData)
