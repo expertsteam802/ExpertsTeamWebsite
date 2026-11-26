@@ -142,7 +142,15 @@ export async function syncBrowserProject(projectId: string, files: BrowserProjec
         : previous instanceof Uint8Array
           && previous.byteLength === contents.byteLength
           && previous.every((byte, index) => byte === contents[index]);
-      if (unchanged) continue;
+      // The in-memory sync cache can outlive an HMR update even if an earlier
+      // mount placed files outside workdir. Confirm the actual file exists.
+      let existsInWorkdir = true;
+      try {
+        await runtime.fs.readFile(runtime.workdir + "/" + safePath);
+      } catch {
+        existsInWorkdir = false;
+      }
+      if (unchanged && existsInWorkdir) continue;
       const parent = safePath.split("/").slice(0, -1).join("/");
       if (parent) await runtime.fs.mkdir(runtime.workdir + "/" + parent, { recursive: true });
       await runtime.fs.writeFile(runtime.workdir + "/" + safePath, contents);
