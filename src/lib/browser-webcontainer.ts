@@ -196,12 +196,14 @@ export async function startBrowserPreview(
       ? ["run", startScript, "--", "--host", "0.0.0.0"]
       : ["run", startScript];
   let readyTimer = 0;
+  let failReady: ((error: Error) => void) | null = null;
   const ready = new Promise<string>((resolve, reject) => {
     const cleanup = () => {
       window.clearTimeout(readyTimer);
       unsubscribeReady();
       unsubscribeError();
     };
+    failReady = (error) => { cleanup(); reject(error); };
     const unsubscribeReady = runtime.on("server-ready", (_port, url) => {
       cleanup();
       resolve(url);
@@ -216,6 +218,9 @@ export async function startBrowserPreview(
     }, 120000);
   });
   runtimeState.devProcess = await runtime.spawn("npm", args, { env: environment });
+  void runtimeState.devProcess.exit.then((code) => {
+    if (code !== 0) failReady?.(new Error("The development server exited with code " + code + " before opening a preview. Check its output above."));
+  });
   const reader = runtimeState.devProcess.output.getReader();
   void (async () => {
     try {
