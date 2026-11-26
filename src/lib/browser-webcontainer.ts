@@ -129,7 +129,9 @@ export async function startBrowserPreview(
 
   let packageJson: { scripts?: Record<string, string>; dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
   try {
-    packageJson = JSON.parse(files["package.json"] ?? "{}");
+    const packageContent = files["package.json"];
+    if (packageContent && typeof packageContent !== "string") throw new Error("package.json must be a text file.");
+    packageJson = JSON.parse(packageContent ?? "{}");
   } catch {
     throw new Error("package.json contains invalid JSON. Fix it before starting the preview.");
   }
