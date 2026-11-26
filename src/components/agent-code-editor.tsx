@@ -18,6 +18,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MonacoEditor } from "@/components/monaco-editor";
 import { STARTER_FILES, type ProjectFiles } from "@/lib/sandbox";
+import { loadProjectFiles, saveProjectFiles } from "@/lib/project-files";
+import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 const WORKSPACE_KEY = "expertsteam-agent-studio-editor-v1";
 
@@ -65,7 +70,32 @@ function downloadFile(path: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-export function AgentCodeEditor() {
+export function AgentCodeEditor({ projectId }: { projectId: string }) {
+  const { user } = useAuth();
+  const projectQuery = useQuery({
+    queryKey: ["agent-studio-project", projectId, user?.id],
+    enabled: Boolean(projectId && user),
+    queryFn: async () => {
+      if (!user) throw new Error("Sign in to open this project.");
+      const { data, error } = await supabase.from("agent_projects").select("id,name,description,framework,updated_at").eq("id", projectId).eq("user_id", user.id).maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("Project not found or you do not have access.");
+      return { project: data, files: await loadProjectFiles(projectId) };
+    },
+  });
+  const [cloudFiles, setCloudFiles] = useState<ProjectFiles | null>(null);
+  const [savingProject, setSavingProject] = useState(false);
+  useEffect(() => { if (projectQuery.data) setCloudFiles(projectQuery.data.files); }, [projectQuery.data]);
+  useEffect(() => {
+    if (!cloudFiles || !user || !projectQuery.data) return;
+    const timer = window.setTimeout(async () => {
+      setSavingProject(true);
+      try { await saveProjectFiles(projectId, user.id, cloudFiles); }
+      catch (error) { console.error("[Agent Studio] Project save failed:", error); toast.error("Could not save project files. Your changes remain open in this editor."); }
+      finally { setSavingProject(false); }
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [cloudFiles, projectId, user, projectQuery.data]);
   const [files, setFiles] = useState<ProjectFiles>(() => readWorkspace());
   const [activePath, setActivePath] = useState(() => Object.keys(readWorkspace()).sort()[0] ?? "index.html");
   const [openPaths, setOpenPaths] = useState<string[]>(() => Object.keys(readWorkspace()).sort().slice(0, 3));
@@ -82,13 +112,12 @@ export function AgentCodeEditor() {
   const activeContent = files[activePath] ?? "";
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(WORKSPACE_KEY, JSON.stringify(files));
-      setSavedAt(new Date());
-      setSaveError("");
-    } catch {
-      setSaveError("Could not save in this browser. Export your files to keep a backup.");
-    }
+    if (cloudFiles) setFiles(cloudFiles);
+  }, [cloudFiles]);
+
+  useEffect(() => {
+    if (!projectQuery.data || projectQuery.isLoading || !cloudFiles) return;
+    setCloudFiles(files);
   }, [files]);
 
   const openFile = useCallback((path: string) => {
@@ -148,17 +177,23 @@ export function AgentCodeEditor() {
 
   const visiblePaths = paths.filter((path) => path.toLowerCase().includes(filter.toLowerCase()));
 
+  if (projectQuery.isLoading || !cloudFiles) {
+    return <main className="flex min-h-[100dvh] items-center justify-center bg-[#0b0e14] text-sm text-slate-400">Loading your project…</main>;
+  }
+  if (projectQuery.isError) {
+    return <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-[#0b0e14] px-5 text-center text-slate-300"><p>{(projectQuery.error as Error).message}</p><button type="button" className="text-sm text-blue-300 underline" onClick={() => window.location.assign("/ai")}>Back to projects</button></main>;
+  }
   return (
     <main className="flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-[#0b0e14] text-slate-100">
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-white/10 bg-[#10141d] px-3">
         <div className="flex min-w-0 items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-500/15 text-blue-300"><Code2 size={16} /></div>
-          <span className="truncate text-sm font-semibold">Agent Studio</span>
+          <span className="truncate text-sm font-semibold">{projectQuery.data?.project.name ?? "Agent Studio"}</span>
           <span className="hidden rounded border border-white/10 px-2 py-0.5 text-[10px] text-slate-400 sm:inline">Code Editor</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="hidden text-[11px] text-slate-500 sm:inline">
-            {saveError || (savedAt ? "Saved on this device" : "Saving…")}
+            {projectQuery.isLoading ? "Loading project…" : savingProject ? "Saving to cloud…" : "Cloud project"}
           </span>
           <Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-slate-300 hover:bg-white/10 hover:text-white" onClick={exportWorkspace}>
             <Download size={14} /><span className="hidden sm:inline">Export</span>
@@ -203,7 +238,7 @@ export function AgentCodeEditor() {
               );
             }) : <p className="px-3 py-3 text-xs text-slate-600">No matching files</p>}
           </div>
-          <div className="border-t border-white/10 px-3 py-2 text-[10px] text-slate-600">{paths.length} files · Local workspace</div>
+          <div className="border-t border-white/10 px-3 py-2 text-[10px] text-slate-600">{paths.length} files · Project workspace</div>
         </aside>
 
         <section className="flex min-w-0 flex-1 flex-col bg-[#0b0e14]">
