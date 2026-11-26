@@ -166,16 +166,30 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   const openPreview = async () => {
     setBusy(true);
     setRuntimeOutput("");
+    setPreviewUrl("");
     try {
-      await saveProjectFiles(projectId, user!.id, files);
-      const result = await startBrowserPreview(projectId, files, (chunk) => setRuntimeOutput((current) => (current + chunk).slice(-12000)));
+      const previewFiles = { ...files };
+      if (!previewFiles["package.json"]) {
+        previewFiles["package.json"] = JSON.stringify({
+          private: true,
+          type: "module",
+          scripts: { dev: "vite --host 0.0.0.0" },
+          devDependencies: { vite: "^6.4.1" },
+        }, null, 2);
+      }
+      if (!previewFiles["index.html"] && !Object.keys(files).some((path) => path.endsWith(".html"))) {
+        previewFiles["index.html"] = '<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ExpertsTeam Preview</title></head><body><h1>Project preview</h1></body></html>';
+      }
+      setFiles(previewFiles);
+      await saveProjectFiles(projectId, user!.id, previewFiles);
+      const result = await startBrowserPreview(projectId, previewFiles, (chunk) => setRuntimeOutput((current) => (current + chunk).slice(-12000)));
       runtimeActiveRef.current = true;
       setPreviewUrl(result.url);
       setTab("preview");
       toast.success("Browser preview is running.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not start browser preview.";
-      setRuntimeOutput((current) => (current + "\n" + message).slice(-12000));
+      setRuntimeOutput((current) => (current + "\\n" + message).slice(-12000));
       toast.error(message);
     } finally { setBusy(false); }
   };
