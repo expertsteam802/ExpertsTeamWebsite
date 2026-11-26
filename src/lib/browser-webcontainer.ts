@@ -7,6 +7,14 @@ let devProcess: WebContainerProcess | null = null;
 let shellProcess: WebContainerProcess | null = null;
 let syncQueue: Promise<void> = Promise.resolve();
 
+function explainBootFailure(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/service.?worker|storage|cookie|partition|securityerror|not allowed/i.test(message)) {
+    return new Error("Your browser blocked the WebContainer project Service Worker or its isolated storage. ExpertsTeam cannot bypass that browser privacy rule. In Chrome, keep the default third-party Storage Partitioning enabled and retry in a normal browser window (not Incognito). Your project files remain safe in Supabase.");
+  }
+  return error instanceof Error ? error : new Error(message);
+}
+
 export function getBrowserRuntime() {
   if (typeof window === "undefined") {
     return Promise.reject(new Error("The browser runtime can only start in a browser tab."));
@@ -14,13 +22,16 @@ export function getBrowserRuntime() {
   if (!window.isSecureContext) {
     return Promise.reject(new Error("Browser preview requires a secure HTTPS connection."));
   }
+  if (!("serviceWorker" in navigator)) {
+    return Promise.reject(new Error("This browser does not support Service Workers required by WebContainers."));
+  }
   if (!("SharedArrayBuffer" in window) || !window.crossOriginIsolated) {
     return Promise.reject(new Error("This page is not cross-origin isolated. Reload Agent Studio after the WebContainer security headers have been deployed."));
   }
   if (!bootPromise) {
     bootPromise = WebContainer.boot({ workdirName: "experts-project", forwardPreviewErrors: "exceptions-only" }).catch((error) => {
       bootPromise = null;
-      throw error;
+      throw explainBootFailure(error);
     });
   }
   return bootPromise;
