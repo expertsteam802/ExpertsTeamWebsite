@@ -1,18 +1,25 @@
 import { WebContainer, type FileSystemTree, type WebContainerProcess } from "@webcontainer/api";
 
-let bootPromise: Promise<WebContainer> | null = null;
-let activeProjectId: string | null = null;
-let activePaths = new Set<string>();
-let devProcess: WebContainerProcess | null = null;
-let shellProcess: WebContainerProcess | null = null;
-let syncQueue: Promise<void> = Promise.resolve();
+interface RuntimeState {
+  runtimeState.bootPromise: Promise<WebContainer> | null;
+  runtimeState.activeProjectId: string | null;
+  runtimeState.activePaths: Set<string>;
+  runtimeState.devProcess: WebContainerProcess | null;
+  runtimeState.shellProcess: WebContainerProcess | null;
+  runtimeState.syncQueue: Promise<void>;
+}
 
-function explainBootFailure(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error);
-  if (/service.?worker|storage|cookie|partition|securityerror|not allowed/i.test(message)) {
-    return new Error("Your browser blocked the WebContainer project Service Worker or its isolated storage. ExpertsTeam cannot bypass that browser privacy rule. In Chrome, keep the default third-party Storage Partitioning enabled and retry in a normal browser window (not Incognito). Your project files remain safe in Supabase.");
-  }
-  return error instanceof Error ? error : new Error(message);
+const runtimeState: RuntimeState = import.meta.hot?.data.expertsTeamRuntime ?? {
+  runtimeState.bootPromise: null,
+  runtimeState.activeProjectId: null,
+  runtimeState.activePaths: new Set<string>(),
+  runtimeState.devProcess: null,
+  runtimeState.shellProcess: null,
+  runtimeState.syncQueue: Promise.resolve(),
+};
+
+if (import.meta.hot) {
+  import.meta.hot.data.expertsTeamRuntime = runtimeState;
 }
 
 export function getBrowserRuntime() {
@@ -28,13 +35,13 @@ export function getBrowserRuntime() {
   if (!("SharedArrayBuffer" in window) || !window.crossOriginIsolated) {
     return Promise.reject(new Error("This page is not cross-origin isolated. Reload Agent Studio after the WebContainer security headers have been deployed."));
   }
-  if (!bootPromise) {
-    bootPromise = WebContainer.boot({ workdirName: "experts-project", forwardPreviewErrors: "exceptions-only" }).catch((error) => {
-      bootPromise = null;
+  if (!runtimeState.bootPromise) {
+    runtimeState.bootPromise = WebContainer.boot({ workdirName: "experts-project", forwardPreviewErrors: "exceptions-only" }).catch((error) => {
+      runtimeState.bootPromise = null;
       throw explainBootFailure(error);
     });
   }
-  return bootPromise;
+  return runtimeState.bootPromise;
 }
 
 function normalizePath(path: string) {
@@ -74,22 +81,22 @@ async function clearRuntimeFiles() {
 }
 
 export async function syncBrowserProject(projectId: string, files: BrowserProjectFiles) {
-  syncQueue = syncQueue.catch(() => undefined).then(async () => {
+  runtimeState.syncQueue = runtimeState.syncQueue.catch(() => undefined).then(async () => {
     const runtime = await getBrowserRuntime();
-    if (activeProjectId !== projectId) {
-      devProcess?.kill();
-      shellProcess?.kill();
-      devProcess = null;
-      shellProcess = null;
+    if (runtimeState.activeProjectId !== projectId) {
+      runtimeState.devProcess?.kill();
+      runtimeState.shellProcess?.kill();
+      runtimeState.devProcess = null;
+      runtimeState.shellProcess = null;
       await clearRuntimeFiles();
       await runtime.mount(toFileTree(files));
-      activeProjectId = projectId;
-      activePaths = new Set(Object.keys(files).map(normalizePath));
+      runtimeState.activeProjectId = projectId;
+      runtimeState.activePaths = new Set(Object.keys(files).map(normalizePath));
       return;
     }
 
     const nextPaths = new Set(Object.keys(files).map(normalizePath));
-    for (const previousPath of activePaths) {
+    for (const previousPath of runtimeState.activePaths) {
       if (!nextPaths.has(previousPath)) {
         await runtime.fs.rm(runtime.workdir + "/" + previousPath, { recursive: true, force: true });
       }
@@ -100,9 +107,9 @@ export async function syncBrowserProject(projectId: string, files: BrowserProjec
       if (parent) await runtime.fs.mkdir(runtime.workdir + "/" + parent, { recursive: true });
       await runtime.fs.writeFile(runtime.workdir + "/" + safePath, contents);
     }
-    activePaths = nextPaths;
+    runtimeState.activePaths = nextPaths;
   });
-  return syncQueue;
+  return runtimeState.syncQueue;
 }
 
 async function runCommand(
@@ -136,8 +143,8 @@ export async function startBrowserPreview(
 ) {
   await syncBrowserProject(projectId, files);
   const runtime = await getBrowserRuntime();
-  devProcess?.kill();
-  devProcess = null;
+  runtimeState.devProcess?.kill();
+  runtimeState.devProcess = null;
 
   let packageJson: { scripts?: Record<string, string>; dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
   try {
@@ -194,8 +201,8 @@ export async function startBrowserPreview(
       reject(new Error("The development server did not become ready. Check the terminal output for build errors."));
     }, 120000);
   });
-  devProcess = await runtime.spawn("npm", args, { env: environment });
-  const reader = devProcess.output.getReader();
+  runtimeState.devProcess = await runtime.spawn("npm", args, { env: environment });
+  const reader = runtimeState.devProcess.output.getReader();
   void (async () => {
     try {
       while (true) {
@@ -216,10 +223,10 @@ export async function openBrowserTerminal(
   dimensions: { cols: number; rows: number },
 ) {
   const runtime = await getBrowserRuntime();
-  shellProcess?.kill();
-  shellProcess = await runtime.spawn("jsh", [], { terminal: dimensions });
-  const writer = shellProcess.input.getWriter();
-  const reader = shellProcess.output.getReader();
+  runtimeState.shellProcess?.kill();
+  runtimeState.shellProcess = await runtime.spawn("jsh", [], { terminal: dimensions });
+  const writer = runtimeState.shellProcess.input.getWriter();
+  const reader = runtimeState.shellProcess.output.getReader();
   void (async () => {
     try {
       while (true) {
@@ -233,16 +240,16 @@ export async function openBrowserTerminal(
   })();
   return {
     write: (value: string) => writer.write(value),
-    resize: (next: { cols: number; rows: number }) => shellProcess?.resize(next),
+    resize: (next: { cols: number; rows: number }) => runtimeState.shellProcess?.resize(next),
     close: () => {
-      shellProcess?.kill();
-      shellProcess = null;
+      runtimeState.shellProcess?.kill();
+      runtimeState.shellProcess = null;
       writer.releaseLock();
     },
   };
 }
 
 export function stopBrowserPreview() {
-  devProcess?.kill();
-  devProcess = null;
+  runtimeState.devProcess?.kill();
+  runtimeState.devProcess = null;
 }
