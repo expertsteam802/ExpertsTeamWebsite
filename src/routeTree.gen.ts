@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AiRouteImport } from './routes/ai'
+import { Route as AiProjectIdRouteImport } from './routes/ai.$projectId'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CommunityRouteImport } from './routes/community'
@@ -62,6 +63,11 @@ const AboutRoute = AboutRouteImport.update({
 const AiRoute = AiRouteImport.update({
   id: '/ai',
   path: '/ai',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiProjectIdRoute = AiProjectIdRouteImport.update({
+  id: '/ai/$projectId',
+  path: '/ai/$projectId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRoute = ChatRouteImport.update({
@@ -224,6 +230,9 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/ai': typeof AiRoute
+  '/ai/$projectId': typeof AiProjectIdRoute
+  '/ai/$projectId': typeof AiProjectIdRoute
+  '/ai/$projectId': typeof AiProjectIdRoute
   '/chat': typeof ChatRoute
   '/auth': typeof AuthRoute
   '/community': typeof CommunityRoute
@@ -438,6 +447,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AboutRoute: typeof AboutRoute
   AiRoute: typeof AiRoute
+  AiProjectIdRoute: typeof AiProjectIdRoute
   ChatRoute: typeof ChatRoute
   AuthRoute: typeof AuthRoute
   CommunityRoute: typeof CommunityRoute
@@ -494,6 +504,13 @@ declare module '@tanstack/react-router' {
       path: '/ai'
       fullPath: '/ai'
       preLoaderRoute: typeof AiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai/$projectId': {
+      id: '/ai/$projectId'
+      path: '/ai/$projectId'
+      fullPath: '/ai/$projectId'
+      preLoaderRoute: typeof AiProjectIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat': {
@@ -738,6 +755,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AboutRoute: AboutRoute,
   AiRoute: AiRoute,
+  AiProjectIdRoute: AiProjectIdRoute,
   ChatRoute: ChatRoute,
   AuthRoute: AuthRoute,
   CommunityRoute: CommunityRoute,
