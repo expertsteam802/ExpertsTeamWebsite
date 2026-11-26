@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { MonacoEditor } from "@/components/monaco-editor";
 import type { ProjectFiles } from "@/lib/sandbox";
 import { loadProjectFiles, saveProjectFiles } from "@/lib/project-files";
+import { startAgentPreview, stopAgentPreview } from "@/lib/agent.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -93,6 +94,10 @@ export function AgentCodeEditor({ projectId }: { projectId: string }) {
   const [newFileName, setNewFileName] = useState("");
   const [showNewFile, setShowNewFile] = useState(false);
   const [filter, setFilter] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [collapsedFolders, setCollapsedFolders] = useState<string[]>([]);
 
   const paths = useMemo(
     () => Object.keys(files).sort((a, b) => a.localeCompare(b)),
@@ -161,6 +166,10 @@ export function AgentCodeEditor({ projectId }: { projectId: string }) {
   }, [files]);
 
   const visiblePaths = paths.filter((path) => path.toLowerCase().includes(filter.toLowerCase()));
+  const folderPaths = Array.from(new Set(visiblePaths.flatMap((path) => { const parts = path.split("/"); return parts.slice(0, -1).map((_, index) => parts.slice(0, index + 1).join("/")); }))).sort((a,b)=>a.localeCompare(b));
+  const hiddenByFolder = (path:string) => collapsedFolders.some(folder => path.startsWith(folder + "/"));
+  const startPreview = async () => { setPreviewBusy(true); try { const result = await startAgentPreview({ data: { projectId } }); setPreviewUrl(result.url); setPreviewVisible(true); toast.success("Preview is running."); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not start project preview."); } finally { setPreviewBusy(false); } };
+  const stopPreview = async () => { setPreviewBusy(true); try { await stopAgentPreview({ data: { projectId } }); setPreviewUrl(""); setPreviewVisible(false); toast.success("Preview stopped."); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not stop preview."); } finally { setPreviewBusy(false); } };
 
   if (projectQuery.isError) {
     return <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-[#0b0e14] px-5 text-center text-slate-300"><p>{(projectQuery.error as Error).message}</p><button type="button" className="text-sm text-blue-300 underline" onClick={() => window.location.assign("/ai")}>Back to projects</button></main>;
@@ -181,12 +190,13 @@ export function AgentCodeEditor({ projectId }: { projectId: string }) {
           <span className="hidden text-[11px] text-slate-500 sm:inline">
             {projectQuery.isLoading ? "Loading project…" : savingProject ? "Saving to cloud…" : "Cloud project"}
           </span>
-          <Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-slate-300 hover:bg-white/10 hover:text-white" onClick={exportWorkspace}>
+          <Button type="button" size="sm" disabled={previewBusy} className="h-8 gap-1.5 bg-emerald-500 px-2 text-slate-950 hover:bg-emerald-400" onClick={()=>{if(previewUrl){setPreviewVisible(true);}else{void startPreview();}}}><Play size={13}/><span className="hidden sm:inline">{previewBusy?"Starting…":"Preview"}</span></Button>{previewUrl && <Button type="button" variant="ghost" size="sm" disabled={previewBusy} className="h-8 gap-1 px-2 text-slate-300 hover:bg-white/10" onClick={()=>void stopPreview()}><Square size={12}/><span className="hidden sm:inline">Stop</span></Button>}<Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-slate-300 hover:bg-white/10 hover:text-white" onClick={exportWorkspace}>
             <Download size={14} /><span className="hidden sm:inline">Export</span>
           </Button>
         </div>
       </header>
 
+      {previewVisible && previewUrl && <section className="flex h-[42vh] min-h-[240px] shrink-0 flex-col border-b border-white/10 bg-[#080b12]"><div className="flex h-9 items-center justify-between px-3 text-[11px] text-slate-400"><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-400"/> Live Preview · {projectQuery.data?.project.framework}</span><div className="flex items-center gap-3"><a href={previewUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-white">Open in new tab <ExternalLink size={12}/></a><button type="button" onClick={()=>setPreviewVisible(false)} className="hover:text-white">Hide</button></div></div><iframe title="Project live preview" src={previewUrl} className="min-h-0 flex-1 border-0 bg-white" allow="clipboard-read; clipboard-write; fullscreen"/></section>}
       <div className="flex min-h-0 flex-1">
         <aside className="flex w-[220px] shrink-0 flex-col border-r border-white/10 bg-[#0e121a] sm:w-[260px]">
           <div className="flex h-10 items-center justify-between border-b border-white/10 px-3">
@@ -213,16 +223,10 @@ export function AgentCodeEditor({ projectId }: { projectId: string }) {
             <div className="flex items-center gap-2 px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
               <Folder size={13} /> Workspace
             </div>
-            {visiblePaths.length ? visiblePaths.map((path) => {
-              const Icon = fileIcon(path);
-              const selected = activePath === path;
-              return (
-                <button key={path} type="button" onClick={() => openFile(path)} className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${selected ? "bg-blue-500/15 text-blue-200" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
-                  <Icon size={14} className={selected ? "text-blue-300" : "text-slate-500"} />
-                  <span className="truncate">{path}</span>
-                </button>
-              );
-            }) : <p className="px-3 py-3 text-xs text-slate-600">No matching files</p>}
+            {visiblePaths.length ? <div className="space-y-0.5">
+              {folderPaths.map(folder=><button key={"dir:"+folder} type="button" onClick={()=>setCollapsedFolders(current=>current.includes(folder)?current.filter(item=>item!==folder):[...current,folder])} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11px] font-medium text-slate-400 hover:bg-white/5" style={{paddingLeft:12+folder.split("/").length*12}}><Folder size={13} className="text-amber-300/70"/><span className="truncate">{folder.split("/").pop()}</span></button>)}
+              {visiblePaths.filter(path=>!hiddenByFolder(path)).map(path=>{const Icon=fileIcon(path);const selected=activePath===path;const depth=path.split("/").length-1;return <button key={path} type="button" onClick={()=>openFile(path)} className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${selected?"bg-blue-500/15 text-blue-200":"text-slate-400 hover:bg-white/5 hover:text-slate-200"}`} style={{paddingLeft:12+(depth+1)*12}}><Icon size={13} className={selected?"text-blue-300":"text-slate-500"}/><span className="truncate">{path.split("/").pop()}</span></button>;})}
+            </div> : <p className="px-3 py-3 text-xs text-slate-600">No matching files</p>}
           </div>
           <div className="border-t border-white/10 px-3 py-2 text-[10px] text-slate-600">{paths.length} files · Project workspace</div>
         </aside>
