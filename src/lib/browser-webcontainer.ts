@@ -225,3 +225,8 @@ export async function openBrowserTerminal(
     },
   };
 }
+
+export function stopBrowserPreview() {
+  devProcess?.kill();
+  devProcess = null;
+}
