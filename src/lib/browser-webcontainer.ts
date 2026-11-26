@@ -355,9 +355,9 @@ export async function watchBrowserProject(onFileChange: (path: string, contents:
 
   const handleChange = (watchPath: string, event: string, filename: unknown) => {
     if (closed || filename == null) return;
-    const rawPath = String(filename).replace(/\\\\/g, "/").replace(/^\\/+/, "");
+    const rawPath = String(filename).replace(/\\/g, "/").replace(/^\/+/, "");
     const relativePath = watchPath
-      ? watchPath.replace(/^\\/+/, "") + "/" + rawPath
+      ? watchPath.replace(/^\/+/, "") + "/" + rawPath
       : rawPath;
     let path: string;
     try {
