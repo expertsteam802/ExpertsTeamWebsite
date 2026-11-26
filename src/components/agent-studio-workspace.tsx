@@ -165,14 +165,14 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     const socket = new WebSocket(terminalInfo.url, [terminalInfo.token]);
     socket.binaryType = "arraybuffer";
     socket.addEventListener("open", () => {
-      terminal.writeln("\\x1b[90mConnected to your Daytona project terminal.\\x1b[0m");
-      socket.send("\\0" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
+      terminal.writeln("\x1b[90mConnected to your Daytona project terminal.\\x1b[0m");
+      socket.send("\0" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
     });
     socket.addEventListener("message", (event) => terminal.write(typeof event.data === "string" ? event.data : new Uint8Array(event.data)));
-    socket.addEventListener("close", () => terminal.writeln("\\r\\n\\x1b[90mTerminal connection closed.\\x1b[0m"));
-    socket.addEventListener("error", () => terminal.writeln("\\r\\n\\x1b[31mTerminal connection error.\\x1b[0m"));
+    socket.addEventListener("close", () => terminal.writeln("\r\n\\x1b[90mTerminal connection closed.\\x1b[0m"));
+    socket.addEventListener("error", () => terminal.writeln("\r\n\\x1b[31mTerminal connection error.\\x1b[0m"));
     terminal.onData((data) => { if (socket.readyState === WebSocket.OPEN) socket.send(data); });
-    terminal.onResize(({ cols, rows }) => { if (socket.readyState === WebSocket.OPEN) socket.send("\\0" + JSON.stringify({ type: "resize", cols, rows })); });
+    terminal.onResize(({ cols, rows }) => { if (socket.readyState === WebSocket.OPEN) socket.send("\0" + JSON.stringify({ type: "resize", cols, rows })); });
     terminalRef.current = terminal;
     socketRef.current = socket;
     const observer = new ResizeObserver(() => { try { fit.fit(); } catch { /* terminal is closing */ } });
