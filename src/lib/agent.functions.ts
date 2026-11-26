@@ -871,8 +871,6 @@ export const pushProjectToGithub = createServerFn({ method: "POST" })
     }
   });
 
-const previewRequest = z.object({ projectId: z.string().uuid() });
-
 type BuilderResourceLimits = {
   maxFiles: number;
   maxProjectMb: number;
@@ -1003,58 +1001,6 @@ async function assertProjectOwnership(
   if (error) throw new Error("Could not verify project access.");
   if (!data) throw new Error("This project is not available in your account.");
 }
-
-export const startAgentPreview = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => previewRequest.parse(input))
-  .handler(async ({ data, context }) => {
-    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
-    const files = await loadProjectSourceFiles(context.supabase, data.projectId, context.userId);
-    if (!Object.keys(files).length) throw new Error("This project has no saved source files to preview.");
-    await assertBuilderResourcePolicy(context.supabase, context.userId, files);
-    const resourceLimits = await getBuilderResourceLimits(context.supabase, context.userId);
-    const { data: savedAssets, error: assetQueryError } = await context.supabase
-      .from("agent_project_assets")
-      .select("file_path,storage_path,mime_type,sha256")
-      .eq("project_id", data.projectId)
-      .eq("user_id", context.userId);
-    if (assetQueryError) throw new Error("Could not load the project's saved binary assets: " + assetQueryError.message);
-    const binaryAssets: { filePath: string; buffer: Buffer; mimeType: string; sha256: string }[] = [];
-    for (const asset of savedAssets ?? []) {
-      const { data: blob, error: downloadError } = await context.supabase.storage
-        .from("builder-project-assets")
-        .download(asset.storage_path);
-      if (downloadError || !blob) throw new Error("Could not restore " + asset.file_path + ": " + (downloadError?.message ?? "asset is missing"));
-      binaryAssets.push({
-        filePath: asset.file_path,
-        buffer: Buffer.from(await blob.arrayBuffer()),
-        mimeType: asset.mime_type,
-        sha256: asset.sha256,
-      });
-    }
-    const totalBinaryBytes = binaryAssets.reduce((sum, asset) => sum + asset.buffer.byteLength, 0);
-    const totalTextBytes = Object.values(files).reduce((sum, value) => sum + Buffer.byteLength(value, "utf8"), 0);
-    const totalFiles = Object.keys(files).length + binaryAssets.length;
-    if (resourceLimits.maxFiles > 0 && totalFiles > resourceLimits.maxFiles) {
-      throw new Error("The project exceeds the administrator-configured file-count limit of " + resourceLimits.maxFiles + ".");
-    }
-    if (resourceLimits.maxProjectMb > 0 && totalTextBytes + totalBinaryBytes > resourceLimits.maxProjectMb * 1_000_000) {
-      throw new Error("The project exceeds the administrator-configured project-size limit of " + resourceLimits.maxProjectMb + " MB.");
-    }
-    if (resourceLimits.maxFileMb > 0 && [...Object.values(files).map((value) => Buffer.byteLength(value, "utf8")), ...binaryAssets.map((asset) => asset.buffer.byteLength)].some((size) => size > resourceLimits.maxFileMb * 1_000_000)) {
-      throw new Error("A project file exceeds the administrator-configured per-file limit of " + resourceLimits.maxFileMb + " MB.");
-    }
-    const { loadProjectPublicEnvironment } = await import("./project-secrets.server");
-    // Supabase generated types do not yet include the project-secrets migration tables.
-    const projectEnvironment = await loadProjectPublicEnvironment(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      context.supabase as any,
-      context.userId,
-      data.projectId,
-    );
-    const { startDaytonaProjectPreview } = await import("./daytona-terminal.server");
-    return startDaytonaProjectPreview(data.projectId, files, projectEnvironment, binaryAssets);
-  });
 
 const terminalStartRequest = z
   .object({
@@ -1457,12 +1403,3 @@ export const runAgentTerminalCommand = createServerFn({ method: "POST" })
     return runDaytonaProjectCommand(assertDaytonaTerminalSandboxName(context.userId, data.sandboxName), data.command);
   });
 
-
-export const stopAgentPreview = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
-  .handler(async ({ data, context }) => {
-    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
-    const { stopDaytonaProjectPreview } = await import("./daytona-terminal.server");
-    return stopDaytonaProjectPreview(data.projectId);
-  });
