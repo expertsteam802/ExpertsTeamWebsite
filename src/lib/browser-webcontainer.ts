@@ -27,7 +27,7 @@ export function getBrowserRuntime() {
 }
 
 function normalizePath(path: string) {
-  const parts = path.replace(/\\\\/g, "/").split("/").filter(Boolean);
+  const parts = path.replace(/\\/g, "/").split("/").filter(Boolean);
   if (!parts.length || parts.some((part) => part === "." || part === "..")) {
     throw new Error("The project contains an invalid file path: " + path);
   }
@@ -78,7 +78,7 @@ export async function syncBrowserProject(projectId: string, files: Record<string
     const nextPaths = new Set(Object.keys(files).map(normalizePath));
     for (const previousPath of activePaths) {
       if (!nextPaths.has(previousPath)) {
-        await runtime.fs.rm("/" + previousPath, { recursive: true, force: true });
+        await runtime.fs.rm(runtime.workdir + "/" + previousPath, { recursive: true, force: true });
       }
     }
     for (const [path, contents] of Object.entries(files)) {
@@ -150,7 +150,7 @@ export async function startBrowserPreview(
     throw new Error("This project has no dev or start script in package.json. Add a development script to run it.");
   }
 
-  onOutput?.("\\r\\nInstalling project dependencies…\\r\\n");
+  onOutput?.("\r\nInstalling project dependencies…\r\n");
   await runCommand(runtime, "npm", ["install", "--no-audit", "--no-fund"], onOutput);
 
   const startScript = packageJson.scripts?.dev ? "dev" : "start";
@@ -158,19 +158,23 @@ export async function startBrowserPreview(
   const args = startScript === "dev"
     ? ["run", startScript, "--", ...(isNext ? ["--hostname", "0.0.0.0"] : ["--host", "0.0.0.0"])]
     : ["run", startScript];
+  let readyTimer = 0;
   const ready = new Promise<string>((resolve, reject) => {
-    const unsubscribeReady = runtime.on("server-ready", (_port, url) => {
+    const cleanup = () => {
+      window.clearTimeout(readyTimer);
       unsubscribeReady();
+      unsubscribeError();
+    };
+    const unsubscribeReady = runtime.on("server-ready", (_port, url) => {
+      cleanup();
       resolve(url);
     });
     const unsubscribeError = runtime.on("error", ({ message }) => {
-      unsubscribeReady();
-      unsubscribeError();
+      cleanup();
       reject(new Error(message));
     });
-    window.setTimeout(() => {
-      unsubscribeReady();
-      unsubscribeError();
+    readyTimer = window.setTimeout(() => {
+      cleanup();
       reject(new Error("The development server did not become ready. Check the terminal output for build errors."));
     }, 120000);
   });
