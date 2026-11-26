@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AgentCodeEditor } from "@/components/agent-code-editor";
+import { AgentStudioWorkspace } from "@/components/agent-studio-workspace";
 
 export const Route = createFileRoute("/ai/$projectId")({
   head: () => ({
@@ -14,5 +14,5 @@ export const Route = createFileRoute("/ai/$projectId")({
 
 function AgentProjectPage() {
   const { projectId } = Route.useParams();
-  return <AgentCodeEditor key={projectId} projectId={projectId} />;
+  return <AgentStudioWorkspace key={projectId} projectId={projectId} />;
 }
