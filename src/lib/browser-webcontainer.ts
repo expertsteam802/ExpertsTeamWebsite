@@ -114,7 +114,20 @@ export async function syncBrowserProject(projectId: string, files: BrowserProjec
       runtimeState.shellProcess = null;
       await clearRuntimeFiles();
       await runtime.fs.mkdir(runtime.workdir, { recursive: true });
-      await runtime.mount(toFileTree(files), { mountPoint: runtime.workdir });
+      // Mount points are relative to the WebContainer filesystem root.
+      // Write directly into workdir so npm's default cwd always contains the project.
+      await runtime.fs.mkdir(runtime.workdir, { recursive: true });
+      for (const [rawPath, contents] of Object.entries(files)) {
+        const safePath = normalizePath(rawPath);
+        const parent = safePath.split("/").slice(0, -1).join("/");
+        if (parent) await runtime.fs.mkdir(runtime.workdir + "/" + parent, { recursive: true });
+        await runtime.fs.writeFile(runtime.workdir + "/" + safePath, contents);
+      }
+      runtimeState.activeProjectId = projectId;
+      runtimeState.installedDependencySignature = null;
+      runtimeState.activePaths = new Set(Object.keys(files).map(normalizePath));
+      runtimeState.lastSyncedFiles = new Map(Object.entries(files).map(([path, contents]) => [normalizePath(path), contents]));
+      return;
       runtimeState.activeProjectId = projectId;
       runtimeState.installedDependencySignature = null;
       runtimeState.activePaths = new Set(Object.keys(files).map(normalizePath));
@@ -209,6 +222,12 @@ export async function startBrowserPreview(
 ) {
   await syncBrowserProject(projectId, files);
   const runtime = await getBrowserRuntime();
+  // Fail with a precise sync error rather than letting npm emit a confusing ENOENT.
+  try {
+    await runtime.fs.readFile(runtime.workdir + "/package.json", "utf-8");
+  } catch {
+    throw new Error("Project files were not mounted into the browser runtime: package.json is missing from " + runtime.workdir + ". Re-sync the project and try again.");
+  }
   runtimeState.previewPortUnsubscribe?.();
   runtimeState.previewPortUnsubscribe = null;
   runtimeState.devProcess?.kill();
