@@ -8,6 +8,9 @@ import {
   FilePlus2,
   Folder,
   FolderOpen,
+  Play,
+  Square,
+  ExternalLink,
   Search,
   Trash2,
   X,
@@ -54,7 +57,7 @@ function downloadFile(path: string, content: string) {
 }
 
 export function AgentCodeEditor({ projectId }: { projectId: string }) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const projectQuery = useQuery({
     queryKey: ["agent-studio-project", projectId, user?.id],
     enabled: Boolean(projectId && user),
@@ -171,6 +174,12 @@ export function AgentCodeEditor({ projectId }: { projectId: string }) {
   const startPreview = async () => { setPreviewBusy(true); try { const result = await startAgentPreview({ data: { projectId } }); setPreviewUrl(result.url); setPreviewVisible(true); toast.success("Preview is running."); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not start project preview."); } finally { setPreviewBusy(false); } };
   const stopPreview = async () => { setPreviewBusy(true); try { await stopAgentPreview({ data: { projectId } }); setPreviewUrl(""); setPreviewVisible(false); toast.success("Preview stopped."); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not stop preview."); } finally { setPreviewBusy(false); } };
 
+  if (authLoading) {
+    return <main className="flex min-h-[100dvh] items-center justify-center bg-[#0b0e14] text-sm text-slate-400">Restoring your session…</main>;
+  }
+  if (!user) {
+    return <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-[#0b0e14] px-5 text-center text-slate-300"><p>Sign in to open this private project.</p><a href="/auth" className="text-sm text-blue-300 underline">Sign in</a></main>;
+  }
   if (projectQuery.isError) {
     return <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-[#0b0e14] px-5 text-center text-slate-300"><p>{(projectQuery.error as Error).message}</p><button type="button" className="text-sm text-blue-300 underline" onClick={() => window.location.assign("/ai")}>Back to projects</button></main>;
   }
