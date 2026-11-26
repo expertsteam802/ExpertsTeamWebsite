@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Code2,
@@ -66,8 +66,17 @@ export function AgentCodeEditor({ projectId }: { projectId: string }) {
     },
   });
   const [cloudFiles, setCloudFiles] = useState<ProjectFiles | null>(null);
+  const hydratedProjectRef = useRef<string | null>(null);
   const [savingProject, setSavingProject] = useState(false);
-  useEffect(() => { if (projectQuery.data) setCloudFiles(projectQuery.data.files); }, [projectQuery.data]);
+  useEffect(() => {
+    if (!projectQuery.data || hydratedProjectRef.current === projectId) return;
+    hydratedProjectRef.current = projectId;
+    setCloudFiles(projectQuery.data.files);
+    setFiles(projectQuery.data.files);
+    const firstPath = Object.keys(projectQuery.data.files).sort()[0] ?? "";
+    setActivePath(firstPath);
+    setOpenPaths(Object.keys(projectQuery.data.files).sort().slice(0, 3));
+  }, [projectQuery.data, projectId]);
   useEffect(() => {
     if (!cloudFiles || !user || !projectQuery.data) return;
     const timer = window.setTimeout(async () => {
@@ -90,15 +99,6 @@ export function AgentCodeEditor({ projectId }: { projectId: string }) {
     [files],
   );
   const activeContent = files[activePath] ?? "";
-
-  useEffect(() => {
-    if (cloudFiles) {
-      setFiles(cloudFiles);
-      const firstPath = Object.keys(cloudFiles).sort()[0] ?? "";
-      setActivePath(firstPath);
-      setOpenPaths(Object.keys(cloudFiles).sort().slice(0, 3));
-    }
-  }, [cloudFiles]);
 
   useEffect(() => {
     if (!projectQuery.data || projectQuery.isLoading || !cloudFiles) return;
