@@ -200,7 +200,6 @@ async function runCommand(
   // bars and ANSI cursor-control sequences otherwise appear as stray symbols
   // in plain-text logs and can look corrupted in embedded terminals.
   const process = await runtime.spawn(command, args, {
-    cwd: runtime.workdir,
     env: {
       CI: "true",
       TERM: "dumb",
@@ -317,8 +316,8 @@ export async function startBrowserPreview(
           ? ["ci", "--no-audit", "--no-fund", "--no-progress", "--no-color"]
           : ["install", "--no-audit", "--no-fund", "--no-progress", "--no-color"];
     onOutput?.("\r\nInstalling project dependencies with " + packageManagerCommand + "…\r\n");
-    onOutput?.("Project directory: " + runtime.workdir + "\\n");
-    onOutput?.("Verified package.json in the project directory. Starting dependency installation…\\n");
+    onOutput?.("Project directory: " + runtime.workdir + "\r\n");
+    onOutput?.("Verified package.json in the project directory. Starting dependency installation…\r\n");
     await runCommand(runtime, packageManagerCommand, installArgs, onOutput);
     runtimeState.installedDependencySignature = installSignature;
   } else {
