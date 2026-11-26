@@ -229,7 +229,13 @@ export async function startBrowserPreview(
       reject(new Error("The development server did not become ready. Check the terminal output for build errors."));
     }, 120000);
   });
-  runtimeState.devProcess = await runtime.spawn("npm", args, { env: environment });
+  try {
+    runtimeState.devProcess = await runtime.spawn("npm", args, { env: environment });
+  } catch (error) {
+    failReady?.(error instanceof Error ? error : new Error(String(error)));
+    await ready.catch(() => undefined);
+    throw error;
+  }
   void runtimeState.devProcess.exit.then((code) => {
     if (code !== 0) failReady?.(new Error("The development server exited with code " + code + " before opening a preview. Check its output above."));
   });
