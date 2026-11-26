@@ -1,21 +1,21 @@
 import { WebContainer, type FileSystemTree, type WebContainerProcess } from "@webcontainer/api";
 
 interface RuntimeState {
-  runtimeState.bootPromise: Promise<WebContainer> | null;
-  runtimeState.activeProjectId: string | null;
-  runtimeState.activePaths: Set<string>;
-  runtimeState.devProcess: WebContainerProcess | null;
-  runtimeState.shellProcess: WebContainerProcess | null;
-  runtimeState.syncQueue: Promise<void>;
+  bootPromise: Promise<WebContainer> | null;
+  activeProjectId: string | null;
+  activePaths: Set<string>;
+  devProcess: WebContainerProcess | null;
+  shellProcess: WebContainerProcess | null;
+  syncQueue: Promise<void>;
 }
 
 const runtimeState: RuntimeState = import.meta.hot?.data.expertsTeamRuntime ?? {
-  runtimeState.bootPromise: null,
-  runtimeState.activeProjectId: null,
-  runtimeState.activePaths: new Set<string>(),
-  runtimeState.devProcess: null,
-  runtimeState.shellProcess: null,
-  runtimeState.syncQueue: Promise.resolve(),
+  bootPromise: null,
+  activeProjectId: null,
+  activePaths: new Set<string>(),
+  devProcess: null,
+  shellProcess: null,
+  syncQueue: Promise.resolve(),
 };
 
 if (import.meta.hot) {
