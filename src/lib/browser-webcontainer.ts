@@ -268,7 +268,7 @@ export async function startBrowserPreview(
   // Repair and verify the exact manifest npm will read. Never start npm
   // against an empty or stale working directory.
   await runtime.fs.mkdir(runtime.workdir, { recursive: true });
-  const manifestPath = runtime.workdir.replace(/\\/$/, "") + "/package.json";
+  const manifestPath = runtime.workdir.replace(/\/$/, "") + "/package.json";
   let runtimeManifest = "";
   try {
     runtimeManifest = await runtime.fs.readFile(manifestPath, "utf-8");
