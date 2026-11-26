@@ -81,6 +81,7 @@ function toFileTree(files: BrowserProjectFiles): FileSystemTree {
 
 async function clearRuntimeFiles() {
   const runtime = await getBrowserRuntime();
+  await runtime.fs.mkdir(runtime.workdir, { recursive: true });
   const entries = await runtime.fs.readdir(runtime.workdir);
   await Promise.all(entries.map(async (entry) => {
     const name = typeof entry === "string" ? entry : String(entry);
