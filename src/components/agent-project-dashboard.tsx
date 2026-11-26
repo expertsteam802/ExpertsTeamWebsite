@@ -192,7 +192,9 @@ export function AgentProjectDashboard() {
     const starter = createFrameworkStarterFiles(chosen,name);
     try {
       const {data,error}=await supabase.from("agent_projects").insert({
-        user_id:user.id,name,description:initialPrompt.trim().slice(0,500),framework:chosen,files:{},workspace_settings:{}
+        user_id:user.id,name,description:initialPrompt.trim().slice(0,500),framework:chosen,files:{},
+        messages: blank ? [] : [{ role:"user", content:initialPrompt.trim(), createdAt:new Date().toISOString() }],
+        workspace_settings:{}
       }).select("id").single();
       if(error) throw error;
       await saveProjectFiles(data.id,user.id,starter);
@@ -211,11 +213,27 @@ export function AgentProjectDashboard() {
           const merged = {...starter};
           for(const [path,value] of Object.entries(generated)){if(typeof value==="string") merged[path]=value; else if(value===null) delete merged[path];}
           await saveProjectFiles(data.id,user.id,merged);
-          await queryClient.invalidateQueries({queryKey:["agent-studio-project",data.id,user.id]});
+          const assistantMessage = result.message || (result.complete ? "The initial project has been generated." : "The first implementation batch is ready. Continue asking the Agent to finish the remaining work.");
+          const { error: messageError } = await supabase.from("agent_projects").update({
+            messages: [
+              { role:"user", content:initialPrompt.trim(), createdAt:new Date().toISOString() },
+              { role:"assistant", content:assistantMessage, createdAt:new Date().toISOString() }
+            ]
+          }).eq("id",data.id).eq("user_id",user.id);
+          if(messageError) console.warn("[Agent Studio] Project files were saved, but the initial chat response could not be saved:",messageError.message);
+          await queryClient.invalidateQueries({queryKey:["agent-studio-workspace",data.id,user.id]});
           toast.success("Project generation completed.");
         } catch (generationError) {
           console.error("[Agent Studio] Initial project generation failed:", generationError);
-          toast.error(generationError instanceof Error ? generationError.message : "Generation failed. Your workspace is still available.");
+          const failureText = generationError instanceof Error ? generationError.message : "Generation failed. Your workspace is still available.";
+          await supabase.from("agent_projects").update({
+            messages: [
+              { role:"user", content:initialPrompt.trim(), createdAt:new Date().toISOString() },
+              { role:"assistant", content:"I couldn't complete the initial build: " + failureText, createdAt:new Date().toISOString() }
+            ]
+          }).eq("id",data.id).eq("user_id",user.id);
+          await queryClient.invalidateQueries({queryKey:["agent-studio-workspace",data.id,user.id]});
+          toast.error(failureText);
         }
       }
     } catch(error) {
