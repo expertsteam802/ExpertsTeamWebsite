@@ -106,6 +106,8 @@ export async function syncBrowserProject(projectId: string, files: BrowserProjec
   runtimeState.syncQueue = runtimeState.syncQueue.catch(() => undefined).then(async () => {
     const runtime = await getBrowserRuntime();
     if (runtimeState.activeProjectId !== projectId) {
+      runtimeState.previewPortUnsubscribe?.();
+      runtimeState.previewPortUnsubscribe = null;
       runtimeState.devProcess?.kill();
       runtimeState.shellProcess?.kill();
       runtimeState.devProcess = null;
@@ -338,7 +340,9 @@ export async function startBrowserPreview(
 
 const ignoredRuntimeDirectories = new Set([
   "node_modules", ".git", "dist", "build", "out", ".next", ".vercel",
-  "coverage", ".turbo", ".cache", ".output", "vendor",
+  "coverage", ".turbo", ".cache", ".output", "vendor", ".yarn", ".pnpm-store",
+  ".venv", "venv", "__pycache__", "target", ".svelte-kit", ".angular", ".astro",
+  ".vite", ".parcel-cache",
 ]);
 const ignoredRuntimeFiles = /^(?:\.env(?:$|\.(?!.*(?:example|sample|template)$).*)|\.npmrc|\.netrc|\.pypirc|id_rsa|id_ed25519|credentials?(?:\..*)?|secrets?(?:\..*)?)$/i;
 const binaryRuntimeExtension = /\.(?:png|jpe?g|gif|webp|ico|pdf|zip|gz|tar|woff2?|ttf|otf|mp4|mp3|wav|mov|avi|exe|dll|so|dylib|class|jar|wasm|lockb)$/i;
