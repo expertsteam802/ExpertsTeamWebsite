@@ -80,7 +80,8 @@
     "@codemirror/language-data": "^6.5.2",
     "@xterm/xterm": "^5.5.0",
     "@xterm/addon-fit": "^0.10.0",
-    "@daytona/sdk": "0.232.0"
+    "@daytona/sdk": "0.232.0",
+    "@webcontainer/api": "^1.6.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
