@@ -129,6 +129,13 @@ export async function syncBrowserProject(projectId: string, files: BrowserProjec
     }
     for (const [path, contents] of Object.entries(files)) {
       const safePath = normalizePath(path);
+      const previous = runtimeState.lastSyncedFiles.get(safePath);
+      const unchanged = typeof contents === "string"
+        ? previous === contents
+        : previous instanceof Uint8Array
+          && previous.byteLength === contents.byteLength
+          && previous.every((byte, index) => byte === contents[index]);
+      if (unchanged) continue;
       const parent = safePath.split("/").slice(0, -1).join("/");
       if (parent) await runtime.fs.mkdir(runtime.workdir + "/" + parent, { recursive: true });
       await runtime.fs.writeFile(runtime.workdir + "/" + safePath, contents);
@@ -340,7 +347,7 @@ export async function watchBrowserProject(onFileChange: (path: string, contents:
   const runtime = await getBrowserRuntime();
   const rootPath = runtime.workdir;
   const watchers: Array<{ close: () => void }> = [];
-  const watchedDirectories = new Set<string>();
+  const directoryWatchers = new Map<string, { close: () => void }>();
   let closed = false;
 
   const handleChange = (watchPath: string, event: string, filename: unknown) => {
@@ -395,15 +402,17 @@ export async function watchBrowserProject(onFileChange: (path: string, contents:
         : new TextDecoder().decode(entry.name);
       if (!entry.isDirectory() || ignoredRuntimeDirectories.has(rawName)) continue;
       currentDirectories.add(rawName);
-      if (watchedDirectories.has(rawName)) continue;
-      watchedDirectories.add(rawName);
-      watchers.push(runtime.fs.watch(rootPath + "/" + rawName, { recursive: true }, (event, filename) => {
+      if (directoryWatchers.has(rawName)) continue;
+      const watcher = runtime.fs.watch(rootPath + "/" + rawName, { recursive: true }, (event, filename) => {
         handleChange(rawName, event, filename);
-      }));
+      });
+      directoryWatchers.set(rawName, watcher);
+      watchers.push(watcher);
     }
-    for (const name of [...watchedDirectories]) {
+    for (const [name, watcher] of directoryWatchers) {
       if (currentDirectories.has(name)) continue;
-      watchedDirectories.delete(name);
+      watcher.close();
+      directoryWatchers.delete(name);
     }
   };
 
@@ -418,7 +427,7 @@ export async function watchBrowserProject(onFileChange: (path: string, contents:
     closed = true;
     for (const watcher of watchers) watcher.close();
     watchers.length = 0;
-    watchedDirectories.clear();
+    directoryWatchers.clear();
   };
 }
 export async function openBrowserTerminal(
