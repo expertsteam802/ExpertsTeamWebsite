@@ -350,7 +350,6 @@ const binaryRuntimeExtension = /\.(?:png|jpe?g|gif|webp|ico|pdf|zip|gz|tar|woff2
 export async function watchBrowserProject(onFileChange: (path: string, contents: string | null) => void) {
   const runtime = await getBrowserRuntime();
   const rootPath = runtime.workdir;
-  const watchers: Array<{ close: () => void }> = [];
   const directoryWatchers = new Map<string, { close: () => void }>();
   let closed = false;
 
@@ -411,7 +410,6 @@ export async function watchBrowserProject(onFileChange: (path: string, contents:
         handleChange(rawName, event, filename);
       });
       directoryWatchers.set(rawName, watcher);
-      watchers.push(watcher);
     }
     for (const [name, watcher] of directoryWatchers) {
       if (currentDirectories.has(name)) continue;
@@ -422,15 +420,15 @@ export async function watchBrowserProject(onFileChange: (path: string, contents:
 
   // Watch root-level files without recursively subscribing to dependency
   // folders, then attach recursive watchers only to real project directories.
-  watchers.push(runtime.fs.watch(rootPath, (event, filename) => {
+  const rootWatcher = runtime.fs.watch(rootPath, (event, filename) => {
     handleChange("", event, filename);
-  }));
+  });
   await refreshDirectoryWatchers();
 
   return () => {
     closed = true;
-    for (const watcher of watchers) watcher.close();
-    watchers.length = 0;
+    rootWatcher.close();
+    for (const watcher of directoryWatchers.values()) watcher.close();
     directoryWatchers.clear();
   };
 }
