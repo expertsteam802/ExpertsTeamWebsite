@@ -4,6 +4,7 @@ interface RuntimeState {
   bootPromise: Promise<WebContainer> | null;
   activeProjectId: string | null;
   activePaths: Set<string>;
+  lastSyncedFiles: Map<string, string | Uint8Array>;
   devProcess: WebContainerProcess | null;
   shellProcess: WebContainerProcess | null;
   syncQueue: Promise<void>;
@@ -14,6 +15,7 @@ const runtimeState: RuntimeState = import.meta.hot?.data.expertsTeamRuntime ?? {
   bootPromise: null,
   activeProjectId: null,
   activePaths: new Set<string>(),
+  lastSyncedFiles: new Map<string, string | Uint8Array>(),
   devProcess: null,
   shellProcess: null,
   syncQueue: Promise.resolve(),
@@ -109,6 +111,7 @@ export async function syncBrowserProject(projectId: string, files: BrowserProjec
       await runtime.mount(toFileTree(files), { mountPoint: runtime.workdir });
       runtimeState.activeProjectId = projectId;
       runtimeState.activePaths = new Set(Object.keys(files).map(normalizePath));
+      runtimeState.lastSyncedFiles = new Map(Object.entries(files).map(([path, contents]) => [normalizePath(path), contents]));
       return;
     }
 
@@ -116,6 +119,7 @@ export async function syncBrowserProject(projectId: string, files: BrowserProjec
     for (const previousPath of runtimeState.activePaths) {
       if (!nextPaths.has(previousPath)) {
         await runtime.fs.rm(runtime.workdir + "/" + previousPath, { recursive: true, force: true });
+        runtimeState.lastSyncedFiles.delete(previousPath);
       }
     }
     for (const [path, contents] of Object.entries(files)) {
@@ -123,6 +127,7 @@ export async function syncBrowserProject(projectId: string, files: BrowserProjec
       const parent = safePath.split("/").slice(0, -1).join("/");
       if (parent) await runtime.fs.mkdir(runtime.workdir + "/" + parent, { recursive: true });
       await runtime.fs.writeFile(runtime.workdir + "/" + safePath, contents);
+      runtimeState.lastSyncedFiles.set(safePath, contents);
     }
     runtimeState.activePaths = nextPaths;
   });
@@ -242,6 +247,47 @@ export async function startBrowserPreview(
   })();
   const url = await ready;
   return { url, runtime };
+}
+
+
+const ignoredRuntimeDirectories = new Set([
+  "node_modules", ".git", "dist", "build", "out", ".next", ".vercel",
+  "coverage", ".turbo", ".cache", ".output", "vendor",
+]);
+const ignoredRuntimeFiles = /^(?:\\.env(?:$|\\.(?!.*(?:example|sample|template)$).*)|\\.npmrc|\\.netrc|\\.pypirc|id_rsa|id_ed25519|credentials?(?:\\..*)?|secrets?(?:\\..*)?)$/i;
+const binaryRuntimeExtension = /\\.(?:png|jpe?g|gif|webp|ico|pdf|zip|gz|tar|woff2?|ttf|otf|mp4|mp3|wav|mov|avi|exe|dll|so|dylib|class|jar|wasm|lockb)$/i;
+
+export async function watchBrowserProject(onFileChange: (path: string, contents: string | null) => void) {
+  const runtime = await getBrowserRuntime();
+  const watcher = runtime.fs.watch(runtime.workdir, { recursive: true }, (_event, filename) => {
+    const rawPath = String(filename).replace(/\\\\/g, "/");
+    const workdirPrefix = runtime.workdir.replace(/^\\/+/, "") + "/";
+    const relativePath = rawPath.startsWith(workdirPrefix)
+      ? rawPath.slice(workdirPrefix.length)
+      : rawPath.replace(/^\\/+/, "");
+    let path: string;
+    try {
+      path = normalizePath(relativePath);
+    } catch {
+      return;
+    }
+    const segments = path.split("/");
+    const fileName = segments[segments.length - 1] ?? "";
+    if (segments.some((part) => ignoredRuntimeDirectories.has(part)) || ignoredRuntimeFiles.test(fileName) || binaryRuntimeExtension.test(fileName)) {
+      return;
+    }
+
+    void runtime.fs.readFile(runtime.workdir + "/" + path, "utf-8").then((contents) => {
+      if (runtimeState.lastSyncedFiles.get(path) === contents) return;
+      runtimeState.lastSyncedFiles.set(path, contents);
+      onFileChange(path, contents);
+    }).catch(() => {
+      if (!runtimeState.lastSyncedFiles.has(path)) return;
+      runtimeState.lastSyncedFiles.delete(path);
+      onFileChange(path, null);
+    });
+  });
+  return () => watcher.close();
 }
 
 export async function openBrowserTerminal(
