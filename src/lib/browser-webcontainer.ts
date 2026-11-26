@@ -84,7 +84,7 @@ export async function syncBrowserProject(projectId: string, files: Record<string
     for (const [path, contents] of Object.entries(files)) {
       const safePath = normalizePath(path);
       const parent = safePath.split("/").slice(0, -1).join("/");
-      if (parent) await runtime.fs.mkdir("/" + parent, { recursive: true });
+      if (parent) await runtime.fs.mkdir(runtime.workdir + "/" + parent, { recursive: true });
       await runtime.fs.writeFile(runtime.workdir + "/" + safePath, contents);
     }
     activePaths = nextPaths;
