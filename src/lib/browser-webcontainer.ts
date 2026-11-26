@@ -495,26 +495,70 @@ export async function openBrowserTerminal(
 ) {
   const runtime = await getBrowserRuntime();
   runtimeState.shellProcess?.kill();
-  runtimeState.shellProcess = await runtime.spawn("jsh", [], { terminal: dimensions });
-  const writer = runtimeState.shellProcess.input.getWriter();
-  const reader = runtimeState.shellProcess.output.getReader();
+  const process = await runtime.spawn("/bin/jsh", ["--osc"], {
+    terminal: {
+      cols: dimensions.cols || 80,
+      rows: dimensions.rows || 15,
+    },
+  });
+  runtimeState.shellProcess = process;
+
+  const writer = process.input.getWriter();
+  const reader = process.output.getReader();
+  let interactive = false;
+  let resolveInteractive!: () => void;
+  const interactiveReady = new Promise<void>((resolve) => {
+    resolveInteractive = resolve;
+  });
+
   void (async () => {
     try {
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        if (value) onOutput(value);
+        if (!value) continue;
+
+        // Match Bolt's JSH interactive handshake. Do not send keystrokes
+        // until the shell has finished initializing its interactive mode.
+        if (!interactive && /\x1b\]654;interactive\x07/.test(value)) {
+          interactive = true;
+          resolveInteractive();
+        }
+        onOutput(value);
       }
     } catch {
       // Shell closed.
     }
   })();
+
+  let handshakeTimer: number | undefined;
+  try {
+    await Promise.race([
+      interactiveReady,
+      new Promise<never>((_, reject) => {
+        handshakeTimer = window.setTimeout(
+          () => reject(new Error("The browser shell did not enter interactive mode.")),
+          15000,
+        );
+      }),
+    ]);
+  } catch (error) {
+    process.kill();
+    if (runtimeState.shellProcess === process) runtimeState.shellProcess = null;
+    writer.releaseLock();
+    throw error;
+  } finally {
+    if (handshakeTimer !== undefined) window.clearTimeout(handshakeTimer);
+  }
+
   return {
-    write: (value: string) => writer.write(value),
-    resize: (next: { cols: number; rows: number }) => runtimeState.shellProcess?.resize(next),
+    write: (value: string) => {
+      if (interactive) void writer.write(value);
+    },
+    resize: (next: { cols: number; rows: number }) => process.resize(next),
     close: () => {
-      runtimeState.shellProcess?.kill();
-      runtimeState.shellProcess = null;
+      process.kill();
+      if (runtimeState.shellProcess === process) runtimeState.shellProcess = null;
       writer.releaseLock();
     },
   };
