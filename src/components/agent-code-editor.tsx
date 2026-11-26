@@ -23,7 +23,7 @@ import { Link } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
 import { MonacoEditor } from "@/components/monaco-editor";
 import type { ProjectFiles } from "@/lib/sandbox";
-import { loadProjectFiles, saveProjectFiles } from "@/lib/project-files";
+import { loadProjectBinaryAssets, loadProjectFiles, saveProjectFiles } from "@/lib/project-files";
 import { startBrowserPreview, stopBrowserPreview } from "@/lib/browser-webcontainer";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -66,16 +66,19 @@ export function AgentCodeEditor({ projectId }: { projectId: string }) {
       const { data, error } = await supabase.from("agent_projects").select("id,name,description,framework,updated_at").eq("id", projectId).eq("user_id", user.id).maybeSingle();
       if (error) throw error;
       if (!data) throw new Error("Project not found or you do not have access.");
-      return { project: data, files: await loadProjectFiles(projectId) };
+      const [files, binaryAssets] = await Promise.all([loadProjectFiles(projectId), loadProjectBinaryAssets(projectId, user.id)]);
+      return { project: data, files, binaryAssets };
     },
   });
   const [cloudFiles, setCloudFiles] = useState<ProjectFiles | null>(null);
+  const [binaryAssets, setBinaryAssets] = useState<Record<string, Uint8Array>>({});
   const hydratedProjectRef = useRef<string | null>(null);
   const [savingProject, setSavingProject] = useState(false);
   useEffect(() => {
     if (!projectQuery.data || hydratedProjectRef.current === projectId) return;
     hydratedProjectRef.current = projectId;
     setCloudFiles(projectQuery.data.files);
+    setBinaryAssets(projectQuery.data.binaryAssets);
     setFiles(projectQuery.data.files);
     const firstPath = Object.keys(projectQuery.data.files).sort()[0] ?? "";
     setActivePath(firstPath);
@@ -171,7 +174,7 @@ export function AgentCodeEditor({ projectId }: { projectId: string }) {
   const visiblePaths = paths.filter((path) => path.toLowerCase().includes(filter.toLowerCase()));
   const folderPaths = Array.from(new Set(visiblePaths.flatMap((path) => { const parts = path.split("/"); return parts.slice(0, -1).map((_, index) => parts.slice(0, index + 1).join("/")); }))).sort((a,b)=>a.localeCompare(b));
   const hiddenByFolder = (path:string) => collapsedFolders.some(folder => path.startsWith(folder + "/"));
-  const startPreview = async () => { setPreviewBusy(true); try { await saveProjectFiles(projectId, user!.id, files); const result = await startBrowserPreview(projectId, files); setPreviewUrl(result.url); setPreviewVisible(true); toast.success("Browser preview is running."); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not start browser preview."); } finally { setPreviewBusy(false); } };
+  const startPreview = async () => { setPreviewBusy(true); try { await saveProjectFiles(projectId, user!.id, files); const result = await startBrowserPreview(projectId, { ...files, ...binaryAssets }); setPreviewUrl(result.url); setPreviewVisible(true); toast.success("Browser preview is running."); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not start browser preview."); } finally { setPreviewBusy(false); } };
   const stopPreview = async () => { setPreviewBusy(true); try { stopBrowserPreview(); setPreviewUrl(""); setPreviewVisible(false); toast.success("Browser preview stopped."); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not stop preview."); } finally { setPreviewBusy(false); } };
 
   if (authLoading) {
