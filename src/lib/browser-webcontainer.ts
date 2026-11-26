@@ -271,6 +271,7 @@ export async function watchBrowserProject(onFileChange: (path: string, contents:
     } catch {
       return;
     }
+    if (runtimeState.lastSyncedFiles.get(path) instanceof Uint8Array) return;
     const segments = path.split("/");
     const fileName = segments[segments.length - 1] ?? "";
     if (segments.some((part) => ignoredRuntimeDirectories.has(part)) || ignoredRuntimeFiles.test(fileName) || binaryRuntimeExtension.test(fileName)) {
