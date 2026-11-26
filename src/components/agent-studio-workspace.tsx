@@ -44,7 +44,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   const [prompt, setPrompt] = useState("");
   const [activePath, setActivePath] = useState("");
   const [tab, setTab] = useState<WorkbenchTab>("preview");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(false);\n  const [saving, setSaving] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
   const [terminalInfo, setTerminalInfo] = useState<{ url: string; token: string } | null>(null);
   const terminalHost = useRef<HTMLDivElement>(null);
@@ -73,6 +73,22 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     setMessages(projectQuery.data.messages);
     setActivePath(Object.keys(projectQuery.data.files).sort()[0] ?? "");
   }, [projectQuery.data, projectId]);
+
+  useEffect(() => {
+    if (!user || !projectQuery.data || hydratedRef.current !== projectId) return;
+    const timer = window.setTimeout(async () => {
+      setSaving(true);
+      try {
+        await saveProjectFiles(projectId, user.id, files);
+      } catch (error) {
+        console.error("[Agent Studio] Autosave failed:", error);
+        toast.error("Could not save your latest code changes.");
+      } finally {
+        setSaving(false);
+      }
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [files, projectId, projectQuery.data, user]);
 
   const paths = useMemo(() => Object.keys(files).sort((a, b) => a.localeCompare(b)), [files]);
   const activeContent = files[activePath] ?? "";
@@ -201,10 +217,10 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
           <strong className="truncate text-sm">{projectQuery.data.project.name}</strong>
           <span className="hidden rounded border border-cyan-400/20 bg-cyan-400/5 px-2 py-0.5 text-[10px] text-cyan-200 sm:inline">Agent Studio</span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-400"><span>⚡ {profile?.ai_credits ?? 0} credits</span><span className="hidden sm:inline">{paths.length} files</span></div>
+        <div className="flex items-center gap-2 text-xs text-slate-400"><span>⚡ {profile?.ai_credits ?? 0} credits</span><span className="hidden sm:inline">{saving ? "Saving…" : "Saved"} · {paths.length} files</span></div>
       </header>
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <aside className="flex min-h-0 w-full flex-col border-b border-white/10 bg-[#0b101a] md:w-[390px] md:shrink-0 md:border-b-0 md:border-r">
+        <aside className="flex h-[48%] min-h-0 w-full shrink-0 flex-col border-b border-white/10 bg-[#0b101a] md:h-auto md:w-[390px] md:border-b-0 md:border-r">
           <div className="flex h-11 shrink-0 items-center gap-2 border-b border-white/10 px-4"><Bot size={15} className="text-cyan-300"/><span className="text-xs font-semibold tracking-wide">AI AGENT</span><span className="ml-auto text-[10px] text-slate-500">Project conversation</span></div>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
             {messages.length === 0 && <div className="rounded-xl border border-cyan-400/15 bg-cyan-400/[0.04] p-4"><div className="mb-2 flex items-center gap-2 text-sm font-semibold"><Bot size={16} className="text-cyan-300"/> Ready to build</div><p className="text-xs leading-5 text-slate-400">Describe a feature, ask for a change, or tell the agent what to create. Your conversation is saved with this project.</p></div>}
