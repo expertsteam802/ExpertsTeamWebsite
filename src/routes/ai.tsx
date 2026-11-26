@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AgentCodeEditor } from "@/components/agent-code-editor";
+import { AgentProjectDashboard } from "@/components/agent-project-dashboard";
 
 export const Route = createFileRoute("/ai")({
   head: () => ({
@@ -16,5 +16,5 @@ export const Route = createFileRoute("/ai")({
 });
 
 function AiPage() {
-  return <AgentCodeEditor />;
+  return <AgentProjectDashboard />;
 }
