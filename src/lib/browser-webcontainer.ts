@@ -153,7 +153,7 @@ export async function startBrowserPreview(
       private: true,
       type: "module",
       scripts: { dev: "vite --host 0.0.0.0" },
-      devDependencies: { vite: "^6.4.1" },
+      devDependencies: { vite: "^6.4.6" },
     };
     await runtime.fs.writeFile(runtime.workdir + "/package.json", JSON.stringify(starterPackage, null, 2));
     if (!files["index.html"]) {
