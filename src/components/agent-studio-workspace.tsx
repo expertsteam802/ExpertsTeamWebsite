@@ -55,6 +55,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   const runtimeActiveRef = useRef(false);
   const [runtimeOutput, setRuntimeOutput] = useState("");
   const [runtimeReady, setRuntimeReady] = useState(false);
+  const [terminalConnected, setTerminalConnected] = useState(false);
   const hydratedRef = useRef("");
 
   useEffect(() => () => {
@@ -251,12 +252,17 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   };
 
   const openTerminal = async () => {
+    if (terminalConnected) {
+      setTab("terminal");
+      return;
+    }
     setBusy(true);
     try {
       await saveProjectFiles(projectId, user!.id, files);
       await syncBrowserProject(projectId, { ...files, ...binaryAssets });
       runtimeActiveRef.current = true;
       setRuntimeReady(true);
+      setTerminalConnected(true);
       setTab("terminal");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not open the browser terminal.");
@@ -264,7 +270,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   };
 
   useEffect(() => {
-    if (tab !== "terminal" || !terminalHost.current) return;
+    if (!terminalConnected || !terminalHost.current) return;
     const terminal = new Terminal({ cursorBlink: true, convertEol: true, fontSize: 12, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", theme: { background: "#080b12", foreground: "#dbeafe", cursor: "#60a5fa" } });
     const fit = new FitAddon();
     terminal.loadAddon(fit);
@@ -294,7 +300,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       terminal.dispose();
       terminalRef.current = null;
     };
-  }, [tab]);
+  }, [terminalConnected]);
 
   if (authLoading) return <main className="grid h-screen place-items-center bg-[#080b12] text-sm text-slate-400">Restoring your session…</main>;
   if (!user) return <main className="grid h-screen place-items-center bg-[#080b12] text-slate-300"><a href="/auth" className="underline">Sign in to open this project</a></main>;
@@ -330,7 +336,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
           <nav className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 bg-[#0d121d] px-3"><div className="flex h-full items-stretch gap-1">{([{id:"preview",label:"Preview",icon:Eye},{id:"code",label:"Code",icon:Code2},{id:"terminal",label:"Terminal",icon:TerminalSquare}] as const).map((item) => { const Icon=item.icon; return <button key={item.id} type="button" onClick={() => setTab(item.id)} className={`inline-flex items-center gap-2 border-b-2 px-3 text-xs ${tab===item.id?"border-cyan-400 text-cyan-200":"border-transparent text-slate-500 hover:text-slate-200"}`}><Icon size={14}/>{item.label}</button>; })}</div><div className="flex items-center gap-2"><Button type="button" size="sm" onClick={() => void openPreview()} disabled={busy || paths.length===0} className="h-7 gap-1.5 bg-emerald-500 px-2 text-[11px] text-slate-950 hover:bg-emerald-400"><Play size={12}/> Run</Button><Button type="button" size="sm" variant="outline" onClick={() => void openTerminal()} disabled={busy || paths.length===0} className="h-7 gap-1.5 border-white/10 bg-transparent px-2 text-[11px] text-slate-300"><SquareTerminal size={12}/> Connect</Button></div></nav>
           {tab === "preview" && <div className="flex min-h-0 flex-1 flex-col">{previewUrl ? <><div className="flex h-9 shrink-0 items-center justify-between border-b border-white/10 px-3 text-[11px] text-slate-500"><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-400"/> Live browser preview</span><a href={previewUrl} target="_blank" rel="noreferrer" className="hover:text-white">Open separately ↗</a></div><iframe title="Project preview" src={previewUrl} className="min-h-0 flex-1 border-0 bg-white" allow="clipboard-read; clipboard-write; fullscreen"/></> : <div className="grid flex-1 place-items-center p-8 text-center"><div>{runtimeOutput && <pre className="mb-4 max-h-40 max-w-xl overflow-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-black/30 p-3 text-left text-[10px] text-slate-400">{runtimeOutput}</pre>}<Eye size={30} className="mx-auto mb-3 text-slate-600"/><h2 className="text-sm font-semibold text-slate-300">Your live preview appears here</h2><p className="mt-2 max-w-sm text-xs leading-5 text-slate-500">Run the project in your browser. Your source files remain saved in Supabase.</p><Button type="button" onClick={() => void openPreview()} disabled={busy || paths.length===0} className="mt-4 bg-emerald-500 text-slate-950 hover:bg-emerald-400"><Play size={14} className="mr-2"/> Start preview</Button></div></div>}</div>}
           {tab === "code" && <div className="flex min-h-0 flex-1"><aside className="w-52 shrink-0 overflow-y-auto border-r border-white/10 bg-[#0b101a] p-2"><div className="mb-2 flex items-center gap-2 px-2 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500"><Folder size={13}/> Files</div>{paths.map(path => <button key={path} type="button" onClick={() => setActivePath(path)} className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs ${activePath===path?"bg-cyan-400/10 text-cyan-200":"text-slate-400 hover:bg-white/5"}`}><FileCode2 size={13}/><span className="truncate">{path}</span></button>)}</aside><div className="flex min-w-0 flex-1 flex-col"><div className="flex h-9 shrink-0 items-center border-b border-white/10 px-3 text-xs text-slate-400">{activePath || "Select a file"}</div>{activePath ? <CodeMirror value={activeContent} height="100%" theme={oneDark} extensions={[]} onChange={(value) => setFiles(current => ({...current,[activePath]:value}))} basicSetup={{ lineNumbers:true, foldGutter:true }}/> : <div className="grid flex-1 place-items-center text-xs text-slate-500">No source files in this project yet.</div>}</div></div>}
-          {tab === "terminal" && <div className="flex min-h-0 flex-1 flex-col"><div className="flex h-9 shrink-0 items-center justify-between border-b border-white/10 px-3 text-[11px] text-slate-500"><span className="flex items-center gap-2"><TerminalSquare size={13}/> Browser terminal · Shell</span><span>{runtimeActiveRef.current ? "Browser runtime" : "Not connected"}</span></div><div ref={terminalHost} className="min-h-0 flex-1 overflow-hidden p-2" /></div>}
+          <div className={`min-h-0 flex-1 flex-col ${tab === "terminal" ? "flex" : "hidden"}`}><div className="flex h-9 shrink-0 items-center justify-between border-b border-white/10 px-3 text-[11px] text-slate-500"><span className="flex items-center gap-2"><TerminalSquare size={13}/> Browser terminal · Shell</span><span>{terminalConnected ? "Browser runtime · Session kept alive" : "Not connected"}</span></div><div ref={terminalHost} className="min-h-0 flex-1 overflow-hidden p-2" /></div>
         </section>
       </div>
     </main>
