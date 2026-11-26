@@ -17,32 +17,12 @@ import { oneDark } from "@codemirror/theme-one-dark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MonacoEditor } from "@/components/monaco-editor";
-import { STARTER_FILES, type ProjectFiles } from "@/lib/sandbox";
+import type { ProjectFiles } from "@/lib/sandbox";
 import { loadProjectFiles, saveProjectFiles } from "@/lib/project-files";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-
-const WORKSPACE_KEY = "expertsteam-agent-studio-editor-v1";
-
-function readWorkspace(): ProjectFiles {
-  if (typeof window === "undefined") return { ...STARTER_FILES };
-  try {
-    const raw = window.localStorage.getItem(WORKSPACE_KEY);
-    if (!raw) return { ...STARTER_FILES };
-    const parsed: unknown = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { ...STARTER_FILES };
-    const files = Object.fromEntries(
-      Object.entries(parsed).filter(([path, value]) =>
-        typeof value === "string" && path.length > 0 && !path.startsWith("/") && !path.split("/").includes(".."),
-      ),
-    );
-    return Object.keys(files).length ? files : { ...STARTER_FILES };
-  } catch {
-    return { ...STARTER_FILES };
-  }
-}
 
 function languageLabel(path: string) {
   const extension = path.split(".").pop()?.toLowerCase() ?? "";
@@ -96,14 +76,12 @@ export function AgentCodeEditor({ projectId }: { projectId: string }) {
     }, 1200);
     return () => window.clearTimeout(timer);
   }, [cloudFiles, projectId, user, projectQuery.data]);
-  const [files, setFiles] = useState<ProjectFiles>(() => readWorkspace());
-  const [activePath, setActivePath] = useState(() => Object.keys(readWorkspace()).sort()[0] ?? "index.html");
-  const [openPaths, setOpenPaths] = useState<string[]>(() => Object.keys(readWorkspace()).sort().slice(0, 3));
+  const [files, setFiles] = useState<ProjectFiles>({});
+  const [activePath, setActivePath] = useState("");
+  const [openPaths, setOpenPaths] = useState<string[]>([]);
   const [newFileName, setNewFileName] = useState("");
   const [showNewFile, setShowNewFile] = useState(false);
   const [filter, setFilter] = useState("");
-  const [savedAt, setSavedAt] = useState<Date | null>(null);
-  const [saveError, setSaveError] = useState("");
 
   const paths = useMemo(
     () => Object.keys(files).sort((a, b) => a.localeCompare(b)),
@@ -112,7 +90,12 @@ export function AgentCodeEditor({ projectId }: { projectId: string }) {
   const activeContent = files[activePath] ?? "";
 
   useEffect(() => {
-    if (cloudFiles) setFiles(cloudFiles);
+    if (cloudFiles) {
+      setFiles(cloudFiles);
+      const firstPath = Object.keys(cloudFiles).sort()[0] ?? "";
+      setActivePath(firstPath);
+      setOpenPaths(Object.keys(cloudFiles).sort().slice(0, 3));
+    }
   }, [cloudFiles]);
 
   useEffect(() => {
@@ -177,11 +160,11 @@ export function AgentCodeEditor({ projectId }: { projectId: string }) {
 
   const visiblePaths = paths.filter((path) => path.toLowerCase().includes(filter.toLowerCase()));
 
-  if (projectQuery.isLoading || !cloudFiles) {
-    return <main className="flex min-h-[100dvh] items-center justify-center bg-[#0b0e14] text-sm text-slate-400">Loading your project…</main>;
-  }
   if (projectQuery.isError) {
     return <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-[#0b0e14] px-5 text-center text-slate-300"><p>{(projectQuery.error as Error).message}</p><button type="button" className="text-sm text-blue-300 underline" onClick={() => window.location.assign("/ai")}>Back to projects</button></main>;
+  }
+  if (projectQuery.isLoading || !cloudFiles) {
+    return <main className="flex min-h-[100dvh] items-center justify-center bg-[#0b0e14] text-sm text-slate-400">Loading your project…</main>;
   }
   return (
     <main className="flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-[#0b0e14] text-slate-100">
