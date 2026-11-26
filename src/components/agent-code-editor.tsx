@@ -7,7 +7,6 @@ import {
   FilePlus2,
   Folder,
   FolderOpen,
-  Save,
   Search,
   Trash2,
   X,
