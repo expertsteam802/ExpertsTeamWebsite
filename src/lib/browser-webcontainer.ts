@@ -254,17 +254,17 @@ const ignoredRuntimeDirectories = new Set([
   "node_modules", ".git", "dist", "build", "out", ".next", ".vercel",
   "coverage", ".turbo", ".cache", ".output", "vendor",
 ]);
-const ignoredRuntimeFiles = /^(?:\\.env(?:$|\\.(?!.*(?:example|sample|template)$).*)|\\.npmrc|\\.netrc|\\.pypirc|id_rsa|id_ed25519|credentials?(?:\\..*)?|secrets?(?:\\..*)?)$/i;
-const binaryRuntimeExtension = /\\.(?:png|jpe?g|gif|webp|ico|pdf|zip|gz|tar|woff2?|ttf|otf|mp4|mp3|wav|mov|avi|exe|dll|so|dylib|class|jar|wasm|lockb)$/i;
+const ignoredRuntimeFiles = /^(?:\.env(?:$|\.(?!.*(?:example|sample|template)$).*)|\.npmrc|\.netrc|\.pypirc|id_rsa|id_ed25519|credentials?(?:\..*)?|secrets?(?:\..*)?)$/i;
+const binaryRuntimeExtension = /\.(?:png|jpe?g|gif|webp|ico|pdf|zip|gz|tar|woff2?|ttf|otf|mp4|mp3|wav|mov|avi|exe|dll|so|dylib|class|jar|wasm|lockb)$/i;
 
 export async function watchBrowserProject(onFileChange: (path: string, contents: string | null) => void) {
   const runtime = await getBrowserRuntime();
   const watcher = runtime.fs.watch(runtime.workdir, { recursive: true }, (_event, filename) => {
-    const rawPath = String(filename).replace(/\\\\/g, "/");
-    const workdirPrefix = runtime.workdir.replace(/^\\/+/, "") + "/";
+    const rawPath = String(filename).replace(/\\/g, "/");
+    const workdirPrefix = runtime.workdir.replace(/^\/+/, "") + "/";
     const relativePath = rawPath.startsWith(workdirPrefix)
       ? rawPath.slice(workdirPrefix.length)
-      : rawPath.replace(/^\\/+/, "");
+      : rawPath.replace(/^\/+/, "");
     let path: string;
     try {
       path = normalizePath(relativePath);
