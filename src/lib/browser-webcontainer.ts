@@ -44,7 +44,7 @@ export function getBrowserRuntime() {
     return Promise.reject(new Error("This page is not cross-origin isolated. Reload Agent Studio after the WebContainer security headers have been deployed."));
   }
   if (!runtimeState.bootPromise) {
-    runtimeState.bootPromise = WebContainer.boot({ workdirName: "experts-project", forwardPreviewErrors: "exceptions-only" }).catch((error) => {
+    runtimeState.bootPromise = WebContainer.boot({ workdirName: "experts-project", coep: "require-corp", forwardPreviewErrors: "exceptions-only" }).catch((error) => {
       runtimeState.bootPromise = null;
       throw explainBootFailure(error);
     });
