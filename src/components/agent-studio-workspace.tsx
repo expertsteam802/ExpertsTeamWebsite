@@ -68,15 +68,17 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   });
 
   useEffect(() => {
-    if (!projectQuery.data || hydratedRef.current === projectId) return;
-    hydratedRef.current = projectId;
+    if (!projectQuery.data) return;
+    const hydrationKey = `${projectId}:${projectQuery.data.project.updated_at}`;
+    if (hydratedRef.current === hydrationKey) return;
+    hydratedRef.current = hydrationKey;
     setFiles(projectQuery.data.files);
     setMessages(projectQuery.data.messages);
     setActivePath(Object.keys(projectQuery.data.files).sort()[0] ?? "");
   }, [projectQuery.data, projectId, projectQuery.data?.project.updated_at]);
 
   useEffect(() => {
-    if (!user || !projectQuery.data || hydratedRef.current !== projectId) return;
+    if (!user || !projectQuery.data || hydratedRef.current !== `${projectId}:${projectQuery.data.project.updated_at}`) return;
     const timer = window.setTimeout(async () => {
       setSaving(true);
       try {
