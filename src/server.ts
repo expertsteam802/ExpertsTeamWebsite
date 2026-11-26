@@ -87,13 +87,30 @@ async function rewritePublishedHost(request: Request): Promise<Request> {
   return new Request(url, request);
 }
 
+function withAgentStudioIsolationHeaders(request: Request, response: Response): Response {
+  const pathname = new URL(request.url).pathname;
+  const isAgentStudioRoute = /^\\/agent\\/[^/]+(?:\\/|$)/.test(pathname);
+  const isLegacyProjectRoute = /^\\/ai\\/[^/]+(?:\\/|$)/.test(pathname);
+  if (!isAgentStudioRoute && !isLegacyProjectRoute) return response;
+
+  const headers = new Headers(response.headers);
+  headers.set("Cross-Origin-Embedder-Policy", "require-corp");
+  headers.set("Cross-Origin-Opener-Policy", "same-origin");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const handler = await getServerEntry();
       const routedRequest = await rewritePublishedHost(request);
       const response = await handler.fetch(routedRequest, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      const normalizedResponse = await normalizeCatastrophicSsrResponse(response);
+      return withAgentStudioIsolationHeaders(request, normalizedResponse);
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {
