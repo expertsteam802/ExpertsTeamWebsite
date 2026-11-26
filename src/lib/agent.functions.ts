@@ -23,6 +23,7 @@ const codingRequest = z
   .object({
     prompt: z.string().trim().min(1).max(100_000),
     mode: z.enum(["build", "plan", "chat"]).optional().default("build"),
+    framework: z.enum(["nextjs", "tanstack", "vite", "vue", "sveltekit", "node", "html"]).optional(),
     modelTier: z.enum(["fast", "balanced", "architect"]).optional().default("fast"),
     groundPackages: z.array(z.string().trim().min(1).max(214).regex(/^(?:@[a-z0-9._-]+\/)?[a-z0-9][a-z0-9._-]*$/i)).max(3).optional().default([]),
     files: z.record(z.string().max(512), z.string().max(25_000_000)),
@@ -96,7 +97,7 @@ export const runCodingAgent = createServerFn({ method: "POST" })
       }));
       groundedPrompt += "\n\nVERIFIED NPM PACKAGE DOCUMENTATION (retrieved from registry.npmjs.org; use version and API details from this source):\n" + docs.join("\n\n");
     }
-    const agentData = { ...data, prompt: groundedPrompt };
+    const frameworkPrompt = data.framework ? "\\n\\nTARGET FRAMEWORK (must follow exactly): " + data.framework + ". Generate a complete idiomatic multi-file project for this framework; do not substitute another stack." : "";\n    const agentData = { ...data, prompt: groundedPrompt + frameworkPrompt };
     const { runAgent, runAgentPlan, runAgentChat } = await import("./agent.server");
     const result = data.mode === "plan"
       ? await runAgentPlan(agentData)
