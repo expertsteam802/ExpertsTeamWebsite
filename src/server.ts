@@ -89,8 +89,8 @@ async function rewritePublishedHost(request: Request): Promise<Request> {
 
 function withAgentStudioIsolationHeaders(request: Request, response: Response): Response {
   const pathname = new URL(request.url).pathname;
-  const isAgentStudioRoute = /^\\/agent\\/[^/]+(?:\\/|$)/.test(pathname);
-  const isLegacyProjectRoute = /^\\/ai\\/[^/]+(?:\\/|$)/.test(pathname);
+  const isAgentStudioRoute = /^\/agent\/[^/]+(?:\/|$)/.test(pathname);
+  const isLegacyProjectRoute = /^\/ai\/[^/]+(?:\/|$)/.test(pathname);
   if (!isAgentStudioRoute && !isLegacyProjectRoute) return response;
 
   const headers = new Headers(response.headers);
