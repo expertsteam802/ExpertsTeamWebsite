@@ -1022,19 +1022,3 @@ const publishRequest = z.object({
   slug: z.string().regex(/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/),
   environment: z.enum(["production", "staging"]).default("production"),
 });
-
-export const getAgentProjectPortForwardUrl = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((input: unknown) =>
-    z.object({
-      projectId: z.string().uuid(),
-      sandboxName: z.string().min(20).max(80),
-      port: z.number().int().min(1).max(65535),
-    }).parse(input),
-  )
-  .handler(async ({ data, context }) => {
-    await assertProjectOwnership(context.supabase, data.projectId, context.userId);
-    const { assertDaytonaTerminalSandboxName, getDaytonaProjectPortForwardUrl } = await import("./daytona-terminal.server");
-    const sandboxName = assertDaytonaTerminalSandboxName(context.userId, data.sandboxName);
-    return getDaytonaProjectPortForwardUrl(sandboxName, data.port);
-  });
