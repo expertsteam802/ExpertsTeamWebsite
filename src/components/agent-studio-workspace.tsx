@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { loadProjectFiles, saveProjectFiles } from "@/lib/project-files";
+import { loadProjectBinaryAssets, loadProjectFiles, saveProjectFiles } from "@/lib/project-files";
 import { runCodingAgent } from "@/lib/agent.functions";
 import { openBrowserTerminal, startBrowserPreview, syncBrowserProject } from "@/lib/browser-webcontainer";
 import CodeMirror from "@uiw/react-codemirror";
@@ -41,6 +41,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   const { user, loading: authLoading, profile } = useAuth();
   const queryClient = useQueryClient();
   const [files, setFiles] = useState<ProjectFiles>({});
+  const [binaryAssets, setBinaryAssets] = useState<Record<string, Uint8Array>>({});
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [prompt, setPrompt] = useState("");
   const [activePath, setActivePath] = useState("");
@@ -65,7 +66,8 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
         .eq("id", projectId).eq("user_id", user.id).maybeSingle();
       if (error) throw error;
       if (!data) throw new Error("Project not found or you do not have access.");
-      return { project: data, files: await loadProjectFiles(projectId), messages: readMessages(data.messages) };
+      const [files, binaryAssets] = await Promise.all([loadProjectFiles(projectId), loadProjectBinaryAssets(projectId, user.id)]);
+      return { project: data, files, binaryAssets, messages: readMessages(data.messages) };
     },
   });
 
@@ -75,6 +77,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     if (hydratedRef.current === hydrationKey) return;
     hydratedRef.current = hydrationKey;
     setFiles(projectQuery.data.files);
+    setBinaryAssets(projectQuery.data.binaryAssets);
     setMessages(projectQuery.data.messages);
     setActivePath(Object.keys(projectQuery.data.files).sort()[0] ?? "");
   }, [projectQuery.data, projectId, projectQuery.data?.project.updated_at]);
@@ -101,13 +104,13 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   useEffect(() => {
     if (!runtimeActiveRef.current) return;
     const timer = window.setTimeout(() => {
-      void syncBrowserProject(projectId, files).catch((error) => {
+      void syncBrowserProject(projectId, { ...files, ...binaryAssets }).catch((error) => {
         console.error("[Agent Studio] Browser runtime file sync failed:", error);
         toast.error("Could not sync the latest files to the browser preview.");
       });
     }, 180);
     return () => window.clearTimeout(timer);
-  }, [files, projectId]);
+  }, [files, binaryAssets, projectId]);
 
   const persistConversation = useCallback(async (next: ChatMessage[]) => {
     if (!user) return;
@@ -182,7 +185,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       }
       setFiles(previewFiles);
       await saveProjectFiles(projectId, user!.id, previewFiles);
-      const result = await startBrowserPreview(projectId, previewFiles, (chunk) => setRuntimeOutput((current) => (current + chunk).slice(-12000)));
+      const result = await startBrowserPreview(projectId, { ...previewFiles, ...binaryAssets }, (chunk) => setRuntimeOutput((current) => (current + chunk).slice(-12000)));
       runtimeActiveRef.current = true;
       setPreviewUrl(result.url);
       setTab("preview");
@@ -198,7 +201,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     setBusy(true);
     try {
       await saveProjectFiles(projectId, user!.id, files);
-      await syncBrowserProject(projectId, files);
+      await syncBrowserProject(projectId, { ...files, ...binaryAssets });
       runtimeActiveRef.current = true;
       setTab("terminal");
     } catch (error) {
