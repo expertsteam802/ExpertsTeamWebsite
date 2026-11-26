@@ -119,7 +119,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
           modelTier: "fast",
           framework: projectQuery.data?.project.framework as "nextjs" | "tanstack" | "vite" | "vue" | "sveltekit" | "node" | "html" | undefined,
           files,
-          history: nextHistory.slice(-8).map(({ role, content }) => ({ role, content })),
+          history: nextHistory.slice(-8).map(({ role, content }) => ({ role, content: content.slice(-3000) })),
         },
       });
       const updated = { ...files };
@@ -135,7 +135,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       const answer = result.message || (result.complete ? "The requested changes have been generated." : "I’ve completed this batch and can continue with the next part.");
       const completedHistory = [...nextHistory, { role: "assistant" as const, content: answer, createdAt: new Date().toISOString() }].slice(-100);
       await persistConversation(completedHistory);
-      toast.success(Object.keys(result.files ?? {}).length ? "Workspace files updated." : "Agent replied.");
+      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });\n      toast.success(Object.keys(result.files ?? {}).length ? "Workspace files updated." : "Agent replied.");
     } catch (error) {
       const reason = error instanceof Error ? error.message : "The agent request failed.";
       const failedHistory = [...nextHistory, { role: "assistant" as const, content: "I couldn't complete that request: " + reason, createdAt: new Date().toISOString() }].slice(-100);
