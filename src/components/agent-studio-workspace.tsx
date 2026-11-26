@@ -225,7 +225,17 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
         projectId,
         { ...previewFiles, ...binaryAssets },
         publicEnvironment,
-        (chunk) => setRuntimeOutput((current) => (current + chunk).slice(-12000)),
+        (chunk) => {
+          // This output is rendered in a plain <pre>, not an ANSI terminal.
+          // Strip terminal control sequences so logs show readable words.
+          const readable = chunk
+            .replace(/\\x1B\\][^\\x07]*(?:\\x07|\\x1B\\\\\\\\)/g, "")
+            .replace(/\\x1B\\[[0-?]*[ -/]*[@-~]/g, "")
+            .replace(/\\x1B[P^_].*?\\x1B\\\\\\\\/gs, "")
+            .replace(/\\x1B[@-_]/g, "")
+            .replace(/[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]/g, "");
+          setRuntimeOutput((current) => (current + readable).slice(-12000));
+        },
         (url) => setPreviewUrl(url ?? ""),
       );
       runtimeActiveRef.current = true;
