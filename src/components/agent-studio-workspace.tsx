@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { loadProjectBinaryAssets, loadProjectFiles, saveProjectFiles } from "@/lib/project-files";
 import { getProjectPublicEnvironment, runCodingAgent } from "@/lib/agent.functions";
-import { openBrowserTerminal, startBrowserPreview, syncBrowserProject, watchBrowserProject } from "@/lib/browser-webcontainer";
+import { openBrowserTerminal, startBrowserPreview, stopBrowserPreview, syncBrowserProject, watchBrowserProject } from "@/lib/browser-webcontainer";
 import CodeMirror from "@uiw/react-codemirror";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { Terminal } from "@xterm/xterm";
@@ -56,6 +56,11 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   const [runtimeOutput, setRuntimeOutput] = useState("");
   const [runtimeReady, setRuntimeReady] = useState(false);
   const hydratedRef = useRef("");
+
+  useEffect(() => () => {
+    runtimeActiveRef.current = false;
+    stopBrowserPreview();
+  }, []);
 
   const projectQuery = useQuery({
     queryKey: ["agent-studio-workspace", projectId, user?.id],
