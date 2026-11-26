@@ -193,7 +193,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       toast.success("Browser preview is running.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not start browser preview.";
-      setRuntimeOutput((current) => (current + "\\n" + message).slice(-12000));
+      setRuntimeOutput((current) => (current + "\n" + message).slice(-12000));
       toast.error(message);
     } finally { setBusy(false); }
   };
