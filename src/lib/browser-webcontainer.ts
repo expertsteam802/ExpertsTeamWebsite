@@ -97,7 +97,8 @@ export async function syncBrowserProject(projectId: string, files: BrowserProjec
       runtimeState.devProcess = null;
       runtimeState.shellProcess = null;
       await clearRuntimeFiles();
-      await runtime.mount(toFileTree(files));
+      await runtime.fs.mkdir(runtime.workdir, { recursive: true });
+      await runtime.mount(toFileTree(files), { mountPoint: runtime.workdir });
       runtimeState.activeProjectId = projectId;
       runtimeState.activePaths = new Set(Object.keys(files).map(normalizePath));
       return;
