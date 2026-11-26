@@ -1,4 +1,4 @@
-import { WebContainer, type FileSystemTree, type WebContainerProcess } from "@webcontainer/api";
+import { WebContainer, configureAPIKey, type FileSystemTree, type WebContainerProcess } from "@webcontainer/api";
 
 interface RuntimeState {
   bootPromise: Promise<WebContainer> | null;
@@ -7,6 +7,7 @@ interface RuntimeState {
   devProcess: WebContainerProcess | null;
   shellProcess: WebContainerProcess | null;
   syncQueue: Promise<void>;
+  apiKeyConfigured: boolean;
 }
 
 const runtimeState: RuntimeState = import.meta.hot?.data.expertsTeamRuntime ?? {
@@ -16,6 +17,7 @@ const runtimeState: RuntimeState = import.meta.hot?.data.expertsTeamRuntime ?? {
   devProcess: null,
   shellProcess: null,
   syncQueue: Promise.resolve(),
+  apiKeyConfigured: false,
 };
 
 if (import.meta.hot) {
@@ -44,6 +46,11 @@ export function getBrowserRuntime() {
     return Promise.reject(new Error("This page is not cross-origin isolated. Reload Agent Studio after the WebContainer security headers have been deployed."));
   }
   if (!runtimeState.bootPromise) {
+    if (!runtimeState.apiKeyConfigured) {
+      const apiKey = import.meta.env.VITE_WEBCONTAINER_API_KEY;
+      if (apiKey) configureAPIKey(apiKey);
+      runtimeState.apiKeyConfigured = true;
+    }
     runtimeState.bootPromise = WebContainer.boot({ workdirName: "experts-project", coep: "require-corp", forwardPreviewErrors: "exceptions-only" }).catch((error) => {
       runtimeState.bootPromise = null;
       throw explainBootFailure(error);
