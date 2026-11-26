@@ -238,16 +238,24 @@ export async function startBrowserPreview(
   const installSignature = dependencySignature(packageManagerCommand, files);
   const dependenciesPresent = await hasInstalledDependencies(runtime);
   if (!dependenciesPresent || runtimeState.installedDependencySignature !== installSignature) {
+    const hasNpmLock = Boolean(files["package-lock.json"] || files["npm-shrinkwrap.json"]);
+    const hasPnpmLock = Boolean(files["pnpm-lock.yaml"]);
+    const hasYarnLock = Boolean(files["yarn.lock"]);
+    const packageManagerVersion = packageJson.packageManager?.split("@")[1] ?? "";
+    const yarnMajor = Number.parseInt(packageManagerVersion.split(".")[0] ?? "", 10);
+    const isYarnBerry = Boolean(files[".yarnrc.yml"]) || (Number.isFinite(yarnMajor) && yarnMajor >= 2);
     const installArgs = packageManagerCommand === "pnpm"
-      ? ["install", "--no-frozen-lockfile"]
+      ? ["install", ...(hasPnpmLock ? ["--frozen-lockfile"] : [])]
       : packageManagerCommand === "yarn"
-        ? ["install"]
-        : ["install", "--no-audit", "--no-fund"];
-    onOutput?.("\\r\\nInstalling project dependencies with " + packageManagerCommand + "…\\r\\n");
+        ? ["install", ...(hasYarnLock ? [isYarnBerry ? "--immutable" : "--frozen-lockfile"] : [])]
+        : hasNpmLock
+          ? ["ci", "--no-audit", "--no-fund"]
+          : ["install", "--no-audit", "--no-fund"];
+    onOutput?.("\r\nInstalling project dependencies with " + packageManagerCommand + "…\r\n");
     await runCommand(runtime, packageManagerCommand, installArgs, onOutput);
     runtimeState.installedDependencySignature = installSignature;
   } else {
-    onOutput?.("\\r\\nDependencies are already installed and lockfiles are unchanged; skipping installation.\\r\\n");
+    onOutput?.("\r\nDependencies are already installed and lockfiles are unchanged; skipping installation.\r\n");
   }
 
   const startScript = packageJson.scripts?.dev ? "dev" : "start";
@@ -286,12 +294,8 @@ export async function startBrowserPreview(
     runtimeState.previewPortUnsubscribe = runtime.on("port", (port, type, url) => {
       if (activePreviewPort === null && type === "open") activePreviewPort = port;
       if (port !== activePreviewPort) return;
-      if (type === "close") {
-        activePreviewPort = null;
-        onPreviewUrl?.(null);
-      } else {
-        onPreviewUrl?.(url);
-      }
+      if (type === "close") onPreviewUrl?.(null);
+      else onPreviewUrl?.(url);
     });
     readyTimer = window.setTimeout(() => {
       cleanup();
