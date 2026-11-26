@@ -9,6 +9,7 @@ interface RuntimeState {
   shellProcess: WebContainerProcess | null;
   syncQueue: Promise<void>;
   apiKeyConfigured: boolean;
+  previewPortUnsubscribe: (() => void) | null;
 }
 
 const runtimeState: RuntimeState = import.meta.hot?.data.expertsTeamRuntime ?? {
@@ -20,6 +21,7 @@ const runtimeState: RuntimeState = import.meta.hot?.data.expertsTeamRuntime ?? {
   shellProcess: null,
   syncQueue: Promise.resolve(),
   apiKeyConfigured: false,
+  previewPortUnsubscribe: null,
 };
 
 if (import.meta.hot) {
@@ -139,6 +141,7 @@ async function runCommand(
   command: string,
   args: string[],
   onOutput?: (chunk: string) => void,
+  onPreviewUrl?: (url: string | null) => void,
 ) {
   const process = await runtime.spawn(command, args);
   const reader = process.output.getReader();
@@ -165,6 +168,8 @@ export async function startBrowserPreview(
 ) {
   await syncBrowserProject(projectId, files);
   const runtime = await getBrowserRuntime();
+  runtimeState.previewPortUnsubscribe?.();
+  runtimeState.previewPortUnsubscribe = null;
   runtimeState.devProcess?.kill();
   runtimeState.devProcess = null;
 
@@ -234,6 +239,10 @@ export async function startBrowserPreview(
     const unsubscribeError = runtime.on("error", ({ message }) => {
       cleanup();
       reject(new Error(message));
+    });
+    // Follow port opens/closes after initial readiness, including dev-server restarts.
+    runtimeState.previewPortUnsubscribe = runtime.on("port", (_port, type, url) => {
+      onPreviewUrl?.(type === "open" ? url : null);
     });
     readyTimer = window.setTimeout(() => {
       cleanup();
@@ -340,6 +349,8 @@ export async function openBrowserTerminal(
 }
 
 export function stopBrowserPreview() {
+  runtimeState.previewPortUnsubscribe?.();
+  runtimeState.previewPortUnsubscribe = null;
   runtimeState.devProcess?.kill();
   runtimeState.devProcess = null;
 }
