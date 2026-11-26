@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { MonacoEditor } from "@/components/monaco-editor";
 import type { ProjectFiles } from "@/lib/sandbox";
 import { loadProjectFiles, saveProjectFiles } from "@/lib/project-files";
-import { startAgentPreview, stopAgentPreview } from "@/lib/agent.functions";
+import { startBrowserPreview, stopBrowserPreview } from "@/lib/browser-webcontainer";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -171,8 +171,8 @@ export function AgentCodeEditor({ projectId }: { projectId: string }) {
   const visiblePaths = paths.filter((path) => path.toLowerCase().includes(filter.toLowerCase()));
   const folderPaths = Array.from(new Set(visiblePaths.flatMap((path) => { const parts = path.split("/"); return parts.slice(0, -1).map((_, index) => parts.slice(0, index + 1).join("/")); }))).sort((a,b)=>a.localeCompare(b));
   const hiddenByFolder = (path:string) => collapsedFolders.some(folder => path.startsWith(folder + "/"));
-  const startPreview = async () => { setPreviewBusy(true); try { const result = await startAgentPreview({ data: { projectId } }); setPreviewUrl(result.url); setPreviewVisible(true); toast.success("Preview is running."); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not start project preview."); } finally { setPreviewBusy(false); } };
-  const stopPreview = async () => { setPreviewBusy(true); try { await stopAgentPreview({ data: { projectId } }); setPreviewUrl(""); setPreviewVisible(false); toast.success("Preview stopped."); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not stop preview."); } finally { setPreviewBusy(false); } };
+  const startPreview = async () => { setPreviewBusy(true); try { await saveProjectFiles(projectId, user!.id, files); const result = await startBrowserPreview(projectId, files); setPreviewUrl(result.url); setPreviewVisible(true); toast.success("Browser preview is running."); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not start browser preview."); } finally { setPreviewBusy(false); } };
+  const stopPreview = async () => { setPreviewBusy(true); try { stopBrowserPreview(); setPreviewUrl(""); setPreviewVisible(false); toast.success("Browser preview stopped."); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not stop preview."); } finally { setPreviewBusy(false); } };
 
   if (authLoading) {
     return <main className="flex min-h-[100dvh] items-center justify-center bg-[#0b0e14] text-sm text-slate-400">Restoring your session…</main>;
