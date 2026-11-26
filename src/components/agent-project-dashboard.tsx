@@ -208,7 +208,7 @@ export function AgentProjectDashboard() {
 
       if(!blank){
         try {
-          const result = await runCodingAgent({prompt:initialPrompt,mode:"build",modelTier,framework:chosen,files:starter,history:[],referenceImages:referenceImages.map(({name,mimeType,data})=>({name,mimeType,data}))});
+          const result = await runCodingAgent({data:{prompt:initialPrompt,mode:"build",modelTier,framework:chosen,files:starter,history:[],referenceImages:referenceImages.map(({name,mimeType,data})=>({name,mimeType,data}))}});
           const generated = (result as {files?:Record<string,string|null>}).files ?? {};
           const merged = {...starter};
           for(const [path,value] of Object.entries(generated)){if(typeof value==="string") merged[path]=value; else if(value===null) delete merged[path];}
