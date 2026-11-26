@@ -150,14 +150,15 @@ export async function loadProjectBinaryAssets(projectId: string, userId: string)
   if (error) throw error;
 
   const restored: Record<string, Uint8Array> = {};
-  for (const asset of assets ?? []) {
+  const downloads = await Promise.all((assets ?? []).map(async (asset) => {
     const { data: blob, error: downloadError } = await supabase.storage
       .from("builder-project-assets")
       .download(asset.storage_path);
     if (downloadError || !blob) {
       throw new Error("Could not restore project asset " + asset.file_path + ": " + (downloadError?.message ?? "asset is missing"));
     }
-    restored[asset.file_path] = new Uint8Array(await blob.arrayBuffer());
-  }
+    return [asset.file_path, new Uint8Array(await blob.arrayBuffer())] as const;
+  }));
+  for (const [path, bytes] of downloads) restored[path] = bytes;
   return restored;
 }
