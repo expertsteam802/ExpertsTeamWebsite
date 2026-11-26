@@ -200,6 +200,7 @@ async function runCommand(
   // bars and ANSI cursor-control sequences otherwise appear as stray symbols
   // in plain-text logs and can look corrupted in embedded terminals.
   const process = await runtime.spawn(command, args, {
+    cwd: runtime.workdir,
     env: {
       CI: "true",
       TERM: "dumb",
@@ -264,11 +265,32 @@ export async function startBrowserPreview(
     packageJson = starterPackage;
   }
 
-  // Verify the manifest exists in npm's actual default working directory.
+  // Repair and verify the exact manifest npm will read. Never start npm
+  // against an empty or stale working directory.
+  await runtime.fs.mkdir(runtime.workdir, { recursive: true });
+  const manifestPath = runtime.workdir.replace(/\\/$/, "") + "/package.json";
+  let runtimeManifest = "";
   try {
-    await runtime.fs.readFile(runtime.workdir + "/package.json", "utf-8");
+    runtimeManifest = await runtime.fs.readFile(manifestPath, "utf-8");
   } catch {
-    throw new Error("Project files were not synced into the browser runtime: package.json is missing from " + runtime.workdir + ".");
+    const sourceManifest = files["package.json"];
+    if (typeof sourceManifest === "string" && sourceManifest.length > 0) {
+      await runtime.fs.writeFile(manifestPath, sourceManifest);
+      runtimeManifest = await runtime.fs.readFile(manifestPath, "utf-8");
+    }
+  }
+  if (!runtimeManifest) {
+    const entries = await runtime.fs.readdir(runtime.workdir).catch(() => []);
+    throw new Error(
+      "Cannot install dependencies: package.json is missing from the browser project directory (" +
+      runtime.workdir + "). Files currently present: " +
+      entries.map((entry) => typeof entry === "string" ? entry : String(entry)).join(", ")
+    );
+  }
+  try {
+    packageJson = JSON.parse(runtimeManifest);
+  } catch {
+    throw new Error("The package.json in the browser runtime is not valid JSON.");
   }
 
   if (!packageJson.scripts?.dev && !packageJson.scripts?.start) {
@@ -295,6 +317,8 @@ export async function startBrowserPreview(
           ? ["ci", "--no-audit", "--no-fund", "--no-progress", "--no-color"]
           : ["install", "--no-audit", "--no-fund", "--no-progress", "--no-color"];
     onOutput?.("\r\nInstalling project dependencies with " + packageManagerCommand + "…\r\n");
+    onOutput?.("Project directory: " + runtime.workdir + "\\n");
+    onOutput?.("Verified package.json in the project directory. Starting dependency installation…\\n");
     await runCommand(runtime, packageManagerCommand, installArgs, onOutput);
     runtimeState.installedDependencySignature = installSignature;
   } else {
