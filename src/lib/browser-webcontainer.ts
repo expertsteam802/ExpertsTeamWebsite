@@ -10,6 +10,7 @@ interface RuntimeState {
   syncQueue: Promise<void>;
   apiKeyConfigured: boolean;
   previewPortUnsubscribe: (() => void) | null;
+  installedDependencySignature: string | null;
 }
 
 const runtimeState: RuntimeState = import.meta.hot?.data.expertsTeamRuntime ?? {
@@ -22,6 +23,7 @@ const runtimeState: RuntimeState = import.meta.hot?.data.expertsTeamRuntime ?? {
   syncQueue: Promise.resolve(),
   apiKeyConfigured: false,
   previewPortUnsubscribe: null,
+  installedDependencySignature: null,
 };
 
 if (import.meta.hot) {
@@ -112,6 +114,7 @@ export async function syncBrowserProject(projectId: string, files: BrowserProjec
       await runtime.fs.mkdir(runtime.workdir, { recursive: true });
       await runtime.mount(toFileTree(files), { mountPoint: runtime.workdir });
       runtimeState.activeProjectId = projectId;
+      runtimeState.installedDependencySignature = null;
       runtimeState.activePaths = new Set(Object.keys(files).map(normalizePath));
       runtimeState.lastSyncedFiles = new Map(Object.entries(files).map(([path, contents]) => [normalizePath(path), contents]));
       return;
@@ -134,6 +137,35 @@ export async function syncBrowserProject(projectId: string, files: BrowserProjec
     runtimeState.activePaths = nextPaths;
   });
   return runtimeState.syncQueue;
+}
+
+function dependencySignature(
+  packageManager: string,
+  files: BrowserProjectFiles,
+) {
+  // Hash only dependency manifests/lockfiles. Source edits should not trigger a
+  // full install, and the hash avoids retaining a second copy of large lockfiles.
+  let hash = 2166136261;
+  const inputs = ["package.json", "package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock"];
+  for (const path of inputs) {
+    const value = files[path];
+    const text = typeof value === "string" ? value : "";
+    const input = path + "\\0" + text + "\\0";
+    for (let index = 0; index < input.length; index += 1) {
+      hash ^= input.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+  }
+  return packageManager + ":" + (hash >>> 0).toString(16);
+}
+
+async function hasInstalledDependencies(runtime: WebContainer) {
+  try {
+    const entries = await runtime.fs.readdir(runtime.workdir + "/node_modules");
+    return entries.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 async function runCommand(
@@ -203,13 +235,20 @@ export async function startBrowserPreview(
   const packageManager = packageJson.packageManager?.split("@")[0]
     || (files["pnpm-lock.yaml"] ? "pnpm" : files["yarn.lock"] ? "yarn" : "npm");
   const packageManagerCommand = packageManager === "pnpm" || packageManager === "yarn" ? packageManager : "npm";
-  const installArgs = packageManagerCommand === "pnpm"
-    ? ["install", "--no-frozen-lockfile"]
-    : packageManagerCommand === "yarn"
-      ? ["install"]
-      : ["install", "--no-audit", "--no-fund"];
-  onOutput?.("\r\nInstalling project dependencies with " + packageManagerCommand + "…\r\n");
-  await runCommand(runtime, packageManagerCommand, installArgs, onOutput);
+  const installSignature = dependencySignature(packageManagerCommand, files);
+  const dependenciesPresent = await hasInstalledDependencies(runtime);
+  if (!dependenciesPresent || runtimeState.installedDependencySignature !== installSignature) {
+    const installArgs = packageManagerCommand === "pnpm"
+      ? ["install", "--no-frozen-lockfile"]
+      : packageManagerCommand === "yarn"
+        ? ["install"]
+        : ["install", "--no-audit", "--no-fund"];
+    onOutput?.("\\r\\nInstalling project dependencies with " + packageManagerCommand + "…\\r\\n");
+    await runCommand(runtime, packageManagerCommand, installArgs, onOutput);
+    runtimeState.installedDependencySignature = installSignature;
+  } else {
+    onOutput?.("\\r\\nDependencies are already installed and lockfiles are unchanged; skipping installation.\\r\\n");
+  }
 
   const startScript = packageJson.scripts?.dev ? "dev" : "start";
   const isNext = Boolean(packageJson.dependencies?.next || packageJson.devDependencies?.next);
