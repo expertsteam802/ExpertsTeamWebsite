@@ -221,7 +221,13 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       setFiles(previewFiles);
       await saveProjectFiles(projectId, user!.id, previewFiles);
       const publicEnvironment = await getProjectPublicEnvironment({ data: { projectId } });
-      const result = await startBrowserPreview(projectId, { ...previewFiles, ...binaryAssets }, publicEnvironment, (chunk) => setRuntimeOutput((current) => (current + chunk).slice(-12000)));
+      const result = await startBrowserPreview(
+        projectId,
+        { ...previewFiles, ...binaryAssets },
+        publicEnvironment,
+        (chunk) => setRuntimeOutput((current) => (current + chunk).slice(-12000)),
+        (url) => setPreviewUrl(url ?? ""),
+      );
       runtimeActiveRef.current = true;
       setRuntimeReady(true);
       setPreviewUrl(result.url);
