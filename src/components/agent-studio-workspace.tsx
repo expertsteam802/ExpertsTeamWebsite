@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { loadProjectBinaryAssets, loadProjectFiles, saveProjectFiles } from "@/lib/project-files";
-import { runCodingAgent } from "@/lib/agent.functions";
+import { getProjectPublicEnvironment, runCodingAgent } from "@/lib/agent.functions";
 import { openBrowserTerminal, startBrowserPreview, syncBrowserProject } from "@/lib/browser-webcontainer";
 import CodeMirror from "@uiw/react-codemirror";
 import { oneDark } from "@codemirror/theme-one-dark";
@@ -185,7 +185,8 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       }
       setFiles(previewFiles);
       await saveProjectFiles(projectId, user!.id, previewFiles);
-      const result = await startBrowserPreview(projectId, { ...previewFiles, ...binaryAssets }, (chunk) => setRuntimeOutput((current) => (current + chunk).slice(-12000)));
+      const publicEnvironment = await getProjectPublicEnvironment({ data: { projectId } });
+      const result = await startBrowserPreview(projectId, { ...previewFiles, ...binaryAssets }, publicEnvironment, (chunk) => setRuntimeOutput((current) => (current + chunk).slice(-12000)));
       runtimeActiveRef.current = true;
       setPreviewUrl(result.url);
       setTab("preview");
