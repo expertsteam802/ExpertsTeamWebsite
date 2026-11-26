@@ -135,3 +135,30 @@ export async function saveProjectFiles(projectId: string, userId: string, files:
     throw error;
   }
 }
+
+/**
+ * Restore binary project assets from Supabase Storage for local browser execution.
+ * Text source files remain in agent_project_files; binary bytes are never routed
+ * through the AI prompt or the JSON project snapshot.
+ */
+export async function loadProjectBinaryAssets(projectId: string, userId: string): Promise<Record<string, Uint8Array>> {
+  const { data: assets, error } = await supabase
+    .from("agent_project_assets")
+    .select("file_path,storage_path")
+    .eq("project_id", projectId)
+    .eq("user_id", userId);
+  if (error) throw error;
+
+  const restored: Record<string, Uint8Array> = {};
+  const downloads = await Promise.all((assets ?? []).map(async (asset) => {
+    const { data: blob, error: downloadError } = await supabase.storage
+      .from("builder-project-assets")
+      .download(asset.storage_path);
+    if (downloadError || !blob) {
+      throw new Error("Could not restore project asset " + asset.file_path + ": " + (downloadError?.message ?? "asset is missing"));
+    }
+    return [asset.file_path, new Uint8Array(await blob.arrayBuffer())] as const;
+  }));
+  for (const [path, bytes] of downloads) restored[path] = bytes;
+  return restored;
+}
