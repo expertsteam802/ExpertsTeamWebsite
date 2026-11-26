@@ -15,11 +15,11 @@ export const FRAMEWORK_OPTIONS = [
 export function detectAgentFramework(prompt: string): AgentFramework {
   const p = prompt.toLowerCase();
   if (/sveltekit|svelte/.test(p)) return "sveltekit";
-  if (/vue\\s*3?|vue\\.js/.test(p)) return "vue";
+  if (/vue\s*3?|vue\.js/.test(p)) return "vue";
   if (/tanstack/.test(p)) return "tanstack";
-  if (/next(?:\\.js|js)?|server.?render|app router/.test(p)) return "nextjs";
-  if (/node(?:\\.js)? api|express api|backend api|rest api/.test(p)) return "node";
-  if (/html\\s*\\/\\s*js|vanilla|plain javascript|static website/.test(p)) return "html";
+  if (/next(?:\.js|js)?|server.?render|app router/.test(p)) return "nextjs";
+  if (/node(?:\.js)? api|express api|backend api|rest api/.test(p)) return "node";
+  if (/html\s*\/\s*js|vanilla|plain javascript|static website/.test(p)) return "html";
   return "vite";
 }
 
@@ -37,7 +37,7 @@ export function createFrameworkStarterFiles(framework: AgentFramework, name: str
       "src/app/page.tsx":'export default function Home(){return <main><h1>Welcome to your Next.js app</h1><p>Built with ExpertsTeam.</p></main>}',
       "src/app/globals.css":css+"main{padding:40px}",
       "src/app/api/health/route.ts":'export async function GET(){return Response.json({ok:true})}',
-      ".gitignore":"node_modules\\n.next\\n.env*\\n",
+      ".gitignore":"node_modules\n.next\n.env*\n",
     };
     case "tanstack": return {
       "package.json":pkg(name,{dev:"vite --host 0.0.0.0",build:"vite build",start:"vite preview --host 0.0.0.0"},{"@tanstack/react-router":"^1.170.41","@tanstack/react-start":"^1.168.60","react":"^19.2.0","react-dom":"^19.2.0"},{"@tanstack/router-plugin":"^1.168.42","@vitejs/plugin-react":"^5.2.0","vite":"^8.1.5","typescript":"^5.8.3"}),
