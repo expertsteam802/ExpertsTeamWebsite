@@ -87,11 +87,12 @@ async function rewritePublishedHost(request: Request): Promise<Request> {
   return new Request(url, request);
 }
 
-function withAgentStudioIsolationHeaders(request: Request, response: Response): Response {
-  const pathname = new URL(request.url).pathname;
-  const isAgentStudioRoute = /^\/agent\/[^/]+(?:\/|$)/.test(pathname);
-  const isLegacyProjectRoute = /^\/ai\/[^/]+(?:\/|$)/.test(pathname);
-  if (!isAgentStudioRoute && !isLegacyProjectRoute) return response;
+function withWebContainerIsolationHeaders(response: Response): Response {
+  // Apply isolation to every HTML document, including the /ai launcher and the
+  // first document load before client-side navigation into /agent/:projectId.
+  // Do not add COEP/COOP to assets or API responses.
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().includes("text/html")) return response;
 
   const headers = new Headers(response.headers);
   headers.set("Cross-Origin-Embedder-Policy", "require-corp");
@@ -110,7 +111,7 @@ export default {
       const routedRequest = await rewritePublishedHost(request);
       const response = await handler.fetch(routedRequest, env, ctx);
       const normalizedResponse = await normalizeCatastrophicSsrResponse(response);
-      return withAgentStudioIsolationHeaders(request, normalizedResponse);
+      return withWebContainerIsolationHeaders(normalizedResponse);
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {
