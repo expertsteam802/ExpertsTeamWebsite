@@ -34,7 +34,9 @@ function normalizePath(path: string) {
   return parts.join("/");
 }
 
-function toFileTree(files: Record<string, string>): FileSystemTree {
+type BrowserProjectFiles = Record<string, string | Uint8Array>;
+
+function toFileTree(files: BrowserProjectFiles): FileSystemTree {
   const tree: FileSystemTree = {};
   for (const [rawPath, contents] of Object.entries(files)) {
     const parts = normalizePath(rawPath).split("/");
@@ -60,8 +62,8 @@ async function clearRuntimeFiles() {
   }));
 }
 
-export async function syncBrowserProject(projectId: string, files: Record<string, string>) {
-  syncQueue = syncQueue.then(async () => {
+export async function syncBrowserProject(projectId: string, files: BrowserProjectFiles) {
+  syncQueue = syncQueue.catch(() => undefined).then(async () => {
     const runtime = await getBrowserRuntime();
     if (activeProjectId !== projectId) {
       devProcess?.kill();
@@ -117,7 +119,7 @@ async function runCommand(
 
 export async function startBrowserPreview(
   projectId: string,
-  files: Record<string, string>,
+  files: BrowserProjectFiles,
   onOutput?: (chunk: string) => void,
 ) {
   await syncBrowserProject(projectId, files);
