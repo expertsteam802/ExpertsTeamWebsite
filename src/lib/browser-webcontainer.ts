@@ -338,26 +338,38 @@ const binaryRuntimeExtension = /\.(?:png|jpe?g|gif|webp|ico|pdf|zip|gz|tar|woff2
 
 export async function watchBrowserProject(onFileChange: (path: string, contents: string | null) => void) {
   const runtime = await getBrowserRuntime();
-  const watcher = runtime.fs.watch(runtime.workdir, { recursive: true }, (_event, filename) => {
-    const rawPath = String(filename).replace(/\\/g, "/");
-    const workdirPrefix = runtime.workdir.replace(/^\/+/, "") + "/";
-    const relativePath = rawPath.startsWith(workdirPrefix)
-      ? rawPath.slice(workdirPrefix.length)
-      : rawPath.replace(/^\/+/, "");
+  const rootPath = runtime.workdir;
+  const watchers: Array<{ close: () => void }> = [];
+  const watchedDirectories = new Set<string>();
+  let closed = false;
+
+  const handleChange = (watchPath: string, event: string, filename: unknown) => {
+    if (closed || filename == null) return;
+    const rawPath = String(filename).replace(/\\\\/g, "/").replace(/^\\/+/, "");
+    const relativePath = watchPath
+      ? watchPath.replace(/^\\/+/, "") + "/" + rawPath
+      : rawPath;
     let path: string;
     try {
       path = normalizePath(relativePath);
     } catch {
       return;
     }
-    if (runtimeState.lastSyncedFiles.get(path) instanceof Uint8Array) return;
+
+    // Avoid recursively watching node_modules/build output. This is important
+    // on low-memory machines because dependency trees can contain thousands
+    // of directories and files.
     const segments = path.split("/");
     const fileName = segments[segments.length - 1] ?? "";
     if (segments.some((part) => ignoredRuntimeDirectories.has(part)) || ignoredRuntimeFiles.test(fileName) || binaryRuntimeExtension.test(fileName)) {
       return;
     }
 
-    void runtime.fs.readFile(runtime.workdir + "/" + path, "utf-8").then((contents) => {
+    if (watchPath === "" && event === "rename") {
+      void refreshDirectoryWatchers();
+    }
+
+    void runtime.fs.readFile(rootPath + "/" + path, "utf-8").then((contents) => {
       if (runtimeState.lastSyncedFiles.get(path) === contents) return;
       runtimeState.lastSyncedFiles.set(path, contents);
       onFileChange(path, contents);
@@ -366,10 +378,49 @@ export async function watchBrowserProject(onFileChange: (path: string, contents:
       runtimeState.lastSyncedFiles.delete(path);
       onFileChange(path, null);
     });
-  });
-  return () => watcher.close();
-}
+  };
 
+  const refreshDirectoryWatchers = async () => {
+    if (closed) return;
+    let entries: Awaited<ReturnType<typeof runtime.fs.readdir>>;
+    try {
+      entries = await runtime.fs.readdir(rootPath, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    const currentDirectories = new Set<string>();
+    for (const entry of entries) {
+      const rawName = typeof entry.name === "string"
+        ? entry.name
+        : new TextDecoder().decode(entry.name);
+      if (!entry.isDirectory() || ignoredRuntimeDirectories.has(rawName)) continue;
+      currentDirectories.add(rawName);
+      if (watchedDirectories.has(rawName)) continue;
+      watchedDirectories.add(rawName);
+      watchers.push(runtime.fs.watch(rootPath + "/" + rawName, { recursive: true }, (event, filename) => {
+        handleChange(rawName, event, filename);
+      }));
+    }
+    for (const name of [...watchedDirectories]) {
+      if (currentDirectories.has(name)) continue;
+      watchedDirectories.delete(name);
+    }
+  };
+
+  // Watch root-level files without recursively subscribing to dependency
+  // folders, then attach recursive watchers only to real project directories.
+  watchers.push(runtime.fs.watch(rootPath, (event, filename) => {
+    handleChange("", event, filename);
+  }));
+  await refreshDirectoryWatchers();
+
+  return () => {
+    closed = true;
+    for (const watcher of watchers) watcher.close();
+    watchers.length = 0;
+    watchedDirectories.clear();
+  };
+}
 export async function openBrowserTerminal(
   onOutput: (chunk: string) => void,
   dimensions: { cols: number; rows: number },
