@@ -1,3 +1,4 @@
+/* eslint-disable no-control-regex */
 import { WebContainer, configureAPIKey, type FileSystemTree, type WebContainerProcess } from "@webcontainer/api";
 
 export type BrowserPreviewPort = { port: number; url: string; ready: boolean };
