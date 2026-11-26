@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Code2, FolderCode, Plus, Search, Copy, ExternalLink, Sparkles, Zap, Github, ImagePlus, MoreHorizontal } from "lucide-react";
+import { Code2, FolderCode, Plus, Search, Copy, ExternalLink, Sparkles, Zap, Github, ImagePlus, MoreHorizontal, X, GitBranch, Lock, Globe, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { runCodingAgent } from "@/lib/agent.functions";
 import { createFrameworkStarterFiles, detectAgentFramework, FRAMEWORK_OPTIONS, type AgentFramework } from "@/lib/framework-scaffolds";
 import { saveProjectFiles } from "@/lib/project-files";
+import { listConnectedGitHubRepositories, importConnectedGitHubRepository } from "@/lib/github-import.functions";
 
 type AgentProject = { id:string; name:string; description:string; framework:string; updated_at:string; thumbnail_url:string|null };
 
@@ -156,6 +157,12 @@ export function AgentProjectDashboard() {
   const [filter,setFilter] = useState("all");
   const [busy,setBusy] = useState(false);
   const [menuId,setMenuId] = useState<string|null>(null);
+  const [githubOpen,setGithubOpen] = useState(false);
+  const [githubRepos,setGithubRepos] = useState<Array<{id:number;name:string;full_name:string;description:string|null;private:boolean;default_branch:string;html_url:string;updated_at:string;owner:{login:string;avatar_url:string}}>>([]);
+  const [githubLoading,setGithubLoading] = useState(false);
+  const [githubImporting,setGithubImporting] = useState<string|null>(null);
+  const [githubSearch,setGithubSearch] = useState("");
+  const [githubError,setGithubError] = useState("");
 
   const projects = useQuery({
     queryKey:["agent-studio-projects",user?.id], enabled:Boolean(user),
@@ -202,6 +209,67 @@ export function AgentProjectDashboard() {
     } finally {setBusy(false);}
   };
 
+  const openGitHubImport = async () => {
+    setGithubOpen(true);
+    setGithubError("");
+    setGithubLoading(true);
+    try {
+      const repositories = await listConnectedGitHubRepositories({ data: {} });
+      setGithubRepos(repositories);
+    } catch (error) {
+      setGithubError(error instanceof Error ? error.message : "Could not load GitHub repositories.");
+    } finally {
+      setGithubLoading(false);
+    }
+  };
+
+  const importGitHubRepo = async (repo: typeof githubRepos[number]) => {
+    if (!user || githubImporting) return;
+    setGithubImporting(repo.full_name);
+    setGithubError("");
+    try {
+      const imported = await importConnectedGitHubRepository({
+        data: { owner: repo.owner.login, repo: repo.name, branch: repo.default_branch },
+      });
+      const framework = detectAgentFramework(
+        "Import existing repository " + repo.full_name + " " + (imported.files["package.json"] ?? ""),
+      );
+      const { data, error } = await supabase.from("agent_projects").insert({
+        user_id: user.id,
+        name: repo.name,
+        description: repo.description || "Imported from GitHub: " + repo.full_name,
+        framework,
+        files: {},
+        workspace_settings: {},
+      }).select("id").single();
+      if (error) throw error;
+      await saveProjectFiles(data.id, user.id, imported.files);
+      const { error: linkError } = await supabase.from("project_repos").upsert({
+        project_id: data.id,
+        user_id: user.id,
+        repo_owner: repo.owner.login,
+        repo_name: repo.name,
+        default_branch: repo.default_branch,
+        active_branch: repo.default_branch,
+        auto_sync_enabled: false,
+      }, { onConflict: "project_id" });
+      if (linkError) console.warn("[Agent Studio] Imported files, but repository link metadata could not be saved:", linkError.message);
+      await queryClient.invalidateQueries({ queryKey: ["agent-studio-projects", user.id] });
+      setGithubOpen(false);
+      toast.success(`Imported ${imported.importedCount} files from ${repo.full_name}.`);
+      void navigate({ to: "/ai/$projectId", params: { projectId: data.id } });
+    } catch (error) {
+      setGithubError(error instanceof Error ? error.message : "Could not import this repository.");
+      toast.error(error instanceof Error ? error.message : "Could not import this repository.");
+    } finally {
+      setGithubImporting(null);
+    }
+  };
+
+  const filteredGitHubRepos = githubRepos.filter((repo) =>
+    (repo.full_name + " " + (repo.description ?? "")).toLowerCase().includes(githubSearch.toLowerCase())
+  );
+
   const copyProjectLink=async(id:string)=>{
     try{await navigator.clipboard.writeText(new URL("/ai/"+id,window.location.origin).toString());toast.success("Project link copied.");}
     catch{toast.error("Could not copy the project link.");}
@@ -215,6 +283,28 @@ export function AgentProjectDashboard() {
       <div className="flex items-center gap-3"><button type="button" onClick={()=>toast.info("Connect the ExpertsTeam Credits offerwall to enable free-credit earning here.")} className="rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1.5 text-xs font-semibold text-amber-200">⚡ Credits • +Earn Free</button><div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs font-bold">{(user.email??"U").slice(0,1).toUpperCase()}</div></div>
     </header>
 
+    {githubOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 backdrop-blur-sm sm:p-6" role="dialog" aria-modal="true" aria-labelledby="github-import-title">
+      <div className="flex max-h-[min(760px,92vh)] w-full max-w-[680px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0b1220] shadow-2xl shadow-black/50">
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+          <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-white"><Github size={21}/></div><div><h2 id="github-import-title" className="text-base font-semibold text-white">Import from GitHub</h2><p className="mt-0.5 text-xs text-slate-400">Choose a repository from your connected account</p></div></div>
+          <button type="button" onClick={()=>setGithubOpen(false)} aria-label="Close GitHub import" className="rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white"><X size={18}/></button>
+        </div>
+        <div className="border-b border-white/10 p-4">
+          <div className="relative"><Search size={15} className="absolute left-3 top-3 text-slate-500"/><Input value={githubSearch} onChange={e=>setGithubSearch(e.target.value)} placeholder="Search your repositories…" className="h-10 border-white/10 bg-[#070c15] pl-9 text-sm text-white"/></div>
+          <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-500"><Lock size={12}/> Private repositories are included when your GitHub authorization allows access.</div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-3">
+          {githubLoading ? <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-400"><RefreshCw size={16} className="animate-spin"/> Loading your GitHub repositories…</div>
+          : githubError && !githubRepos.length ? <div className="py-12 text-center"><Github size={30} className="mx-auto mb-3 text-slate-600"/><p className="mx-auto max-w-md text-sm text-rose-300">{githubError}</p><Button type="button" onClick={()=>void openGitHubImport()} className="mt-4 gap-2 bg-white/10 text-white hover:bg-white/15"><RefreshCw size={14}/> Try again</Button><p className="mt-3 text-xs text-slate-500">If GitHub is not connected yet, connect it from the Connections page.</p><Link to="/connections" onClick={()=>setGithubOpen(false)} className="mt-2 inline-block text-xs text-emerald-300 hover:text-emerald-200">Open Connections</Link></div>
+          : filteredGitHubRepos.length ? <div className="space-y-2">{filteredGitHubRepos.map(repo=><div key={repo.id} className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.025] p-3 transition hover:border-emerald-400/25 hover:bg-white/[0.045]">
+            <img src={repo.owner.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full border border-white/10"/><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-semibold text-slate-100">{repo.full_name}</p>{repo.private?<span className="inline-flex items-center gap-1 rounded-full bg-amber-400/10 px-2 py-0.5 text-[10px] text-amber-200"><Lock size={10}/> Private</span>:<span className="inline-flex items-center gap-1 rounded-full bg-sky-400/10 px-2 py-0.5 text-[10px] text-sky-200"><Globe size={10}/> Public</span>}</div><p className="mt-1 truncate text-xs text-slate-500">{repo.description || "No description"} · <span className="inline-flex items-center gap-1"><GitBranch size={10}/>{repo.default_branch}</span></p></div><Button type="button" size="sm" disabled={Boolean(githubImporting)} onClick={()=>void importGitHubRepo(repo)} className="shrink-0 bg-emerald-500 text-xs font-semibold text-slate-950 hover:bg-emerald-400">{githubImporting===repo.full_name?"Importing…":"Import"}</Button>
+          </div>)}</div> : <div className="py-14 text-center text-sm text-slate-500">{githubRepos.length ? "No repositories match your search." : "No repositories were returned for this GitHub account."}</div>}
+          {githubError && githubRepos.length>0 && <p className="mt-3 rounded-lg border border-rose-400/20 bg-rose-400/5 p-3 text-xs text-rose-300">{githubError}</p>}
+        </div>
+        <div className="flex items-center justify-between border-t border-white/10 px-5 py-3 text-[11px] text-slate-500"><span>{githubRepos.length} repositories available</span><button type="button" onClick={()=>void openGitHubImport()} disabled={githubLoading||Boolean(githubImporting)} className="inline-flex items-center gap-1.5 text-slate-300 hover:text-white disabled:opacity-50"><RefreshCw size={12}/> Refresh list</button></div>
+      </div>
+    </div>}
+
     <section className="relative z-10 mx-auto max-w-[1100px] px-4 pb-12 pt-14 sm:px-7 sm:pt-20">
       <div className="mx-auto max-w-[780px] text-center">
         <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/5 px-3 py-1 text-[11px] font-medium tracking-wide text-emerald-300"><Sparkles size={13}/> EXPERTSTEAM AI BUILDER</div>
@@ -223,7 +313,7 @@ export function AgentProjectDashboard() {
         <div className="mt-8 rounded-2xl border border-emerald-400/30 bg-[#111827] p-3 text-left shadow-[0_0_45px_rgba(16,185,129,0.08)] focus-within:border-emerald-300/60">
           <textarea value={prompt} onChange={e=>setPrompt(e.target.value)} rows={3} placeholder="Describe your app, game, or website..." className="min-h-[92px] w-full resize-y bg-transparent px-2 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500"/>
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3">
-            <div className="flex items-center gap-2"><button type="button" onClick={()=>toast.info("Image attachments will be enabled in the workspace build flow.")} className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-xs text-slate-400 hover:bg-white/5 hover:text-white"><ImagePlus size={14}/> Attach Image</button><button type="button" onClick={()=>toast.info("Open a project first, then use GitHub import in the workspace.")} className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-xs text-slate-400 hover:bg-white/5 hover:text-white"><Github size={14}/> Import GitHub</button></div>
+            <div className="flex items-center gap-2"><button type="button" onClick={()=>toast.info("Image attachments will be enabled in the workspace build flow.")} className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-xs text-slate-400 hover:bg-white/5 hover:text-white"><ImagePlus size={14}/> Attach Image</button><button type="button" onClick={()=>void openGitHubImport()} className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-xs text-slate-400 hover:bg-white/5 hover:text-white"><Github size={14}/> Import GitHub</button></div>
             <div className="flex flex-wrap items-center gap-2">
               <select value={framework} onChange={e=>setFramework(e.target.value as "auto"|AgentFramework)} className="h-9 max-w-[160px] rounded-lg border border-white/10 bg-[#0b0f17] px-2 text-xs text-slate-200">{FRAMEWORK_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select>
               <select value={modelTier} onChange={e=>setModelTier(e.target.value as "fast"|"architect")} className="h-9 rounded-lg border border-white/10 bg-[#0b0f17] px-2 text-xs text-slate-200"><option value="fast">Fast (1 EC)</option><option value="architect">Architect (3 EC)</option></select>
