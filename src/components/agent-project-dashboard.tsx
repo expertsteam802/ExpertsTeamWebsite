@@ -196,17 +196,28 @@ export function AgentProjectDashboard() {
       }).select("id").single();
       if(error) throw error;
       await saveProjectFiles(data.id,user.id,starter);
-      if(!blank){
-        const result = await runCodingAgent({prompt:initialPrompt,mode:"build",modelTier,framework:chosen,files:starter,history:[],referenceImages:referenceImages.map(({name,mimeType,data})=>({name,mimeType,data}))});
-        const generated = (result as {files?:Record<string,string|null>}).files ?? {};
-        const merged = {...starter};
-        for(const [path,value] of Object.entries(generated)){if(typeof value==="string") merged[path]=value; else if(value===null) delete merged[path];}
-        await saveProjectFiles(data.id,user.id,merged);
-      }
+
+      // Open the project workspace as soon as its record and starter files exist.
+      // AI generation must never keep the user stranded on the welcome dashboard.
       await queryClient.invalidateQueries({queryKey:["agent-studio-projects",user.id]});
       setReferenceImages([]);
-      toast.success(blank?"Blank project created.":"Your project is ready to open.");
-      void navigate({to:"/ai/$projectId",params:{projectId:data.id}});
+      await navigate({to:"/ai/$projectId",params:{projectId:data.id}});
+      toast.success(blank?"Blank project created.":"Workspace opened. Building your project…");
+
+      if(!blank){
+        try {
+          const result = await runCodingAgent({prompt:initialPrompt,mode:"build",modelTier,framework:chosen,files:starter,history:[],referenceImages:referenceImages.map(({name,mimeType,data})=>({name,mimeType,data}))});
+          const generated = (result as {files?:Record<string,string|null>}).files ?? {};
+          const merged = {...starter};
+          for(const [path,value] of Object.entries(generated)){if(typeof value==="string") merged[path]=value; else if(value===null) delete merged[path];}
+          await saveProjectFiles(data.id,user.id,merged);
+          await queryClient.invalidateQueries({queryKey:["agent-studio-project",data.id,user.id]});
+          toast.success("Project generation completed.");
+        } catch (generationError) {
+          console.error("[Agent Studio] Initial project generation failed:", generationError);
+          toast.error(generationError instanceof Error ? generationError.message : "Generation failed. Your workspace is still available.");
+        }
+      }
     } catch(error) {
       toast.error(error instanceof Error?error.message:"Could not create your project.");
     } finally {setBusy(false);}
