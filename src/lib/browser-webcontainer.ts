@@ -18,7 +18,7 @@ export function getBrowserRuntime() {
     return Promise.reject(new Error("This page is not cross-origin isolated. Reload Agent Studio after the WebContainer security headers have been deployed."));
   }
   if (!bootPromise) {
-    bootPromise = WebContainer.boot({ forwardPreviewErrors: "exceptions-only" }).catch((error) => {
+    bootPromise = WebContainer.boot({ workdirName: "experts-project", forwardPreviewErrors: "exceptions-only" }).catch((error) => {
       bootPromise = null;
       throw error;
     });
@@ -53,10 +53,10 @@ function toFileTree(files: Record<string, string>): FileSystemTree {
 
 async function clearRuntimeFiles() {
   const runtime = await getBrowserRuntime();
-  const entries = await runtime.fs.readdir("/");
+  const entries = await runtime.fs.readdir(runtime.workdir);
   await Promise.all(entries.map(async (entry) => {
     const name = typeof entry === "string" ? entry : String(entry);
-    await runtime.fs.rm("/" + name, { recursive: true, force: true });
+    await runtime.fs.rm(runtime.workdir + "/" + name, { recursive: true, force: true });
   }));
 }
 
@@ -85,7 +85,7 @@ export async function syncBrowserProject(projectId: string, files: Record<string
       const safePath = normalizePath(path);
       const parent = safePath.split("/").slice(0, -1).join("/");
       if (parent) await runtime.fs.mkdir("/" + parent, { recursive: true });
-      await runtime.fs.writeFile("/" + safePath, contents);
+      await runtime.fs.writeFile(runtime.workdir + "/" + safePath, contents);
     }
     activePaths = nextPaths;
   });
@@ -139,9 +139,9 @@ export async function startBrowserPreview(
       scripts: { dev: "vite --host 0.0.0.0" },
       devDependencies: { vite: "^6.4.1" },
     };
-    await runtime.fs.writeFile("/package.json", JSON.stringify(starterPackage, null, 2));
+    await runtime.fs.writeFile(runtime.workdir + "/package.json", JSON.stringify(starterPackage, null, 2));
     if (!files["index.html"]) {
-      await runtime.fs.writeFile("/index.html", '<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ExpertsTeam Preview</title></head><body><h1>Project preview</h1></body></html>');
+      await runtime.fs.writeFile(runtime.workdir + "/index.html", '<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ExpertsTeam Preview</title></head><body><h1>Project preview</h1></body></html>');
     }
     packageJson = starterPackage;
   }
@@ -155,7 +155,9 @@ export async function startBrowserPreview(
 
   const startScript = packageJson.scripts?.dev ? "dev" : "start";
   const isNext = /next/i.test((packageJson.dependencies?.next ?? packageJson.devDependencies?.next) || "");
-  const args = ["run", startScript, "--", ...(isNext ? ["--hostname", "0.0.0.0"] : ["--host", "0.0.0.0"])];
+  const args = startScript === "dev"
+    ? ["run", startScript, "--", ...(isNext ? ["--hostname", "0.0.0.0"] : ["--host", "0.0.0.0"])]
+    : ["run", startScript];
   const ready = new Promise<string>((resolve, reject) => {
     const unsubscribeReady = runtime.on("server-ready", (_port, url) => {
       unsubscribeReady();
@@ -196,6 +198,7 @@ export async function openBrowserTerminal(
   const runtime = await getBrowserRuntime();
   shellProcess?.kill();
   shellProcess = await runtime.spawn("jsh", [], { terminal: dimensions });
+  const writer = shellProcess.input.getWriter();
   const reader = shellProcess.output.getReader();
   void (async () => {
     try {
@@ -209,11 +212,12 @@ export async function openBrowserTerminal(
     }
   })();
   return {
-    write: (value: string) => shellProcess?.input.getWriter().write(value),
+    write: (value: string) => writer.write(value),
     resize: (next: { cols: number; rows: number }) => shellProcess?.resize(next),
     close: () => {
       shellProcess?.kill();
       shellProcess = null;
+      writer.releaseLock();
     },
   };
 }
