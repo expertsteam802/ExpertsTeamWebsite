@@ -44,7 +44,8 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   const [prompt, setPrompt] = useState("");
   const [activePath, setActivePath] = useState("");
   const [tab, setTab] = useState<WorkbenchTab>("preview");
-  const [busy, setBusy] = useState(false);\n  const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
   const [terminalInfo, setTerminalInfo] = useState<{ url: string; token: string } | null>(null);
   const terminalHost = useRef<HTMLDivElement>(null);
@@ -135,7 +136,8 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       const answer = result.message || (result.complete ? "The requested changes have been generated." : "I’ve completed this batch and can continue with the next part.");
       const completedHistory = [...nextHistory, { role: "assistant" as const, content: answer, createdAt: new Date().toISOString() }].slice(-100);
       await persistConversation(completedHistory);
-      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });\n      toast.success(Object.keys(result.files ?? {}).length ? "Workspace files updated." : "Agent replied.");
+      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      toast.success(Object.keys(result.files ?? {}).length ? "Workspace files updated." : "Agent replied.");
     } catch (error) {
       const reason = error instanceof Error ? error.message : "The agent request failed.";
       const failedHistory = [...nextHistory, { role: "assistant" as const, content: "I couldn't complete that request: " + reason, createdAt: new Date().toISOString() }].slice(-100);
@@ -181,7 +183,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     const socket = new WebSocket(terminalInfo.url, [terminalInfo.token]);
     socket.binaryType = "arraybuffer";
     socket.addEventListener("open", () => {
-      terminal.writeln("\x1b[90mConnected to your Daytona project terminal.\\x1b[0m");
+      terminal.writeln("\x1b[90mConnected to your Daytona project terminal.\x1b[0m");
       socket.send("\0" + JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
     });
     socket.addEventListener("message", (event) => terminal.write(typeof event.data === "string" ? event.data : new Uint8Array(event.data)));
