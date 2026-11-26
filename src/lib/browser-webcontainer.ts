@@ -31,7 +31,7 @@ if (import.meta.hot) {
 function explainBootFailure(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   if (/service.?worker|storage|cookie|partition|securityerror|not allowed/i.test(message)) {
-    return new Error("Your browser blocked the WebContainer project Service Worker or its isolated storage. ExpertsTeam cannot bypass that browser privacy rule. In Chrome, keep the default third-party Storage Partitioning enabled and retry in a normal browser window (not Incognito). Your project files remain safe in Supabase.");
+    return new Error("This browser blocked a Service Worker or isolated-storage request required by WebContainers. The runtime cannot override browser privacy protections. Your project files remain safely saved in Supabase; try again in a supported browser profile.");
   }
   return error instanceof Error ? error : new Error(message);
 }
