@@ -131,6 +131,7 @@ async function runCommand(
 export async function startBrowserPreview(
   projectId: string,
   files: BrowserProjectFiles,
+  environment: Record<string, string> = {},
   onOutput?: (chunk: string) => void,
 ) {
   await syncBrowserProject(projectId, files);
@@ -193,7 +194,7 @@ export async function startBrowserPreview(
       reject(new Error("The development server did not become ready. Check the terminal output for build errors."));
     }, 120000);
   });
-  devProcess = await runtime.spawn("npm", args);
+  devProcess = await runtime.spawn("npm", args, { env: environment });
   const reader = devProcess.output.getReader();
   void (async () => {
     try {
