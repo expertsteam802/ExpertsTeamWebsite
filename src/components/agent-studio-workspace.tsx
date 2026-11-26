@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Bot, Code2, Eye, FileCode2, Folder, LoaderCircle, Play, Send, SquareTerminal, TerminalSquare, X } from "lucide-react";
+import { ArrowLeft, Bot, Code2, Eye, FileCode2, Folder, LoaderCircle, Play, Send, SquareTerminal, TerminalSquare } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
