@@ -151,6 +151,8 @@ export function AgentProjectDashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [prompt,setPrompt] = useState("");
+  const [referenceImages,setReferenceImages] = useState<Array<{name:string;mimeType:"image/png"|"image/jpeg"|"image/webp";data:string;preview:string}>>([]);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [framework,setFramework] = useState<"auto"|AgentFramework>("auto");
   const [modelTier,setModelTier] = useState<"fast"|"architect">("fast");
   const [search,setSearch] = useState("");
@@ -195,13 +197,14 @@ export function AgentProjectDashboard() {
       if(error) throw error;
       await saveProjectFiles(data.id,user.id,starter);
       if(!blank){
-        const result = await runCodingAgent({prompt:initialPrompt,mode:"build",modelTier,framework:chosen,files:starter,history:[]});
+        const result = await runCodingAgent({prompt:initialPrompt,mode:"build",modelTier,framework:chosen,files:starter,history:[],referenceImages:referenceImages.map(({name,mimeType,data})=>({name,mimeType,data}))});
         const generated = (result as {files?:Record<string,string|null>}).files ?? {};
         const merged = {...starter};
         for(const [path,value] of Object.entries(generated)){if(typeof value==="string") merged[path]=value; else if(value===null) delete merged[path];}
         await saveProjectFiles(data.id,user.id,merged);
       }
       await queryClient.invalidateQueries({queryKey:["agent-studio-projects",user.id]});
+      setReferenceImages([]);
       toast.success(blank?"Blank project created.":"Your project is ready to open.");
       void navigate({to:"/ai/$projectId",params:{projectId:data.id}});
     } catch(error) {
@@ -311,9 +314,11 @@ export function AgentProjectDashboard() {
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">What do you want to build today?</h1>
         <p className="mt-3 text-sm text-slate-400 sm:text-base">Build full-stack apps, games, and websites for free with ExpertAI.</p>
         <div className="mt-8 rounded-2xl border border-emerald-400/30 bg-[#111827] p-3 text-left shadow-[0_0_45px_rgba(16,185,129,0.08)] focus-within:border-emerald-300/60">
+          <input ref={imageInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={async event=>{const selected=Array.from(event.target.files??[]);event.target.value="";const allowed=selected.filter(file=>["image/png","image/jpeg","image/webp"].includes(file.type)&&file.size<=2_000_000).slice(0,3-referenceImages.length);if(!allowed.length){toast.error("Choose up to three PNG, JPG, or WebP images under 2 MB each.");return;}try{const loaded=await Promise.all(allowed.map(file=>new Promise<{name:string;mimeType:"image/png"|"image/jpeg"|"image/webp";data:string;preview:string}>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>{const value=String(reader.result??"");const data=value.split(",")[1];if(!data)return reject(new Error("Could not read image."));resolve({name:file.name,mimeType:file.type as "image/png"|"image/jpeg"|"image/webp",data,preview:value});};reader.onerror=()=>reject(new Error("Could not read image."));reader.readAsDataURL(file);})));setReferenceImages(current=>[...current,...loaded].slice(0,3));}catch(error){toast.error(error instanceof Error?error.message:"Could not attach images.");}}}/>
           <textarea value={prompt} onChange={e=>setPrompt(e.target.value)} rows={3} placeholder="Describe your app, game, or website..." className="min-h-[92px] w-full resize-y bg-transparent px-2 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500"/>
+          {referenceImages.length>0&&<div className="flex flex-wrap gap-2 px-2 pb-3">{referenceImages.map((image,index)=><div key={image.name+index} className="relative"><img src={image.preview} alt={image.name} className="h-14 w-14 rounded-lg border border-white/15 object-cover"/><button type="button" onClick={()=>setReferenceImages(current=>current.filter((_,i)=>i!==index))} aria-label={"Remove "+image.name} className="absolute -right-1.5 -top-1.5 rounded-full bg-slate-900 p-1 text-white"><X size={11}/></button></div>)}</div>}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3">
-            <div className="flex items-center gap-2"><button type="button" onClick={()=>toast.info("Image attachments will be enabled in the workspace build flow.")} className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-xs text-slate-400 hover:bg-white/5 hover:text-white"><ImagePlus size={14}/> Attach Image</button><button type="button" onClick={()=>void openGitHubImport()} className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-xs text-slate-400 hover:bg-white/5 hover:text-white"><Github size={14}/> Import GitHub</button></div>
+            <div className="flex items-center gap-2"><button type="button" onClick={()=>imageInputRef.current?.click()} className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-xs text-slate-400 hover:bg-white/5 hover:text-white"><ImagePlus size={14}/> Attach Image{referenceImages.length>0?" ("+referenceImages.length+"/3)":""}</button><button type="button" onClick={()=>void openGitHubImport()} className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-xs text-slate-400 hover:bg-white/5 hover:text-white"><Github size={14}/> Import GitHub</button></div>
             <div className="flex flex-wrap items-center gap-2">
               <select value={framework} onChange={e=>setFramework(e.target.value as "auto"|AgentFramework)} className="h-9 max-w-[160px] rounded-lg border border-white/10 bg-[#0b0f17] px-2 text-xs text-slate-200">{FRAMEWORK_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select>
               <select value={modelTier} onChange={e=>setModelTier(e.target.value as "fast"|"architect")} className="h-9 rounded-lg border border-white/10 bg-[#0b0f17] px-2 text-xs text-slate-200"><option value="fast">Fast (1 EC)</option><option value="architect">Architect (3 EC)</option></select>
