@@ -440,9 +440,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
             canRun={filesReady}
             visualEdit={previewVisualEdit}
             onToggleVisualEdit={setPreviewVisualEdit}
-            onElementSelected={(details) => { setSelectedElement(details); setPrompt(current => (current ? current + "
-
-" : "") + "Please update the selected element: " + details); toast.success("Element selected. Describe the change and send it in chat."); }}
+            onElementSelected={(details) => { setSelectedElement(details); setPrompt(current => (current ? current + "\n\n" : "") + "Please update the selected element: " + details); toast.success("Element selected. Describe the change and send it in chat."); }}
             onStart={() => void openPreview()}
             onSelectPort={(port) => {
               const selected = previewPorts.find((item) => item.port === port);
