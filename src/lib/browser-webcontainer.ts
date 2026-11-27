@@ -260,6 +260,33 @@ export async function startBrowserPreview(
   onPreviewPorts?: (ports: BrowserPreviewPort[]) => void,
 ) {
   const runtimeFiles = { ...files };
+  let forceCleanInstall = false;
+  // Vite 8 uses Rolldown. Its WASI fallback can exhaust WebContainer's
+  // WebAssembly memory and fail before the preview server starts. Use the
+  // WebContainer-compatible Vite 6/esbuild toolchain inside the isolated
+  // runtime only; never rewrite the user's saved project manifest.
+  if (typeof runtimeFiles["package.json"] === "string") {
+    try {
+      const manifest = JSON.parse(runtimeFiles["package.json"]) as {
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      const viteSection = manifest.devDependencies?.vite ? "devDependencies"
+        : manifest.dependencies?.vite ? "dependencies" : null;
+      const viteVersion = viteSection ? manifest[viteSection]?.vite ?? "" : "";
+      if (viteSection && /^(?:\\^|~|>=)?\\s*8(?:\\.|$)/.test(viteVersion)) {
+        manifest[viteSection]!.vite = "^6.4.6";
+        runtimeFiles["package.json"] = JSON.stringify(manifest, null, 2) + "\\n";
+        for (const lockfile of ["package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock"]) {
+          delete runtimeFiles[lockfile];
+        }
+        forceCleanInstall = true;
+        onOutput?.("\\r\\nVite 8/Rolldown detected. Using Vite 6 in the WebContainer runtime to avoid WASI memory exhaustion; your saved project files are unchanged.\\r\\n");
+      }
+    } catch {
+      // The normal manifest validation below will show the actionable error.
+    }
+  }
   // Older preview code persisted a synthetic Vite manifest into otherwise
   // static HTML projects. Remove that exact generated manifest before syncing
   // or classifying the project; never remove a real user-authored manifest.
@@ -270,6 +297,10 @@ export async function startBrowserPreview(
   }
   await syncBrowserProject(projectId, runtimeFiles);
   const runtime = await getBrowserRuntime();
+  if (forceCleanInstall) {
+    await runtime.fs.rm(runtime.workdir + "/node_modules", { recursive: true, force: true });
+    runtimeState.installedDependencySignature = null;
+  }
   runtimeState.previewPortUnsubscribe?.();
   runtimeState.previewPortUnsubscribe = null;
   runtimeState.devProcess?.kill();
