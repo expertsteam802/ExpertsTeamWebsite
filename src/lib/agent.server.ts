@@ -256,7 +256,7 @@ export function executeAgentCommands(
     if (command.tool === "list_files") {
       const prefix = command.prefix?.replace(/\\/g, "/") ?? "";
       const names = Object.keys(files).filter((name) => name.startsWith(prefix) && !isSensitiveProjectPath(name)).sort();
-      results.push("list_files " + (prefix || "(project)") + ":\n" + names.slice(0, 500).join("\n") + (names.length > 500 ? "\\n...more files omitted" : ""));
+      results.push("list_files " + (prefix || "(project)") + ":\n" + names.slice(0, 500).join("\n") + (names.length > 500 ? "\n...more files omitted" : ""));
       continue;
     }
     if (command.tool === "search_files") {
@@ -268,7 +268,7 @@ export function executeAgentCommands(
         if (index >= 0) hits.push(name + ": " + content.slice(Math.max(0, index - 100), Math.min(content.length, index + query.length + 180)).replace(/\s+/g, " "));
         if (hits.length >= 40) break;
       }
-      results.push("search_files " + command.query + ":\\n" + (hits.join("\\n") || "No matches."));
+      results.push("search_files " + command.query + ":\n" + (hits.join("\n") || "No matches."));
       continue;
     }
     const filePath = command.path;
@@ -278,7 +278,7 @@ export function executeAgentCommands(
     }
     if (command.tool === "read_file") {
       const content = files[filePath];
-      results.push(content === undefined ? "read_file: file not found: " + filePath : "read_file " + filePath + ":\\n" + content.slice(0, 18000));
+      results.push(content === undefined ? "read_file: file not found: " + filePath : "read_file " + filePath + ":\n" + content.slice(0, 18000));
       continue;
     }
     if (lockedPaths.has(filePath)) {
@@ -488,7 +488,7 @@ export async function runAgent(
           if (content === null) delete workingFiles[path];
           else workingFiles[path] = content;
         }
-        handoffNotes.push("Tool execution results:\\n" + commandResult.results.join("\\n").slice(0, 10000));
+        handoffNotes.push("Tool execution results:\n" + commandResult.results.join("\n").slice(0, 10000));
       }
       if (parsed.message) {
         latestMessage = parsed.message;
