@@ -2,10 +2,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Code2, Eye, FileCode2, LoaderCircle, Play, Save, SquareTerminal, TerminalSquare } from "lucide-react";
+import { ArrowLeft, Code2, Eye, FileCode2, Play, Save, SquareTerminal, TerminalSquare, Database, Github, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { loadProjectBinaryAssets, loadProjectFiles, saveProjectFiles } from "@/lib/project-files";
@@ -21,6 +20,7 @@ import { Terminal } from "@xterm/xterm";
 import { BoltFileTree } from "@/components/bolt-port/FileTree";
 import { BoltChatPanel } from "@/components/bolt-port/Chat";
 import { BoltPreviewPanel } from "@/components/bolt-port/Preview";
+import { WorkspaceControls, type WorkspaceModal } from "@/components/WorkspaceControls";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 
@@ -68,6 +68,14 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   const [tab, setTab] = useState<WorkbenchTab>("preview");
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [filesReady, setFilesReady] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"loading" | "saving" | "saved" | "error">("loading");
+  const [previewBooting, setPreviewBooting] = useState(false);
+  const [previewVisualEdit, setPreviewVisualEdit] = useState(false);
+  const [workspaceModal, setWorkspaceModal] = useState<WorkspaceModal>(null);
+  const [tutorMode, setTutorMode] = useState(false);
+  const [attachedImage, setAttachedImage] = useState<{ name: string; mimeType: "image/png" | "image/jpeg" | "image/webp"; data: string } | null>(null);
+  const [selectedElement, setSelectedElement] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
   const [previewPorts, setPreviewPorts] = useState<BrowserPreviewPort[]>([]);
   const [selectedPreviewPort, setSelectedPreviewPort] = useState<number | null>(null);
@@ -80,6 +88,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   const [terminalConnected, setTerminalConnected] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const hydratedRef = useRef("");
+  const autoBootStarted = useRef(false);
 
   useEffect(() => () => {
     runtimeActiveRef.current = false;
@@ -110,23 +119,28 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     setBinaryAssets(projectQuery.data.binaryAssets);
     setMessages(projectQuery.data.messages);
     setActivePath(Object.keys(projectQuery.data.files).sort()[0] ?? "");
+    setFilesReady(true);
+    setSaveStatus("saving");
   }, [projectQuery.data, projectId, projectQuery.data?.project.updated_at]);
 
   useEffect(() => {
-    if (!user || !projectQuery.data || hydratedRef.current !== `${projectId}:${projectQuery.data.project.updated_at}`) return;
+    if (!user || !projectQuery.data || !filesReady || hydratedRef.current !== `${projectId}:${projectQuery.data.project.updated_at}`) return;
     const timer = window.setTimeout(async () => {
       setSaving(true);
+      setSaveStatus("saving");
       try {
         await saveProjectFiles(projectId, user.id, files);
+        setSaveStatus("saved");
       } catch (error) {
         console.error("[Agent Studio] Autosave failed:", error);
+        setSaveStatus("error");
         toast.error("Could not save your latest code changes.");
       } finally {
         setSaving(false);
       }
     }, 900);
     return () => window.clearTimeout(timer);
-  }, [files, projectId, projectQuery.data, user]);
+  }, [files, filesReady, projectId, projectQuery.data, user]);
 
   const paths = useMemo(() => Object.keys(files).sort((a, b) => a.localeCompare(b)), [files]);
   const activeContent = files[activePath] ?? "";
@@ -180,8 +194,8 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     await queryClient.invalidateQueries({ queryKey: ["agent-studio-projects", user.id] });
   }, [projectId, queryClient, user]);
 
-  const sendMessage = useCallback(async () => {
-    const text = prompt.trim();
+  const sendMessage = useCallback(async (options: { modelTier: "fast" | "architect"; tutorMode: boolean } = { modelTier: "fast", tutorMode: false }) => {
+    const text = (selectedElement ? prompt + "\n\nSelected element context:\n" + selectedElement : prompt).trim();
     if (!text || busy || !user) return;
     const userMessage: ChatMessage = { role: "user", content: text, createdAt: new Date().toISOString() };
     const nextHistory = [...messages, userMessage].slice(-100);
@@ -190,14 +204,16 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     setBusy(true);
     try {
       await persistConversation(nextHistory);
+      try { await (supabase as any).from("agent_project_checkpoints").insert({ project_id: projectId, user_id: user.id, name: "Before AI change", files }); } catch (checkpointError) { console.warn("[Agent Studio] Could not create pre-change checkpoint:", checkpointError); }
       const result = await runCodingAgent({
         data: {
-          prompt: text,
+          prompt: options.tutorMode ? "Tutor Mode: explain the reasoning and teach me while making the requested changes. " + text : text,
           mode: "build",
-          modelTier: "fast",
+          modelTier: options.modelTier,
           framework: projectQuery.data?.project.framework as "nextjs" | "tanstack" | "vite" | "vue" | "sveltekit" | "node" | "html" | undefined,
           files,
           history: nextHistory.slice(-8).map(({ role, content }) => ({ role, content: content.slice(-3000) })),
+          ...(attachedImage ? { referenceImage: attachedImage } : {}),\n          ...(attachedImage ? { referenceImage: attachedImage } : {}),
         },
       });
       const updated = { ...files };
@@ -222,11 +238,14 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       toast.error(reason);
     } finally {
       setBusy(false);
+      setSelectedElement("");
+      setAttachedImage(null);
     }
-  }, [activePath, busy, files, messages, persistConversation, projectId, projectQuery.data?.project.framework, prompt, user]);
+  }, [activePath, attachedImage, busy, files, messages, persistConversation, projectId, projectQuery.data?.project.framework, prompt, selectedElement, user]);
 
   const openPreview = async () => {
-    setBusy(true);
+    if (previewBooting) return;
+    setPreviewBooting(true);
     setRuntimeOutput("");
     setPreviewUrl("");
     setPreviewPorts([]);
@@ -243,6 +262,10 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       }
       if (!previewFiles["index.html"]) {
         previewFiles["index.html"] = '<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ExpertsTeam Preview</title></head><body><h1>Project preview</h1></body></html>';
+      }
+      if (!previewFiles["index.html"].includes("experts-visual-inspector")) {
+        previewFiles["index.html"] = previewFiles["index.html"].replace("</body>", "<script id=\"experts-visual-inspector\">(()=>{let active=false;let hovered=null;const outline=(el)=>{if(hovered&&hovered!==el)hovered.style.outline=hovered.dataset.expertsOldOutline||\"\";hovered=el;if(el){if(el.dataset.expertsOldOutline===undefined)el.dataset.expertsOldOutline=el.style.outline;el.style.outline=\"2px solid #2563EB\";}};window.addEventListener(\"message\",e=>{if(e.data?.type===\"experts:visual-edit\"){active=!!e.data.enabled;document.documentElement.style.cursor=active?\"crosshair\":\"\";if(!active)outline(null);}});document.addEventListener(\"pointerover\",e=>{if(active&&e.target instanceof HTMLElement)outline(e.target);},true);document.addEventListener(\"click\",e=>{if(!active)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();const el=e.target instanceof HTMLElement?e.target:null;if(!el)return;const parts=[];let node=el;while(node&&node!==document.body&&parts.length<4){let selector=node.tagName.toLowerCase();if(node.id)selector+=\"#\"+node.id;else if(node.classList.length)selector+=\".\"+Array.from(node.classList).slice(0,2).join(\".\");parts.unshift(selector);node=node.parentElement;}const detail=\"Selector: \"+parts.join(\" > \")+\"\\\\nElement: \"+el.outerHTML.slice(0,1800);parent.postMessage({type:\"experts:element-selected\",detail},\"*\");active=false;document.documentElement.style.cursor=\"\";outline(null);},true);})();</script>" + "</body>");
+        if (!previewFiles["index.html"].includes("experts-visual-inspector")) previewFiles["index.html"] += "<script id=\"experts-visual-inspector\">(()=>{let active=false;let hovered=null;const outline=(el)=>{if(hovered&&hovered!==el)hovered.style.outline=hovered.dataset.expertsOldOutline||\"\";hovered=el;if(el){if(el.dataset.expertsOldOutline===undefined)el.dataset.expertsOldOutline=el.style.outline;el.style.outline=\"2px solid #2563EB\";}};window.addEventListener(\"message\",e=>{if(e.data?.type===\"experts:visual-edit\"){active=!!e.data.enabled;document.documentElement.style.cursor=active?\"crosshair\":\"\";if(!active)outline(null);}});document.addEventListener(\"pointerover\",e=>{if(active&&e.target instanceof HTMLElement)outline(e.target);},true);document.addEventListener(\"click\",e=>{if(!active)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();const el=e.target instanceof HTMLElement?e.target:null;if(!el)return;const parts=[];let node=el;while(node&&node!==document.body&&parts.length<4){let selector=node.tagName.toLowerCase();if(node.id)selector+=\"#\"+node.id;else if(node.classList.length)selector+=\".\"+Array.from(node.classList).slice(0,2).join(\".\");parts.unshift(selector);node=node.parentElement;}const detail=\"Selector: \"+parts.join(\" > \")+\"\\\\nElement: \"+el.outerHTML.slice(0,1800);parent.postMessage({type:\"experts:element-selected\",detail},\"*\");active=false;document.documentElement.style.cursor=\"\";outline(null);},true);})();</script>";
       }
       setFiles(previewFiles);
       await saveProjectFiles(projectId, user!.id, previewFiles);
@@ -281,8 +304,14 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       const message = error instanceof Error ? error.message : "Could not start browser preview.";
       setRuntimeOutput((current) => (current + "\n" + message).slice(-12000));
       toast.error(message);
-    } finally { setBusy(false); }
+    } finally { setPreviewBooting(false); }
   };
+
+  useEffect(() => {
+    if (!filesReady || !projectQuery.data || autoBootStarted.current) return;
+    autoBootStarted.current = true;
+    void openPreview();
+  }, [filesReady, projectQuery.data]);
 
   const openTerminal = async () => {
     if (terminalOpen) {
@@ -310,7 +339,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     if (!terminalConnected || !terminalOpen || !terminalHost.current) return;
-    const terminal = new Terminal({ cursorBlink: true, convertEol: true, fontSize: 12, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", theme: { background: "#080b12", foreground: "#dbeafe", cursor: "#60a5fa" } });
+    const terminal = new Terminal({ cursorBlink: true, convertEol: true, fontSize: 12, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", theme: { background: "#070B14", foreground: "#E2E8F0", cursor: "#3B82F6" } });
     const fit = new FitAddon();
     terminal.loadAddon(fit);
     terminal.open(terminalHost.current);
@@ -347,46 +376,57 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   if (projectQuery.isError || !projectQuery.data) return <main className="grid h-screen place-items-center bg-[#080b12] px-6 text-center text-sm text-rose-300">{(projectQuery.error as Error)?.message ?? "Project unavailable"}</main>;
 
   return (
-    <main className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[#0b0b0c] text-[#e5e5e5]">
-      <header className="z-10 flex h-12 shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#111113] px-3">
+    <main className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[#070B14] text-[#E2E8F0]">
+      <header className="z-10 flex h-12 shrink-0 items-center justify-between border-b border-[#1E293B] bg-[#0D1322] px-3">
         <div className="flex min-w-0 items-center gap-3">
-          <Link to="/ai" className="flex h-8 items-center gap-2 rounded-md px-2 text-xs text-[#a1a1aa] transition hover:bg-white/[0.06] hover:text-white"><ArrowLeft size={14}/> Projects</Link>
-          <span className="h-5 w-px bg-white/10"/>
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 text-[11px] font-black text-black">E</div>
-          <strong className="max-w-[240px] truncate text-[13px] font-medium text-[#e4e4e7]">{projectQuery.data.project.name}</strong>
-          <span className="hidden rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-[#a1a1aa] sm:inline">Agent</span>
+          <Link to="/ai" className="flex h-8 items-center gap-2 rounded-md px-2 text-xs text-[#CBD5E1] transition hover:bg-white/[0.06] hover:text-white"><ArrowLeft size={14}/> Projects</Link>
+          <span className="h-5 w-px bg-[#1E293B]"/>
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#2563EB] text-[11px] font-black text-white shadow-lg shadow-blue-500/25">E</div>
+          <strong className="max-w-[240px] truncate text-[13px] font-medium text-[#F8FAFC]">{projectQuery.data.project.name}</strong>
+          <span className="hidden rounded-md border border-[#1E293B] bg-[#070B14] px-2 py-1 text-[10px] text-[#CBD5E1] sm:inline">Agent</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="hidden text-[11px] text-[#71717a] sm:inline">{saving ? "Saving changes…" : "All changes saved"} · {paths.length} files</span>
-          <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-[#a1a1aa]">⚡ {profile?.ai_credits ?? 0}</span>
-          <Button type="button" size="sm" onClick={() => void openPreview()} disabled={busy || paths.length===0} className="h-7 gap-1.5 rounded-md bg-[#e5e5e5] px-3 text-[11px] font-medium text-black hover:bg-white"><Play size={12}/> Run</Button>
+        <div className="flex items-center gap-1.5">
+          <span className={`hidden rounded-md border px-2 py-1 text-[10px] font-medium sm:inline ${saveStatus==="saved"?"border-[#10B981]/30 bg-[#10B981]/10 text-[#6EE7B7]":saveStatus==="error"?"border-rose-500/30 bg-rose-500/10 text-rose-300":"border-[#1E293B] bg-[#070B14] text-[#CBD5E1]"}`}>{saveStatus==="saved"?"✓ Saved":saveStatus==="error"?"Save failed":saveStatus==="saving"?"Saving changes…":"Loading files…"}</span>
+          <button type="button" onClick={()=>setWorkspaceModal("credits")} className="rounded-full border border-[#F59E0B]/40 bg-[#F59E0B]/15 px-3 py-1.5 text-[10px] font-semibold text-[#F59E0B] hover:bg-[#F59E0B]/20">⚡ {profile?.ai_credits ?? 0} Credits • +Earn Free</button>
+          <button type="button" onClick={()=>setWorkspaceModal("db")} className="hidden h-8 items-center gap-1.5 rounded-md border border-[#1E293B] bg-[#0D1322] px-2.5 text-[10px] text-[#CBD5E1] hover:border-[#2563EB]/50 sm:flex"><Database size={12}/> DB &amp; Auth</button>
+          <button type="button" onClick={()=>setWorkspaceModal("github")} className="hidden h-8 items-center gap-1.5 rounded-md border border-[#1E293B] bg-[#0D1322] px-2.5 text-[10px] text-[#CBD5E1] hover:border-[#2563EB]/50 sm:flex"><Github size={12}/> GitHub</button>
+          <button type="button" onClick={()=>setWorkspaceModal("deploy")} className="hidden h-8 items-center gap-1.5 rounded-md bg-[#2563EB] px-3 text-[10px] font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-[#3B82F6] sm:flex"><Upload size={12}/> Deploy ↑</button>
+          <Button type="button" size="sm" onClick={() => void openPreview()} disabled={busy || previewBooting} className="h-8 gap-1.5 rounded-md bg-[#10B981] px-3 text-[11px] font-semibold text-[#052E24] hover:bg-[#34D399]"><Play size={12}/> Run</Button>
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+      <div className="flex min-h-0 flex-1">
+        <WorkspaceControls projectId={projectId} userId={user.id} files={files} onRestore={(next) => { setFiles(next); setActivePath(Object.keys(next).sort()[0] ?? ""); }} onFocusChat={() => { document.querySelector<HTMLTextAreaElement>('textarea[placeholder="How can ExpertsTeam help you today?"]')?.focus(); }} modal={workspaceModal} onModalChange={setWorkspaceModal}/>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col md:flex-row">
         <BoltChatPanel
           projectName={projectQuery.data.project.name}
           messages={messages}
           prompt={prompt}
           busy={busy}
           onPromptChange={setPrompt}
-          onSend={() => void sendMessage()}
+          onSend={(options) => void sendMessage(options)}
+          onAttachImage={(file) => { if(!["image/png","image/jpeg","image/webp"].includes(file.type)||file.size>2_000_000){toast.error("Choose a PNG, JPG or WebP image under 2 MB.");return;} const reader=new FileReader(); reader.onload=()=>{const value=String(reader.result??"");const data=value.split(",")[1];if(data)setAttachedImage({name:file.name,mimeType:file.type as "image/png"|"image/jpeg"|"image/webp",data});};reader.readAsDataURL(file); }}
+          attachedImageName={attachedImage?.name}
+          onRemoveImage={() => setAttachedImage(null)}
+          tutorMode={tutorMode}
+          onTutorModeChange={setTutorMode}
+          onSelectElement={() => { setTab("preview"); setPreviewVisualEdit(true); }}
           width={chatWidth}
         />
         <div role="separator" aria-label="Resize chat panel" aria-orientation="vertical" tabIndex={0}
           onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); }}
-          onPointerMove={(event) => { if (event.buttons === 1) setChatWidth(Math.max(320, Math.min(700, event.clientX))); }}
+          onPointerMove={(event) => { if (event.buttons === 1) setChatWidth(Math.max(320, Math.min(700, event.clientX - 48)) ); }}
           onKeyDown={(event) => { if (event.key === "ArrowLeft") setChatWidth((value) => Math.max(320, value - 20)); if (event.key === "ArrowRight") setChatWidth((value) => Math.min(700, value + 20)); }}
-          className="hidden w-1 shrink-0 cursor-col-resize bg-white/[0.035] transition hover:bg-sky-300/40 focus-visible:bg-sky-300/50 md:block" />
+          className="hidden w-1 shrink-0 cursor-col-resize bg-white/[0.035] transition hover:bg-[#2563EB]/40 focus-visible:bg-[#2563EB]/50 md:block" />
 
         <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#0b0b0c]">
-          <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#111113] px-3">
+          <div className="flex h-11 shrink-0 items-center justify-between border-b border-[#1E293B] bg-[#0D1322] px-3">
             <div className="flex h-full items-stretch gap-1">
-              {([{id:"code",label:"Code",icon:Code2},{id:"preview",label:"Preview",icon:Eye}] as const).map((item) => { const Icon=item.icon; return <button key={item.id} type="button" onClick={() => setTab(item.id)} className={`inline-flex items-center gap-2 border-b-2 px-3 text-[11px] transition ${tab===item.id?"border-white text-white":"border-transparent text-[#777780] hover:text-[#d4d4d8]"}`}><Icon size={13}/>{item.label}</button>; })}
+              {([{id:"code",label:"Code",icon:Code2},{id:"preview",label:"Preview",icon:Eye}] as const).map((item) => { const Icon=item.icon; return <button key={item.id} type="button" onClick={() => setTab(item.id)} className={`inline-flex items-center gap-2 border-b-2 px-3 text-[11px] transition ${tab===item.id?"border-white text-white":"border-transparent text-[#94A3B8] hover:text-[#d4d4d8]"}`}><Icon size={13}/>{item.label}</button>; })}
             </div>
             <div className="flex items-center gap-2">
-              <span className="hidden text-[10px] text-[#71717a] sm:inline">{runtimeReady ? "Browser runtime ready" : "Local browser runtime"}</span>
-              <Button type="button" size="sm" variant="outline" onClick={() => void openTerminal()} disabled={busy} className="h-7 gap-1.5 rounded-md border-white/10 bg-transparent px-2.5 text-[10px] text-[#b4b4bc] hover:bg-white/[0.06] hover:text-white"><SquareTerminal size={12}/>{terminalOpen ? "Hide terminal" : terminalConnected ? "Show terminal" : "Terminal"}</Button>
+              <span className="hidden text-[10px] text-[#94A3B8] sm:inline">{runtimeReady ? "Browser runtime ready" : "Local browser runtime"}</span>
+              <Button type="button" size="sm" variant="outline" onClick={() => void openTerminal()} disabled={busy} className="h-7 gap-1.5 rounded-md border-white/10 bg-transparent px-2.5 text-[10px] text-[#CBD5E1] hover:bg-white/[0.06] hover:text-white"><SquareTerminal size={12}/>{terminalOpen ? "Hide terminal" : terminalConnected ? "Show terminal" : "Terminal"}</Button>
             </div>
           </div>
 
@@ -396,7 +436,13 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
             selectedPreviewPort={selectedPreviewPort}
             runtimeOutput={runtimeOutput}
             busy={busy}
-            canRun={paths.length > 0}
+            booting={previewBooting}
+            canRun={filesReady}
+            visualEdit={previewVisualEdit}
+            onToggleVisualEdit={setPreviewVisualEdit}
+            onElementSelected={(details) => { setSelectedElement(details); setPrompt(current => (current ? current + "
+
+" : "") + "Please update the selected element: " + details); toast.success("Element selected. Describe the change and send it in chat."); }}
             onStart={() => void openPreview()}
             onSelectPort={(port) => {
               const selected = previewPorts.find((item) => item.port === port);
@@ -409,24 +455,25 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
 
           {tab === "code" && <div className="flex min-h-0 flex-1 flex-col">
             <div className="flex min-h-0 flex-1">
-              <aside className="flex w-[220px] shrink-0 flex-col border-r border-white/[0.08] bg-[#101012] max-sm:w-[150px]">
-                <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.06] px-3"><span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#85858d]">Files</span><span className="text-[10px] text-[#66666e]">{paths.length}</span></div>
+              <aside className="flex w-[220px] shrink-0 flex-col border-r border-[#1E293B] bg-[#0D1322] max-sm:w-[150px]">
+                <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.06] px-3"><span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#94A3B8]">Files</span><span className="text-[10px] text-[#94A3B8]">{paths.length}</span></div>
                 <div className="min-h-0 flex-1 overflow-y-auto p-2">
                   <BoltFileTree paths={paths} selectedPath={activePath} onSelect={setActivePath}/>
                 </div>
               </aside>
               <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] bg-[#111113] px-3"><span className="flex min-w-0 items-center gap-2 truncate text-[11px] text-[#b4b4bc]">{activePath ? <><FileCode2 size={13} className="shrink-0 text-sky-300"/><span className="truncate">{activePath}</span></> : "Select a file"}</span><span className="flex items-center gap-1.5 text-[10px] text-[#777780]"><Save size={11}/>{saving ? "Saving…" : "Auto-saved"}</span></div>
+                <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] bg-[#0D1322] px-3"><span className="flex min-w-0 items-center gap-2 truncate text-[11px] text-[#b4b4bc]">{activePath ? <><FileCode2 size={13} className="shrink-0 text-[#60A5FA]"/><span className="truncate">{activePath}</span></> : "Select a file"}</span><span className="flex items-center gap-1.5 text-[10px] text-[#777780]"><Save size={11}/>{saveStatus === "saved" ? "✓ Saved" : saveStatus === "saving" ? "Saving changes…" : "Save failed"}</span></div>
                 {activePath ? <div className="min-h-0 flex-1 overflow-hidden"><CodeMirror value={activeContent} height="100%" theme={oneDark} extensions={[editorLanguage(activePath)]} onChange={(value) => setFiles(current => ({...current,[activePath]:value}))} basicSetup={{ lineNumbers:true, foldGutter:true, highlightActiveLine:true, highlightActiveLineGutter:true, bracketMatching:true, closeBrackets:true, autocompletion:true, indentOnInput:true }} /></div> : <div className="grid flex-1 place-items-center text-[11px] text-[#71717a]">Select a file from the explorer</div>}
               </div>
             </div>
-            {terminalOpen && <div className="flex h-[30%] min-h-[150px] shrink-0 flex-col border-t border-white/[0.09] bg-[#09090b]">
+            {terminalOpen && <div className="flex h-[30%] min-h-[150px] shrink-0 flex-col border-t border-white/[0.09] bg-[#070B14]">
               <div className="flex h-8 shrink-0 items-center justify-between border-b border-white/[0.07] px-3 text-[10px] text-[#85858d]"><span className="flex items-center gap-2"><TerminalSquare size={12}/> Terminal</span><span>Browser WebContainer</span></div>
               <div ref={terminalHost} className="min-h-0 flex-1 overflow-hidden p-2"/>
             </div>}
           </div>}
 
         </section>
+        </div>
       </div>
     </main>
   );

@@ -22,8 +22,8 @@ function AgentProjectPage() {
       return data ?? [];
     },
   });
-  const project = projects.data?.find((item) => projectSlug(item, projects.data ?? []) === projectName);
-  if (loading) return <main className="grid h-screen place-items-center bg-[#080b12] text-sm text-slate-400">Restoring your session…</main>;
+  const project = projects.data?.find((item) => item.id === projectName || projectSlug(item, projects.data ?? []) === projectName);
+  if (loading) return <main className="grid h-screen place-items-center bg-[#070B14] text-sm text-[#94A3B8]">Restoring your session…</main>;
   if (!user) return <main className="grid h-screen place-items-center bg-[#080b12] text-slate-300"><a href="/auth" className="underline">Sign in to open this project</a></main>;
   if (projects.isLoading) return <main className="grid h-screen place-items-center bg-[#080b12] text-sm text-slate-400">Finding your project…</main>;
   if (projects.isError) return <main className="grid h-screen place-items-center bg-[#080b12] text-sm text-rose-300">Could not load your projects. Please refresh and try again.</main>;
