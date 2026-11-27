@@ -186,7 +186,7 @@ function recoverCompleteFiles(source: string): Record<string, string | null> {
   return recovered;
 }
 
-type AgentCommand =
+export type AgentCommand =
   | { tool: "list_files"; prefix?: string }
   | { tool: "read_file"; path: string }
   | { tool: "search_files"; query: string }
