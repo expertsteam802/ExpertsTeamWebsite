@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Bot, Code2, Eye, FileCode2, Folder, LoaderCircle, Play, Send, SquareTerminal, TerminalSquare } from "lucide-react";
+import { ArrowLeft, Bot, Code2, Eye, LoaderCircle, Play, Send, SquareTerminal, TerminalSquare } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,7 @@ import { openBrowserTerminal, startBrowserPreview, stopBrowserPreview, syncBrows
 import CodeMirror from "@uiw/react-codemirror";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { Terminal } from "@xterm/xterm";
+import { BoltFileTree } from "@/components/bolt-port/FileTree";
 import { BoltPreviewPanel } from "@/components/bolt-port/Preview";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
@@ -396,8 +397,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
             <aside className="flex w-[220px] shrink-0 flex-col border-r border-white/[0.08] bg-[#101012] max-sm:w-[150px]">
               <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.06] px-3"><span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#85858d]">Files</span><span className="text-[10px] text-[#66666e]">{paths.length}</span></div>
               <div className="min-h-0 flex-1 overflow-y-auto p-2">
-                {paths.map(path => <button key={path} type="button" onClick={() => setActivePath(path)} className={`flex w-full items-center gap-2 rounded-md px-2 py-[7px] text-left text-[11px] transition ${activePath===path?"bg-white/[0.09] text-white":"text-[#96969f] hover:bg-white/[0.04] hover:text-[#e4e4e7]"}`}><FileCode2 size={12} className="shrink-0"/><span className="truncate">{path}</span></button>)}
-                {!paths.length && <p className="px-2 py-3 text-[10px] text-[#66666e]">No files yet</p>}
+                <BoltFileTree paths={paths} selectedPath={activePath} onSelect={setActivePath}/>
               </div>
             </aside>
             <div className="flex min-w-0 flex-1 flex-col">
