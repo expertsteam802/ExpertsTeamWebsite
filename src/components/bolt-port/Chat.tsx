@@ -6,7 +6,8 @@
  * wired to ExpertsTeam's Supabase conversation persistence and Kilo agent.
  */
 import { useEffect, useRef } from "react";
-import { ArrowRight, Bot, Sparkles, Square } from "lucide-react";
+import { ArrowRight, Bot, Sparkles } from "lucide-react";
+import { BoltMarkdown } from "@/components/bolt-port/Markdown";
 import { Button } from "@/components/ui/button";
 
 type ChatMessage = { role: "user" | "assistant"; content: string; createdAt?: string };
@@ -74,7 +75,7 @@ export function BoltChatPanel({ projectName, messages, prompt, busy, onPromptCha
             <div className="mb-2 flex items-center gap-2 text-[10px] font-medium text-[#8b8b94]">
               {message.role === "user" ? "You" : <><Bot size={12} className="text-sky-300"/> ExpertsTeam</>}
             </div>
-            <p className="whitespace-pre-wrap break-words text-[12px] leading-[1.7] text-[#dedee2]">{message.content}</p>
+            <BoltMarkdown content={message.content}/>
           </article>
         ))}
         {busy && <div className="flex items-center gap-2 px-2 py-2 text-[11px] text-[#a1a1aa]"><span className="h-3 w-3 animate-spin rounded-full border-2 border-sky-300/30 border-t-sky-300"/> Working on your project…</div>}
@@ -95,7 +96,7 @@ export function BoltChatPanel({ projectName, messages, prompt, busy, onPromptCha
             <span className="text-[10px] text-[#777780]">Kilo · Build mode</span>
             <Button type="submit" size="sm" disabled={!prompt.trim() || busy}
               className="h-8 gap-2 rounded-lg bg-sky-300 px-3 text-[11px] font-medium text-slate-950 hover:bg-sky-200 disabled:opacity-40">
-              {busy ? <Square size={12}/> : <ArrowRight size={13}/>}
+              {busy ? <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-950/30 border-t-slate-950"/> : <ArrowRight size={13}/>}
               {busy ? "Working" : "Send"}
             </Button>
           </div>
