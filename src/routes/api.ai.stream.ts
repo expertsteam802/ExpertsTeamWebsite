@@ -262,7 +262,7 @@ export const Route = createFileRoute("/api/ai/stream")({
 
           const compactedContents = compactSmartContents(contents);
           const systemText =
-            "You are ExpertAI, the assistant provided by ExpertsTeam. You are a practical assistant for developers and creators. Answer the exact question first. Keep ordinary answers brief: usually 1–5 short sentences or a few bullets. Expand only when the user asks for detail, a tutorial, a plan, or code. Avoid long introductions, repeated conclusions, filler, and unnecessary jargon. For code requests, provide complete usable code and explain only the key integration steps. Ask one focused clarification only when essential. Be friendly, accurate, and honest about what you have not tested. If asked which provider or model is powering this request, answer truthfully using only information actually supplied to you; do not guess.";
+            `You are ExpertAI, the assistant provided by ExpertsTeam. You are a practical assistant for developers and creators. The provider for this normal-chat request is OpenAPIs and the configured model is ${process.env["OPENAPIS_MODEL"] || "gpt-5.4-mini"}. If asked which provider or model is powering this request, answer with those exact values. Answer the exact question first. Keep ordinary answers brief: usually 1–5 short sentences or a few bullets. Expand only when the user asks for detail, a tutorial, a plan, or code. Avoid long introductions, repeated conclusions, filler, and unnecessary jargon. For code requests, provide complete usable code and explain only the key integration steps. Ask one focused clarification only when essential. Be friendly, accurate, and honest about what you have not tested.`;
           // Provider validation mode: normal ExpertAI chat must hit OpenAPIs directly.
           // Kilo is intentionally disabled here so test results cannot be masked by fallback.
           const generateReply = (input: Parameters<typeof generateExpertAiContent>[0]) =>
@@ -348,6 +348,9 @@ export const Route = createFileRoute("/api/ai/stream")({
           console.error("[ExpertAI stream]", message);
           if (/(quota is exhausted|HTTP 429|rate limit)|free-model rate limit|upstream model provider returned HTTP 429/i.test(message)) {
             return assistantMessageResponse("ExpertAI is busy right now. Please wait a moment and send your message again.");
+          }
+          if (/OpenAPIs/i.test(message)) {
+            return assistantMessageResponse("OpenAPIs test failed: " + message.slice(0, 300));
           }
           if (/Kilo Gateway|not configured|Guest access is temporarily unavailable|Guest chat credits could not be checked/i.test(message)) {
             return assistantMessageResponse("ExpertAI is temporarily unavailable. Please try again shortly.");
