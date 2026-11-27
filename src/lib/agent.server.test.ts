@@ -154,7 +154,7 @@ test("ExpertAI adapter forwards image attachments in OpenAI-compatible format", 
   assert.equal(sawImage, true);
 });
 
-test("ExpertAI free-model IP quota is identified separately and fails once", async () => {
+test("ExpertAI hard shared free-model IP quota is identified and never retried", async () => {
   let calls = 0;
   globalThis.fetch = (async () => {
     calls++;
@@ -165,9 +165,24 @@ test("ExpertAI free-model IP quota is identified separately and fails once", asy
       systemInstruction: { parts: [{ text: "You are ExpertAI." }] },
       contents: [{ role: "user", parts: [{ text: "Help." }] }],
     }),
-    /temporarily busy/i,
+    /shared IP quota is exhausted/i,
   );
   assert.equal(calls, 1);
+});
+
+test("temporary Kilo 429 retries and recovers without retrying a hard quota", async () => {
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls++;
+    if (calls === 1) return Response.json({ error: { message: "Temporary upstream rate limit. Retry shortly." } }, { status: 429, headers: { "retry-after": "0.01" } });
+    return Response.json({ choices: [{ finish_reason: "stop", message: { content: "Recovered." } }] });
+  }) as typeof fetch;
+  const result = await generateExpertAiContent({
+    systemInstruction: { parts: [{ text: "test" }] },
+    contents: [{ role: "user", parts: [{ text: "hello" }] }],
+  });
+  assert.equal(calls, 2);
+  assert.equal(result.candidates?.[0]?.content?.parts?.[0]?.text, "Recovered.");
 });
 
 test("ExpertAI upstream provider 429 is not mislabeled as the shared IP quota", async () => {
