@@ -12,6 +12,26 @@ afterEach(() => {
 
 const input = { prompt: "Build a game", files: {}, history: [] };
 
+test("Kilo Gateway retries a rate-limited request once using Retry-After", async () => {
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    if (calls === 1) return new Response("rate limited", {
+      status: 429,
+      headers: { "retry-after": "0.01" },
+    });
+    return new Response(JSON.stringify({
+      choices: [{ finish_reason: "stop", message: { content: "Recovered response" } }],
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  }) as typeof fetch;
+  const response = await generateExpertAiContent({
+    systemInstruction: { parts: [{ text: "test" }] },
+    contents: [{ role: "user", parts: [{ text: "hello" }] }],
+  });
+  assert.equal(calls, 2);
+  assert.equal(response.candidates?.[0]?.content?.parts?.[0]?.text, "Recovered response");
+});
+
 test("agent file tools list, read, search, write and delete project files", () => {
   const initial = {
     "src/App.tsx": "export default function App() { return <main>Hello</main>; }",
