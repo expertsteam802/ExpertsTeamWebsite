@@ -22,7 +22,7 @@ export function BoltPreviewPanel({ previewUrl, previewPorts, selectedPreviewPort
   const [frameUrl,setFrameUrl]=useState(previewUrl);
   const [reloadKey,setReloadKey]=useState(0);
   const [viewport,setViewport]=useState<Viewport>("desktop");
-  const [visualEdit,setVisualEdit]=useState(false);
+
   const frameRef=useRef<HTMLIFrameElement>(null);
   const baseUrl=useMemo(()=>{try{return new URL(previewUrl).origin;}catch{return "";}},[previewUrl]);
   useEffect(()=>{setAddress(previewUrl);setFrameUrl(previewUrl);},[previewUrl]);

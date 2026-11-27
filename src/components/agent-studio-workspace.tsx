@@ -213,7 +213,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
           framework: projectQuery.data?.project.framework as "nextjs" | "tanstack" | "vite" | "vue" | "sveltekit" | "node" | "html" | undefined,
           files,
           history: nextHistory.slice(-8).map(({ role, content }) => ({ role, content: content.slice(-3000) })),
-          ...(attachedImage ? { referenceImage: attachedImage } : {}),\n          ...(attachedImage ? { referenceImage: attachedImage } : {}),
+          ...(attachedImage ? { referenceImage: attachedImage } : {}),
         },
       });
       const updated = { ...files };
