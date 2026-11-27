@@ -320,12 +320,12 @@ export async function runAgent(
             "Return only additional files still required. Do not repeat completed files unless correcting a specific inconsistency.",
             "Already completed files: " + (existingNames.join(", ") || "(none)") + ".",
             "Expert handoff summaries: " + (handoffNotes.slice(-4).join(" | ") || "(first expert round)") + ".",
-            "ORIGINAL PROJECT CONTEXT (preserve this architecture and existing behavior):\\n" + fileDump,
+            "ORIGINAL PROJECT CONTEXT (preserve this architecture and existing behavior):\n" + fileDump,
             "Keep this response small: return at most " + maxFilesPerRound + " complete file(s). If more remain, set complete:false. Set complete:true only when the requested app/change is fully implemented.",
             "If a previous response was truncated, regenerate the missing file from scratch. Never return half a file as completed.",
             "Previously generated files (authoritative current implementation; inspect imports and contracts before adding more):",
             ...Object.entries(completedFiles).map(
-              ([path, content]) => "--- " + path + " ---\\n" + String(content).slice(0, 12000),
+              ([path, content]) => "--- " + path + " ---\n" + String(content).slice(0, 12000),
             ),
           ].join("\n\n");
 
