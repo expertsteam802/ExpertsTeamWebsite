@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Code2, Eye, LoaderCircle, Play, SquareTerminal, TerminalSquare } from "lucide-react";
+import { ArrowLeft, Code2, Eye, FileCode2, LoaderCircle, Play, Save, SquareTerminal, TerminalSquare } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,10 @@ import { getProjectPublicEnvironment, runCodingAgent } from "@/lib/agent.functio
 import { openBrowserTerminal, startBrowserPreview, stopBrowserPreview, syncBrowserProject, watchBrowserProject, type BrowserPreviewPort } from "@/lib/browser-webcontainer";
 import CodeMirror from "@uiw/react-codemirror";
 import { oneDark } from "@codemirror/theme-one-dark";
+import { javascript } from "@codemirror/lang-javascript";
+import { html } from "@codemirror/lang-html";
+import { css } from "@codemirror/lang-css";
+import { json } from "@codemirror/lang-json";
 import { Terminal } from "@xterm/xterm";
 import { BoltFileTree } from "@/components/bolt-port/FileTree";
 import { BoltChatPanel } from "@/components/bolt-port/Chat";
@@ -23,6 +27,17 @@ import "@xterm/xterm/css/xterm.css";
 type ChatMessage = { role: "user" | "assistant"; content: string; createdAt?: string };
 type ProjectFiles = Record<string, string>;
 type WorkbenchTab = "preview" | "code" | "terminal";
+
+function editorLanguage(path: string) {
+  const extension = path.split(".").pop()?.toLowerCase();
+  if (extension === "html" || extension === "htm") return html();
+  if (extension === "css" || extension === "scss") return css();
+  if (extension === "json") return json();
+  if (["js", "jsx", "ts", "tsx", "mjs", "cjs"].includes(extension ?? "")) {
+    return javascript({ typescript: extension === "ts" || extension === "tsx", jsx: extension === "jsx" || extension === "tsx" });
+  }
+  return javascript();
+}
 
 function readMessages(value: unknown): ChatMessage[] {
   if (!Array.isArray(value)) return [];
@@ -340,7 +355,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <BoltChatPanel
           projectName={projectQuery.data.project.name}
           messages={messages}
@@ -386,8 +401,8 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
               </div>
             </aside>
             <div className="flex min-w-0 flex-1 flex-col">
-              <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] px-3"><span className="truncate text-[11px] text-[#b4b4bc]">{activePath || "Select a file"}</span><span className="text-[10px] text-[#66666e]">Editing</span></div>
-              {activePath ? <CodeMirror value={activeContent} height="100%" theme={oneDark} extensions={[]} onChange={(value) => setFiles(current => ({...current,[activePath]:value}))} basicSetup={{ lineNumbers:true, foldGutter:true }}/> : <div className="grid flex-1 place-items-center text-[11px] text-[#71717a]">Select a file from the explorer</div>}
+              <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] bg-[#111113] px-3"><span className="flex min-w-0 items-center gap-2 truncate text-[11px] text-[#b4b4bc]">{activePath ? <><FileCode2 size={13} className="shrink-0 text-sky-300"/><span className="truncate">{activePath}</span></> : "Select a file"}</span><span className="flex items-center gap-1.5 text-[10px] text-[#777780]"><Save size={11}/>{saving ? "Saving…" : "Auto-saved"}</span></div>
+              {activePath ? <div className="min-h-0 flex-1 overflow-hidden"><CodeMirror value={activeContent} height="100%" theme={oneDark} extensions={[editorLanguage(activePath)]} onChange={(value) => setFiles(current => ({...current,[activePath]:value}))} basicSetup={{ lineNumbers:true, foldGutter:true, highlightActiveLine:true, highlightActiveLineGutter:true, bracketMatching:true, closeBrackets:true, autocompletion:true, indentOnInput:true }} /></div> : <div className="grid flex-1 place-items-center text-[11px] text-[#71717a]">Select a file from the explorer</div>}
             </div>
           </div>}
 
