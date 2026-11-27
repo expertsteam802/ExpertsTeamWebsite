@@ -20,7 +20,7 @@ In Vercel:
 5. Go to **Deployments**, open the latest deployment for the `main` branch, and choose **Redeploy**. A deployment created before adding the variables will not automatically receive them.
 6. Wait until the deployment is **Ready**, open the live website, and test the regular ExpertAI chat (not Agent Builder) with: `Reply with the provider name and model configured for this request.`
 
-The server sends OpenAPIs a native OpenAI-compatible streaming request (`stream: true`). It collects the streamed tokens and adapts the result to the existing ExpertsTeam chat response format. The chat UI's existing response handling is preserved.
+The normal ExpertAI chat route is pinned directly to OpenAPIs for this test, regardless of the shared provider setting. It sends a native OpenAI-compatible streaming request (`stream: true`) and adapts the streamed tokens to the existing ExpertsTeam chat response format. **Kilo fallback is intentionally disabled for normal chat**, so a failed OpenAPIs request will fail visibly rather than being served by Kilo. Agent Builder's own provider path remains unchanged.
 
 ### API key warning
 
@@ -53,5 +53,5 @@ Then redeploy. You can also remove the OpenAPIs key/model variables after switch
 - This provider selection affects the shared server-side text-generation transport used by normal ExpertAI chat and other code paths that call `generateExpertAiContent`.
 - Agent Builder's CLI/runtime and project execution are not replaced by this chat API integration.
 - The integration uses OpenAI-compatible chat completions. It does not activate OpenAPIs' Anthropic/Claude endpoint.
-- The existing normal-chat route still collects the provider response before emitting the app's SSE response. OpenAPIs is streamed upstream, but this change does not yet forward each upstream token to the browser as it arrives.
+- The normal-chat route collects the OpenAPIs response before emitting the app SSE response. OpenAPIs is streamed upstream, but each upstream token is not forwarded to the browser immediately.
 - Provider credentials are read only on the server.
