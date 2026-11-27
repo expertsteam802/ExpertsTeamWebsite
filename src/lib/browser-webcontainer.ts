@@ -274,14 +274,14 @@ export async function startBrowserPreview(
       const viteSection = manifest.devDependencies?.vite ? "devDependencies"
         : manifest.dependencies?.vite ? "dependencies" : null;
       const viteVersion = viteSection ? manifest[viteSection]?.vite ?? "" : "";
-      if (viteSection && /^(?:\\^|~|>=)?\\s*8(?:\\.|$)/.test(viteVersion)) {
+      if (viteSection && /^(?:\^|~|>=)?\s*8(?:\.|$)/.test(viteVersion)) {
         manifest[viteSection]!.vite = "^6.4.6";
-        runtimeFiles["package.json"] = JSON.stringify(manifest, null, 2) + "\\n";
+        runtimeFiles["package.json"] = JSON.stringify(manifest, null, 2) + "\n";
         for (const lockfile of ["package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock"]) {
           delete runtimeFiles[lockfile];
         }
         forceCleanInstall = true;
-        onOutput?.("\\r\\nVite 8/Rolldown detected. Using Vite 6 in the WebContainer runtime to avoid WASI memory exhaustion; your saved project files are unchanged.\\r\\n");
+        onOutput?.("\r\nVite 8/Rolldown detected. Using Vite 6 in the WebContainer runtime to avoid WASI memory exhaustion; your saved project files are unchanged.\r\n");
       }
     } catch {
       // The normal manifest validation below will show the actionable error.
