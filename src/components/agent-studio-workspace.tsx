@@ -282,6 +282,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   const openPreview = async () => {
     if (previewBooting) return;
     setPreviewBooting(true);
+    setTab("preview");
     setRuntimeOutput("");
     setPreviewUrl("");
     setPreviewPorts([]);
