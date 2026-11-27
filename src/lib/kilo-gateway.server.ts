@@ -72,20 +72,33 @@ async function callKilo(request: GatewayRequest): Promise<GatewayResponse> {
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(60000),
     });
-    if (response.status !== 429 || attempt === 2) break;
-    const retryAfter = Number(response.headers.get("retry-after") ?? "");
+    if (response.status !== 429) break;
+
+    // Read the provider's diagnostic before deciding whether a retry can help.
+    // A shared free-model IP quota is a hard stop: retrying from this same server
+    // only adds load and can make the cooldown worse.
+    const detail = (await response.text()).slice(0, 1200);
+    const hardQuota = /free.{0,30}models?.{0,40}(?:per\s+)?ip|(?:per\s+)?ip.{0,40}free.{0,30}models?|quota\s+(?:is\s+)?exhausted|daily\s+(?:request|token)\s+limit|insufficient\s+credits/i.test(detail);
+    if (hardQuota) {
+      console.warn("[Kilo Gateway] Hard free-tier quota response; skipping retries:", detail);
+      throw new Error("Kilo free-model shared IP quota is exhausted (HTTP 429). Normal chat and Agent Builder share this server IP, so retrying immediately will not help. Wait for the provider's quota window to reset.");
+    }
+    if (attempt === 2) {
+      console.error("[Kilo Gateway] HTTP 429 after temporary-rate-limit retries:", detail);
+      throw new Error("Kilo Gateway is temporarily rate-limiting requests (HTTP 429) after two retries. Wait briefly before trying again.");
+    }
+    const retryAfterHeader = response.headers.get("retry-after");
+    const retryAfter = retryAfterHeader ? Number(retryAfterHeader) : Number.NaN;
     const delayMs = Number.isFinite(retryAfter) && retryAfter > 0
       ? Math.min(retryAfter * 1000, 4000)
       : 750 * (attempt + 1);
-    console.warn("[Kilo Gateway] Rate limited; retrying after", delayMs, "ms (attempt", attempt + 1, "of 2).");
-    await response.body?.cancel().catch(() => undefined);
+    console.warn("[Kilo Gateway] Temporary 429; retrying after", delayMs, "ms (attempt", attempt + 1, "of 2).");
     await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
   if (!response) throw new Error("Kilo Gateway did not return a response.");
   if (!response.ok) {
     const detail = (await response.text()).slice(0, 1000);
     console.error("[Kilo Gateway] HTTP", response.status, detail);
-    if (response.status === 429) throw new Error("Kilo Gateway is rate-limiting requests (HTTP 429) after two retries. Wait briefly before trying again; repeated requests may extend the limit.");
     if (response.status >= 500) throw new Error("Kilo Gateway is temporarily unavailable (HTTP " + response.status + ").");
     throw new Error("Kilo Gateway request failed (HTTP " + response.status + "): " + detail);
   }
