@@ -801,7 +801,6 @@ export function ChrisAiChat({
             </span>
             <div>
               <p className="text-sm font-semibold">ExpertAI</p>
-              <p className="text-[11px] text-muted-foreground">Created by M.Chris.T</p>
               {!user && (
                 <p className="text-xs font-medium text-blue-300">{guestCredits} free messages</p>
               )}
