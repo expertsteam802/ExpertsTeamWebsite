@@ -422,9 +422,9 @@ export async function runAgent(
       "Project rules: if a .expertrules file is present in the supplied files, read it first and obey its valid project-specific conventions unless they conflict with security, platform policies, or the user request.\n" +
       "Smart Processing rules:\n" +
       "- Work in resumable batches of no more than " + maxFilesPerRound + " complete file(s) per response.\n" +
-      '- Return JSON: {"message":"...","commands":[{"tool":"read_file","path":"src/App.tsx"}],"files":{"path":"full file content"},"complete":false}.
-- Use the available list_files/read_file/search_files/write_file/delete_file commands for targeted repository operations. Review tool results from prior rounds before continuing.
-- If a command changes files, do not also return a duplicate full-file write unless needed to correct it.\n' +
+      '- Return JSON: {"message":"...","commands":[{"tool":"read_file","path":"src/App.tsx"}],"files":{"path":"full file content"},"complete":false}.\n' +
+      "- Use the available list_files/read_file/search_files/write_file/delete_file commands for targeted repository operations. Review tool results from prior rounds before continuing.\\n" +
+      "- If a command changes files, do not also return a duplicate full-file write unless needed to correct it.\\n" +
       "- Set complete:true only after all necessary files have been supplied across continuation rounds.\n" +
       "- Never intentionally truncate a file. Finish the current file, stop, and set complete:false if output budget is low.\n" +
       "- Do not repeat files already supplied unless fixing a specific inconsistency.\n" +
