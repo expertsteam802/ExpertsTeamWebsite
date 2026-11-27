@@ -136,7 +136,14 @@ async function callOpenApis(request: GatewayRequest): Promise<GatewayResponse> {
       throw new Error("OpenAPIs rejected the configured API key or model access (HTTP " + response.status + ").");
     }
     if (response.status === 429) throw new Error("OpenAPIs is temporarily busy (HTTP 429).");
-    if (response.status >= 500) throw new Error("OpenAPIs is temporarily unavailable (HTTP " + response.status + ").");
+    if (response.status >= 500) {
+      const statusLabel = response.statusText ? " " + response.statusText : "";
+      const diagnostic = detail.replace(/\\s+/g, " ").slice(0, 700);
+      throw new Error(
+        "OpenAPIs is temporarily unavailable (HTTP " + response.status + statusLabel + ")." +
+        (diagnostic ? " Upstream detail: " + diagnostic : " The upstream gateway returned no error details."),
+      );
+    }
     // Some OpenAI-compatible gateways reject max_completion_tokens. Retry once
     // with the widely supported max_tokens parameter before treating it as a failure.
     if (response.status === 400 && /max_completion_tokens|unsupported parameter/i.test(detail)) {
