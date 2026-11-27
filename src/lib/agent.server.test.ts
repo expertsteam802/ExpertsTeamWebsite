@@ -28,9 +28,9 @@ test("agent file tools list, read, search, write and delete project files", () =
   assert.equal(result.changedFiles["src/App.tsx"], "export default function App() { return <main>Updated</main>; }");
   assert.equal(result.changedFiles["README.md"], null);
   assert.equal(result.results.length, 5);
-  assert.match(result.results[0] ?? "", /src\\/App.tsx/);
+  assert.match(result.results[0] ?? "", /src\/App.tsx/);
   assert.match(result.results[1] ?? "", /Hello/);
-  assert.match(result.results[2] ?? "", /src\\/App.tsx/);
+  assert.match(result.results[2] ?? "", /src\/App.tsx/);
 });
 
 test("agent file tools refuse locked and sensitive files", () => {
