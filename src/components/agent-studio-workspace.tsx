@@ -247,7 +247,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
           modelTier: options.modelTier,
           framework: projectQuery.data?.project.framework as "nextjs" | "tanstack" | "vite" | "vue" | "sveltekit" | "node" | "html" | undefined,
           files,
-          history: nextHistory.slice(-8).map(({ role, content }) => ({ role, content: content.slice(-3000) })),
+          history: messages.slice(-8).map(({ role, content }) => ({ role, content: content.slice(-3000) })),
           ...(attachedImage ? { referenceImage: attachedImage } : {}),
         },
       });
