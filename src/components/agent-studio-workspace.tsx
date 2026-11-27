@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { loadProjectBinaryAssets, loadProjectFiles, saveProjectFiles } from "@/lib/project-files";
 import { getProjectPublicEnvironment, runCodingAgent } from "@/lib/agent.functions";
-import { getBrowserRuntime, openBrowserTerminal, startBrowserPreview, stopBrowserPreview, syncBrowserProject, watchBrowserProject, type BrowserPreviewPort } from "@/lib/browser-webcontainer";
+import { getBrowserRuntime, isGeneratedVitePreviewManifest, openBrowserTerminal, startBrowserPreview, stopBrowserPreview, syncBrowserProject, watchBrowserProject, type BrowserPreviewPort } from "@/lib/browser-webcontainer";
 import CodeMirror from "@uiw/react-codemirror";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { javascript } from "@codemirror/lang-javascript";
@@ -290,13 +290,9 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     try {
       const sourceFiles = { ...files };
       let addedStarterFiles = false;
-      if (!sourceFiles["package.json"]) {
-        sourceFiles["package.json"] = JSON.stringify({
-          private: true,
-          type: "module",
-          scripts: { dev: "vite --host 0.0.0.0" },
-          devDependencies: { vite: "^6.4.6" },
-        }, null, 2);
+      if (sourceFiles["index.html"] && isGeneratedVitePreviewManifest(sourceFiles["package.json"])) {
+        // Clean up the synthetic Vite manifest saved by older preview code.
+        delete sourceFiles["package.json"];
         addedStarterFiles = true;
       }
       if (!sourceFiles["index.html"]) {
