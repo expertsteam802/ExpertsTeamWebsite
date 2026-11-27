@@ -224,7 +224,7 @@ export async function generateExpertAiContent(
   options: { provider?: Provider; fallbackToKilo?: boolean } = {},
 ): Promise<GatewayResponse> {
   const activeRequest = compactSmartRequest(request);
-  const provider = options.provider ?? ((process.env["EXPERTS_AI_PROVIDER"] || "kilo").trim().toLowerCase() as Provider);
+  const provider = options.provider ?? "kilo";
   if (provider !== "kilo" && provider !== "openapis") {
     throw new Error("Unknown ExpertAI provider. Set EXPERTS_AI_PROVIDER to kilo or openapis.");
   }
