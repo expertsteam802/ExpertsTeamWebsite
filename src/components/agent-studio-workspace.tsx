@@ -50,7 +50,17 @@ function readMessages(value: unknown): ChatMessage[] {
   ).slice(-100);
 }
 
-const expertsEditorTheme = EditorView.theme({\n  "&": { backgroundColor: "#070B14", color: "#E2E8F0" },\n  ".cm-content": { caretColor: "#3B82F6" },\n  ".cm-cursor, .cm-dropCursor": { borderLeftColor: "#3B82F6" },\n  "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": { backgroundColor: "rgba(37,99,235,.25)" },\n  ".cm-gutters": { backgroundColor: "#0D1322", color: "#94A3B8", borderRight: "1px solid #1E293B" },\n  ".cm-activeLine": { backgroundColor: "rgba(37,99,235,.08)" },\n  ".cm-activeLineGutter": { backgroundColor: "rgba(37,99,235,.12)" },\n});\n\nfunction extensionLanguage(path: string) {
+const expertsEditorTheme = EditorView.theme({
+  "&": { backgroundColor: "#070B14", color: "#E2E8F0" },
+  ".cm-content": { caretColor: "#3B82F6" },
+  ".cm-cursor, .cm-dropCursor": { borderLeftColor: "#3B82F6" },
+  "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": { backgroundColor: "rgba(37,99,235,.25)" },
+  ".cm-gutters": { backgroundColor: "#0D1322", color: "#94A3B8", borderRight: "1px solid #1E293B" },
+  ".cm-activeLine": { backgroundColor: "rgba(37,99,235,.08)" },
+  ".cm-activeLineGutter": { backgroundColor: "rgba(37,99,235,.12)" },
+});
+
+function extensionLanguage(path: string) {
   const ext = path.split(".").pop()?.toLowerCase();
   if (ext === "html") return "html";
   if (ext === "css" || ext === "scss") return "css";
