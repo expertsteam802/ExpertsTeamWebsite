@@ -14,6 +14,7 @@ import { openBrowserTerminal, startBrowserPreview, stopBrowserPreview, syncBrows
 import CodeMirror from "@uiw/react-codemirror";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { Terminal } from "@xterm/xterm";
+import { BoltPreviewPanel } from "@/components/bolt-port/Preview";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 
@@ -374,26 +375,22 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
             </div>
           </div>
 
-          {tab === "preview" && <div className="flex min-h-0 flex-1 flex-col">
-            <div className="flex h-10 shrink-0 items-center gap-2 border-b border-white/[0.07] bg-[#101012] px-3">
-              <div className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#52525b]"/><span className="h-2 w-2 rounded-full bg-[#52525b]"/><span className="h-2 w-2 rounded-full bg-[#52525b]"/></div>
-              <div className="mx-auto flex h-7 min-w-0 max-w-[520px] flex-1 items-center justify-center rounded-md border border-white/[0.07] bg-[#19191c] px-3 text-[10px] text-[#777780]">
-                <span className="truncate">{previewUrl || "Preview URL will appear here when your app is running"}</span>
-              </div>
-              {previewPorts.length > 1 && <select aria-label="Preview port" value={selectedPreviewPort ?? ""} onChange={(event) => { const port = Number(event.target.value); const selected = previewPorts.find((item) => item.port === port); if (selected) { setSelectedPreviewPort(port); setPreviewUrl(selected.url); } }} className="h-7 max-w-20 rounded-md border border-white/10 bg-[#19191c] px-1.5 text-[10px] text-[#b4b4bc]">{previewPorts.filter((item) => item.ready).map((item) => <option key={item.port} value={item.port}>{item.port}</option>)}</select>}
-              {previewUrl && <a href={previewUrl} target="_blank" rel="noreferrer" title="Open preview in new tab" className="rounded-md px-2 py-1 text-[10px] text-[#a1a1aa] hover:bg-white/[0.06] hover:text-white">Open ↗</a>}
-            </div>
-            {previewUrl ? <iframe title="Project preview" src={previewUrl} className="min-h-0 flex-1 border-0 bg-white" allow="clipboard-read; clipboard-write; fullscreen"/> :
-              <div className="grid min-h-0 flex-1 place-items-center overflow-auto p-8 text-center">
-                <div className="max-w-[340px]">
-                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.035]"><Eye size={21} className="text-[#8b8b94]"/></div>
-                  <h2 className="text-[14px] font-medium text-[#e4e4e7]">Your app preview</h2>
-                  <p className="mt-2 text-[11px] leading-5 text-[#777780]">Start the development server to see your app running here. The preview uses your browser's WebContainer runtime.</p>
-                  {runtimeOutput && <pre className="mt-4 max-h-36 overflow-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-black/30 p-3 text-left text-[10px] leading-4 text-[#a1a1aa]">{runtimeOutput}</pre>}
-                  <Button type="button" onClick={() => void openPreview()} disabled={busy || paths.length===0} className="mt-5 h-8 gap-2 rounded-md bg-[#e5e5e5] px-4 text-[11px] text-black hover:bg-white"><Play size={12}/> Start preview</Button>
-                </div>
-              </div>}
-          </div>}
+          {tab === "preview" && <BoltPreviewPanel
+            previewUrl={previewUrl}
+            previewPorts={previewPorts}
+            selectedPreviewPort={selectedPreviewPort}
+            runtimeOutput={runtimeOutput}
+            busy={busy}
+            canRun={paths.length > 0}
+            onStart={() => void openPreview()}
+            onSelectPort={(port) => {
+              const selected = previewPorts.find((item) => item.port === port);
+              if (selected) {
+                setSelectedPreviewPort(port);
+                setPreviewUrl(selected.url);
+              }
+            }}
+          />}
 
           {tab === "code" && <div className="flex min-h-0 flex-1">
             <aside className="flex w-[220px] shrink-0 flex-col border-r border-white/[0.08] bg-[#101012] max-sm:w-[150px]">
