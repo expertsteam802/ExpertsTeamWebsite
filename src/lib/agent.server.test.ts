@@ -222,7 +222,7 @@ test("coding agent sends 8192 output tokens to ExpertAI and returns complete fil
 
   const result = await runAgent(input);
   assert.equal(model, "kilo-auto/free");
-  assert.equal(outputBudget, 8192);
+  assert.equal(outputBudget, 6144);
   assert.equal(result.files["index.html"], "<h1>Game</h1>");
 });
 
@@ -230,9 +230,9 @@ test("coding agent stops immediately when ExpertAI's IP quota is exhausted", asy
   let calls = 0;
   globalThis.fetch = (async () => {
     calls++;
-    return new Response("rate limit exceeded", { status: 429 });
+    return Response.json({ error: { message: "Rate limit exceeded for free models per IP address." } }, { status: 429 });
   }) as typeof fetch;
-  await assert.rejects(runAgent(input), /rate limit|temporarily busy/i);
+  await assert.rejects(runAgent(input), /shared IP quota is exhausted/i);
   assert.equal(calls, 1);
 });
 
