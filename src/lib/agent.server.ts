@@ -25,7 +25,7 @@ You build complete, production-quality browser apps and front-end products for E
 Priority: generate complete, working project code that can be published live and branded as ExpertsTeam.
 
 Your output must be a valid JSON object with this exact shape:
-{"message":"short summary of what you did","files":{"path":"full file content",...},"complete":true}
+{"message":"short summary","commands":[{"tool":"list_files","prefix":"src/"},{"tool":"read_file","path":"src/App.tsx"},{"tool":"search_files","query":"TODO"},{"tool":"write_file","path":"src/App.tsx","content":"full content"},{"tool":"delete_file","path":"old-file.ts"}],"files":{"path":"full file content",...},"complete":true}
 
 Rules:
 - Prefer modern, real-world app structure over tiny single-file demos when the request needs it.
@@ -43,6 +43,9 @@ Rules:
 - Preserve existing project features and visual identity unless the user explicitly asks to replace them. Do not remove unrelated routes, flows, settings, or data.
 - Before marking complete, check that all referenced imports, files, routes, dependencies and interactions are present and mutually consistent.
 - For React/Vite projects, ensure src/main.tsx imports an existing src/index.css (or update the import to the stylesheet that actually exists). Never create an entry file that imports a stylesheet you did not return. Include missing supporting files in later continuation rounds instead of leaving TODOs or placeholders.
+- You have project tools: list_files, read_file, search_files, write_file and delete_file. Use commands when you need to inspect or modify a specific file instead of guessing from partial context.
+- Commands are executed by the ExpertsTeam agent runtime and their results are returned to you in the next turn. You may issue several commands per turn. Use write_file/delete_file for targeted edits, then read_file to verify your changes.
+- Use files only inside the project. Never read or write secrets, environment files, credentials, lock metadata or paths outside the project.
 - Always include only files you created or changed; null values are allowed to delete files.
 - Use relative file paths like "src/App.tsx" or "src/index.css".
 - Keep the app visually polished, production-ready, and easy to run.
@@ -183,21 +186,45 @@ function recoverCompleteFiles(source: string): Record<string, string | null> {
   return recovered;
 }
 
+type AgentCommand =
+  | { tool: "list_files"; prefix?: string }
+  | { tool: "read_file"; path: string }
+  | { tool: "search_files"; query: string }
+  | { tool: "write_file"; path: string; content: string }
+  | { tool: "delete_file"; path: string };
+
 function parseAgentFiles(text: string): {
   message?: string;
   files: Record<string, string | null>;
+  commands: AgentCommand[];
   complete: boolean;
 } {
   try {
     const parsed = JSON.parse(text.trim()) as {
       message?: string;
       files?: Record<string, string | null>;
+      commands?: AgentCommand[];
       complete?: boolean;
     };
-    if (!parsed.files || typeof parsed.files !== "object" || Array.isArray(parsed.files)) {
-      return { files: recoverCompleteFiles(text), complete: false };
-    }
     const files: Record<string, string | null> = {};
+    const commands = Array.isArray(parsed.commands) ? parsed.commands.slice(0, 12) : [];
+    for (const command of commands) {
+      if (!command || typeof command !== "object" || !["list_files", "read_file", "search_files", "write_file", "delete_file"].includes(command.tool)) {
+        throw new Error("Invalid agent tool command.");
+      }
+      if ("path" in command && (!isSafeProjectPath(command.path) || isSensitiveProjectPath(command.path))) {
+        throw new Error("Invalid file path (unsafe or sensitive): " + command.path);
+      }
+      if (command.tool === "write_file" && (typeof command.content !== "string" || Buffer.byteLength(command.content, "utf8") > 2_000_000)) {
+        throw new Error("Invalid content for agent write_file command.");
+      }
+      if (command.tool === "search_files" && (typeof command.query !== "string" || !command.query.trim())) {
+        throw new Error("Invalid search query for agent search_files command.");
+      }
+    }
+    if (parsed.files !== undefined && (!parsed.files || typeof parsed.files !== "object" || Array.isArray(parsed.files))) {
+      return { files: recoverCompleteFiles(text), commands, complete: false };
+    }
     for (const [path, content] of Object.entries(parsed.files)) {
       if (!isSafeProjectPath(path) || isSensitiveProjectPath(path)) throw new Error("Invalid file path (unsafe or sensitive): " + path);
       if (typeof content !== "string" && content !== null)
@@ -207,13 +234,72 @@ function parseAgentFiles(text: string): {
     return {
       message: typeof parsed.message === "string" ? parsed.message : undefined,
       files,
+      commands,
       complete: parsed.complete === true,
     };
   } catch (error) {
     if (error instanceof Error && /Invalid.*file path|Invalid content/.test(error.message))
       throw error;
-    return { files: recoverCompleteFiles(text), complete: false };
+    return { files: recoverCompleteFiles(text), commands: [], complete: false };
   }
+}
+
+export function executeAgentCommands(
+  workspace: Record<string, string>,
+  commands: AgentCommand[],
+  lockedPaths: Set<string> = new Set(),
+): { changedFiles: Record<string, string | null>; results: string[] } {
+  const changedFiles: Record<string, string | null> = {};
+  const results: string[] = [];
+  const files = { ...workspace };
+  for (const command of commands.slice(0, 12)) {
+    if (command.tool === "list_files") {
+      const prefix = command.prefix?.replace(/\\/g, "/") ?? "";
+      const names = Object.keys(files).filter((name) => name.startsWith(prefix) && !isSensitiveProjectPath(name)).sort();
+      results.push("list_files " + (prefix || "(project)") + ":\\n" + names.slice(0, 500).join("\\n") + (names.length > 500 ? "\\n...more files omitted" : ""));
+      continue;
+    }
+    if (command.tool === "search_files") {
+      const query = command.query.toLowerCase();
+      const hits: string[] = [];
+      for (const [name, content] of Object.entries(files)) {
+        if (isSensitiveProjectPath(name)) continue;
+        const index = content.toLowerCase().indexOf(query);
+        if (index >= 0) hits.push(name + ": " + content.slice(Math.max(0, index - 100), Math.min(content.length, index + query.length + 180)).replace(/\\s+/g, " "));
+        if (hits.length >= 40) break;
+      }
+      results.push("search_files " + command.query + ":\\n" + (hits.join("\\n") || "No matches."));
+      continue;
+    }
+    const filePath = command.path;
+    if (!isSafeProjectPath(filePath) || isSensitiveProjectPath(filePath)) {
+      results.push(command.tool + " rejected unsafe path: " + filePath);
+      continue;
+    }
+    if (command.tool === "read_file") {
+      const content = files[filePath];
+      results.push(content === undefined ? "read_file: file not found: " + filePath : "read_file " + filePath + ":\\n" + content.slice(0, 18000));
+      continue;
+    }
+    if (lockedPaths.has(filePath)) {
+      results.push(command.tool + " blocked because the file is locked: " + filePath);
+      continue;
+    }
+    if (command.tool === "write_file") {
+      if (Buffer.byteLength(command.content, "utf8") > 2_000_000) {
+        results.push("write_file rejected because the file exceeds 2 MB: " + filePath);
+        continue;
+      }
+      files[filePath] = command.content;
+      changedFiles[filePath] = command.content;
+      results.push("write_file succeeded: " + filePath + " (" + Buffer.byteLength(command.content, "utf8") + " bytes)");
+      continue;
+    }
+    delete files[filePath];
+    changedFiles[filePath] = null;
+    results.push("delete_file succeeded: " + filePath);
+  }
+  return { changedFiles, results };
 }
 
 export async function runAgent(
@@ -293,6 +379,7 @@ export async function runAgent(
   ].join("\n\n");
   // The shared ExpertAI generator sends every request through the Kilo Gateway.
   const completedFiles: Record<string, string | null> = {};
+  const workingFiles: Record<string, string> = { ...files };
   const handoffNotes: string[] = [];
   const blockedLockedFiles = new Set<string>();
   let latestMessage = "The agent generated the requested project files.";
@@ -335,7 +422,9 @@ export async function runAgent(
       "Project rules: if a .expertrules file is present in the supplied files, read it first and obey its valid project-specific conventions unless they conflict with security, platform policies, or the user request.\n" +
       "Smart Processing rules:\n" +
       "- Work in resumable batches of no more than " + maxFilesPerRound + " complete file(s) per response.\n" +
-      '- Return JSON: {"message":"...","files":{"path":"full file content"},"complete":false}.\n' +
+      '- Return JSON: {"message":"...","commands":[{"tool":"read_file","path":"src/App.tsx"}],"files":{"path":"full file content"},"complete":false}.
+- Use the available list_files/read_file/search_files/write_file/delete_file commands for targeted repository operations. Review tool results from prior rounds before continuing.
+- If a command changes files, do not also return a duplicate full-file write unless needed to correct it.\n' +
       "- Set complete:true only after all necessary files have been supplied across continuation rounds.\n" +
       "- Never intentionally truncate a file. Finish the current file, stop, and set complete:false if output budget is low.\n" +
       "- Do not repeat files already supplied unless fixing a specific inconsistency.\n" +
@@ -386,7 +475,20 @@ export async function runAgent(
       const parsed = parseAgentFiles(responseText);
       for (const [path, content] of Object.entries(parsed.files)) {
         if (lockedFilePaths.has(path)) blockedLockedFiles.add(path);
-        else completedFiles[path] = content;
+        else {
+          completedFiles[path] = content;
+          if (content === null) delete workingFiles[path];
+          else workingFiles[path] = content;
+        }
+      }
+      if (parsed.commands.length) {
+        const commandResult = executeAgentCommands(workingFiles, parsed.commands, lockedFilePaths);
+        for (const [path, content] of Object.entries(commandResult.changedFiles)) {
+          completedFiles[path] = content;
+          if (content === null) delete workingFiles[path];
+          else workingFiles[path] = content;
+        }
+        handoffNotes.push("Tool execution results:\\n" + commandResult.results.join("\\n").slice(0, 10000));
       }
       if (parsed.message) {
         latestMessage = parsed.message;
@@ -407,8 +509,8 @@ export async function runAgent(
         maxFilesPerRound = 1;
         lastFailure =
           "A model reached its output limit; retrying with a single-file batch and the full output budget.";
-      } else if (!Object.keys(parsed.files).length) {
-        lastFailure = "A model returned incomplete file data; retrying with a smaller file batch.";
+      } else if (!Object.keys(parsed.files).length && !parsed.commands.length) {
+        lastFailure = "A model returned neither file changes nor tool commands; retrying with a smaller file batch.";
       }
     } catch (error) {
       if (error instanceof Error && /Invalid file path|Invalid content/.test(error.message)) {
