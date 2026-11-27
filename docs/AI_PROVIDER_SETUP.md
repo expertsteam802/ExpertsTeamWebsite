@@ -12,7 +12,6 @@ In Vercel:
 
    | Name | Value |
    |---|---|
-   | `EXPERTS_AI_PROVIDER` | `openapis` |
    | `OPENAPIS_API_KEY` | Your OpenAPIs API key |
    | `OPENAPIS_MODEL` | `gpt-5.4-mini` |
 
@@ -20,7 +19,7 @@ In Vercel:
 5. Go to **Deployments**, open the latest deployment for the `main` branch, and choose **Redeploy**. A deployment created before adding the variables will not automatically receive them.
 6. Wait until the deployment is **Ready**, open the live website, and test the regular ExpertAI chat (not Agent Builder) with: `Reply with the provider name and model configured for this request.`
 
-The normal ExpertAI chat route is pinned directly to OpenAPIs for this test, regardless of the shared provider setting. It sends a native OpenAI-compatible streaming request (`stream: true`) and adapts the streamed tokens to the existing ExpertsTeam chat response format. **Kilo fallback is intentionally disabled for normal chat**, so a failed OpenAPIs request will fail visibly rather than being served by Kilo. Agent Builder's own provider path remains unchanged.
+The normal ExpertAI chat route is pinned directly to OpenAPIs for this test. It sends a native OpenAI-compatible streaming request (`stream: true`) and adapts the streamed tokens to the existing ExpertsTeam chat response format. **Kilo fallback is intentionally disabled for normal chat**, so a failed OpenAPIs request will fail visibly rather than being served by Kilo. Other callers of the shared transport, including Agent Builder, default to Kilo unless they explicitly select another provider.
 
 ### API key warning
 
