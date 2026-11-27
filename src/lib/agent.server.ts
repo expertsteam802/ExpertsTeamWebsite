@@ -218,14 +218,14 @@ function parseAgentFiles(text: string): {
       if (command.tool === "write_file" && (typeof command.content !== "string" || Buffer.byteLength(command.content, "utf8") > 2_000_000)) {
         throw new Error("Invalid content for agent write_file command.");
       }
-      if (command.tool === "search_files" && (typeof command.query !== "string" || !command.query.trim())) {
+      if (command.tool === "search_files" && (typeof command.query !== "string" || !command.query.trim() || command.query.length > 300)) {
         throw new Error("Invalid search query for agent search_files command.");
       }
     }
     if (parsed.files !== undefined && (!parsed.files || typeof parsed.files !== "object" || Array.isArray(parsed.files))) {
       return { files: recoverCompleteFiles(text), commands, complete: false };
     }
-    for (const [path, content] of Object.entries(parsed.files)) {
+    for (const [path, content] of Object.entries(parsed.files ?? {})) {
       if (!isSafeProjectPath(path) || isSensitiveProjectPath(path)) throw new Error("Invalid file path (unsafe or sensitive): " + path);
       if (typeof content !== "string" && content !== null)
         throw new Error("Invalid content for " + path);
@@ -238,7 +238,7 @@ function parseAgentFiles(text: string): {
       complete: parsed.complete === true,
     };
   } catch (error) {
-    if (error instanceof Error && /Invalid.*file path|Invalid content/.test(error.message))
+    if (error instanceof Error && /Invalid.*file path|Invalid content|Invalid agent tool command/.test(error.message))
       throw error;
     return { files: recoverCompleteFiles(text), commands: [], complete: false };
   }
@@ -256,7 +256,7 @@ export function executeAgentCommands(
     if (command.tool === "list_files") {
       const prefix = command.prefix?.replace(/\\/g, "/") ?? "";
       const names = Object.keys(files).filter((name) => name.startsWith(prefix) && !isSensitiveProjectPath(name)).sort();
-      results.push("list_files " + (prefix || "(project)") + ":\\n" + names.slice(0, 500).join("\\n") + (names.length > 500 ? "\\n...more files omitted" : ""));
+      results.push("list_files " + (prefix || "(project)") + ":\n" + names.slice(0, 500).join("\n") + (names.length > 500 ? "\\n...more files omitted" : ""));
       continue;
     }
     if (command.tool === "search_files") {
@@ -265,7 +265,7 @@ export function executeAgentCommands(
       for (const [name, content] of Object.entries(files)) {
         if (isSensitiveProjectPath(name)) continue;
         const index = content.toLowerCase().indexOf(query);
-        if (index >= 0) hits.push(name + ": " + content.slice(Math.max(0, index - 100), Math.min(content.length, index + query.length + 180)).replace(/\\s+/g, " "));
+        if (index >= 0) hits.push(name + ": " + content.slice(Math.max(0, index - 100), Math.min(content.length, index + query.length + 180)).replace(/\s+/g, " "));
         if (hits.length >= 40) break;
       }
       results.push("search_files " + command.query + ":\\n" + (hits.join("\\n") || "No matches."));
