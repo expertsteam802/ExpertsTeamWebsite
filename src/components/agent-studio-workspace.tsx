@@ -67,7 +67,6 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   const [activePath, setActivePath] = useState("");
   const [tab, setTab] = useState<WorkbenchTab>("preview");
   const [busy, setBusy] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [filesReady, setFilesReady] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"loading" | "saving" | "saved" | "error">("loading");
   const [previewBooting, setPreviewBooting] = useState(false);
@@ -126,7 +125,6 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   useEffect(() => {
     if (!user || !projectQuery.data || !filesReady || hydratedRef.current !== `${projectId}:${projectQuery.data.project.updated_at}`) return;
     const timer = window.setTimeout(async () => {
-      setSaving(true);
       setSaveStatus("saving");
       try {
         await saveProjectFiles(projectId, user.id, files);
@@ -136,7 +134,6 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
         setSaveStatus("error");
         toast.error("Could not save your latest code changes.");
       } finally {
-        setSaving(false);
       }
     }, 900);
     return () => window.clearTimeout(timer);
@@ -422,7 +419,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
         <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#0b0b0c]">
           <div className="flex h-11 shrink-0 items-center justify-between border-b border-[#1E293B] bg-[#0D1322] px-3">
             <div className="flex h-full items-stretch gap-1">
-              {([{id:"code",label:"Code",icon:Code2},{id:"preview",label:"Preview",icon:Eye}] as const).map((item) => { const Icon=item.icon; return <button key={item.id} type="button" onClick={() => setTab(item.id)} className={`inline-flex items-center gap-2 border-b-2 px-3 text-[11px] transition ${tab===item.id?"border-white text-white":"border-transparent text-[#94A3B8] hover:text-[#d4d4d8]"}`}><Icon size={13}/>{item.label}</button>; })}
+              {([{id:"code",label:"Code",icon:Code2},{id:"preview",label:"Preview",icon:Eye}] as const).map((item) => { const Icon=item.icon; return <button key={item.id} type="button" onClick={() => setTab(item.id)} className={`inline-flex items-center gap-2 border-b-2 px-3 text-[11px] transition ${tab===item.id?"border-[#2563EB] text-[#93C5FD]":"border-transparent text-[#94A3B8] hover:text-[#E2E8F0]"}`}><Icon size={13}/>{item.label}</button>; })}
             </div>
             <div className="flex items-center gap-2">
               <span className="hidden text-[10px] text-[#94A3B8] sm:inline">{runtimeReady ? "Browser runtime ready" : "Local browser runtime"}</span>
@@ -460,7 +457,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
                 </div>
               </aside>
               <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] bg-[#0D1322] px-3"><span className="flex min-w-0 items-center gap-2 truncate text-[11px] text-[#b4b4bc]">{activePath ? <><FileCode2 size={13} className="shrink-0 text-[#60A5FA]"/><span className="truncate">{activePath}</span></> : "Select a file"}</span><span className="flex items-center gap-1.5 text-[10px] text-[#777780]"><Save size={11}/>{saveStatus === "saved" ? "✓ Saved" : saveStatus === "saving" ? "Saving changes…" : "Save failed"}</span></div>
+                <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] bg-[#0D1322] px-3"><span className="flex min-w-0 items-center gap-2 truncate text-[11px] text-[#b4b4bc]">{activePath ? <><FileCode2 size={13} className="shrink-0 text-[#60A5FA]"/><span className="truncate">{activePath}</span></> : "Select a file"}</span><span className={`flex items-center gap-1.5 text-[10px] ${saveStatus === "saved" ? "text-[#10B981]" : saveStatus === "error" ? "text-rose-300" : "text-[#CBD5E1]"}`}><Save size={11}/>{saveStatus === "saved" ? "✓ Saved" : saveStatus === "saving" ? "Saving changes…" : "Save failed"}</span></div>
                 {activePath ? <div className="min-h-0 flex-1 overflow-hidden"><CodeMirror value={activeContent} height="100%" theme={oneDark} extensions={[editorLanguage(activePath)]} onChange={(value) => setFiles(current => ({...current,[activePath]:value}))} basicSetup={{ lineNumbers:true, foldGutter:true, highlightActiveLine:true, highlightActiveLineGutter:true, bracketMatching:true, closeBrackets:true, autocompletion:true, indentOnInput:true }} /></div> : <div className="grid flex-1 place-items-center text-[11px] text-[#71717a]">Select a file from the explorer</div>}
               </div>
             </div>
