@@ -59,20 +59,33 @@ function isRetryableOpenApisFailure(error: unknown): boolean {
 }
 
 async function callKilo(request: GatewayRequest): Promise<GatewayResponse> {
-  const response = await fetch(KILO_GATEWAY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: DEFAULT_KILO_MODEL,
-      messages: toMessages(request),
-      max_tokens: Math.min(request.generationConfig?.maxOutputTokens ?? 4096, 16384),
-    }),
-    signal: AbortSignal.timeout(60000),
-  });
+  const payload = {
+    model: DEFAULT_KILO_MODEL,
+    messages: toMessages(request),
+    max_tokens: Math.min(request.generationConfig?.maxOutputTokens ?? 4096, 16384),
+  };
+  let response: Response | null = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    response = await fetch(KILO_GATEWAY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(60000),
+    });
+    if (response.status !== 429 || attempt === 2) break;
+    const retryAfter = Number(response.headers.get("retry-after") ?? "");
+    const delayMs = Number.isFinite(retryAfter) && retryAfter > 0
+      ? Math.min(retryAfter * 1000, 4000)
+      : 750 * (attempt + 1);
+    console.warn("[Kilo Gateway] Rate limited; retrying after", delayMs, "ms (attempt", attempt + 1, "of 2).");
+    await response.body?.cancel().catch(() => undefined);
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  if (!response) throw new Error("Kilo Gateway did not return a response.");
   if (!response.ok) {
     const detail = (await response.text()).slice(0, 1000);
     console.error("[Kilo Gateway] HTTP", response.status, detail);
-    if (response.status === 429) throw new Error("Kilo Gateway is temporarily busy (HTTP 429). Please retry shortly.");
+    if (response.status === 429) throw new Error("Kilo Gateway is rate-limiting requests (HTTP 429) after two retries. Wait briefly before trying again; repeated requests may extend the limit.");
     if (response.status >= 500) throw new Error("Kilo Gateway is temporarily unavailable (HTTP " + response.status + ").");
     throw new Error("Kilo Gateway request failed (HTTP " + response.status + "): " + detail);
   }
