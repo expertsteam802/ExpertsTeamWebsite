@@ -361,7 +361,7 @@ export async function runAgent(
     .sort((a, b) => b.score - a.score);
 
   const selected: Array<{ name: string; content: string }> = [];
-  let remainingCharacters = 36000;
+  let remainingCharacters = 28000;
   for (const entry of rankedEntries) {
     if (remainingCharacters <= 0 || selected.length >= 32) break;
     const content = entry.content.slice(0, Math.min(entry.content.length, remainingCharacters));
@@ -384,9 +384,9 @@ export async function runAgent(
   const blockedLockedFiles = new Set<string>();
   let latestMessage = "The agent generated the requested project files.";
   let lastFailure = "";
-  const agentOutputBudget = 8192;
-  let maxFilesPerRound = 3;
-  const maxRounds = 16;
+  const agentOutputBudget = modelTier === "architect" ? 7168 : 6144;
+  let maxFilesPerRound = 4;
+  const maxRounds = 10;
 
   for (let round = 0; round < maxRounds; round++) {
     const existingNames = Object.keys(completedFiles);
@@ -408,7 +408,7 @@ export async function runAgent(
             "Already completed files: " + (existingNames.join(", ") || "(none)") + ".",
             "Expert handoff summaries: " + (handoffNotes.slice(-4).join(" | ") || "(first expert round)") + ".",
             "ORIGINAL PROJECT CONTEXT (preserve this architecture and existing behavior):\n" + fileDump,
-            "Keep this response small: return at most " + maxFilesPerRound + " complete file(s). If more remain, set complete:false. Set complete:true only when the requested app/change is fully implemented.",
+            "Keep this response focused: return at most " + maxFilesPerRound + " complete file(s). Avoid repeating project source that is already present in the handoff. If more remain, set complete:false. Set complete:true only when the requested app/change is fully implemented.",
             "If a previous response was truncated, regenerate the missing file from scratch. Never return half a file as completed.",
             "Previously generated files (authoritative current implementation; inspect imports and contracts before adding more):",
             ...Object.entries(completedFiles).map(
