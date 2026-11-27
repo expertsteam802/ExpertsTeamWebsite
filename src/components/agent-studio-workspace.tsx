@@ -26,7 +26,7 @@ import "@xterm/xterm/css/xterm.css";
 
 type ChatMessage = { role: "user" | "assistant"; content: string; createdAt?: string };
 type ProjectFiles = Record<string, string>;
-type WorkbenchTab = "preview" | "code" | "terminal";
+type WorkbenchTab = "preview" | "code";
 
 function editorLanguage(path: string) {
   const extension = path.split(".").pop()?.toLowerCase();
@@ -77,6 +77,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   const [runtimeOutput, setRuntimeOutput] = useState("");
   const [runtimeReady, setRuntimeReady] = useState(false);
   const [terminalConnected, setTerminalConnected] = useState(false);
+  const [terminalOpen, setTerminalOpen] = useState(false);
   const hydratedRef = useRef("");
 
   useEffect(() => () => {
@@ -283,8 +284,13 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   };
 
   const openTerminal = async () => {
+    if (terminalOpen) {
+      setTerminalOpen(false);
+      return;
+    }
     if (terminalConnected) {
-      setTab("terminal");
+      setTerminalOpen(true);
+      setTab("code");
       return;
     }
     setBusy(true);
@@ -294,14 +300,15 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       runtimeActiveRef.current = true;
       setRuntimeReady(true);
       setTerminalConnected(true);
-      setTab("terminal");
+      setTerminalOpen(true);
+      setTab("code");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not open the browser terminal.");
     } finally { setBusy(false); }
   };
 
   useEffect(() => {
-    if (!terminalConnected || !terminalHost.current) return;
+    if (!terminalConnected || !terminalOpen || !terminalHost.current) return;
     const terminal = new Terminal({ cursorBlink: true, convertEol: true, fontSize: 12, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", theme: { background: "#080b12", foreground: "#dbeafe", cursor: "#60a5fa" } });
     const fit = new FitAddon();
     terminal.loadAddon(fit);
@@ -331,7 +338,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       terminal.dispose();
       terminalRef.current = null;
     };
-  }, [terminalConnected]);
+  }, [terminalConnected, terminalOpen]);
 
   if (authLoading) return <main className="grid h-screen place-items-center bg-[#080b12] text-sm text-slate-400">Restoring your session…</main>;
   if (!user) return <main className="grid h-screen place-items-center bg-[#080b12] text-slate-300"><a href="/auth" className="underline">Sign in to open this project</a></main>;
@@ -368,11 +375,11 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
         <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#0b0b0c]">
           <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#111113] px-3">
             <div className="flex h-full items-stretch gap-1">
-              {([{id:"preview",label:"Preview",icon:Eye},{id:"code",label:"Code",icon:Code2},{id:"terminal",label:"Terminal",icon:TerminalSquare}] as const).map((item) => { const Icon=item.icon; return <button key={item.id} type="button" onClick={() => setTab(item.id)} className={`inline-flex items-center gap-2 border-b-2 px-3 text-[11px] transition ${tab===item.id?"border-white text-white":"border-transparent text-[#777780] hover:text-[#d4d4d8]"}`}><Icon size={13}/>{item.label}</button>; })}
+              {([{id:"code",label:"Code",icon:Code2},{id:"preview",label:"Preview",icon:Eye}] as const).map((item) => { const Icon=item.icon; return <button key={item.id} type="button" onClick={() => setTab(item.id)} className={`inline-flex items-center gap-2 border-b-2 px-3 text-[11px] transition ${tab===item.id?"border-white text-white":"border-transparent text-[#777780] hover:text-[#d4d4d8]"}`}><Icon size={13}/>{item.label}</button>; })}
             </div>
             <div className="flex items-center gap-2">
               <span className="hidden text-[10px] text-[#71717a] sm:inline">{runtimeReady ? "Browser runtime ready" : "Local browser runtime"}</span>
-              <Button type="button" size="sm" variant="outline" onClick={() => void openTerminal()} disabled={busy} className="h-7 gap-1.5 rounded-md border-white/10 bg-transparent px-2.5 text-[10px] text-[#b4b4bc] hover:bg-white/[0.06] hover:text-white"><SquareTerminal size={12}/> Connect terminal</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => void openTerminal()} disabled={busy} className="h-7 gap-1.5 rounded-md border-white/10 bg-transparent px-2.5 text-[10px] text-[#b4b4bc] hover:bg-white/[0.06] hover:text-white"><SquareTerminal size={12}/>{terminalOpen ? "Hide terminal" : terminalConnected ? "Show terminal" : "Terminal"}</Button>
             </div>
           </div>
 
@@ -393,23 +400,25 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
             }}
           />}
 
-          {tab === "code" && <div className="flex min-h-0 flex-1">
-            <aside className="flex w-[220px] shrink-0 flex-col border-r border-white/[0.08] bg-[#101012] max-sm:w-[150px]">
-              <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.06] px-3"><span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#85858d]">Files</span><span className="text-[10px] text-[#66666e]">{paths.length}</span></div>
-              <div className="min-h-0 flex-1 overflow-y-auto p-2">
-                <BoltFileTree paths={paths} selectedPath={activePath} onSelect={setActivePath}/>
+          {tab === "code" && <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex min-h-0 flex-1">
+              <aside className="flex w-[220px] shrink-0 flex-col border-r border-white/[0.08] bg-[#101012] max-sm:w-[150px]">
+                <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.06] px-3"><span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#85858d]">Files</span><span className="text-[10px] text-[#66666e]">{paths.length}</span></div>
+                <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                  <BoltFileTree paths={paths} selectedPath={activePath} onSelect={setActivePath}/>
+                </div>
+              </aside>
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] bg-[#111113] px-3"><span className="flex min-w-0 items-center gap-2 truncate text-[11px] text-[#b4b4bc]">{activePath ? <><FileCode2 size={13} className="shrink-0 text-sky-300"/><span className="truncate">{activePath}</span></> : "Select a file"}</span><span className="flex items-center gap-1.5 text-[10px] text-[#777780]"><Save size={11}/>{saving ? "Saving…" : "Auto-saved"}</span></div>
+                {activePath ? <div className="min-h-0 flex-1 overflow-hidden"><CodeMirror value={activeContent} height="100%" theme={oneDark} extensions={[editorLanguage(activePath)]} onChange={(value) => setFiles(current => ({...current,[activePath]:value}))} basicSetup={{ lineNumbers:true, foldGutter:true, highlightActiveLine:true, highlightActiveLineGutter:true, bracketMatching:true, closeBrackets:true, autocompletion:true, indentOnInput:true }} /></div> : <div className="grid flex-1 place-items-center text-[11px] text-[#71717a]">Select a file from the explorer</div>}
               </div>
-            </aside>
-            <div className="flex min-w-0 flex-1 flex-col">
-              <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] bg-[#111113] px-3"><span className="flex min-w-0 items-center gap-2 truncate text-[11px] text-[#b4b4bc]">{activePath ? <><FileCode2 size={13} className="shrink-0 text-sky-300"/><span className="truncate">{activePath}</span></> : "Select a file"}</span><span className="flex items-center gap-1.5 text-[10px] text-[#777780]"><Save size={11}/>{saving ? "Saving…" : "Auto-saved"}</span></div>
-              {activePath ? <div className="min-h-0 flex-1 overflow-hidden"><CodeMirror value={activeContent} height="100%" theme={oneDark} extensions={[editorLanguage(activePath)]} onChange={(value) => setFiles(current => ({...current,[activePath]:value}))} basicSetup={{ lineNumbers:true, foldGutter:true, highlightActiveLine:true, highlightActiveLineGutter:true, bracketMatching:true, closeBrackets:true, autocompletion:true, indentOnInput:true }} /></div> : <div className="grid flex-1 place-items-center text-[11px] text-[#71717a]">Select a file from the explorer</div>}
             </div>
+            {terminalOpen && <div className="flex h-[30%] min-h-[150px] shrink-0 flex-col border-t border-white/[0.09] bg-[#09090b]">
+              <div className="flex h-8 shrink-0 items-center justify-between border-b border-white/[0.07] px-3 text-[10px] text-[#85858d]"><span className="flex items-center gap-2"><TerminalSquare size={12}/> Terminal</span><span>Browser WebContainer</span></div>
+              <div ref={terminalHost} className="min-h-0 flex-1 overflow-hidden p-2"/>
+            </div>}
           </div>}
 
-          <div className={`min-h-0 flex-1 flex-col ${tab === "terminal" ? "flex" : "hidden"}`}>
-            <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] px-3 text-[10px] text-[#85858d]"><span className="flex items-center gap-2"><TerminalSquare size={13}/> Terminal</span><span>{terminalConnected ? "Connected · WebContainer" : "Not connected"}</span></div>
-            <div ref={terminalHost} className="min-h-0 flex-1 overflow-hidden bg-[#0b0b0c] p-3"/>
-          </div>
         </section>
       </div>
     </main>
