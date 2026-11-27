@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Bot, Code2, Eye, LoaderCircle, Play, Send, SquareTerminal, TerminalSquare } from "lucide-react";
+import { ArrowLeft, Code2, Eye, LoaderCircle, Play, SquareTerminal, TerminalSquare } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,6 +15,7 @@ import CodeMirror from "@uiw/react-codemirror";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { Terminal } from "@xterm/xterm";
 import { BoltFileTree } from "@/components/bolt-port/FileTree";
+import { BoltChatPanel } from "@/components/bolt-port/Chat";
 import { BoltPreviewPanel } from "@/components/bolt-port/Preview";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
@@ -340,30 +341,14 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <aside className="flex min-h-0 w-full max-w-[420px] shrink-0 flex-col border-r border-white/[0.08] bg-[#111113] max-md:max-w-[48%] max-sm:max-w-[54%]">
-          <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/[0.07] px-4">
-            <div className="flex items-center gap-2 text-[12px] font-medium text-[#e4e4e7]"><Bot size={15} className="text-cyan-300"/> Chat</div>
-            <span className="text-[10px] text-[#71717a]">ExpertsTeam Agent</span>
-          </div>
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5">
-            {messages.length === 0 && <div className="mx-auto mt-8 max-w-[280px] text-center"><div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04]"><Bot size={20} className="text-[#a1a1aa]"/></div><h2 className="text-[15px] font-medium text-[#e4e4e7]">What should we build?</h2><p className="mt-2 text-[12px] leading-5 text-[#85858d]">Describe your app or the change you want. The agent will work directly in this project and you can preview the result beside the chat.</p></div>}
-            {messages.map((message, index) => <article key={index} className={message.role === "user" ? "ml-5 rounded-xl bg-[#202024] px-3.5 py-3" : "mr-1 px-1 py-2"}>
-              <div className="mb-2 flex items-center gap-2 text-[10px] font-medium text-[#8b8b94]">{message.role === "user" ? "You" : <><Bot size={12} className="text-cyan-300"/> ExpertsTeam</>}</div>
-              <p className="whitespace-pre-wrap break-words text-[12px] leading-[1.65] text-[#dedee2]">{message.content}</p>
-            </article>)}
-            {busy && <div className="flex items-center gap-2 rounded-lg px-2 py-2 text-[11px] text-[#a1a1aa]"><LoaderCircle size={14} className="animate-spin"/> Working on your project…</div>}
-          </div>
-          <form className="shrink-0 border-t border-white/[0.07] p-3" onSubmit={(event) => { event.preventDefault(); void sendMessage(); }}>
-            <div className="rounded-xl border border-white/[0.12] bg-[#19191c] p-2 shadow-[0_8px_30px_rgba(0,0,0,0.22)] focus-within:border-white/25">
-              <Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="Ask ExpertsTeam to build anything…" rows={4} className="min-h-[88px] resize-none border-0 bg-transparent px-1 py-1 text-[12px] leading-5 text-white shadow-none placeholder:text-[#686870] focus-visible:ring-0"/>
-              <div className="flex items-center justify-between px-1 pt-1">
-                <span className="text-[10px] text-[#777780]">Kilo · Free model</span>
-                <Button type="submit" size="sm" disabled={!prompt.trim() || busy} className="h-7 gap-1.5 rounded-lg bg-[#e5e5e5] px-3 text-[11px] text-black hover:bg-white disabled:opacity-40"><Send size={12}/> Send</Button>
-              </div>
-            </div>
-            <p className="mt-2 text-center text-[9px] text-[#62626a]">AI can make mistakes. Review generated changes before publishing.</p>
-          </form>
-        </aside>
+        <BoltChatPanel
+          projectName={projectQuery.data.project.name}
+          messages={messages}
+          prompt={prompt}
+          busy={busy}
+          onPromptChange={setPrompt}
+          onSend={() => void sendMessage()}
+        />
 
         <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#0b0b0c]">
           <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#111113] px-3">
