@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { MonacoEditor } from "@/components/monaco-editor";
 import type { ProjectFiles } from "@/lib/sandbox";
 import { loadProjectBinaryAssets, loadProjectFiles, saveProjectFiles } from "@/lib/project-files";
-import { startBrowserPreview, stopBrowserPreview } from "@/lib/browser-webcontainer";
+import { isGeneratedVitePreviewManifest, startBrowserPreview, stopBrowserPreview } from "@/lib/browser-webcontainer";
 import { getProjectPublicEnvironment } from "@/lib/agent.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -179,13 +179,9 @@ export function AgentCodeEditor({ projectId }: { projectId: string }) {
     setPreviewBusy(true);
     try {
       const previewFiles = { ...files };
-      if (!previewFiles["package.json"]) {
-        previewFiles["package.json"] = JSON.stringify({
-          private: true,
-          type: "module",
-          scripts: { dev: "vite --host 0.0.0.0" },
-          devDependencies: { vite: "^6.4.6" },
-        }, null, 2);
+      if (previewFiles["index.html"] && isGeneratedVitePreviewManifest(previewFiles["package.json"])) {
+        // Remove the synthetic Vite manifest created by older preview code.
+        delete previewFiles["package.json"];
       }
       if (!previewFiles["index.html"]) {
         previewFiles["index.html"] = '<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ExpertsTeam Preview</title></head><body><h1>Project preview</h1></body></html>';
