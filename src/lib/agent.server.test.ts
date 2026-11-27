@@ -44,9 +44,10 @@ test("agent file tools refuse locked and sensitive files", () => {
   );
   assert.equal(result.changedFiles["src/App.tsx"], undefined);
   assert.match(result.results[0] ?? "", /locked/);
-  assert.throws(() => executeAgentCommands({}, [
+  const unsafe = executeAgentCommands({}, [
     { tool: "write_file", path: "../outside.ts", content: "unsafe" },
-  ]), /unsafe path|invalid file path/i);
+  ]);
+  assert.match(unsafe.results[0] ?? "", /unsafe path/i);
 });
 
 test("agent repairs a missing stylesheet import by reusing style.css", () => {
