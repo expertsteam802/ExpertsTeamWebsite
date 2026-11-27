@@ -41,6 +41,26 @@ function editorLanguage(path: string) {
   return javascript();
 }
 
+const VISUAL_INSPECTOR_SCRIPT = String.raw`<script id="experts-visual-inspector">(()=>{let active=false;let hovered=null;const outline=(el)=>{if(hovered&&hovered!==el)hovered.style.outline=hovered.dataset.expertsOldOutline||"";hovered=el;if(el){if(el.dataset.expertsOldOutline===undefined)el.dataset.expertsOldOutline=el.style.outline;el.style.outline="2px solid #2563EB";}};window.addEventListener("message",e=>{if(e.data?.type==="experts:visual-edit"){active=!!e.data.enabled;document.documentElement.style.cursor=active?"crosshair":"";if(!active)outline(null);}});document.addEventListener("pointerover",e=>{if(active&&e.target instanceof HTMLElement)outline(e.target);},true);document.addEventListener("click",e=>{if(!active)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();const el=e.target instanceof HTMLElement?e.target:null;if(!el)return;const parts=[];let node=el;while(node&&node!==document.body&&parts.length<4){let selector=node.tagName.toLowerCase();if(node.id)selector+="#"+node.id;else if(node.classList.length)selector+="."+Array.from(node.classList).slice(0,2).join(".");parts.unshift(selector);node=node.parentElement;}const detail="Selector: "+parts.join(" > ")+"\nElement: "+el.outerHTML.slice(0,1800);parent.postMessage({type:"experts:element-selected",detail},"*");active=false;document.documentElement.style.cursor="";outline(null);},true);})();</script>`;
+
+function stripVisualInspector(html: string) {
+  const start = html.indexOf('<script id="experts-visual-inspector">');
+  if (start < 0) return html;
+  const end = html.indexOf("</script>", start);
+  return end < 0 ? html : html.slice(0, start) + html.slice(end + 9);
+}
+
+function withVisualInspector(files: Record<string, string | Uint8Array>) {
+  const previewFiles = { ...files };
+  const html = previewFiles["index.html"];
+  if (typeof html !== "string" || html.includes("experts-visual-inspector")) return previewFiles;
+  const closingBody = html.toLowerCase().lastIndexOf("</body>");
+  previewFiles["index.html"] = closingBody >= 0
+    ? html.slice(0, closingBody) + VISUAL_INSPECTOR_SCRIPT + html.slice(closingBody)
+    : html + VISUAL_INSPECTOR_SCRIPT;
+  return previewFiles;
+}
+
 function readMessages(value: unknown): ChatMessage[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is ChatMessage =>
@@ -162,7 +182,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   useEffect(() => {
     if (!runtimeActiveRef.current) return;
     const timer = window.setTimeout(() => {
-      void syncBrowserProject(projectId, { ...files, ...binaryAssets }).catch((error) => {
+      void syncBrowserProject(projectId, withVisualInspector({ ...files, ...binaryAssets })).catch((error) => {
         console.error("[Agent Studio] Browser runtime file sync failed:", error);
         toast.error("Could not sync the latest files to the browser preview.");
       });
@@ -176,15 +196,16 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     let closeWatcher: (() => void) | null = null;
     void watchBrowserProject((path, contents) => {
       if (disposed) return;
+      const sourceContents = path === "index.html" && contents !== null ? stripVisualInspector(contents) : contents;
       setFiles((current) => {
-        if (contents === null) {
+        if (sourceContents === null) {
           if (!(path in current)) return current;
           const next = { ...current };
           delete next[path];
           return next;
         }
-        if (current[path] === contents) return current;
-        return { ...current, [path]: contents };
+        if (current[path] === sourceContents) return current;
+        return { ...current, [path]: sourceContents };
       });
     }).then((close) => {
       if (disposed) close();
@@ -266,25 +287,27 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     setPreviewPorts([]);
     setSelectedPreviewPort(null);
     try {
-      const previewFiles = { ...files };
-      if (!previewFiles["package.json"]) {
-        previewFiles["package.json"] = JSON.stringify({
+      const sourceFiles = { ...files };
+      let addedStarterFiles = false;
+      if (!sourceFiles["package.json"]) {
+        sourceFiles["package.json"] = JSON.stringify({
           private: true,
           type: "module",
           scripts: { dev: "vite --host 0.0.0.0" },
           devDependencies: { vite: "^6.4.6" },
         }, null, 2);
+        addedStarterFiles = true;
       }
-      if (!previewFiles["index.html"]) {
-        previewFiles["index.html"] = '<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ExpertsTeam Preview</title></head><body><h1>Project preview</h1></body></html>';
+      if (!sourceFiles["index.html"]) {
+        sourceFiles["index.html"] = '<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ExpertsTeam Preview</title></head><body><h1>Project preview</h1></body></html>';
+        addedStarterFiles = true;
       }
-      if (!previewFiles["index.html"].includes("experts-visual-inspector")) {
-        previewFiles["index.html"] = previewFiles["index.html"].replace("</body>", "<script id=\"experts-visual-inspector\">(()=>{let active=false;let hovered=null;const outline=(el)=>{if(hovered&&hovered!==el)hovered.style.outline=hovered.dataset.expertsOldOutline||\"\";hovered=el;if(el){if(el.dataset.expertsOldOutline===undefined)el.dataset.expertsOldOutline=el.style.outline;el.style.outline=\"2px solid #2563EB\";}};window.addEventListener(\"message\",e=>{if(e.data?.type===\"experts:visual-edit\"){active=!!e.data.enabled;document.documentElement.style.cursor=active?\"crosshair\":\"\";if(!active)outline(null);}});document.addEventListener(\"pointerover\",e=>{if(active&&e.target instanceof HTMLElement)outline(e.target);},true);document.addEventListener(\"click\",e=>{if(!active)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();const el=e.target instanceof HTMLElement?e.target:null;if(!el)return;const parts=[];let node=el;while(node&&node!==document.body&&parts.length<4){let selector=node.tagName.toLowerCase();if(node.id)selector+=\"#\"+node.id;else if(node.classList.length)selector+=\".\"+Array.from(node.classList).slice(0,2).join(\".\");parts.unshift(selector);node=node.parentElement;}const detail=\"Selector: \"+parts.join(\" > \")+\"\\\\nElement: \"+el.outerHTML.slice(0,1800);parent.postMessage({type:\"experts:element-selected\",detail},\"*\");active=false;document.documentElement.style.cursor=\"\";outline(null);},true);})();</script>" + "</body>");
-        if (!previewFiles["index.html"].includes("experts-visual-inspector")) previewFiles["index.html"] += "<script id=\"experts-visual-inspector\">(()=>{let active=false;let hovered=null;const outline=(el)=>{if(hovered&&hovered!==el)hovered.style.outline=hovered.dataset.expertsOldOutline||\"\";hovered=el;if(el){if(el.dataset.expertsOldOutline===undefined)el.dataset.expertsOldOutline=el.style.outline;el.style.outline=\"2px solid #2563EB\";}};window.addEventListener(\"message\",e=>{if(e.data?.type===\"experts:visual-edit\"){active=!!e.data.enabled;document.documentElement.style.cursor=active?\"crosshair\":\"\";if(!active)outline(null);}});document.addEventListener(\"pointerover\",e=>{if(active&&e.target instanceof HTMLElement)outline(e.target);},true);document.addEventListener(\"click\",e=>{if(!active)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();const el=e.target instanceof HTMLElement?e.target:null;if(!el)return;const parts=[];let node=el;while(node&&node!==document.body&&parts.length<4){let selector=node.tagName.toLowerCase();if(node.id)selector+=\"#\"+node.id;else if(node.classList.length)selector+=\".\"+Array.from(node.classList).slice(0,2).join(\".\");parts.unshift(selector);node=node.parentElement;}const detail=\"Selector: \"+parts.join(\" > \")+\"\\\\nElement: \"+el.outerHTML.slice(0,1800);parent.postMessage({type:\"experts:element-selected\",detail},\"*\");active=false;document.documentElement.style.cursor=\"\";outline(null);},true);})();</script>";
+      if (addedStarterFiles) {
+        setFiles(sourceFiles);
+        await saveProjectFiles(projectId, user!.id, sourceFiles);
+        persistedFilesRef.current = sourceFiles;
       }
-      setFiles(previewFiles);
-      await saveProjectFiles(projectId, user!.id, previewFiles);
-      persistedFilesRef.current = previewFiles;
+      const previewFiles = withVisualInspector(sourceFiles);
       const publicEnvironment = await getProjectPublicEnvironment({ data: { projectId } });
       const result = await startBrowserPreview(
         projectId,
@@ -393,7 +416,9 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
           const pathSegments = nextRelative.split("/").map(segment => segment.toLowerCase());
           const fileName = pathSegments[pathSegments.length - 1] ?? "";
           if (pathSegments.some(segment => segment === ".env" || segment.startsWith(".env.") || [".npmrc", ".netrc", ".pypirc", "id_rsa", "id_ed25519", "credentials.json", "secrets.json"].includes(segment) || (segment.startsWith("service-account") && segment.endsWith(".json"))) || ["pem", "key", "p12", "pfx", "crt", "cer", "secret"].includes(fileName.split(".").pop() ?? "")) continue;
-          const bytes = await runtime.fs.readFile(absolute);
+          const bytes = nextRelative === "index.html"
+            ? new TextEncoder().encode(stripVisualInspector(await runtime.fs.readFile(absolute, "utf-8")))
+            : await runtime.fs.readFile(absolute);
           if (bytes.byteLength > 49_000_000) throw new Error("The file " + nextRelative + " exceeds the 49 MB publish limit.");
           const body = new Blob([bytes.slice().buffer as ArrayBuffer], { type: mimeType(nextRelative) });
           publishedFiles.push({ path: nextRelative, body, size: bytes.byteLength, contentType: mimeType(nextRelative) });
@@ -454,7 +479,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     try {
       await saveProjectFiles(projectId, user!.id, files);
       persistedFilesRef.current = files;
-      await syncBrowserProject(projectId, { ...files, ...binaryAssets });
+      await syncBrowserProject(projectId, withVisualInspector({ ...files, ...binaryAssets }));
       runtimeActiveRef.current = true;
       setRuntimeReady(true);
       setTerminalConnected(true);
@@ -524,7 +549,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <WorkspaceControls projectId={projectId} userId={user.id} files={files} onRestore={async (next) => { await saveProjectFiles(projectId, user.id, next); persistedFilesRef.current = next; setFiles(next); setActivePath(Object.keys(next).sort()[0] ?? ""); if (runtimeActiveRef.current) await syncBrowserProject(projectId, { ...next, ...binaryAssets }); setSaveStatus("saved"); }} onSave={async () => { await saveProjectFiles(projectId, user.id, files); persistedFilesRef.current = files; setSaveStatus("saved"); }} onReload={async () => { const [next, assets] = await Promise.all([loadProjectFiles(projectId), loadProjectBinaryAssets(projectId, user.id)]); setFiles(next); persistedFilesRef.current = next; setBinaryAssets(assets); setActivePath(Object.keys(next).sort()[0] ?? ""); await syncBrowserProject(projectId, { ...next, ...assets }); runtimeActiveRef.current = true; setRuntimeReady(true); setSaveStatus("saved"); }} onPublish={() => void publishProject()} publishing={publishing} publishedUrl={publishedUrl} onFocusChat={() => { document.querySelector<HTMLTextAreaElement>('textarea[placeholder="How can ExpertsTeam help you today?"]')?.focus(); }} modal={workspaceModal} onModalChange={setWorkspaceModal}/>
+        <WorkspaceControls projectId={projectId} userId={user.id} files={files} onRestore={async (next) => { await saveProjectFiles(projectId, user.id, next); persistedFilesRef.current = next; setFiles(next); setActivePath(Object.keys(next).sort()[0] ?? ""); if (runtimeActiveRef.current) await syncBrowserProject(projectId, withVisualInspector({ ...next, ...binaryAssets })); setSaveStatus("saved"); }} onSave={async () => { await saveProjectFiles(projectId, user.id, files); persistedFilesRef.current = files; setSaveStatus("saved"); }} onReload={async () => { const [next, assets] = await Promise.all([loadProjectFiles(projectId), loadProjectBinaryAssets(projectId, user.id)]); setFiles(next); persistedFilesRef.current = next; setBinaryAssets(assets); setActivePath(Object.keys(next).sort()[0] ?? ""); await syncBrowserProject(projectId, withVisualInspector({ ...next, ...assets })); runtimeActiveRef.current = true; setRuntimeReady(true); setSaveStatus("saved"); }} onPublish={() => void publishProject()} publishing={publishing} publishedUrl={publishedUrl} onFocusChat={() => { document.querySelector<HTMLTextAreaElement>('textarea[placeholder="How can ExpertsTeam help you today?"]')?.focus(); }} modal={workspaceModal} onModalChange={setWorkspaceModal}/>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col md:flex-row">
         <BoltChatPanel
           projectName={projectQuery.data.project.name}
