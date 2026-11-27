@@ -5,7 +5,7 @@
  * The original Remix/AI SDK message handlers are replaced by controlled props
  * wired to ExpertsTeam's Supabase conversation persistence and Kilo agent.
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { ArrowRight, Bot, Sparkles } from "lucide-react";
 import { BoltMarkdown } from "@/components/bolt-port/Markdown";
 import { Button } from "@/components/ui/button";
