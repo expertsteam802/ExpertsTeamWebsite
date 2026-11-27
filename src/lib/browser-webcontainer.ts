@@ -248,28 +248,22 @@ export async function startBrowserPreview(
 
   let packageJson: { packageManager?: string; scripts?: Record<string, string>; dependencies?: Record<string, string>; devDependencies?: Record<string, string> } = {};
   const packageContent = files["package.json"];
-  if (packageContent && typeof packageContent !== "string") {
-    throw new Error("package.json must be a text file.");
-  }
+  if (packageContent && typeof packageContent !== "string") throw new Error("package.json must be a text file.");
   if (packageContent) {
-    try {
-      packageJson = JSON.parse(packageContent);
-    } catch {
-      throw new Error("package.json contains invalid JSON. Fix it before starting the preview.");
-    }
+    try { packageJson = JSON.parse(packageContent); }
+    catch { throw new Error("package.json contains invalid JSON. Fix it before starting the preview."); }
   }
 
-  // Plain HTML/CSS/JS projects are valid projects. Serve them with Node's
-  // built-in HTTP module instead of creating a fake package.json or installing
-  // Vite/npm dependencies. This keeps static projects lightweight and avoids
-  // npm looking for a manifest that the project never had.
+  // Static HTML/CSS/JS projects need no npm manifest or dependency install.
   const hasStaticEntry = Boolean(files["index.html"] || files["public/index.html"]);
   const hasRunScript = Boolean(packageJson.scripts?.dev || packageJson.scripts?.start);
-  const hasFrameworkDependencies = Boolean(
-    packageJson.dependencies && Object.keys(packageJson.dependencies).length
-    || packageJson.devDependencies && Object.keys(packageJson.devDependencies).length,
+  const hasDependencies = Boolean(
+    Object.keys(packageJson.dependencies ?? {}).length ||
+    Object.keys(packageJson.devDependencies ?? {}).length
   );
-  const useStaticServer = !hasRunScript && hasStaticEntry && !hasFrameworkDependencies;
+  const useStaticServer = hasStaticEntry && !hasRunScript && !hasDependencies;
+  let commandToRun = "npm";
+  let args: string[] = [];
 
   if (useStaticServer) {
     const staticServer = [
@@ -281,45 +275,40 @@ export async function startBrowserPreview(
       "http.createServer((req,res) => {",
       "  let pathname; try { pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname); } catch { res.writeHead(400); return res.end('Bad request'); }",
       "  let target = path.resolve(root, '.' + pathname);",
-      "  if (!target.startsWith(root + path.sep) && target !== path.join(root, 'index.html')) { res.writeHead(403); return res.end('Forbidden'); }",
+      "  if (target !== root && !target.startsWith(root + path.sep)) { res.writeHead(403); return res.end('Forbidden'); }",
       "  try { if (fs.statSync(target).isDirectory()) target = path.join(target, 'index.html'); } catch {}",
       "  if (!fs.existsSync(target) || !fs.statSync(target).isFile()) target = path.join(root, 'index.html');",
       "  if (!fs.existsSync(target)) { res.writeHead(404); return res.end('Not found'); }",
       "  res.setHeader('Content-Type', types[path.extname(target).toLowerCase()] || 'application/octet-stream');",
       "  fs.createReadStream(target).pipe(res);",
-      "}).listen(4173, '0.0.0.0', () => console.log('Static project ready on http://localhost:4173'));",
-    ].join("\\n");
-    onOutput?.("\\r\\nPlain HTML project detected. Skipping npm installation; starting the built-in static server…\\r\\n");
-    runtimeState.devProcess = await runtime.spawn("node", ["-e", staticServer], { cwd: runtime.workdir });
+      "}).listen(4173, '0.0.0.0', () => console.log('Static project ready on port 4173'));",
+    ].join("\n");
+    commandToRun = "node";
+    args = ["-e", staticServer];
+    onOutput?.("\r\nPlain HTML project detected. Skipping npm installation; starting the built-in static server…\r\n");
   } else {
-    if (!packageContent) {
-      throw new Error("This project has no package.json or plain HTML entry point (index.html).");
-    }
-    if (!hasRunScript) {
-      throw new Error("This project has no dev or start script in package.json. Add a development script to run it.");
-    }
+    if (!packageContent) throw new Error("This project has no package.json or plain HTML entry point (index.html).");
+    if (!hasRunScript) throw new Error("This project has dependencies but no dev or start script in package.json.");
 
-    // Verify the manifest at the exact working directory used by npm.
+    // Use one explicit project root for filesystem checks, npm, and the dev server.
     await runtime.fs.mkdir(runtime.workdir, { recursive: true });
-    const manifestPath = runtime.workdir.replace(/\\/$/, "") + "/package.json";
+    const manifestPath = runtime.workdir.replace(/\/$/, "") + "/package.json";
     const runtimeManifest = await runtime.fs.readFile(manifestPath, "utf-8").catch(() => "");
     if (!runtimeManifest) {
       const entries = await runtime.fs.readdir(runtime.workdir).catch(() => []);
       throw new Error(
-        "Cannot install dependencies: package.json is missing from " + runtime.workdir +
-        ". Runtime root entries: " +
+        "Project root mismatch: npm's working directory is " + runtime.workdir +
+        " but package.json is not present there. Root entries: " +
         entries.map((entry) => typeof entry === "string" ? entry : String(entry)).join(", ")
       );
     }
-    try {
-      packageJson = JSON.parse(runtimeManifest);
-    } catch {
-      throw new Error("The package.json in the browser runtime is not valid JSON.");
-    }
+    try { packageJson = JSON.parse(runtimeManifest); }
+    catch { throw new Error("The package.json in the browser runtime is not valid JSON."); }
 
     const packageManager = packageJson.packageManager?.split("@")[0]
       || (files["pnpm-lock.yaml"] ? "pnpm" : files["yarn.lock"] ? "yarn" : "npm");
     const packageManagerCommand = packageManager === "pnpm" || packageManager === "yarn" ? packageManager : "npm";
+    commandToRun = packageManagerCommand;
     const installSignature = dependencySignature(packageManagerCommand, files);
     const dependenciesPresent = await hasInstalledDependencies(runtime);
     if (!dependenciesPresent || runtimeState.installedDependencySignature !== installSignature) {
@@ -336,31 +325,29 @@ export async function startBrowserPreview(
           : hasNpmLock
             ? ["ci", "--no-audit", "--no-fund", "--no-progress", "--no-color"]
             : ["install", "--no-audit", "--no-fund", "--no-progress", "--no-color"];
-      onOutput?.("\\r\\nInstalling project dependencies with " + packageManagerCommand + "…\\r\\n");
-      onOutput?.("Project directory: " + runtime.workdir + "\\r\\n");
-      onOutput?.("Verified package.json in the exact npm working directory. Starting dependency installation…\\r\\n");
+      onOutput?.("\r\nInstalling project dependencies with " + packageManagerCommand + "…\r\n");
+      onOutput?.("Project directory: " + runtime.workdir + "\r\n");
+      onOutput?.("Verified package.json in the exact npm working directory. Starting dependency installation…\r\n");
       await runCommand(runtime, packageManagerCommand, installArgs, onOutput);
       runtimeState.installedDependencySignature = installSignature;
     } else {
-      onOutput?.("\\r\\nDependencies are already installed and lockfiles are unchanged; skipping installation.\\r\\n");
+      onOutput?.("\r\nDependencies are already installed and lockfiles are unchanged; skipping installation.\r\n");
     }
+
+    const startScript = packageJson.scripts?.dev ? "dev" : "start";
+    const isNext = Boolean(packageJson.dependencies?.next || packageJson.devDependencies?.next);
+    const devCommand = packageJson.scripts?.dev ?? "";
+    const usesHostFlag = /vite|astro|svelte|nuxt|vue-cli-service|webpack-dev-server/i.test(devCommand);
+    const runArgs = startScript === "dev" && isNext
+      ? ["run", startScript, "--", "--hostname", "0.0.0.0"]
+      : startScript === "dev" && usesHostFlag
+        ? ["run", startScript, "--", "--host", "0.0.0.0"]
+        : ["run", startScript];
+    args = packageManagerCommand === "yarn"
+      ? [startScript, ...(runArgs.length > 2 ? runArgs.slice(2) : [])]
+      : runArgs;
   }
 
-  if (useStaticServer) {
-    // The same server-ready/port handling below is used for static and framework previews.
-  }
-  const startScript = packageJson.scripts?.dev ? "dev" : "start";
-  const isNext = Boolean(packageJson.dependencies?.next || packageJson.devDependencies?.next);
-  const devCommand = packageJson.scripts?.dev ?? "";
-  const usesHostFlag = /vite|astro|svelte|nuxt|vue-cli-service|webpack-dev-server/i.test(devCommand);
-  const runArgs = startScript === "dev" && isNext
-    ? ["run", startScript, "--", "--hostname", "0.0.0.0"]
-    : startScript === "dev" && usesHostFlag
-      ? ["run", startScript, "--", "--host", "0.0.0.0"]
-      : ["run", startScript];
-  const args = packageManagerCommand === "yarn"
-    ? [startScript, ...(runArgs.length > 2 ? runArgs.slice(2) : [])]
-    : runArgs;
   let readyTimer = 0;
   let activePreviewPort: number | null = null;
   let failReady: ((error: Error) => void) | null = null;
@@ -416,7 +403,7 @@ export async function startBrowserPreview(
     }, 120000);
   });
   try {
-    runtimeState.devProcess = await runtime.spawn(packageManagerCommand, args, { cwd: runtime.workdir, env: environment });
+    runtimeState.devProcess = await runtime.spawn(commandToRun, args, { cwd: runtime.workdir, env: environment });
   } catch (error) {
     failReady?.(error instanceof Error ? error : new Error(String(error)));
     await ready.catch(() => undefined);
