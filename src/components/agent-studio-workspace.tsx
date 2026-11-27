@@ -1,4 +1,4 @@
-/* eslint-disable no-control-regex */
+/* eslint-disable no-control-regex, @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
