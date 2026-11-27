@@ -19,6 +19,7 @@ type BoltChatPanelProps = {
   busy: boolean;
   onPromptChange: (value: string) => void;
   onSend: () => void;
+  width: number;
 };
 
 const EXAMPLE_PROMPTS = [
@@ -28,7 +29,7 @@ const EXAMPLE_PROMPTS = [
   "Find and fix bugs in the current project",
 ];
 
-export function BoltChatPanel({ projectName, messages, prompt, busy, onPromptChange, onSend }: BoltChatPanelProps) {
+export function BoltChatPanel({ projectName, messages, prompt, busy, onPromptChange, onSend, width }: BoltChatPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 

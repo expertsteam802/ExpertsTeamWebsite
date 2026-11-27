@@ -63,6 +63,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   const [binaryAssets, setBinaryAssets] = useState<Record<string, Uint8Array>>({});
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [prompt, setPrompt] = useState("");
+  const [chatWidth, setChatWidth] = useState(440);
   const [activePath, setActivePath] = useState("");
   const [tab, setTab] = useState<WorkbenchTab>("preview");
   const [busy, setBusy] = useState(false);
@@ -370,7 +371,13 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
           busy={busy}
           onPromptChange={setPrompt}
           onSend={() => void sendMessage()}
+          width={chatWidth}
         />
+        <div role="separator" aria-label="Resize chat panel" aria-orientation="vertical" tabIndex={0}
+          onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); }}
+          onPointerMove={(event) => { if (event.buttons === 1) setChatWidth(Math.max(320, Math.min(700, event.clientX))); }}
+          onKeyDown={(event) => { if (event.key === "ArrowLeft") setChatWidth((value) => Math.max(320, value - 20)); if (event.key === "ArrowRight") setChatWidth((value) => Math.min(700, value + 20)); }}
+          className="hidden w-1 shrink-0 cursor-col-resize bg-white/[0.035] transition hover:bg-sky-300/40 focus-visible:bg-sky-300/50 md:block" />
 
         <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#0b0b0c]">
           <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#111113] px-3">
