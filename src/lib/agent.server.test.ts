@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 
-import { repairMissingStylesheetImports, runAgent, runAgentChat } from "./agent.server";
+import { executeAgentCommands, repairMissingStylesheetImports, runAgent, runAgentChat } from "./agent.server";
 import { generateExpertAiContent } from "./kilo-gateway.server";
 import { compactSmartContents, estimateSmartTokens } from "./smart-processing.server";
 
@@ -11,6 +11,43 @@ afterEach(() => {
 });
 
 const input = { prompt: "Build a game", files: {}, history: [] };
+
+test("agent file tools list, read, search, write and delete project files", () => {
+  const initial = {
+    "src/App.tsx": "export default function App() { return <main>Hello</main>; }",
+    "src/index.css": "body { color: black; }",
+    "README.md": "# Project",
+  };
+  const result = executeAgentCommands(initial, [
+    { tool: "list_files", prefix: "src/" },
+    { tool: "read_file", path: "src/App.tsx" },
+    { tool: "search_files", query: "Hello" },
+    { tool: "write_file", path: "src/App.tsx", content: "export default function App() { return <main>Updated</main>; }" },
+    { tool: "delete_file", path: "README.md" },
+  ]);
+  assert.equal(result.changedFiles["src/App.tsx"], "export default function App() { return <main>Updated</main>; }");
+  assert.equal(result.changedFiles["README.md"], null);
+  assert.equal(result.results.length, 5);
+  assert.match(result.results[0] ?? "", /src\\/App.tsx/);
+  assert.match(result.results[1] ?? "", /Hello/);
+  assert.match(result.results[2] ?? "", /src\\/App.tsx/);
+});
+
+test("agent file tools refuse locked and sensitive files", () => {
+  const result = executeAgentCommands(
+    { "src/App.tsx": "safe", ".env": "secret" },
+    [
+      { tool: "write_file", path: "src/App.tsx", content: "changed" },
+      { tool: "read_file", path: ".env" },
+    ],
+    new Set(["src/App.tsx"]),
+  );
+  assert.equal(result.changedFiles["src/App.tsx"], undefined);
+  assert.match(result.results[0] ?? "", /locked/);
+  assert.throws(() => executeAgentCommands({}, [
+    { tool: "write_file", path: "../outside.ts", content: "unsafe" },
+  ]), /unsafe path|invalid file path/i);
+});
 
 test("agent repairs a missing stylesheet import by reusing style.css", () => {
   const files = repairMissingStylesheetImports({
