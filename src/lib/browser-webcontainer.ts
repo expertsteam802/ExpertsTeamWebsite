@@ -203,6 +203,7 @@ async function runCommand(
   // bars and ANSI cursor-control sequences otherwise appear as stray symbols
   // in plain-text logs and can look corrupted in embedded terminals.
   const process = await runtime.spawn(command, args, {
+    cwd: runtime.workdir,
     env: {
       CI: "true",
       TERM: "dumb",
@@ -245,89 +246,109 @@ export async function startBrowserPreview(
   runtimeState.devProcess?.kill();
   runtimeState.devProcess = null;
 
-  let packageJson: { packageManager?: string; scripts?: Record<string, string>; dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
-  try {
-    const packageContent = files["package.json"];
-    if (packageContent && typeof packageContent !== "string") throw new Error("package.json must be a text file.");
-    packageJson = JSON.parse(packageContent ?? "{}");
-  } catch {
-    throw new Error("package.json contains invalid JSON. Fix it before starting the preview.");
+  let packageJson: { packageManager?: string; scripts?: Record<string, string>; dependencies?: Record<string, string>; devDependencies?: Record<string, string> } = {};
+  const packageContent = files["package.json"];
+  if (packageContent && typeof packageContent !== "string") {
+    throw new Error("package.json must be a text file.");
   }
-
-  if (!files["package.json"]) {
-    const starterPackage = {
-      private: true,
-      type: "module",
-      scripts: { dev: "vite --host 0.0.0.0" },
-      devDependencies: { vite: "^6.4.6" },
-    };
-    await runtime.fs.writeFile(runtime.workdir + "/package.json", JSON.stringify(starterPackage, null, 2));
-    if (!files["index.html"]) {
-      await runtime.fs.writeFile(runtime.workdir + "/index.html", '<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ExpertsTeam Preview</title></head><body><h1>Project preview</h1></body></html>');
-    }
-    packageJson = starterPackage;
-  }
-
-  // Repair and verify the exact manifest npm will read. Never start npm
-  // against an empty or stale working directory.
-  await runtime.fs.mkdir(runtime.workdir, { recursive: true });
-  const manifestPath = runtime.workdir.replace(/\/$/, "") + "/package.json";
-  let runtimeManifest = "";
-  try {
-    runtimeManifest = await runtime.fs.readFile(manifestPath, "utf-8");
-  } catch {
-    const sourceManifest = files["package.json"];
-    if (typeof sourceManifest === "string" && sourceManifest.length > 0) {
-      await runtime.fs.writeFile(manifestPath, sourceManifest);
-      runtimeManifest = await runtime.fs.readFile(manifestPath, "utf-8");
+  if (packageContent) {
+    try {
+      packageJson = JSON.parse(packageContent);
+    } catch {
+      throw new Error("package.json contains invalid JSON. Fix it before starting the preview.");
     }
   }
-  if (!runtimeManifest) {
-    const entries = await runtime.fs.readdir(runtime.workdir).catch(() => []);
-    throw new Error(
-      "Cannot install dependencies: package.json is missing from the browser project directory (" +
-      runtime.workdir + "). Files currently present: " +
-      entries.map((entry) => typeof entry === "string" ? entry : String(entry)).join(", ")
-    );
-  }
-  try {
-    packageJson = JSON.parse(runtimeManifest);
-  } catch {
-    throw new Error("The package.json in the browser runtime is not valid JSON.");
-  }
 
-  if (!packageJson.scripts?.dev && !packageJson.scripts?.start) {
-    throw new Error("This project has no dev or start script in package.json. Add a development script to run it.");
-  }
+  // Plain HTML/CSS/JS projects are valid projects. Serve them with Node's
+  // built-in HTTP module instead of creating a fake package.json or installing
+  // Vite/npm dependencies. This keeps static projects lightweight and avoids
+  // npm looking for a manifest that the project never had.
+  const hasStaticEntry = Boolean(files["index.html"] || files["public/index.html"]);
+  const hasRunScript = Boolean(packageJson.scripts?.dev || packageJson.scripts?.start);
+  const hasFrameworkDependencies = Boolean(
+    packageJson.dependencies && Object.keys(packageJson.dependencies).length
+    || packageJson.devDependencies && Object.keys(packageJson.devDependencies).length,
+  );
+  const useStaticServer = !hasRunScript && hasStaticEntry && !hasFrameworkDependencies;
 
-  const packageManager = packageJson.packageManager?.split("@")[0]
-    || (files["pnpm-lock.yaml"] ? "pnpm" : files["yarn.lock"] ? "yarn" : "npm");
-  const packageManagerCommand = packageManager === "pnpm" || packageManager === "yarn" ? packageManager : "npm";
-  const installSignature = dependencySignature(packageManagerCommand, files);
-  const dependenciesPresent = await hasInstalledDependencies(runtime);
-  if (!dependenciesPresent || runtimeState.installedDependencySignature !== installSignature) {
-    const hasNpmLock = Boolean(files["package-lock.json"] || files["npm-shrinkwrap.json"]);
-    const hasPnpmLock = Boolean(files["pnpm-lock.yaml"]);
-    const hasYarnLock = Boolean(files["yarn.lock"]);
-    const packageManagerVersion = packageJson.packageManager?.split("@")[1] ?? "";
-    const yarnMajor = Number.parseInt(packageManagerVersion.split(".")[0] ?? "", 10);
-    const isYarnBerry = Boolean(files[".yarnrc.yml"]) || (Number.isFinite(yarnMajor) && yarnMajor >= 2);
-    const installArgs = packageManagerCommand === "pnpm"
-      ? ["install", ...(hasPnpmLock ? ["--frozen-lockfile"] : [])]
-      : packageManagerCommand === "yarn"
-        ? ["install", ...(hasYarnLock ? [isYarnBerry ? "--immutable" : "--frozen-lockfile"] : [])]
-        : hasNpmLock
-          ? ["ci", "--no-audit", "--no-fund", "--no-progress", "--no-color"]
-          : ["install", "--no-audit", "--no-fund", "--no-progress", "--no-color"];
-    onOutput?.("\r\nInstalling project dependencies with " + packageManagerCommand + "…\r\n");
-    onOutput?.("Project directory: " + runtime.workdir + "\r\n");
-    onOutput?.("Verified package.json in the project directory. Starting dependency installation…\r\n");
-    await runCommand(runtime, packageManagerCommand, installArgs, onOutput);
-    runtimeState.installedDependencySignature = installSignature;
+  if (useStaticServer) {
+    const staticServer = [
+      "const http = require('node:http');",
+      "const fs = require('node:fs');",
+      "const path = require('node:path');",
+      "const root = process.cwd();",
+      "const types = { '.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.gif':'image/gif','.webp':'image/webp','.ico':'image/x-icon' };",
+      "http.createServer((req,res) => {",
+      "  let pathname; try { pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname); } catch { res.writeHead(400); return res.end('Bad request'); }",
+      "  let target = path.resolve(root, '.' + pathname);",
+      "  if (!target.startsWith(root + path.sep) && target !== path.join(root, 'index.html')) { res.writeHead(403); return res.end('Forbidden'); }",
+      "  try { if (fs.statSync(target).isDirectory()) target = path.join(target, 'index.html'); } catch {}",
+      "  if (!fs.existsSync(target) || !fs.statSync(target).isFile()) target = path.join(root, 'index.html');",
+      "  if (!fs.existsSync(target)) { res.writeHead(404); return res.end('Not found'); }",
+      "  res.setHeader('Content-Type', types[path.extname(target).toLowerCase()] || 'application/octet-stream');",
+      "  fs.createReadStream(target).pipe(res);",
+      "}).listen(4173, '0.0.0.0', () => console.log('Static project ready on http://localhost:4173'));",
+    ].join("\\n");
+    onOutput?.("\\r\\nPlain HTML project detected. Skipping npm installation; starting the built-in static server…\\r\\n");
+    runtimeState.devProcess = await runtime.spawn("node", ["-e", staticServer], { cwd: runtime.workdir });
   } else {
-    onOutput?.("\r\nDependencies are already installed and lockfiles are unchanged; skipping installation.\r\n");
+    if (!packageContent) {
+      throw new Error("This project has no package.json or plain HTML entry point (index.html).");
+    }
+    if (!hasRunScript) {
+      throw new Error("This project has no dev or start script in package.json. Add a development script to run it.");
+    }
+
+    // Verify the manifest at the exact working directory used by npm.
+    await runtime.fs.mkdir(runtime.workdir, { recursive: true });
+    const manifestPath = runtime.workdir.replace(/\\/$/, "") + "/package.json";
+    const runtimeManifest = await runtime.fs.readFile(manifestPath, "utf-8").catch(() => "");
+    if (!runtimeManifest) {
+      const entries = await runtime.fs.readdir(runtime.workdir).catch(() => []);
+      throw new Error(
+        "Cannot install dependencies: package.json is missing from " + runtime.workdir +
+        ". Runtime root entries: " +
+        entries.map((entry) => typeof entry === "string" ? entry : String(entry)).join(", ")
+      );
+    }
+    try {
+      packageJson = JSON.parse(runtimeManifest);
+    } catch {
+      throw new Error("The package.json in the browser runtime is not valid JSON.");
+    }
+
+    const packageManager = packageJson.packageManager?.split("@")[0]
+      || (files["pnpm-lock.yaml"] ? "pnpm" : files["yarn.lock"] ? "yarn" : "npm");
+    const packageManagerCommand = packageManager === "pnpm" || packageManager === "yarn" ? packageManager : "npm";
+    const installSignature = dependencySignature(packageManagerCommand, files);
+    const dependenciesPresent = await hasInstalledDependencies(runtime);
+    if (!dependenciesPresent || runtimeState.installedDependencySignature !== installSignature) {
+      const hasNpmLock = Boolean(files["package-lock.json"] || files["npm-shrinkwrap.json"]);
+      const hasPnpmLock = Boolean(files["pnpm-lock.yaml"]);
+      const hasYarnLock = Boolean(files["yarn.lock"]);
+      const packageManagerVersion = packageJson.packageManager?.split("@")[1] ?? "";
+      const yarnMajor = Number.parseInt(packageManagerVersion.split(".")[0] ?? "", 10);
+      const isYarnBerry = Boolean(files[".yarnrc.yml"]) || (Number.isFinite(yarnMajor) && yarnMajor >= 2);
+      const installArgs = packageManagerCommand === "pnpm"
+        ? ["install", ...(hasPnpmLock ? ["--frozen-lockfile"] : [])]
+        : packageManagerCommand === "yarn"
+          ? ["install", ...(hasYarnLock ? [isYarnBerry ? "--immutable" : "--frozen-lockfile"] : [])]
+          : hasNpmLock
+            ? ["ci", "--no-audit", "--no-fund", "--no-progress", "--no-color"]
+            : ["install", "--no-audit", "--no-fund", "--no-progress", "--no-color"];
+      onOutput?.("\\r\\nInstalling project dependencies with " + packageManagerCommand + "…\\r\\n");
+      onOutput?.("Project directory: " + runtime.workdir + "\\r\\n");
+      onOutput?.("Verified package.json in the exact npm working directory. Starting dependency installation…\\r\\n");
+      await runCommand(runtime, packageManagerCommand, installArgs, onOutput);
+      runtimeState.installedDependencySignature = installSignature;
+    } else {
+      onOutput?.("\\r\\nDependencies are already installed and lockfiles are unchanged; skipping installation.\\r\\n");
+    }
   }
 
+  if (useStaticServer) {
+    // The same server-ready/port handling below is used for static and framework previews.
+  }
   const startScript = packageJson.scripts?.dev ? "dev" : "start";
   const isNext = Boolean(packageJson.dependencies?.next || packageJson.devDependencies?.next);
   const devCommand = packageJson.scripts?.dev ?? "";
@@ -395,7 +416,7 @@ export async function startBrowserPreview(
     }, 120000);
   });
   try {
-    runtimeState.devProcess = await runtime.spawn(packageManagerCommand, args, { env: environment });
+    runtimeState.devProcess = await runtime.spawn(packageManagerCommand, args, { cwd: runtime.workdir, env: environment });
   } catch (error) {
     failReady?.(error instanceof Error ? error : new Error(String(error)));
     await ready.catch(() => undefined);
