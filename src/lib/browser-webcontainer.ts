@@ -164,6 +164,26 @@ export async function syncBrowserProject(projectId: string, files: BrowserProjec
   return runtimeState.syncQueue;
 }
 
+export function isGeneratedVitePreviewManifest(content: string | undefined): boolean {
+  if (!content) return false;
+  try {
+    const value = JSON.parse(content) as Record<string, unknown>;
+    const scripts = value.scripts as Record<string, unknown> | undefined;
+    const devDependencies = value.devDependencies as Record<string, unknown> | undefined;
+    const dependencies = value.dependencies as Record<string, unknown> | undefined;
+    return value.private === true
+      && value.type === "module"
+      && scripts?.dev === "vite --host 0.0.0.0"
+      && Object.keys(scripts).length === 1
+      && devDependencies?.vite === "^6.4.6"
+      && Object.keys(devDependencies).length === 1
+      && (!dependencies || Object.keys(dependencies).length === 0)
+      && Object.keys(value).every((key) => ["private", "type", "scripts", "devDependencies"].includes(key));
+  } catch {
+    return false;
+  }
+}
+
 function dependencySignature(
   packageManager: string,
   files: BrowserProjectFiles,
@@ -239,7 +259,16 @@ export async function startBrowserPreview(
   onPreviewUrl?: (url: string | null) => void,
   onPreviewPorts?: (ports: BrowserPreviewPort[]) => void,
 ) {
-  await syncBrowserProject(projectId, files);
+  const runtimeFiles = { ...files };
+  // Older preview code persisted a synthetic Vite manifest into otherwise
+  // static HTML projects. Remove that exact generated manifest before syncing
+  // or classifying the project; never remove a real user-authored manifest.
+  if (runtimeFiles["index.html"] && isGeneratedVitePreviewManifest(
+    typeof runtimeFiles["package.json"] === "string" ? runtimeFiles["package.json"] : undefined,
+  )) {
+    delete runtimeFiles["package.json"];
+  }
+  await syncBrowserProject(projectId, runtimeFiles);
   const runtime = await getBrowserRuntime();
   runtimeState.previewPortUnsubscribe?.();
   runtimeState.previewPortUnsubscribe = null;
@@ -247,7 +276,7 @@ export async function startBrowserPreview(
   runtimeState.devProcess = null;
 
   let packageJson: { packageManager?: string; scripts?: Record<string, string>; dependencies?: Record<string, string>; devDependencies?: Record<string, string> } = {};
-  const packageContent = files["package.json"];
+  const packageContent = runtimeFiles["package.json"];
   if (packageContent && typeof packageContent !== "string") throw new Error("package.json must be a text file.");
   if (packageContent) {
     try { packageJson = JSON.parse(packageContent); }
@@ -255,7 +284,7 @@ export async function startBrowserPreview(
   }
 
   // Static HTML/CSS/JS projects need no npm manifest or dependency install.
-  const hasStaticEntry = Boolean(files["index.html"] || files["public/index.html"]);
+  const hasStaticEntry = Boolean(runtimeFiles["index.html"] || runtimeFiles["public/index.html"]);
   const hasRunScript = Boolean(packageJson.scripts?.dev || packageJson.scripts?.start);
   const hasDependencies = Boolean(
     Object.keys(packageJson.dependencies ?? {}).length ||
@@ -306,15 +335,15 @@ export async function startBrowserPreview(
     catch { throw new Error("The package.json in the browser runtime is not valid JSON."); }
 
     const packageManager = packageJson.packageManager?.split("@")[0]
-      || (files["pnpm-lock.yaml"] ? "pnpm" : files["yarn.lock"] ? "yarn" : "npm");
+      || (runtimeFiles["pnpm-lock.yaml"] ? "pnpm" : runtimeFiles["yarn.lock"] ? "yarn" : "npm");
     const packageManagerCommand = packageManager === "pnpm" || packageManager === "yarn" ? packageManager : "npm";
     commandToRun = packageManagerCommand;
-    const installSignature = dependencySignature(packageManagerCommand, files);
+    const installSignature = dependencySignature(packageManagerCommand, runtimeFiles);
     const dependenciesPresent = await hasInstalledDependencies(runtime);
     if (!dependenciesPresent || runtimeState.installedDependencySignature !== installSignature) {
-      const hasNpmLock = Boolean(files["package-lock.json"] || files["npm-shrinkwrap.json"]);
-      const hasPnpmLock = Boolean(files["pnpm-lock.yaml"]);
-      const hasYarnLock = Boolean(files["yarn.lock"]);
+      const hasNpmLock = Boolean(runtimeFiles["package-lock.json"] || runtimeFiles["npm-shrinkwrap.json"]);
+      const hasPnpmLock = Boolean(runtimeFiles["pnpm-lock.yaml"]);
+      const hasYarnLock = Boolean(runtimeFiles["yarn.lock"]);
       const packageManagerVersion = packageJson.packageManager?.split("@")[1] ?? "";
       const yarnMajor = Number.parseInt(packageManagerVersion.split(".")[0] ?? "", 10);
       const isYarnBerry = Boolean(files[".yarnrc.yml"]) || (Number.isFinite(yarnMajor) && yarnMajor >= 2);
