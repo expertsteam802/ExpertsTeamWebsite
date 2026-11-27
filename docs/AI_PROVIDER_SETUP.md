@@ -1,14 +1,12 @@
 # ExpertAI provider configuration
 
-ExpertsTeam normal AI chat uses a server-side provider adapter. Provider credentials must remain server-only: never use `VITE_*` environment variables for API keys.
+API credentials must remain server-only. Never use `VITE_*` variables for provider API keys.
 
-## Activate OpenAPIs for normal chat
+## Activate OpenAPIs for normal ExpertAI chat
 
-In Vercel:
-
-1. Open the **ExpertsTeamWebsite** project.
+1. Open the [ExpertsTeamWebsite Vercel project](https://vercel.com/chris-programs1/experts-team-website).
 2. Go to **Settings → Environment Variables**.
-3. Add the following variables. Select **Production** (and Preview too if you want to test preview deployments).
+3. Add these two variables for **Production** (also add them to Preview if testing a preview deployment):
 
    | Name | Value |
    |---|---|
@@ -16,41 +14,41 @@ In Vercel:
    | `OPENAPIS_MODEL` | `gpt-5.4-mini` |
 
 4. Save the variables.
-5. Go to **Deployments**, open the latest deployment for the `main` branch, and choose **Redeploy**. A deployment created before adding the variables will not automatically receive them.
-6. Wait until the deployment is **Ready**, open the live website, and test the regular ExpertAI chat (not Agent Builder) with: `Reply with the provider name and model configured for this request.`
+5. Open **Deployments**, find the latest deployment from `main`, and choose **Redeploy**. Existing deployments do not receive newly added variables automatically.
+6. Wait for **Ready**, open the live site, and test the regular ExpertAI chat (not Agent Builder) with: `Which provider and model are powering this response?`
 
-The normal ExpertAI chat route is pinned directly to OpenAPIs for this test. It sends a native OpenAI-compatible streaming request (`stream: true`) and adapts the streamed tokens to the existing ExpertsTeam chat response format. **Kilo fallback is intentionally disabled for normal chat**, so a failed OpenAPIs request will fail visibly rather than being served by Kilo. Other callers of the shared transport, including Agent Builder, default to Kilo unless they explicitly select another provider.
+Normal ExpertAI chat is pinned directly to OpenAPIs in code. It sends a native OpenAI-compatible streaming request (`stream: true`). The server collects the upstream SSE response and adapts it to the existing chat response format.
 
-### API key warning
+## Kilo temporarily disabled for normal chat testing
 
-The value `admin` was a publicly documented shared beta credential in the OpenAPIs README when this integration was first tested. It is not a private production key. Use a personal/issued key if the service provides one. If the only available credential is still the public shared key, use it only for a temporary test and assume anyone can use it.
+Kilo fallback is intentionally disabled in the normal ExpertAI chat route. If OpenAPIs fails, the chat will show an OpenAPIs test error instead of silently returning a Kilo response. This makes the test conclusive.
+
+Other AI callers, including Agent Builder, default to Kilo and are not switched by this normal-chat test setting.
+
+To restore Kilo for normal chat after testing, change the normal-chat call in `src/routes/api.ai.stream.ts` from:
+
+```ts
+generateExpertAiContent(input, { provider: "openapis", fallbackToKilo: false })
+```
+
+to:
+
+```ts
+generateExpertAiContent(input, { provider: "kilo" })
+```
+
+Then commit and redeploy.
+
+## API key warning
+
+The value `admin` was a publicly documented shared beta credential in the OpenAPIs README when this integration was first tested. It is not a private production key. Use a personal/issued key if the service provides one. If the shared key is still the only available credential, use it only for a temporary test and assume anyone can use it.
 
 OpenAPIs is a third-party beta proxy. Its exact quotas and ongoing free availability are not guaranteed. Avoid sending sensitive or confidential information through it.
 
-## Automatic fallback
-
-When OpenAPIs is selected, ExpertsTeam automatically retries the request through Kilo Gateway if OpenAPIs has a transient network failure, timeout, HTTP 429, HTTP 5xx, or empty streaming response.
-
-A rejected API key (HTTP 401/403), invalid model, or other non-transient request error is not silently hidden; inspect the server logs and correct the configuration.
-
-Kilo fallback uses:
-- Endpoint: `https://ai-gateway.kilo.ai/api/v1/chat/completions`
-- Model: `kilo-auto/free`
-
-Fallback is automatic; no additional environment variable is required.
-
-## Rollback to Kilo only
-
-To disable OpenAPIs, change:
-
-- `EXPERTS_AI_PROVIDER=kilo`
-
-Then redeploy. You can also remove the OpenAPIs key/model variables after switching back. No database migration is required.
-
 ## Scope and limitations
 
-- This provider selection affects the shared server-side text-generation transport used by normal ExpertAI chat and other code paths that call `generateExpertAiContent`.
-- Agent Builder's CLI/runtime and project execution are not replaced by this chat API integration.
-- The integration uses OpenAI-compatible chat completions. It does not activate OpenAPIs' Anthropic/Claude endpoint.
-- The normal-chat route collects the OpenAPIs response before emitting the app SSE response. OpenAPIs is streamed upstream, but each upstream token is not forwarded to the browser immediately.
+- This change applies to the normal ExpertAI chat endpoint.
+- Agent Builder's coding-agent runtime and project execution remain separate and default to Kilo.
+- The integration uses OpenAI-compatible chat completions; it does not activate OpenAPIs' Anthropic/Claude endpoint.
+- OpenAPIs is streamed upstream, but the route collects the completed answer before emitting the app's existing SSE response to the browser.
 - Provider credentials are read only on the server.
