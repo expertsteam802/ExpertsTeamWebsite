@@ -4,7 +4,7 @@
  * ExpertsTeam's Kilo/Supabase handlers are supplied as controlled props.
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { ArrowRight, Bot, ImagePlus, MousePointer2, Sparkles, GraduationCap, X } from "lucide-react";
+import { ArrowRight, Bot, Code2, ImagePlus, MousePointer2, Sparkles, GraduationCap, X } from "lucide-react";
 import { BoltMarkdown } from "@/components/bolt-port/Markdown";
 import { Button } from "@/components/ui/button";
 
@@ -35,11 +35,12 @@ export function BoltChatPanel({projectName,messages,prompt,busy,width,onPromptCh
     {attachedImageName&&<div className="mx-3 mb-2 flex items-center gap-2 rounded-md border border-[#1E293B] bg-[#0D1322] px-2 py-1.5 text-[10px] text-[#CBD5E1]"><ImagePlus size={12}/><span className="min-w-0 flex-1 truncate">{attachedImageName}</span><button type="button" onClick={onRemoveImage} aria-label="Remove attachment"><X size={12}/></button></div>}
     <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#1E293B] px-3 py-2">
      <div className="flex flex-wrap items-center gap-1.5">
+      <span className="flex h-7 items-center gap-1 rounded-md bg-[#2563EB]/10 px-2 text-[10px] font-medium text-[#93C5FD]"><Code2 size={13}/>Build mode</span>
       <select aria-label="Model" value={modelTier} onChange={e=>setModelTier(e.target.value as "fast"|"architect")} className="h-7 rounded-md border border-[#1E293B] bg-[#0D1322] px-2 text-[10px] text-[#E2E8F0]"><option value="fast">Model: Fast (1 EC)</option><option value="architect">Model: Architect (3 EC)</option></select>
       <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={e=>{const file=e.target.files?.[0];if(file)onAttachImage(file);e.currentTarget.value="";}}/>
-      <button type="button" onClick={()=>fileRef.current?.click()} title="Attach Image" className="grid h-7 w-7 place-items-center rounded-md text-[#CBD5E1] hover:bg-white/[0.08]"><ImagePlus size={14}/></button>
+      <button type="button" onClick={()=>fileRef.current?.click()} title="Attach Image" aria-label="Attach Image" className="grid h-7 w-7 place-items-center rounded-md text-[#CBD5E1] hover:bg-white/[0.08]"><ImagePlus size={14}/></button>
       <button type="button" onClick={onSelectElement} title="Select Element in preview" className="flex h-7 items-center gap-1 rounded-md px-2 text-[10px] text-[#CBD5E1] hover:bg-white/[0.08]"><MousePointer2 size={13}/><span className="hidden sm:inline">Select Element</span></button>
-      <button type="button" aria-pressed={tutorMode} onClick={()=>onTutorModeChange(!tutorMode)} className={`flex h-7 items-center gap-1 rounded-md px-2 text-[10px] ${tutorMode?"bg-[#10B981]/15 text-[#6EE7B7]":"text-[#CBD5E1] hover:bg-white/[0.08]"}`}><GraduationCap size={13}/> Tutor</button>
+      <button type="button" aria-pressed={tutorMode} onClick={()=>onTutorModeChange(!tutorMode)} className={`flex h-7 items-center gap-1 rounded-md px-2 text-[10px] ${tutorMode?"bg-[#10B981]/15 text-[#6EE7B7]":"text-[#CBD5E1] hover:bg-white/[0.08]"}`}><GraduationCap size={13}/> Tutor Mode</button>
      </div>
      <Button type="submit" size="sm" disabled={!prompt.trim()||busy} className="h-8 gap-2 rounded-lg bg-[#2563EB] px-3 text-[11px] font-medium text-white shadow-lg shadow-blue-500/25 hover:bg-[#3B82F6] disabled:opacity-40">{busy?<span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white"/>:<ArrowRight size={13}/>} {busy?"Working":"Send"}</Button>
     </div>

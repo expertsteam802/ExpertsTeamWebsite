@@ -24,9 +24,9 @@ function AgentProjectPage() {
   });
   const project = projects.data?.find((item) => item.id === projectName || projectSlug(item, projects.data ?? []) === projectName);
   if (loading) return <main className="grid h-screen place-items-center bg-[#070B14] text-sm text-[#94A3B8]">Restoring your session…</main>;
-  if (!user) return <main className="grid h-screen place-items-center bg-[#080b12] text-slate-300"><a href="/auth" className="underline">Sign in to open this project</a></main>;
-  if (projects.isLoading) return <main className="grid h-screen place-items-center bg-[#080b12] text-sm text-slate-400">Finding your project…</main>;
-  if (projects.isError) return <main className="grid h-screen place-items-center bg-[#080b12] text-sm text-rose-300">Could not load your projects. Please refresh and try again.</main>;
-  if (!project) return <main className="grid h-screen place-items-center bg-[#080b12] px-6 text-center text-sm text-slate-300"><div><p>Project not found.</p><a href="/ai" className="mt-3 inline-block text-cyan-300 underline">Back to Agent Studio</a></div></main>;
+  if (!user) return <main className="grid h-screen place-items-center bg-[#070B14] text-[#CBD5E1]"><a href="/auth" className="underline">Sign in to open this project</a></main>;
+  if (projects.isLoading) return <main className="grid h-screen place-items-center bg-[#070B14] text-sm text-[#94A3B8]">Finding your project…</main>;
+  if (projects.isError) return <main className="grid h-screen place-items-center bg-[#070B14] text-sm text-rose-300">Could not load your projects. Please refresh and try again.</main>;
+  if (!project) return <main className="grid h-screen place-items-center bg-[#070B14] px-6 text-center text-sm text-[#CBD5E1]"><div><p>Project not found.</p><a href="/ai" className="mt-3 inline-block text-cyan-300 underline">Back to Agent Studio</a></div></main>;
   return <AgentStudioWorkspace key={project.id} projectId={project.id} />;
 }

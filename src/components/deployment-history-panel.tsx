@@ -67,26 +67,26 @@ export function DeploymentHistoryPanel({ projectId }: { projectId: string }) {
   if (!projectId || !user) return null;
   return (
     <details className="relative">
-      <summary className="cursor-pointer list-none rounded-md border border-slate-700 bg-slate-800/70 px-3 py-1.5 text-[11px] font-medium text-slate-200 hover:border-cyan-500/40">
+      <summary className="cursor-pointer list-none rounded-md border border-[#1E293B] bg-[#1E293B]/70 px-3 py-1.5 text-[11px] font-medium text-[#CBD5E1] hover:border-[#2563EB]/50">
         Deploy history
       </summary>
-      <div className="absolute right-0 top-full z-[100] mt-2 max-h-[420px] w-[min(420px,90vw)] overflow-y-auto rounded-xl border border-slate-700 bg-slate-950 p-3 shadow-2xl">
-        <div className="mb-2 flex items-center justify-between"><p className="text-xs font-semibold text-white">Deployment releases</p><span className="text-[10px] text-slate-400">{history.data?.length ?? 0} releases</span></div>
+      <div className="absolute right-0 top-full z-[100] mt-2 max-h-[420px] w-[min(420px,90vw)] overflow-y-auto rounded-xl border border-[#1E293B] bg-[#070B14] p-3 shadow-2xl">
+        <div className="mb-2 flex items-center justify-between"><p className="text-xs font-semibold text-white">Deployment releases</p><span className="text-[10px] text-[#94A3B8]">{history.data?.length ?? 0} releases</span></div>
         <div className="mb-3 grid grid-cols-2 gap-2">
-          <div className="rounded-lg bg-slate-900 p-2"><p className="text-[10px] text-slate-400">Views · 30 days</p><p className="text-lg font-semibold text-white tabular-nums">{(analytics.data ?? []).reduce((sum, day) => sum + Number(day.views), 0).toLocaleString()}</p></div>
-          <div className="rounded-lg bg-slate-900 p-2"><p className="text-[10px] text-slate-400">Load errors · 30 days</p><p className="text-lg font-semibold text-white tabular-nums">{(analytics.data ?? []).reduce((sum, day) => sum + Number(day.errors), 0).toLocaleString()}</p></div>
+          <div className="rounded-lg bg-[#0D1322] p-2"><p className="text-[10px] text-[#94A3B8]">Views · 30 days</p><p className="text-lg font-semibold text-white tabular-nums">{(analytics.data ?? []).reduce((sum, day) => sum + Number(day.views), 0).toLocaleString()}</p></div>
+          <div className="rounded-lg bg-[#0D1322] p-2"><p className="text-[10px] text-[#94A3B8]">Load errors · 30 days</p><p className="text-lg font-semibold text-white tabular-nums">{(analytics.data ?? []).reduce((sum, day) => sum + Number(day.errors), 0).toLocaleString()}</p></div>
         </div>
-        {history.isLoading ? <p className="p-3 text-xs text-slate-400">Loading deployment history…</p> : history.data?.length ? (
+        {history.isLoading ? <p className="p-3 text-xs text-[#94A3B8]">Loading deployment history…</p> : history.data?.length ? (
           <div className="space-y-2">
             {history.data.map((deployment) => (
-              <div key={deployment.id} className="rounded-lg border border-slate-800 p-3">
+              <div key={deployment.id} className="rounded-lg border border-[#1E293B] p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold text-slate-100">{deployment.environment === "production" ? "Production" : "Staging"} · {deployment.release_id.slice(0, 8)}</p>
-                  <span className={deployment.is_current ? "rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-300" : "rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400"}>{deployment.is_current ? "Current" : deployment.status}</span>
+                  <p className="text-xs font-semibold text-[#E2E8F0]">{deployment.environment === "production" ? "Production" : "Staging"} · {deployment.release_id.slice(0, 8)}</p>
+                  <span className={deployment.is_current ? "rounded-full bg-[#10B981]/10 px-2 py-0.5 text-[10px] text-[#6EE7B7]" : "rounded-full bg-[#1E293B] px-2 py-0.5 text-[10px] text-[#94A3B8]"}>{deployment.is_current ? "Current" : deployment.status}</span>
                 </div>
-                <p className="mt-1 text-[10px] text-slate-400">{new Date(deployment.created_at).toLocaleString()} · {deployment.file_count} files</p>
+                <p className="mt-1 text-[10px] text-[#94A3B8]">{new Date(deployment.created_at).toLocaleString()} · {deployment.file_count} files</p>
                 <div className="mt-2 flex items-center justify-between gap-2">
-                  <a href={deployment.public_url} target="_blank" rel="noopener noreferrer" className="truncate text-[11px] text-cyan-300 underline">Open release</a>
+                  <a href={deployment.public_url} target="_blank" rel="noopener noreferrer" className="truncate text-[11px] text-[#60A5FA] underline">Open release</a>
                   {deployment.environment === "production" && !deployment.is_current && deployment.status === "success" && (
                     <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px]" disabled={rollback.isPending} onClick={() => {
                       if (window.confirm("Roll production back to this release?")) rollback.mutate(deployment);
@@ -96,16 +96,16 @@ export function DeploymentHistoryPanel({ projectId }: { projectId: string }) {
               </div>
             ))}
           </div>
-        ) : <p className="p-3 text-xs text-slate-400">No deployment releases yet.</p>}
+        ) : <p className="p-3 text-xs text-[#94A3B8]">No deployment releases yet.</p>}
         <UptimeAlertsPanel projectId={projectId} />
-        <div className="mt-3 border-t border-slate-800 pt-3">
-          <p className="mb-2 text-xs font-semibold text-slate-200">Recent build logs</p>
+        <div className="mt-3 border-t border-[#1E293B] pt-3">
+          <p className="mb-2 text-xs font-semibold text-[#CBD5E1]">Recent build logs</p>
           {buildLogs.data?.length ? buildLogs.data.map((log) => (
-            <div key={log.id} className="mb-2 rounded-lg bg-slate-900 p-2">
-              <p className="text-[10px] text-slate-400">{log.environment} · {log.status} · {new Date(log.created_at).toLocaleString()}</p>
-              <p className="mt-1 break-words text-[11px] text-slate-200">{log.message}</p>
+            <div key={log.id} className="mb-2 rounded-lg bg-[#0D1322] p-2">
+              <p className="text-[10px] text-[#94A3B8]">{log.environment} · {log.status} · {new Date(log.created_at).toLocaleString()}</p>
+              <p className="mt-1 break-words text-[11px] text-[#CBD5E1]">{log.message}</p>
             </div>
-          )) : <p className="text-[10px] text-slate-400">No build logs recorded yet.</p>}
+          )) : <p className="text-[10px] text-[#94A3B8]">No build logs recorded yet.</p>}
         </div>
       </div>
     </details>

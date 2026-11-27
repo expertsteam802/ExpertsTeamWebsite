@@ -106,16 +106,16 @@ export function UptimeAlertsPanel({ projectId }: { projectId: string }) {
   const enabled = Boolean(settings.data?.enabled);
   const latest = checks.data;
   return (
-    <section className="mt-3 border-t border-slate-800 pt-3">
+    <section className="mt-3 border-t border-[#1E293B] pt-3">
       <div className="mb-2 flex items-center gap-2">
-        <HeartPulse className="h-4 w-4 text-cyan-300" />
-        <p className="text-xs font-semibold text-slate-200">Uptime monitoring</p>
+        <HeartPulse className="h-4 w-4 text-[#60A5FA]" />
+        <p className="text-xs font-semibold text-[#CBD5E1]">Uptime monitoring</p>
       </div>
-      <p className="mb-3 text-[10px] leading-4 text-slate-400">
+      <p className="mb-3 text-[10px] leading-4 text-[#94A3B8]">
         The published production URL is checked every 5 minutes. Alerts appear after the configured consecutive-failure threshold.
       </p>
       <div className="mb-3 grid grid-cols-2 gap-2">
-        <label className="space-y-1 text-[10px] text-slate-400">
+        <label className="space-y-1 text-[10px] text-[#94A3B8]">
           Failures before alert
           <Input
             type="number"
@@ -123,10 +123,10 @@ export function UptimeAlertsPanel({ projectId }: { projectId: string }) {
             max="10"
             value={failureThreshold}
             onChange={(event) => setFailureThreshold(event.target.value)}
-            className="h-8 border-slate-700 bg-slate-900 text-xs text-white"
+            className="h-8 border-[#1E293B] bg-[#0D1322] text-xs text-white"
           />
         </label>
-        <label className="space-y-1 text-[10px] text-slate-400">
+        <label className="space-y-1 text-[10px] text-[#94A3B8]">
           Successes before recovery
           <Input
             type="number"
@@ -134,16 +134,16 @@ export function UptimeAlertsPanel({ projectId }: { projectId: string }) {
             max="10"
             value={recoveryThreshold}
             onChange={(event) => setRecoveryThreshold(event.target.value)}
-            className="h-8 border-slate-700 bg-slate-900 text-xs text-white"
+            className="h-8 border-[#1E293B] bg-[#0D1322] text-xs text-white"
           />
         </label>
       </div>
-      <div className="mb-3 flex items-center justify-between gap-2 rounded-lg bg-slate-900 p-2">
+      <div className="mb-3 flex items-center justify-between gap-2 rounded-lg bg-[#0D1322] p-2">
         <div>
           <p className="text-xs font-medium text-white">
             {enabled ? "Monitoring enabled" : "Monitoring paused"}
           </p>
-          <p className="text-[10px] text-slate-400">
+          <p className="text-[10px] text-[#94A3B8]">
             {latest
               ? `${latest.status.toUpperCase()} · ${latest.status_code ?? "no code"} · ${latest.response_time_ms ?? "—"} ms`
               : "No check result yet"}
@@ -168,16 +168,16 @@ export function UptimeAlertsPanel({ projectId }: { projectId: string }) {
       </div>
       <div className="space-y-2">
         {alerts.data?.map((alert) => (
-          <div key={alert.id} className="rounded-lg border border-slate-800 p-2">
+          <div key={alert.id} className="rounded-lg border border-[#1E293B] p-2">
             <div className="flex items-start gap-2">
               {alert.event_type === "down" ? (
-                <CircleAlert className="mt-0.5 h-3.5 w-3.5 text-rose-300" />
+                <CircleAlert className="mt-0.5 h-3.5 w-3.5 text-[#FDA4AF]" />
               ) : (
-                <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-emerald-300" />
+                <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-[#6EE7B7]" />
               )}
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] text-slate-200">{alert.message}</p>
-                <p className="mt-1 text-[10px] text-slate-500">
+                <p className="text-[11px] text-[#CBD5E1]">{alert.message}</p>
+                <p className="mt-1 text-[10px] text-[#94A3B8]">
                   {new Date(alert.created_at).toLocaleString()}
                 </p>
               </div>
@@ -197,7 +197,7 @@ export function UptimeAlertsPanel({ projectId }: { projectId: string }) {
           </div>
         ))}
         {!alerts.data?.length && (
-          <p className="text-[10px] text-slate-500">No uptime alerts recorded.</p>
+          <p className="text-[10px] text-[#94A3B8]">No uptime alerts recorded.</p>
         )}
       </div>
     </section>

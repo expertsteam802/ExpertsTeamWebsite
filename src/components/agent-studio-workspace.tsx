@@ -9,19 +9,21 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { loadProjectBinaryAssets, loadProjectFiles, saveProjectFiles } from "@/lib/project-files";
 import { getProjectPublicEnvironment, runCodingAgent } from "@/lib/agent.functions";
-import { openBrowserTerminal, startBrowserPreview, stopBrowserPreview, syncBrowserProject, watchBrowserProject, type BrowserPreviewPort } from "@/lib/browser-webcontainer";
+import { getBrowserRuntime, openBrowserTerminal, startBrowserPreview, stopBrowserPreview, syncBrowserProject, watchBrowserProject, type BrowserPreviewPort } from "@/lib/browser-webcontainer";
 import CodeMirror from "@uiw/react-codemirror";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { javascript } from "@codemirror/lang-javascript";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 import { json } from "@codemirror/lang-json";
+import { EditorView } from "@codemirror/view";
 import { Terminal } from "@xterm/xterm";
 import { BoltFileTree } from "@/components/bolt-port/FileTree";
 import { BoltChatPanel } from "@/components/bolt-port/Chat";
 import { BoltPreviewPanel } from "@/components/bolt-port/Preview";
 import { WorkspaceControls, type WorkspaceModal } from "@/components/WorkspaceControls";
 import { FitAddon } from "@xterm/addon-fit";
+import { baseProjectSlug } from "@/lib/agent-project-slug";
 import "@xterm/xterm/css/xterm.css";
 
 type ChatMessage = { role: "user" | "assistant"; content: string; createdAt?: string };
@@ -48,7 +50,7 @@ function readMessages(value: unknown): ChatMessage[] {
   ).slice(-100);
 }
 
-function extensionLanguage(path: string) {
+const expertsEditorTheme = EditorView.theme({\n  "&": { backgroundColor: "#070B14", color: "#E2E8F0" },\n  ".cm-content": { caretColor: "#3B82F6" },\n  ".cm-cursor, .cm-dropCursor": { borderLeftColor: "#3B82F6" },\n  "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": { backgroundColor: "rgba(37,99,235,.25)" },\n  ".cm-gutters": { backgroundColor: "#0D1322", color: "#94A3B8", borderRight: "1px solid #1E293B" },\n  ".cm-activeLine": { backgroundColor: "rgba(37,99,235,.08)" },\n  ".cm-activeLineGutter": { backgroundColor: "rgba(37,99,235,.12)" },\n});\n\nfunction extensionLanguage(path: string) {
   const ext = path.split(".").pop()?.toLowerCase();
   if (ext === "html") return "html";
   if (ext === "css" || ext === "scss") return "css";
@@ -76,6 +78,8 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   const [attachedImage, setAttachedImage] = useState<{ name: string; mimeType: "image/png" | "image/jpeg" | "image/webp"; data: string } | null>(null);
   const [selectedElement, setSelectedElement] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
+  const [publishing, setPublishing] = useState(false);
+  const [publishedUrl, setPublishedUrl] = useState("");
   const [previewPorts, setPreviewPorts] = useState<BrowserPreviewPort[]>([]);
   const [selectedPreviewPort, setSelectedPreviewPort] = useState<number | null>(null);
   const terminalHost = useRef<HTMLDivElement>(null);
@@ -87,6 +91,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
   const [terminalConnected, setTerminalConnected] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const hydratedRef = useRef("");
+  const persistedFilesRef = useRef<ProjectFiles | null>(null);
   const autoBootStarted = useRef(false);
 
   useEffect(() => () => {
@@ -100,7 +105,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     queryFn: async () => {
       if (!user) throw new Error("Sign in to open this private project.");
       const { data, error } = await supabase.from("agent_projects")
-        .select("id,name,framework,messages,updated_at")
+        .select("id,name,framework,messages,updated_at,slug,published")
         .eq("id", projectId).eq("user_id", user.id).maybeSingle();
       if (error) throw error;
       if (!data) throw new Error("Project not found or you do not have access.");
@@ -115,25 +120,27 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     if (hydratedRef.current === hydrationKey) return;
     hydratedRef.current = hydrationKey;
     setFiles(projectQuery.data.files);
+    persistedFilesRef.current = projectQuery.data.files;
     setBinaryAssets(projectQuery.data.binaryAssets);
     setMessages(projectQuery.data.messages);
+    if (projectQuery.data.project.published && projectQuery.data.project.slug) setPublishedUrl(window.location.origin + "/apps/" + projectQuery.data.project.slug);
     setActivePath(Object.keys(projectQuery.data.files).sort()[0] ?? "");
     setFilesReady(true);
-    setSaveStatus("saving");
+    setSaveStatus("saved");
   }, [projectQuery.data, projectId, projectQuery.data?.project.updated_at]);
 
   useEffect(() => {
-    if (!user || !projectQuery.data || !filesReady || hydratedRef.current !== `${projectId}:${projectQuery.data.project.updated_at}`) return;
+    if (!user || !projectQuery.data || !filesReady || hydratedRef.current !== `${projectId}:${projectQuery.data.project.updated_at}` || persistedFilesRef.current === files) return;
     const timer = window.setTimeout(async () => {
       setSaveStatus("saving");
       try {
         await saveProjectFiles(projectId, user.id, files);
+        persistedFilesRef.current = files;
         setSaveStatus("saved");
       } catch (error) {
         console.error("[Agent Studio] Autosave failed:", error);
         setSaveStatus("error");
         toast.error("Could not save your latest code changes.");
-      } finally {
       }
     }, 900);
     return () => window.clearTimeout(timer);
@@ -220,6 +227,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       }
       if (Object.keys(result.files ?? {}).length) {
         await saveProjectFiles(projectId, user.id, updated);
+        persistedFilesRef.current = updated;
         setFiles(updated);
         if (!activePath || !(activePath in updated)) setActivePath(Object.keys(updated).sort()[0] ?? "");
       }
@@ -266,6 +274,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       }
       setFiles(previewFiles);
       await saveProjectFiles(projectId, user!.id, previewFiles);
+      persistedFilesRef.current = previewFiles;
       const publicEnvironment = await getProjectPublicEnvironment({ data: { projectId } });
       const result = await startBrowserPreview(
         projectId,
@@ -310,6 +319,115 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     void openPreview();
   }, [filesReady, projectQuery.data]);
 
+  const publishProject = async () => {
+    if (publishing) return;
+    setPublishing(true);
+    const uploadedPaths: string[] = [];
+    try {
+      if (!runtimeReady) {
+        await openPreview();
+        if (!runtimeActiveRef.current) throw new Error("Start the browser preview successfully before publishing.");
+      }
+      const runtime = await getBrowserRuntime();
+      const manifestText = await runtime.fs.readFile(runtime.workdir + "/package.json", "utf-8").catch(() => "");
+      let manifest: { scripts?: Record<string, string>; packageManager?: string } = {};
+      if (manifestText) {
+        try { manifest = JSON.parse(manifestText) as { scripts?: Record<string, string>; packageManager?: string }; }
+        catch { throw new Error("The project's package.json is invalid."); }
+      }
+      const buildScript = manifest.scripts?.build;
+      let outputDirectory = runtime.workdir;
+      if (buildScript) {
+        toast.message("Building a production release…");
+        const declaredManager = manifest.packageManager?.split("@")[0];
+        const manager = declaredManager === "pnpm" || declaredManager === "yarn" || declaredManager === "npm" ? declaredManager : (files["pnpm-lock.yaml"] ? "pnpm" : files["yarn.lock"] ? "yarn" : "npm");
+        const publicEnvironment = await getProjectPublicEnvironment({ data: { projectId } });
+        const build = await runtime.spawn(manager, ["run", "build"], { env: publicEnvironment });
+        let buildOutput = "";
+        const reader = build.output.getReader();
+        void (async () => {
+          try {
+            while (true) {
+              const { value, done } = await reader.read();
+              if (done) break;
+              if (value) buildOutput = (buildOutput + value).slice(-8000);
+            }
+          } catch (error) { console.debug("[Agent Studio] Build output stream closed.", error); }
+        })();
+        const exitCode = await build.exit;
+        if (exitCode !== 0) throw new Error("Production build failed. " + buildOutput.slice(-1800));
+        const candidates = ["dist", "build", "out"];
+        let found = false;
+        for (const candidate of candidates) {
+          try {
+            const stat = await runtime.fs.stat(runtime.workdir + "/" + candidate);
+            if (stat.isDirectory()) { outputDirectory = runtime.workdir + "/" + candidate; found = true; break; }
+          } catch (error) { console.debug("[Agent Studio] Build output directory not found:", candidate, error); }
+        }
+        if (!found) throw new Error("Build completed, but no dist/, build/, or out/ directory was created. Configure a static output directory to publish this app.");
+      }
+      const publishedFiles: Array<{ path: string; body: Blob; size: number; contentType: string }> = [];
+      const mimeType = (path: string) => {
+        const ext = path.split(".").pop()?.toLowerCase();
+        return ({ html: "text/html", css: "text/css", js: "application/javascript", mjs: "application/javascript", cjs: "application/javascript", json: "application/json", map: "application/json", svg: "image/svg+xml", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", gif: "image/gif", ico: "image/x-icon", woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf", otf: "font/otf", wasm: "application/wasm", txt: "text/plain", xml: "application/xml" } as Record<string,string>)[ext ?? ""] ?? "application/octet-stream";
+      };
+      const walk = async (directory: string, relative = ""): Promise<void> => {
+        const entries = await runtime.fs.readdir(directory);
+        for (const entry of entries) {
+          const name = typeof entry === "string" ? entry : String(entry);
+          if (["node_modules", ".git", ".next", ".turbo", ".kilo", ".kilocode", ".config", ".supabase", ".aws", ".ssh", ".firebase", "coverage"].includes(name)) continue;
+          const absolute = directory + "/" + name;
+          const nextRelative = relative ? relative + "/" + name : name;
+          const stat = await runtime.fs.stat(absolute);
+          if (stat.isDirectory()) { await walk(absolute, nextRelative); continue; }
+          if (/(^|\\/)\\.env(?:\\.|$)/i.test(nextRelative) || /(^|\\/)(?:id_rsa|id_ed25519|credentials\\.json|secrets\\.json|service[-_]account[^/]*\\.json|\\.npmrc|\\.netrc|\\.pypirc)$/i.test(nextRelative) || /\\.(pem|key|p12|pfx|crt|cer|secret)$/i.test(nextRelative)) continue;
+          const bytes = await runtime.fs.readFile(absolute);
+          if (bytes.byteLength > 49_000_000) throw new Error("The file " + nextRelative + " exceeds the 49 MB publish limit.");
+          const body = new Blob([bytes.slice().buffer as ArrayBuffer], { type: mimeType(nextRelative) });
+          publishedFiles.push({ path: nextRelative, body, size: bytes.byteLength, contentType: mimeType(nextRelative) });
+          if (publishedFiles.length > 1000) throw new Error("This release contains more than 1,000 files.");
+        }
+      };
+      await walk(outputDirectory);
+      if (!publishedFiles.some(file => file.path === "index.html")) throw new Error("The production output must contain an index.html file.");
+      const totalBytes = publishedFiles.reduce((total, file) => total + file.size, 0);
+      if (totalBytes > 45_000_000) throw new Error("The production output exceeds the 45 MB total publish limit.");
+      const slug = projectQuery.data!.project.slug || (baseProjectSlug(projectQuery.data!.project.name).slice(0, 48).replace(/-+$/,"") + "-" + projectId.slice(0, 6));
+      const releaseId = new Date().toISOString().replace(/\D/g, "").slice(0, 14) + "-" + crypto.randomUUID().slice(0, 8);
+      const root = user!.id + "/" + projectId + "/" + releaseId;
+      for (let index = 0; index < publishedFiles.length; index += 4) {
+        const batch = publishedFiles.slice(index, index + 4);
+        const results = await Promise.allSettled(batch.map(async file => {
+          const path = root + "/" + file.path;
+          const { error } = await supabase.storage.from("published-apps").upload(path, file.body, { contentType: file.contentType, cacheControl: "31536000", upsert: false });
+          if (error) throw new Error("Could not upload " + file.path + ": " + error.message);
+          uploadedPaths.push(path);
+        }));
+        const failedUpload = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+        if (failedUpload) throw failedUpload.reason;
+      }
+      const indexPath = root + "/index.html";
+      const deploymentUrl = supabase.storage.from("published-apps").getPublicUrl(indexPath).data.publicUrl;
+      const publicUrl = window.location.origin + "/apps/" + slug;
+      const { error: recordError } = await supabase.rpc("record_agent_project_deployment", {
+        p_project_id: projectId, p_slug: slug, p_environment: "production", p_release_id: releaseId,
+        p_deployment_url: deploymentUrl, p_public_url: publicUrl, p_file_count: publishedFiles.length,
+      });
+      if (recordError) throw new Error("Files uploaded, but the production release could not be recorded: " + recordError.message);
+      setPublishedUrl(publicUrl);
+      await queryClient.invalidateQueries({ queryKey: ["agent-project-deployments", projectId] });
+      toast.success("Your app is published: " + publicUrl);
+    } catch (error) {
+      if (uploadedPaths.length) {
+        const { error: cleanupError } = await supabase.storage.from("published-apps").remove(uploadedPaths);
+        if (cleanupError) console.warn("[Agent Studio] Could not clean up an incomplete release:", cleanupError);
+      }
+      toast.error(error instanceof Error ? error.message : "Could not publish this project.");
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   const openTerminal = async () => {
     if (terminalOpen) {
       setTerminalOpen(false);
@@ -323,6 +441,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     setBusy(true);
     try {
       await saveProjectFiles(projectId, user!.id, files);
+      persistedFilesRef.current = files;
       await syncBrowserProject(projectId, { ...files, ...binaryAssets });
       runtimeActiveRef.current = true;
       setRuntimeReady(true);
@@ -355,7 +474,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
       })
       .catch((error) => terminal.writeln("\r\n\x1b[31m" + (error instanceof Error ? error.message : "Could not start terminal.") + "\x1b[0m"));
     terminalRef.current = terminal;
-    const observer = new ResizeObserver(() => { try { fit.fit(); } catch { /* terminal is closing */ } });
+    const observer = new ResizeObserver(() => { try { fit.fit(); } catch (error) { console.debug("[Agent Studio] Terminal resize skipped during shutdown.", error); } });
     observer.observe(terminalHost.current);
     return () => {
       disposed = true;
@@ -367,10 +486,10 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
     };
   }, [terminalConnected, terminalOpen]);
 
-  if (authLoading) return <main className="grid h-screen place-items-center bg-[#080b12] text-sm text-slate-400">Restoring your session…</main>;
-  if (!user) return <main className="grid h-screen place-items-center bg-[#080b12] text-slate-300"><a href="/auth" className="underline">Sign in to open this project</a></main>;
-  if (projectQuery.isLoading) return <main className="grid h-screen place-items-center bg-[#080b12] text-sm text-slate-400">Opening your Agent Studio workspace…</main>;
-  if (projectQuery.isError || !projectQuery.data) return <main className="grid h-screen place-items-center bg-[#080b12] px-6 text-center text-sm text-rose-300">{(projectQuery.error as Error)?.message ?? "Project unavailable"}</main>;
+  if (authLoading) return <main className="grid h-screen place-items-center bg-[#070B14] text-sm text-[#94A3B8]">Restoring your session…</main>;
+  if (!user) return <main className="grid h-screen place-items-center bg-[#070B14] text-[#CBD5E1]"><a href="/auth" className="underline">Sign in to open this project</a></main>;
+  if (projectQuery.isLoading) return <main className="grid h-screen place-items-center bg-[#070B14] text-sm text-[#94A3B8]">Opening your Agent Studio workspace…</main>;
+  if (projectQuery.isError || !projectQuery.data) return <main className="grid h-screen place-items-center bg-[#070B14] px-6 text-center text-sm text-rose-300">{(projectQuery.error as Error)?.message ?? "Project unavailable"}</main>;
 
   return (
     <main className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[#070B14] text-[#E2E8F0]">
@@ -379,21 +498,21 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
           <Link to="/ai" className="flex h-8 items-center gap-2 rounded-md px-2 text-xs text-[#CBD5E1] transition hover:bg-white/[0.06] hover:text-white"><ArrowLeft size={14}/> Projects</Link>
           <span className="h-5 w-px bg-[#1E293B]"/>
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#2563EB] text-[11px] font-black text-white shadow-lg shadow-blue-500/25">E</div>
-          <strong className="max-w-[240px] truncate text-[13px] font-medium text-[#F8FAFC]">{projectQuery.data.project.name}</strong>
+          <strong className="max-w-[110px] truncate text-[13px] font-medium text-[#F8FAFC] sm:max-w-[240px]">{projectQuery.data.project.name}</strong>
           <span className="hidden rounded-md border border-[#1E293B] bg-[#070B14] px-2 py-1 text-[10px] text-[#CBD5E1] sm:inline">Agent</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className={`hidden rounded-md border px-2 py-1 text-[10px] font-medium sm:inline ${saveStatus==="saved"?"border-[#10B981]/30 bg-[#10B981]/10 text-[#6EE7B7]":saveStatus==="error"?"border-rose-500/30 bg-rose-500/10 text-rose-300":"border-[#1E293B] bg-[#070B14] text-[#CBD5E1]"}`}>{saveStatus==="saved"?"✓ Saved":saveStatus==="error"?"Save failed":saveStatus==="saving"?"Saving changes…":"Loading files…"}</span>
-          <button type="button" onClick={()=>setWorkspaceModal("credits")} className="rounded-full border border-[#F59E0B]/40 bg-[#F59E0B]/15 px-3 py-1.5 text-[10px] font-semibold text-[#F59E0B] hover:bg-[#F59E0B]/20">⚡ {profile?.ai_credits ?? 0} Credits • +Earn Free</button>
-          <button type="button" onClick={()=>setWorkspaceModal("db")} className="hidden h-8 items-center gap-1.5 rounded-md border border-[#1E293B] bg-[#0D1322] px-2.5 text-[10px] text-[#CBD5E1] hover:border-[#2563EB]/50 sm:flex"><Database size={12}/> DB &amp; Auth</button>
-          <button type="button" onClick={()=>setWorkspaceModal("github")} className="hidden h-8 items-center gap-1.5 rounded-md border border-[#1E293B] bg-[#0D1322] px-2.5 text-[10px] text-[#CBD5E1] hover:border-[#2563EB]/50 sm:flex"><Github size={12}/> GitHub</button>
-          <button type="button" onClick={()=>setWorkspaceModal("deploy")} className="hidden h-8 items-center gap-1.5 rounded-md bg-[#2563EB] px-3 text-[10px] font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-[#3B82F6] sm:flex"><Upload size={12}/> Deploy ↑</button>
-          <Button type="button" size="sm" onClick={() => void openPreview()} disabled={busy || previewBooting} className="h-8 gap-1.5 rounded-md bg-[#10B981] px-3 text-[11px] font-semibold text-[#052E24] hover:bg-[#34D399]"><Play size={12}/> Run</Button>
+          <button type="button" onClick={()=>setWorkspaceModal("credits")} aria-label={`⚡ ${profile?.ai_credits ?? 0} Credits • +Earn Free`} className="rounded-full border border-[#F59E0B]/40 bg-[#F59E0B]/15 px-2.5 py-1.5 text-[10px] font-semibold text-[#F59E0B] hover:bg-[#F59E0B]/20 sm:px-3"><span className="hidden sm:inline">⚡ {profile?.ai_credits ?? 0} Credits • +Earn Free</span><span className="sm:hidden">⚡ {profile?.ai_credits ?? 0}</span></button>
+          <button type="button" onClick={()=>setWorkspaceModal("db")} className="flex h-8 items-center gap-1.5 rounded-md border border-[#1E293B] bg-[#0D1322] px-2 text-[10px] text-[#CBD5E1] hover:border-[#2563EB]/50 sm:px-2.5"><Database size={12}/><span className="hidden md:inline">DB &amp; Auth</span></button>
+          <button type="button" onClick={()=>setWorkspaceModal("github")} className="flex h-8 items-center gap-1.5 rounded-md border border-[#1E293B] bg-[#0D1322] px-2 text-[10px] text-[#CBD5E1] hover:border-[#2563EB]/50 sm:px-2.5"><Github size={12}/><span className="hidden md:inline">GitHub</span></button>
+          <button type="button" onClick={()=>setWorkspaceModal("deploy")} className="flex h-8 items-center gap-1.5 rounded-md bg-[#2563EB] px-2 text-[10px] font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-[#3B82F6] sm:px-3"><Upload size={12}/><span className="hidden md:inline">Deploy ↑</span></button>
+          <Button type="button" size="sm" onClick={() => void openPreview()} disabled={busy || previewBooting} className="h-8 gap-1.5 rounded-md bg-[#10B981] px-3 text-[11px] font-semibold text-[#052E24] hover:bg-[#34D399]"><Play size={12}/><span className="hidden sm:inline">Run</span></Button>
         </div>
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <WorkspaceControls projectId={projectId} userId={user.id} files={files} onRestore={(next) => { setFiles(next); setActivePath(Object.keys(next).sort()[0] ?? ""); }} onFocusChat={() => { document.querySelector<HTMLTextAreaElement>('textarea[placeholder="How can ExpertsTeam help you today?"]')?.focus(); }} modal={workspaceModal} onModalChange={setWorkspaceModal}/>
+        <WorkspaceControls projectId={projectId} userId={user.id} files={files} onRestore={async (next) => { await saveProjectFiles(projectId, user.id, next); persistedFilesRef.current = next; setFiles(next); setActivePath(Object.keys(next).sort()[0] ?? ""); if (runtimeActiveRef.current) await syncBrowserProject(projectId, { ...next, ...binaryAssets }); setSaveStatus("saved"); }} onSave={async () => { await saveProjectFiles(projectId, user.id, files); persistedFilesRef.current = files; setSaveStatus("saved"); }} onReload={async () => { const [next, assets] = await Promise.all([loadProjectFiles(projectId), loadProjectBinaryAssets(projectId, user.id)]); setFiles(next); persistedFilesRef.current = next; setBinaryAssets(assets); setActivePath(Object.keys(next).sort()[0] ?? ""); await syncBrowserProject(projectId, { ...next, ...assets }); runtimeActiveRef.current = true; setRuntimeReady(true); setSaveStatus("saved"); }} onPublish={() => void publishProject()} publishing={publishing} publishedUrl={publishedUrl} onFocusChat={() => { document.querySelector<HTMLTextAreaElement>('textarea[placeholder="How can ExpertsTeam help you today?"]')?.focus(); }} modal={workspaceModal} onModalChange={setWorkspaceModal}/>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col md:flex-row">
         <BoltChatPanel
           projectName={projectQuery.data.project.name}
@@ -416,7 +535,7 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
           onKeyDown={(event) => { if (event.key === "ArrowLeft") setChatWidth((value) => Math.max(320, value - 20)); if (event.key === "ArrowRight") setChatWidth((value) => Math.min(700, value + 20)); }}
           className="hidden w-1 shrink-0 cursor-col-resize bg-white/[0.035] transition hover:bg-[#2563EB]/40 focus-visible:bg-[#2563EB]/50 md:block" />
 
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#0b0b0c]">
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#070B14]">
           <div className="flex h-11 shrink-0 items-center justify-between border-b border-[#1E293B] bg-[#0D1322] px-3">
             <div className="flex h-full items-stretch gap-1">
               {([{id:"code",label:"Code",icon:Code2},{id:"preview",label:"Preview",icon:Eye}] as const).map((item) => { const Icon=item.icon; return <button key={item.id} type="button" onClick={() => setTab(item.id)} className={`inline-flex items-center gap-2 border-b-2 px-3 text-[11px] transition ${tab===item.id?"border-[#2563EB] text-[#93C5FD]":"border-transparent text-[#94A3B8] hover:text-[#E2E8F0]"}`}><Icon size={13}/>{item.label}</button>; })}
@@ -457,12 +576,12 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
                 </div>
               </aside>
               <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] bg-[#0D1322] px-3"><span className="flex min-w-0 items-center gap-2 truncate text-[11px] text-[#b4b4bc]">{activePath ? <><FileCode2 size={13} className="shrink-0 text-[#60A5FA]"/><span className="truncate">{activePath}</span></> : "Select a file"}</span><span className={`flex items-center gap-1.5 text-[10px] ${saveStatus === "saved" ? "text-[#10B981]" : saveStatus === "error" ? "text-rose-300" : "text-[#CBD5E1]"}`}><Save size={11}/>{saveStatus === "saved" ? "✓ Saved" : saveStatus === "saving" ? "Saving changes…" : "Save failed"}</span></div>
-                {activePath ? <div className="min-h-0 flex-1 overflow-hidden"><CodeMirror value={activeContent} height="100%" theme={oneDark} extensions={[editorLanguage(activePath)]} onChange={(value) => setFiles(current => ({...current,[activePath]:value}))} basicSetup={{ lineNumbers:true, foldGutter:true, highlightActiveLine:true, highlightActiveLineGutter:true, bracketMatching:true, closeBrackets:true, autocompletion:true, indentOnInput:true }} /></div> : <div className="grid flex-1 place-items-center text-[11px] text-[#71717a]">Select a file from the explorer</div>}
+                <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.07] bg-[#0D1322] px-3"><span className="flex min-w-0 items-center gap-2 truncate text-[11px] text-[#CBD5E1]">{activePath ? <><FileCode2 size={13} className="shrink-0 text-[#60A5FA]"/><span className="truncate">{activePath}</span></> : "Select a file"}</span><span className={`flex items-center gap-1.5 text-[10px] ${saveStatus === "saved" ? "text-[#10B981]" : saveStatus === "error" ? "text-rose-300" : "text-[#CBD5E1]"}`}><Save size={11}/>{saveStatus === "saved" ? "✓ Saved" : saveStatus === "saving" ? "Saving changes…" : "Save failed"}</span></div>
+                {activePath ? <div className="min-h-0 flex-1 overflow-hidden"><CodeMirror value={activeContent} height="100%" theme={oneDark} extensions={[editorLanguage(activePath), expertsEditorTheme]} onChange={(value) => setFiles(current => ({...current,[activePath]:value}))} basicSetup={{ lineNumbers:true, foldGutter:true, highlightActiveLine:true, highlightActiveLineGutter:true, bracketMatching:true, closeBrackets:true, autocompletion:true, indentOnInput:true }} /></div> : <div className="grid flex-1 place-items-center text-[11px] text-[#94A3B8]">Select a file from the explorer</div>}
               </div>
             </div>
             {terminalOpen && <div className="flex h-[30%] min-h-[150px] shrink-0 flex-col border-t border-white/[0.09] bg-[#070B14]">
-              <div className="flex h-8 shrink-0 items-center justify-between border-b border-white/[0.07] px-3 text-[10px] text-[#85858d]"><span className="flex items-center gap-2"><TerminalSquare size={12}/> Terminal</span><span>Browser WebContainer</span></div>
+              <div className="flex h-8 shrink-0 items-center justify-between border-b border-white/[0.07] px-3 text-[10px] text-[#94A3B8]"><span className="flex items-center gap-2"><TerminalSquare size={12}/> Terminal</span><span>Browser WebContainer</span></div>
               <div ref={terminalHost} className="min-h-0 flex-1 overflow-hidden p-2"/>
             </div>}
           </div>}
