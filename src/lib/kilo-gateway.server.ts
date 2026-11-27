@@ -20,6 +20,8 @@ type GatewayMessage = {
 
 const KILO_GATEWAY_URL = "https://ai-gateway.kilo.ai/api/v1/chat/completions";
 const DEFAULT_KILO_MODEL = "kilo-auto/free";
+const OPENAPIS_GATEWAY_URL = "https://api.openapis.online/openai/v1/chat/completions";
+const DEFAULT_OPENAPIS_MODEL = "gpt-5.4-mini";
 
 function toMessages(request: GatewayRequest): GatewayMessage[] {
   const system = request.systemInstruction.parts.map((part) => part.text).join("\n").slice(0, 12000);
@@ -45,23 +47,42 @@ function toMessages(request: GatewayRequest): GatewayMessage[] {
   return messages;
 }
 
-/** The single AI transport for ExpertsTeam: Kilo Gateway only, with no provider fallback. */
+/** Shared server-side AI transport. Provider selection is controlled only by server environment variables. */
 export async function generateExpertAiContent(request: GatewayRequest): Promise<GatewayResponse> {
   const activeRequest = compactSmartRequest(request);
+  const provider = (process.env["EXPERTS_AI_PROVIDER"] || "kilo").trim().toLowerCase();
+  const useOpenApis = provider === "openapis";
+  if (provider !== "kilo" && !useOpenApis) {
+    throw new Error("Unknown ExpertAI provider. Set EXPERTS_AI_PROVIDER to kilo or openapis.");
+  }
+
   const body: Record<string, unknown> = {
-    model: DEFAULT_KILO_MODEL,
+    model: useOpenApis
+      ? (process.env["OPENAPIS_MODEL"] || DEFAULT_OPENAPIS_MODEL).trim()
+      : DEFAULT_KILO_MODEL,
     messages: toMessages(activeRequest),
-    max_tokens: Math.min(request.generationConfig?.maxOutputTokens ?? 4096, 16384),
+    ...(useOpenApis
+      ? { max_completion_tokens: Math.min(request.generationConfig?.maxOutputTokens ?? 4096, 16384) }
+      : { max_tokens: Math.min(request.generationConfig?.maxOutputTokens ?? 4096, 16384) }),
   };
   if (request.generationConfig?.responseMimeType === "application/json") {
     body.response_format = { type: "json_object" };
   }
 
-  const send = (payload: Record<string, unknown>) => fetch(KILO_GATEWAY_URL, {
+  const endpoint = useOpenApis ? OPENAPIS_GATEWAY_URL : KILO_GATEWAY_URL;
+  const apiKey = useOpenApis ? process.env["OPENAPIS_API_KEY"]?.trim() : undefined;
+  if (useOpenApis && !apiKey) {
+    throw new Error("OpenAPIs is selected but OPENAPIS_API_KEY is not configured on the server.");
+  }
+
+  const send = (payload: Record<string, unknown>) => fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(useOpenApis && apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+    },
     body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(45000),
+    signal: AbortSignal.timeout(60000),
   });
 
   let response: Response;
@@ -75,31 +96,34 @@ export async function generateExpertAiContent(request: GatewayRequest): Promise<
       }
     }
   } catch (error) {
-    console.error("[Kilo Gateway] Request failed:", error);
+    console.error(`[${useOpenApis ? "OpenAPIs" : "Kilo Gateway"}] Request failed:`, error);
     throw new Error(error instanceof Error && error.name === "TimeoutError"
-      ? "Kilo Gateway timed out. Please try again."
-      : "Kilo Gateway could not be reached. Please try again.");
+      ? `${useOpenApis ? "OpenAPIs" : "Kilo Gateway"} timed out. Please try again.`
+      : `${useOpenApis ? "OpenAPIs" : "Kilo Gateway"} could not be reached. Please try again.`);
   }
 
   if (!response.ok) {
     const detail = (await response.text()).slice(0, 1200);
-    console.error("[Kilo Gateway] HTTP", response.status, detail);
-    if (response.status === 429) throw new Error("Kilo Gateway is temporarily busy (HTTP 429). Please retry shortly.");
-    if (response.status === 401) throw new Error("Kilo Gateway rejected anonymous access (HTTP 401). Ensure the request uses the free model tier kilo-auto/free.");
-    if (response.status === 403) throw new Error("Kilo Gateway denied this model or account (HTTP 403). Check your Kilo account and model access.");
-    if (response.status >= 500) throw new Error("Kilo Gateway is temporarily unavailable (HTTP " + response.status + ").");
-    throw new Error("Kilo Gateway request failed (HTTP " + response.status + "): " + detail);
+    console.error(`[${useOpenApis ? "OpenAPIs" : "Kilo Gateway"}] HTTP`, response.status, detail);
+    const label = useOpenApis ? "OpenAPIs" : "Kilo Gateway";
+    if (response.status === 429) throw new Error(`${label} is temporarily busy (HTTP 429). Please retry shortly.`);
+    if (response.status === 401 || response.status === 403) throw new Error(`${label} rejected the configured API key or model access (HTTP ${response.status}).`);
+    if (response.status >= 500) throw new Error(`${label} is temporarily unavailable (HTTP ${response.status}).`);
+    throw new Error(`${label} request failed (HTTP ${response.status}): ${detail}`);
   }
 
   const data = await response.json() as {
-    choices?: { finish_reason?: string; message?: { content?: string | { text?: string }[] | null } }[];
+    choices?: {
+      finish_reason?: string;
+      message?: { content?: string | { text?: string }[] | null };
+    }[];
     error?: { message?: string };
   };
-  if (data.error?.message) throw new Error("Kilo Gateway: " + data.error.message);
+  if (data.error?.message) throw new Error(`${useOpenApis ? "OpenAPIs" : "Kilo Gateway"}: ${data.error.message}`);
   const choice = data.choices?.[0];
   const raw = choice?.message?.content;
   const text = typeof raw === "string" ? raw : raw?.map((part) => part.text ?? "").join("");
-  if (!text?.trim()) throw new Error("Kilo Gateway returned an empty response.");
+  if (!text?.trim()) throw new Error(`${useOpenApis ? "OpenAPIs" : "Kilo Gateway"} returned an empty response.`);
   return {
     candidates: [{
       finishReason: choice?.finish_reason === "length" ? "MAX_TOKENS" : "STOP",
