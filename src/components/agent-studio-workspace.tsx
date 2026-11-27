@@ -390,7 +390,9 @@ export function AgentStudioWorkspace({ projectId }: { projectId: string }) {
           const nextRelative = relative ? relative + "/" + name : name;
           const stat = await runtime.fs.stat(absolute);
           if (stat.isDirectory()) { await walk(absolute, nextRelative); continue; }
-          if (/(^|\\/)\\.env(?:\\.|$)/i.test(nextRelative) || /(^|\\/)(?:id_rsa|id_ed25519|credentials\\.json|secrets\\.json|service[-_]account[^/]*\\.json|\\.npmrc|\\.netrc|\\.pypirc)$/i.test(nextRelative) || /\\.(pem|key|p12|pfx|crt|cer|secret)$/i.test(nextRelative)) continue;
+          const pathSegments = nextRelative.split("/").map(segment => segment.toLowerCase());
+          const fileName = pathSegments[pathSegments.length - 1] ?? "";
+          if (pathSegments.some(segment => segment === ".env" || segment.startsWith(".env.") || [".npmrc", ".netrc", ".pypirc", "id_rsa", "id_ed25519", "credentials.json", "secrets.json"].includes(segment) || (segment.startsWith("service-account") && segment.endsWith(".json"))) || ["pem", "key", "p12", "pfx", "crt", "cer", "secret"].includes(fileName.split(".").pop() ?? "")) continue;
           const bytes = await runtime.fs.readFile(absolute);
           if (bytes.byteLength > 49_000_000) throw new Error("The file " + nextRelative + " exceeds the 49 MB publish limit.");
           const body = new Blob([bytes.slice().buffer as ArrayBuffer], { type: mimeType(nextRelative) });
