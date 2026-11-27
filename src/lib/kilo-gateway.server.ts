@@ -219,9 +219,12 @@ async function callOpenApis(request: GatewayRequest): Promise<GatewayResponse> {
 }
 
 /** Shared server-side AI transport. Provider selection and credentials are server-only. */
-export async function generateExpertAiContent(request: GatewayRequest): Promise<GatewayResponse> {
+export async function generateExpertAiContent(
+  request: GatewayRequest,
+  options: { provider?: Provider; fallbackToKilo?: boolean } = {},
+): Promise<GatewayResponse> {
   const activeRequest = compactSmartRequest(request);
-  const provider = (process.env["EXPERTS_AI_PROVIDER"] || "kilo").trim().toLowerCase();
+  const provider = options.provider ?? ((process.env["EXPERTS_AI_PROVIDER"] || "kilo").trim().toLowerCase() as Provider);
   if (provider !== "kilo" && provider !== "openapis") {
     throw new Error("Unknown ExpertAI provider. Set EXPERTS_AI_PROVIDER to kilo or openapis.");
   }
@@ -231,9 +234,8 @@ export async function generateExpertAiContent(request: GatewayRequest): Promise<
   try {
     return await callOpenApis(activeRequest);
   } catch (error) {
-    // Fall back only for transient availability/rate-limit failures. Bad keys,
-    // invalid models and malformed requests should stay visible in server logs.
-    if (!isRetryableOpenApisFailure(error)) throw error;
+    // Chat can disable fallback during provider validation so test results cannot be masked.
+    if (options.fallbackToKilo === false || !isRetryableOpenApisFailure(error)) throw error;
     console.warn("[ExpertAI] OpenAPIs failed transiently; falling back to Kilo Gateway:", error);
     return callKilo(activeRequest);
   }
